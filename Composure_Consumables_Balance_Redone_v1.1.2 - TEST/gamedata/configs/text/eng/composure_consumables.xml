@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+    <string id="ui_mcm_menu_composure_consumables"><text>Composure Consumables</text></string>
+    <string id="ui_mcm_composure_consumables_enabled"><text>Enable Consumable Effects</text></string>
+    <string id="ui_mcm_composure_consumables_enabled_desc"><text>Apply spreadsheet-defined Composure effects when supported GAMMA consumables are used.</text></string>
+    <string id="ui_mcm_composure_consumables_tooltips"><text>Show Consumable Stats</text></string>
+    <string id="ui_mcm_composure_consumables_tooltips_desc"><text>Show a clean Composure effects block in item information. Rest remains GAMMA's own native item stat.</text></string>
+    <string id="ui_mcm_composure_consumables_composure_block"><text>Composure Effects Block</text></string>
+    <string id="ui_mcm_composure_consumables_composure_block_desc"><text>Show Instant, Over Time or After-effect, and Duration with clear separators. Enabled by default.</text></string>
+    <string id="ui_mcm_composure_consumables_try_native_rows"><text>Experimental Native Rows</text></string>
+    <string id="ui_mcm_composure_consumables_try_native_rows_desc"><text>Try runtime-added icon rows. Keep disabled with Sota UI because it registers but does not render them.</text></string>
+    <string id="ui_mcm_composure_consumables_instant_scale"><text>Instant Effect Scale</text></string>
+    <string id="ui_mcm_composure_consumables_instant_scale_desc"><text>Scales this addon's instant gains and losses. Default 1.00 preserves the balance table.</text></string>
+    <string id="ui_mcm_composure_consumables_gradual_scale"><text>Gradual Effect Scale</text></string>
+    <string id="ui_mcm_composure_consumables_gradual_scale_desc"><text>Scales this addon's timed gains and crashes. Default 1.00 preserves the balance table.</text></string>
+    <string id="ui_mcm_composure_consumables_resistance_scale"><text>Loss Resistance Scale</text></string>
+    <string id="ui_mcm_composure_consumables_resistance_scale_desc"><text>Scales source-specific protection. Final protection is always capped at 50%.</text></string>
+    <string id="ui_mcm_composure_consumables_gain_buff_scale"><text>Gain Potency Scale</text></string>
+    <string id="ui_mcm_composure_consumables_gain_buff_scale_desc"><text>Scales temporary Composure gain buffs and debuffs. Final potency is capped to plus or minus 50%.</text></string>
+    <string id="ui_mcm_composure_consumables_bypass_recovery_locks"><text>Consumables Work During Danger</text></string>
+    <string id="ui_mcm_composure_consumables_bypass_recovery_locks_desc"><text>Allows positive instant and gradual consumable effects while passive recovery is locked.</text></string>
+    <string id="ui_mcm_composure_consumables_debug_key"><text>Diagnostics Key</text></string>
+    <string id="ui_mcm_composure_consumables_debug_key_desc"><text>Print active protection, potency effects and the last consumed item. Default F8.</text></string>
+    <string id="ui_mcm_composure_consumables_debug_log"><text>Diagnostic Logging</text></string>
+    <string id="ui_mcm_composure_consumables_debug_log_desc"><text>Log every recognized consumable use and applied balance row.</text></string>
+
+    <string id="ui_composure_stat_composure"><text>Composure</text></string>
+    <string id="ui_composure_stat_recovery"><text>Composure Over Time</text></string>
+    <string id="ui_composure_stat_crash"><text>Composure After-effect</text></string>
+    <string id="ui_composure_stat_duration"><text>Composure Effect Duration</text></string>
+    <string id="ui_composure_stat_combat_stress"><text>Combat Stress</text></string>
+    <string id="ui_composure_stat_pain_stress"><text>Pain Stress</text></string>
+    <string id="ui_composure_stat_bleeding_stress"><text>Bleeding/Shock Stress</text></string>
+    <string id="ui_composure_stat_radiation_stress"><text>Radiation Stress</text></string>
+    <string id="ui_composure_stat_chemical_stress"><text>Chemical Stress</text></string>
+    <string id="ui_composure_stat_psy_stress"><text>Psy Stress</text></string>
+    <string id="ui_composure_stat_physical_stress"><text>Physical Stress</text></string>
+    <string id="ui_composure_stat_noncombat_stress"><text>Non-Combat Stress</text></string>
+    <string id="ui_composure_stat_protection_duration"><text>Protection Duration</text></string>
+    <string id="ui_composure_stat_gain"><text>Composure Gain</text></string>
+    <string id="ui_composure_stat_gain_duration"><text>Gain Duration</text></string>
+</string_table>

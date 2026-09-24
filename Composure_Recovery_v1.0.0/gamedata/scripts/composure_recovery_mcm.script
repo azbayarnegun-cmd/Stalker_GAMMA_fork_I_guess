@@ -1,0 +1,61 @@
+-- Composure Recovery v1.0.0 settings.
+
+local defaults = {
+    enabled = true,
+    recovery_rate = 0.02,
+    recovery_target = 65,
+    recovery_delay = 15,
+    respect_recovery_locks = true,
+    block_at_pass_out = true,
+    detect_active_combat = true,
+    combat_distance = 100,
+    combat_inertia = 10,
+    reset_on_damage = true,
+    reset_on_weapon_fire = true,
+    debug_key = DIK_keys.DIK_F9,
+    debug_log = false,
+}
+
+function get_config(key)
+    if ui_mcm then
+        local value = ui_mcm.get("composure_recovery/" .. key)
+        if value ~= nil then return value end
+    end
+    return defaults[key]
+end
+
+function on_mcm_load()
+    return {
+        id = "composure_recovery",
+        sh = true,
+        gr = {
+            { id = "enabled", type = "check", val = 1, def = true },
+
+            { id = "line1", type = "line" },
+
+            { id = "recovery_rate", type = "track", val = 2,
+              min = 0, max = 0.25, step = 0.005, prec = 3, def = 0.02 },
+            { id = "recovery_target", type = "track", val = 2,
+              min = 1, max = 100, step = 1, def = 65 },
+            { id = "recovery_delay", type = "track", val = 2,
+              min = 0, max = 120, step = 1, def = 15 },
+
+            { id = "line2", type = "line" },
+
+            { id = "respect_recovery_locks", type = "check", val = 1, def = true },
+            { id = "block_at_pass_out", type = "check", val = 1, def = true },
+            { id = "detect_active_combat", type = "check", val = 1, def = true },
+            { id = "combat_distance", type = "track", val = 2,
+              min = 10, max = 250, step = 5, def = 100 },
+            { id = "combat_inertia", type = "track", val = 2,
+              min = 0, max = 60, step = 1, def = 10 },
+            { id = "reset_on_damage", type = "check", val = 1, def = true },
+            { id = "reset_on_weapon_fire", type = "check", val = 1, def = true },
+
+            { id = "line3", type = "line" },
+
+            { id = "debug_key", type = "key_bind", val = 2, def = DIK_keys.DIK_F9 },
+            { id = "debug_log", type = "check", val = 1, def = false },
+        },
+    }
+end

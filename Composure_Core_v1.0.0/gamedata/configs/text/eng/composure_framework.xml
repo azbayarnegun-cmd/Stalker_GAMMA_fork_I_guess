@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<string_table>
+    <string id="ui_mcm_menu_composure_framework"><text>Composure - Core</text></string>
+
+    <string id="ui_mcm_composure_framework_starting_value"><text>New-save starting value</text></string>
+    <string id="ui_mcm_composure_framework_starting_value_desc"><text>Starting Composure for a genuinely new save. Existing and migrated saves keep their stored value.</text></string>
+
+    <string id="ui_mcm_composure_framework_fast_interval"><text>Fast scheduler interval (seconds)</text></string>
+    <string id="ui_mcm_composure_framework_fast_interval_desc"><text>Processing interval for combat-speed modifiers. Default: 0.5 seconds.</text></string>
+
+    <string id="ui_mcm_composure_framework_slow_interval"><text>Slow scheduler interval (seconds)</text></string>
+    <string id="ui_mcm_composure_framework_slow_interval_desc"><text>Processing interval for environmental and passive modifiers. Default: 5 seconds.</text></string>
+
+    <string id="ui_mcm_composure_framework_max_fast_dt"><text>Maximum fast catch-up (seconds)</text></string>
+    <string id="ui_mcm_composure_framework_max_fast_dt_desc"><text>Limits composure changes after a long frame stall or lifecycle interruption.</text></string>
+
+    <string id="ui_mcm_composure_framework_max_slow_dt"><text>Maximum slow catch-up (seconds)</text></string>
+    <string id="ui_mcm_composure_framework_max_slow_dt_desc"><text>Limits ambient composure changes after a long frame stall or lifecycle interruption.</text></string>
+
+    <string id="ui_mcm_composure_framework_history_limit"><text>Recent-event history size</text></string>
+    <string id="ui_mcm_composure_framework_history_limit_desc"><text>Maximum number of recent Framework events exposed to HUD and diagnostic add-ons.</text></string>
+
+    <string id="ui_mcm_composure_framework_debug_log"><text>Debug logging</text></string>
+    <string id="ui_mcm_composure_framework_debug_log_desc"><text>Writes additional Framework lifecycle and scheduler information to the X-Ray log. Add-on errors are always logged.</text></string>
+</string_table>

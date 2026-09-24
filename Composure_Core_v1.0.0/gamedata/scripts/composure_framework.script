@@ -1,0 +1,1122 @@
+--[[
+    composure_framework.script
+    Composure Core v2.1 - state engine and add-on API.
+
+    The Framework does not detect gameplay conditions and does not apply
+    presentation effects. Add-ons report normalized pressure, shock, relief,
+    caps, and recovery locks through this API.
+
+    Continuous rates use composure points per real second.
+    Target runtime: Anomaly/GAMMA LuaJIT (Lua 5.1 semantics).
+--]]
+
+local VERSION = "2.1.0"
+local API_VERSION = 2
+local SAVE_KEY = "composure_framework_v2"
+local LEGACY_SAVE_KEY = "composure_mvp"
+local SAVE_SCHEMA = 2
+local LOG = "[composure_core:v2.1]"
+
+local MIN_VALUE = 0
+local MAX_VALUE = 100
+local EPSILON = 0.000001
+
+local value = 65
+local current_tier_id = "medium"
+local initialized = false
+local callbacks_registered = false
+local loaded_once = false
+local migrated_legacy = false
+
+local fast_interval_ms = 500
+local slow_interval_ms = 5000
+local max_fast_dt_ms = 2000
+local max_slow_dt_ms = 15000
+local history_limit = 64
+local debug_enabled = false
+local starting_value = 65
+
+local last_fast_ms = nil
+local last_slow_ms = nil
+
+local modifiers = {}
+local caps = {}
+local recovery_locks = {}
+local owner_enabled = {}
+local listeners = {}
+local policies = {}
+local check_displays = {}
+local history = {}
+local error_counts = {}
+
+local DEFAULT_TIERS = {
+    { id = "high",          min = 86, label = "High" },
+    { id = "medium_high",   min = 70, label = "Medium-High" },
+    { id = "medium",        min = 55, label = "Medium" },
+    { id = "medium_low",    min = 40, label = "Medium-Low" },
+    { id = "low",           min = 16, label = "Low" },
+    { id = "breaking_point",min = 1,  label = "Breaking Point" },
+    { id = "pass_out",      min = 0,  label = "Pass Out", floor = true },
+}
+
+local tiers = DEFAULT_TIERS
+local tier_owner = "composure_framework"
+
+-- Forward declarations used across API sections.
+local dispatch
+local apply_change
+local prune_expired
+
+-- ===================== Utility =====================
+
+local function now_ms()
+    if time_global then return time_global() end
+    return 0
+end
+
+local function log(fmt, ...)
+    printf(LOG .. " " .. fmt, ...)
+end
+
+local function debug_log(fmt, ...)
+    if debug_enabled then log(fmt, ...) end
+end
+
+local function clamp(v, lo, hi)
+    if v < lo then return lo end
+    if v > hi then return hi end
+    return v
+end
+
+local function is_number(v)
+    return type(v) == "number" and v == v and v > -math.huge and v < math.huge
+end
+
+local function valid_id(id)
+    return type(id) == "string" and id ~= ""
+end
+
+local function valid_owner(owner)
+    return type(owner) == "string" and owner ~= ""
+end
+
+local function shallow_copy(src)
+    local dst = {}
+    if type(src) ~= "table" then return dst end
+    for k, v in pairs(src) do dst[k] = v end
+    return dst
+end
+
+-- Save data and snapshots must never retain engine userdata/functions.
+local function safe_copy(src, depth)
+    depth = depth or 0
+    if depth > 4 then return nil end
+    local kind = type(src)
+    if kind == "nil" or kind == "boolean" or kind == "string" then return src end
+    if kind == "number" then
+        if is_number(src) then return src end
+        return nil
+    end
+    if kind ~= "table" then return nil end
+    local dst = {}
+    for k, v in pairs(src) do
+        local key_kind = type(k)
+        if key_kind == "string" or key_kind == "number" then
+            local copied = safe_copy(v, depth + 1)
+            if copied ~= nil then dst[k] = copied end
+        end
+    end
+    return dst
+end
+
+local function resolve_owner(opts)
+    if type(opts) ~= "table" then return nil end
+    return opts.owner or opts.source
+end
+
+local function enabled_for_owner(owner)
+    return owner_enabled[owner] ~= false
+end
+
+local function entry_enabled(entry)
+    return entry and entry.enabled ~= false and enabled_for_owner(entry.owner)
+end
+
+local function owner_conflict(registry, id, owner, kind)
+    local existing = registry[id]
+    if existing and existing.owner ~= owner then
+        log("%s '%s' is owned by '%s'; update from '%s' rejected",
+            tostring(kind), tostring(id), tostring(existing.owner), tostring(owner))
+        return true
+    end
+    return false
+end
+
+local function expiry_from_opts(opts, now)
+    local ttl = tonumber(opts and (opts.ttl or opts.duration))
+    if ttl and ttl > 0 then return now + ttl * 1000 end
+    return nil
+end
+
+local function remaining_ms(entry, now)
+    if not entry.expires_at_ms then return nil end
+    return math.max(0, entry.expires_at_ms - now)
+end
+
+local function error_key(kind, id)
+    return tostring(kind) .. ":" .. tostring(id)
+end
+
+local function record_error(kind, id, err)
+    local key = error_key(kind, id)
+    error_counts[key] = (error_counts[key] or 0) + 1
+    log("%s '%s' errored: %s", tostring(kind), tostring(id), tostring(err))
+end
+
+local function cfg(key, fallback)
+    if composure_framework_mcm and composure_framework_mcm.get_config then
+        local ok, result = pcall(composure_framework_mcm.get_config, key)
+        if ok and result ~= nil then return result end
+    end
+    return fallback
+end
+
+local function refresh_config()
+    fast_interval_ms = math.max(100, (tonumber(cfg("fast_interval", 0.5)) or 0.5) * 1000)
+    slow_interval_ms = math.max(500, (tonumber(cfg("slow_interval", 5.0)) or 5.0) * 1000)
+    max_fast_dt_ms = math.max(fast_interval_ms, (tonumber(cfg("max_fast_dt", 2.0)) or 2.0) * 1000)
+    max_slow_dt_ms = math.max(slow_interval_ms, (tonumber(cfg("max_slow_dt", 15.0)) or 15.0) * 1000)
+    history_limit = math.floor(clamp(tonumber(cfg("history_limit", 64)) or 64, 10, 200))
+    starting_value = clamp(tonumber(cfg("starting_value", 65)) or 65, MIN_VALUE, MAX_VALUE)
+    debug_enabled = cfg("debug_log", false) == true
+end
+
+-- ===================== Tier engine =====================
+
+local function compute_tier_id(v)
+    for _, tier in ipairs(tiers) do
+        if v >= tier.min then return tier.id end
+    end
+    return tiers[#tiers].id
+end
+
+local function tier_by_id(id)
+    for _, tier in ipairs(tiers) do
+        if tier.id == id then return tier end
+    end
+    return nil
+end
+
+local function validate_tiers(candidate)
+    if type(candidate) ~= "table" or #candidate < 2 then return false, "need at least two tiers" end
+    local previous = MAX_VALUE + 1
+    local ids = {}
+    for index, tier in ipairs(candidate) do
+        if type(tier) ~= "table" or not valid_id(tier.id) or not is_number(tier.min) then
+            return false, "invalid tier at index " .. tostring(index)
+        end
+        if ids[tier.id] then return false, "duplicate tier id " .. tier.id end
+        if tier.min < MIN_VALUE or tier.min > MAX_VALUE or tier.min >= previous then
+            return false, "tier minimums must descend from 100 to 0"
+        end
+        ids[tier.id] = true
+        previous = tier.min
+    end
+    if candidate[1].min > MAX_VALUE or candidate[#candidate].min ~= MIN_VALUE then
+        return false, "highest tier must cover 100 and final tier must start at 0"
+    end
+    return true
+end
+
+function set_tier_definitions(owner, definitions)
+    if not valid_owner(owner) then return false, "owner required" end
+    if tier_owner ~= "composure_framework" and tier_owner ~= owner then
+        return false, "tier definitions already owned by " .. tostring(tier_owner)
+    end
+    local ok, err = validate_tiers(definitions)
+    if not ok then return false, err end
+    tiers = safe_copy(definitions)
+    tier_owner = owner
+    local old_id = current_tier_id
+    current_tier_id = compute_tier_id(value)
+    if old_id ~= current_tier_id and dispatch then
+        dispatch("tier_changed", {
+            old_tier = old_id,
+            new_tier = current_tier_id,
+            value = value,
+            reason = "tier_definitions_changed",
+        }, true)
+    end
+    return true
+end
+
+function clear_tier_definitions(owner)
+    if tier_owner ~= owner then return false end
+    tiers = DEFAULT_TIERS
+    tier_owner = "composure_framework"
+    current_tier_id = compute_tier_id(value)
+    return true
+end
+
+function get_tier_definitions()
+    return safe_copy(tiers)
+end
+
+function get_tier()
+    return current_tier_id
+end
+
+function get_tier_info()
+    return safe_copy(tier_by_id(current_tier_id))
+end
+
+-- ===================== History and event bus =====================
+
+local function add_history(event_name, payload)
+    table.insert(history, 1, {
+        event = event_name,
+        time_ms = now_ms(),
+        data = safe_copy(payload),
+    })
+    while #history > history_limit do table.remove(history) end
+end
+
+local function sorted_registry(registry)
+    local out = {}
+    for _, entry in pairs(registry) do table.insert(out, entry) end
+    table.sort(out, function(a, b)
+        if (a.priority or 0) == (b.priority or 0) then return tostring(a.id) < tostring(b.id) end
+        return (a.priority or 0) > (b.priority or 0)
+    end)
+    return out
+end
+
+dispatch = function(event_name, payload, record)
+    if record ~= false then add_history(event_name, payload) end
+    local function run_bucket(bucket)
+        if type(bucket) ~= "table" then return end
+        for _, listener in ipairs(sorted_registry(bucket)) do
+            if entry_enabled(listener) then
+                local ok, err = pcall(listener.fn, event_name, safe_copy(payload))
+                if not ok then record_error("listener", listener.id, err) end
+            end
+        end
+    end
+    run_bucket(listeners[event_name])
+    if event_name ~= "*" then run_bucket(listeners["*"]) end
+end
+
+function emit_event(id, payload, opts)
+    if not valid_id(id) then return false end
+    opts = opts or {}
+    dispatch(id, {
+        id = id,
+        owner = resolve_owner(opts) or "external",
+        category = opts.category,
+        scope = opts.scope,
+        metadata = safe_copy(payload or opts.metadata),
+    }, opts.record ~= false)
+    return true
+end
+
+function register_listener(event_name, id, fn, opts)
+    opts = opts or {}
+    local owner = resolve_owner(opts)
+    if not valid_id(event_name) or not valid_id(id) or type(fn) ~= "function" or not valid_owner(owner) then
+        log("register_listener rejected invalid event/id/function/owner")
+        return false
+    end
+    listeners[event_name] = listeners[event_name] or {}
+    if owner_conflict(listeners[event_name], id, owner, "listener") then return false end
+    listeners[event_name][id] = {
+        id = id, owner = owner, fn = fn,
+        priority = tonumber(opts.priority) or 0,
+        enabled = opts.enabled ~= false,
+    }
+    return true
+end
+
+function unregister_listener(event_name, id)
+    if not listeners[event_name] then return false end
+    local existed = listeners[event_name][id] ~= nil
+    listeners[event_name][id] = nil
+    return existed
+end
+
+function get_recent_events(limit)
+    local out = {}
+    local count = math.min(math.max(0, tonumber(limit) or history_limit), #history)
+    for i = 1, count do out[i] = safe_copy(history[i]) end
+    return out
+end
+
+function clear_history()
+    history = {}
+end
+
+-- ===================== Adjustment policies =====================
+
+function register_adjustment_policy(id, fn, opts)
+    opts = opts or {}
+    local owner = resolve_owner(opts)
+    if not valid_id(id) or type(fn) ~= "function" or not valid_owner(owner) then
+        log("register_adjustment_policy rejected invalid id/function/owner")
+        return false
+    end
+    if owner_conflict(policies, id, owner, "policy") then return false end
+    policies[id] = {
+        id = id, owner = owner, fn = fn,
+        priority = tonumber(opts.priority) or 0,
+        enabled = opts.enabled ~= false,
+    }
+    return true
+end
+
+function unregister_adjustment_policy(id)
+    local existed = policies[id] ~= nil
+    policies[id] = nil
+    return existed
+end
+
+local function run_policies(amount, context)
+    local adjusted = amount
+    for _, policy in ipairs(sorted_registry(policies)) do
+        if entry_enabled(policy) then
+            local ok, result = pcall(policy.fn, adjusted, safe_copy(context), {
+                value = value,
+                tier = current_tier_id,
+                min = MIN_VALUE,
+                max = MAX_VALUE,
+            })
+            if ok and is_number(result) then
+                adjusted = result
+            elseif not ok then
+                record_error("policy", policy.id, result)
+            end
+        end
+    end
+    return adjusted
+end
+
+-- ===================== Recovery locks =====================
+
+function set_recovery_lock(id, duration_seconds, opts)
+    opts = opts or {}
+    local owner = resolve_owner(opts)
+    local duration = tonumber(duration_seconds)
+    if not valid_id(id) or not valid_owner(owner) or not duration or duration <= 0 then
+        log("set_recovery_lock rejected invalid id/duration/owner")
+        return false
+    end
+    if owner_conflict(recovery_locks, id, owner, "recovery lock") then return false end
+    local now = now_ms()
+    recovery_locks[id] = {
+        id = id, owner = owner,
+        starts_at_ms = now,
+        expires_at_ms = now + duration * 1000,
+        enabled = opts.enabled ~= false,
+        category = opts.category,
+        label = opts.label,
+        priority = tonumber(opts.priority) or 0,
+        persist = opts.persist == true,
+        metadata = safe_copy(opts.metadata),
+    }
+    return true
+end
+
+function clear_recovery_lock(id)
+    local existed = recovery_locks[id] ~= nil
+    recovery_locks[id] = nil
+    return existed
+end
+
+local function active_recovery_locks(now)
+    local out = {}
+    for _, lock in pairs(recovery_locks) do
+        if entry_enabled(lock) and (not lock.expires_at_ms or now < lock.expires_at_ms) then
+            local copy = safe_copy(lock)
+            copy.remaining_ms = remaining_ms(lock, now)
+            table.insert(out, copy)
+        end
+    end
+    table.sort(out, function(a, b)
+        if (a.priority or 0) == (b.priority or 0) then return a.id < b.id end
+        return (a.priority or 0) > (b.priority or 0)
+    end)
+    return out
+end
+
+function is_recovery_locked()
+    prune_expired()
+    return #active_recovery_locks(now_ms()) > 0
+end
+
+function get_recovery_locks()
+    prune_expired()
+    return active_recovery_locks(now_ms())
+end
+
+-- ===================== Caps =====================
+
+function set_cap(id, max_value, opts)
+    opts = opts or {}
+    local owner = resolve_owner(opts)
+    if not valid_id(id) or not valid_owner(owner) or not is_number(max_value) then
+        log("set_cap rejected invalid id/value/owner")
+        return false
+    end
+    if owner_conflict(caps, id, owner, "cap") then return false end
+    local mode = opts.mode
+    if mode ~= "hard" and mode ~= "soft" then mode = "informational" end
+    local now = now_ms()
+    caps[id] = {
+        id = id, owner = owner,
+        max_value = clamp(max_value, MIN_VALUE, MAX_VALUE),
+        mode = mode,
+        adjust_rate = math.abs(tonumber(opts.adjust_rate) or 0),
+        starts_at_ms = now,
+        expires_at_ms = expiry_from_opts(opts, now),
+        enabled = opts.enabled ~= false,
+        category = opts.category,
+        label = opts.label,
+        flavor = opts.flavor,
+        priority = tonumber(opts.priority) or 0,
+        persist = opts.persist == true,
+        metadata = safe_copy(opts.metadata),
+    }
+    return true
+end
+
+function remove_cap(id)
+    local existed = caps[id] ~= nil
+    caps[id] = nil
+    return existed
+end
+
+function get_active_caps()
+    prune_expired()
+    local out = {}
+    local now = now_ms()
+    for _, cap in pairs(caps) do
+        if entry_enabled(cap) then
+            local copy = safe_copy(cap)
+            copy.remaining_ms = remaining_ms(cap, now)
+            table.insert(out, copy)
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.max_value == b.max_value then return a.id < b.id end
+        return a.max_value < b.max_value
+    end)
+    return out
+end
+
+function get_effective_cap()
+    local active = get_active_caps()
+    if #active == 0 then return nil, nil end
+    return active[1].max_value, active[1]
+end
+
+local function effective_hard_cap()
+    local best = nil
+    for _, cap in pairs(caps) do
+        if entry_enabled(cap) and cap.mode == "hard" and (not cap.expires_at_ms or now_ms() < cap.expires_at_ms) then
+            if not best or cap.max_value < best.max_value then best = cap end
+        end
+    end
+    return best
+end
+
+
+local function effective_enforcing_cap()
+    local best = nil
+    local now = now_ms()
+    for _, cap in pairs(caps) do
+        local enforcing = cap.mode == "hard" or (cap.mode == "soft" and cap.adjust_rate > 0)
+        if enforcing and entry_enabled(cap) and (not cap.expires_at_ms or now < cap.expires_at_ms) then
+            if not best or cap.max_value < best.max_value then best = cap end
+        end
+    end
+    return best
+end
+
+-- ===================== Value state =====================
+
+function get_value()
+    return value
+end
+
+function get_range()
+    return MIN_VALUE, MAX_VALUE
+end
+
+local function set_value_internal(next_value, context)
+    local old_value = value
+    local old_tier = current_tier_id
+    value = clamp(next_value, MIN_VALUE, MAX_VALUE)
+    current_tier_id = compute_tier_id(value)
+
+    if current_tier_id ~= old_tier then
+        dispatch("tier_changed", {
+            old_tier = old_tier,
+            new_tier = current_tier_id,
+            value = value,
+            context = safe_copy(context),
+        }, true)
+    end
+    if math.abs(value - old_value) > EPSILON then
+        dispatch("value_changed", {
+            old_value = old_value,
+            new_value = value,
+            delta = value - old_value,
+            tier = current_tier_id,
+            context = safe_copy(context),
+        }, false)
+    end
+    return value - old_value
+end
+
+function set_value(next_value, opts)
+    if not is_number(next_value) then return nil end
+    opts = opts or {}
+    local actual = set_value_internal(next_value, {
+        id = opts.id or "set_value",
+        owner = resolve_owner(opts) or "external",
+        kind = opts.kind or "direct",
+        metadata = safe_copy(opts.metadata),
+    })
+    add_history("value_set", { value = value, actual = actual, owner = resolve_owner(opts) or "external" })
+    return value
+end
+
+apply_change = function(amount, context)
+    if not is_number(amount) then return 0 end
+    context = shallow_copy(context)
+    context.owner = context.owner or "external"
+    context.kind = context.kind or "delta"
+    local attempted = amount
+    local adjusted = amount
+
+    if adjusted > 0 and context.bypass_recovery_lock ~= true and is_recovery_locked() then
+        adjusted = 0
+        context.blocked = "recovery_lock"
+    end
+    if adjusted ~= 0 and context.bypass_policies ~= true then
+        adjusted = run_policies(adjusted, context)
+    end
+
+    local hard_cap = effective_hard_cap()
+    if adjusted > 0 and hard_cap and value + adjusted > hard_cap.max_value then
+        adjusted = math.max(0, hard_cap.max_value - value)
+        context.capped_by = hard_cap.id
+    end
+
+    local actual = set_value_internal(value + adjusted, context)
+    local payload = {
+        id = context.id,
+        owner = context.owner,
+        kind = context.kind,
+        category = context.category,
+        scope = context.scope,
+        refundable = context.refundable == true,
+        attempted = attempted,
+        adjusted = adjusted,
+        actual = actual,
+        value = value,
+        tier = current_tier_id,
+        blocked = context.blocked,
+        capped_by = context.capped_by,
+        metadata = safe_copy(context.metadata),
+    }
+    dispatch("delta_applied", payload, true)
+    return actual
+end
+
+function apply_delta(id, amount, opts)
+    opts = opts or {}
+    if not valid_id(id) or not is_number(amount) then
+        log("apply_delta rejected invalid id/amount")
+        return 0
+    end
+    return apply_change(amount, {
+        id = id,
+        owner = resolve_owner(opts) or "external",
+        kind = opts.kind or "instant",
+        category = opts.category,
+        scope = opts.scope,
+        refundable = opts.refundable == true,
+        bypass_recovery_lock = opts.bypass_recovery_lock == true,
+        bypass_policies = opts.bypass_policies == true,
+        metadata = safe_copy(opts.metadata),
+    })
+end
+
+function apply_instant(id, amount, opts)
+    return apply_delta(id, amount, opts)
+end
+
+-- ===================== Continuous and timed modifiers =====================
+
+function upsert_modifier(id, rate_per_second, opts)
+    opts = opts or {}
+    local owner = resolve_owner(opts)
+    if not valid_id(id) or not valid_owner(owner) or not is_number(rate_per_second) then
+        log("upsert_modifier rejected invalid id/rate/owner")
+        return false
+    end
+    if owner_conflict(modifiers, id, owner, "modifier") then return false end
+    local now = now_ms()
+    local lane = opts.lane == "fast" and "fast" or "slow"
+    modifiers[id] = {
+        id = id, owner = owner,
+        rate = rate_per_second,
+        lane = lane,
+        starts_at_ms = now,
+        expires_at_ms = expiry_from_opts(opts, now),
+        enabled = opts.enabled ~= false,
+        category = opts.category,
+        group = opts.group,
+        label = opts.label,
+        flavor = opts.flavor,
+        priority = tonumber(opts.priority) or 0,
+        refundable = opts.refundable == true,
+        scope = opts.scope,
+        persist = opts.persist == true,
+        bypass_recovery_lock = opts.bypass_recovery_lock == true,
+        bypass_policies = opts.bypass_policies == true,
+        metadata = safe_copy(opts.metadata),
+    }
+    return true
+end
+
+function add_modifier(id, rate_per_second, opts)
+    return upsert_modifier(id, rate_per_second, opts)
+end
+
+function add_temporary_modifier(id, rate_per_second, duration_seconds, opts)
+    opts = shallow_copy(opts)
+    opts.duration = duration_seconds
+    return upsert_modifier(id, rate_per_second, opts)
+end
+
+function remove_modifier(id)
+    local existed = modifiers[id] ~= nil
+    modifiers[id] = nil
+    return existed
+end
+
+function has_modifier(id)
+    prune_expired()
+    return modifiers[id] ~= nil
+end
+
+function set_modifier_enabled(id, enabled)
+    if not modifiers[id] then return false end
+    modifiers[id].enabled = enabled ~= false
+    return true
+end
+
+function get_active_modifiers()
+    prune_expired()
+    local out = {}
+    local now = now_ms()
+    for _, modifier in pairs(modifiers) do
+        if entry_enabled(modifier) and math.abs(modifier.rate) > EPSILON then
+            local copy = safe_copy(modifier)
+            copy.remaining_ms = remaining_ms(modifier, now)
+            table.insert(out, copy)
+        end
+    end
+    table.sort(out, function(a, b)
+        local ar, br = math.abs(a.rate), math.abs(b.rate)
+        if ar == br then
+            if (a.priority or 0) == (b.priority or 0) then return a.id < b.id end
+            return (a.priority or 0) > (b.priority or 0)
+        end
+        return ar > br
+    end)
+    return out
+end
+
+prune_expired = function()
+    local now = now_ms()
+    for id, modifier in pairs(modifiers) do
+        if modifier.expires_at_ms and now >= modifier.expires_at_ms then modifiers[id] = nil end
+    end
+    for id, cap in pairs(caps) do
+        if cap.expires_at_ms and now >= cap.expires_at_ms then caps[id] = nil end
+    end
+    for id, lock in pairs(recovery_locks) do
+        if lock.expires_at_ms and now >= lock.expires_at_ms then recovery_locks[id] = nil end
+    end
+end
+
+local function modifier_rate_after_policy(modifier)
+    if modifier.rate > 0 and not modifier.bypass_recovery_lock and is_recovery_locked() then return 0 end
+    if modifier.bypass_policies then return modifier.rate end
+    return run_policies(modifier.rate, {
+        id = modifier.id, owner = modifier.owner, kind = "rate_preview",
+        category = modifier.category, scope = modifier.scope,
+        refundable = modifier.refundable,
+        metadata = safe_copy(modifier.metadata),
+    })
+end
+
+function get_net_rate()
+    prune_expired()
+    local total = 0
+    for _, modifier in pairs(modifiers) do
+        if entry_enabled(modifier) then total = total + modifier_rate_after_policy(modifier) end
+    end
+    local cap = effective_enforcing_cap()
+    local cap_value = cap and cap.max_value or nil
+    if cap and value > cap_value then
+        if cap.mode == "hard" then total = total - (value - cap_value) / math.max(0.1, fast_interval_ms / 1000)
+        elseif cap.mode == "soft" then total = total - cap.adjust_rate end
+    end
+    return total
+end
+
+function get_direction()
+    local rate = get_net_rate()
+    if rate > EPSILON then return 1 end
+    if rate < -EPSILON then return -1 end
+    return 0
+end
+
+function get_group_totals()
+    local totals = {}
+    for _, modifier in ipairs(get_active_modifiers()) do
+        local group = modifier.group or modifier.category or "other"
+        totals[group] = (totals[group] or 0) + modifier_rate_after_policy(modifier)
+    end
+    return totals
+end
+
+-- ===================== Ownership and Check display =====================
+
+function set_owner_enabled(owner, enabled)
+    if not valid_owner(owner) then return false end
+    owner_enabled[owner] = enabled ~= false
+    dispatch("owner_enabled_changed", { owner = owner, enabled = owner_enabled[owner] }, true)
+    return true
+end
+
+function is_owner_enabled(owner)
+    return enabled_for_owner(owner)
+end
+
+function clear_owner_effects(owner)
+    if not valid_owner(owner) then return 0 end
+    local removed = 0
+    for id, entry in pairs(modifiers) do if entry.owner == owner then modifiers[id] = nil; removed = removed + 1 end end
+    for id, entry in pairs(caps) do if entry.owner == owner then caps[id] = nil; removed = removed + 1 end end
+    for id, entry in pairs(recovery_locks) do if entry.owner == owner then recovery_locks[id] = nil; removed = removed + 1 end end
+    return removed
+end
+
+function clear_owner(owner)
+    local removed = clear_owner_effects(owner)
+    for id, entry in pairs(policies) do if entry.owner == owner then policies[id] = nil; removed = removed + 1 end end
+    for event_name, bucket in pairs(listeners) do
+        for id, entry in pairs(bucket) do if entry.owner == owner then bucket[id] = nil; removed = removed + 1 end end
+    end
+    for id, entry in pairs(check_displays) do if entry.owner == owner then check_displays[id] = nil; removed = removed + 1 end end
+    owner_enabled[owner] = nil
+    return removed
+end
+
+function register_check_display(id, fn, opts)
+    opts = opts or {}
+    local owner = resolve_owner(opts)
+    if not valid_id(id) or type(fn) ~= "function" or not valid_owner(owner) then return false end
+    if owner_conflict(check_displays, id, owner, "check display") then return false end
+    check_displays[id] = {
+        id = id, owner = owner, fn = fn,
+        priority = tonumber(opts.priority) or 0,
+        enabled = opts.enabled ~= false,
+    }
+    return true
+end
+
+function unregister_check_display(id)
+    local existed = check_displays[id] ~= nil
+    check_displays[id] = nil
+    return existed
+end
+
+function show_check()
+    for _, display in ipairs(sorted_registry(check_displays)) do
+        if entry_enabled(display) then
+            local ok, handled = pcall(display.fn, get_snapshot())
+            if ok and handled ~= false then return true, display.id end
+            if not ok then record_error("check_display", display.id, handled) end
+        end
+    end
+    return false, nil
+end
+
+-- ===================== Snapshot and diagnostics =====================
+
+function get_snapshot()
+    local cap_value, cap = get_effective_cap()
+    return {
+        version = VERSION,
+        api_version = API_VERSION,
+        value = value,
+        min = MIN_VALUE,
+        max = MAX_VALUE,
+        tier = current_tier_id,
+        tier_info = get_tier_info(),
+        direction = get_direction(),
+        net_rate = get_net_rate(),
+        effective_cap = cap_value,
+        effective_cap_info = safe_copy(cap),
+        recovery_locked = is_recovery_locked(),
+        recovery_locks = get_recovery_locks(),
+        modifiers = get_active_modifiers(),
+        caps = get_active_caps(),
+        groups = get_group_totals(),
+        recent_events = get_recent_events(10),
+    }
+end
+
+function get_version() return VERSION end
+function get_api_version() return API_VERSION end
+function supports(required_api) return tonumber(required_api) ~= nil and tonumber(required_api) <= API_VERSION end
+
+function get_diagnostics()
+    local modifier_count, cap_count, lock_count = 0, 0, 0
+    for _ in pairs(modifiers) do modifier_count = modifier_count + 1 end
+    for _ in pairs(caps) do cap_count = cap_count + 1 end
+    for _ in pairs(recovery_locks) do lock_count = lock_count + 1 end
+    return {
+        initialized = initialized,
+        loaded_once = loaded_once,
+        migrated_legacy = migrated_legacy,
+        modifier_count = modifier_count,
+        cap_count = cap_count,
+        recovery_lock_count = lock_count,
+        tier_owner = tier_owner,
+        error_counts = safe_copy(error_counts),
+        scheduler = {
+            fast_interval_ms = fast_interval_ms,
+            slow_interval_ms = slow_interval_ms,
+            last_fast_ms = last_fast_ms,
+            last_slow_ms = last_slow_ms,
+        },
+    }
+end
+
+function debug_dump()
+    local snapshot = get_snapshot()
+    log("v%s api=%d value=%.2f tier=%s rate=%+.4f cap=%s locked=%s modifiers=%d",
+        VERSION, API_VERSION, value, tostring(current_tier_id), snapshot.net_rate,
+        tostring(snapshot.effective_cap), tostring(snapshot.recovery_locked), #snapshot.modifiers)
+    for _, modifier in ipairs(snapshot.modifiers) do
+        log("modifier '%s' owner='%s' lane=%s rate=%+.4f", modifier.id, modifier.owner, modifier.lane, modifier.rate)
+    end
+    return snapshot
+end
+
+-- ===================== Scheduler =====================
+
+local function sorted_modifiers_for_lane(lane)
+    local out = {}
+    for _, modifier in pairs(modifiers) do
+        if modifier.lane == lane and entry_enabled(modifier) then table.insert(out, modifier) end
+    end
+    table.sort(out, function(a, b) return a.id < b.id end)
+    return out
+end
+
+local function run_lane(lane, from_ms, to_ms, max_dt_ms)
+    local window_start = math.max(from_ms, to_ms - max_dt_ms)
+    for _, modifier in ipairs(sorted_modifiers_for_lane(lane)) do
+        local active_start = math.max(window_start, modifier.starts_at_ms or window_start)
+        local active_end = math.min(to_ms, modifier.expires_at_ms or to_ms)
+        if active_end > active_start and math.abs(modifier.rate) > EPSILON then
+            apply_change(modifier.rate * ((active_end - active_start) / 1000), {
+                id = modifier.id,
+                owner = modifier.owner,
+                kind = "continuous",
+                category = modifier.category,
+                scope = modifier.scope,
+                refundable = modifier.refundable,
+                bypass_recovery_lock = modifier.bypass_recovery_lock,
+                bypass_policies = modifier.bypass_policies,
+                metadata = safe_copy(modifier.metadata),
+            })
+        end
+    end
+end
+
+local function enforce_caps(dt_seconds)
+    local cap = effective_enforcing_cap()
+    local cap_value = cap and cap.max_value or nil
+    if not cap or value <= cap_value + EPSILON then return end
+    local amount = 0
+    if cap.mode == "hard" then amount = -(value - cap_value)
+    elseif cap.mode == "soft" and cap.adjust_rate > 0 then
+        amount = -math.min(value - cap_value, cap.adjust_rate * dt_seconds)
+    end
+    if amount ~= 0 then
+        apply_change(amount, {
+            id = cap.id, owner = cap.owner, kind = "cap",
+            category = cap.category, bypass_policies = true,
+            bypass_recovery_lock = true, metadata = safe_copy(cap.metadata),
+        })
+    end
+end
+
+local function reset_scheduler_clock()
+    local now = now_ms()
+    last_fast_ms = now
+    last_slow_ms = now
+end
+
+local function on_actor_update()
+    if not db or not db.actor then return end
+    local now = now_ms()
+    if not last_fast_ms or not last_slow_ms then reset_scheduler_clock(); return end
+
+    if now - last_fast_ms >= fast_interval_ms then
+        local previous = last_fast_ms
+        last_fast_ms = now
+        run_lane("fast", previous, now, max_fast_dt_ms)
+        enforce_caps(math.min(now - previous, max_fast_dt_ms) / 1000)
+    end
+    if now - last_slow_ms >= slow_interval_ms then
+        local previous = last_slow_ms
+        last_slow_ms = now
+        run_lane("slow", previous, now, max_slow_dt_ms)
+    end
+    prune_expired()
+end
+
+-- ===================== Persistence and migration =====================
+
+local function persistent_entry(entry, now)
+    local copy = safe_copy(entry)
+    copy.starts_at_ms = nil
+    copy.expires_at_ms = nil
+    copy.remaining_ms = remaining_ms(entry, now)
+    return copy
+end
+
+local function collect_persistent(registry, now)
+    local out = {}
+    for id, entry in pairs(registry) do
+        if entry.persist and (not entry.expires_at_ms or entry.expires_at_ms > now) then
+            out[id] = persistent_entry(entry, now)
+        end
+    end
+    return out
+end
+
+local function save_state(m_data)
+    if type(m_data) ~= "table" then return end
+    local now = now_ms()
+    m_data[SAVE_KEY] = {
+        schema = SAVE_SCHEMA,
+        value = value,
+        migrated_legacy = migrated_legacy,
+        modifiers = collect_persistent(modifiers, now),
+        caps = collect_persistent(caps, now),
+        recovery_locks = collect_persistent(recovery_locks, now),
+    }
+end
+
+local function restore_registry(saved, target, now, kind)
+    if type(saved) ~= "table" then return end
+    for id, entry in pairs(saved) do
+        if type(entry) == "table" and valid_id(id) and valid_owner(entry.owner) then
+            local copy = safe_copy(entry)
+            local valid = true
+            if kind == "modifier" then
+                valid = is_number(copy.rate)
+                copy.lane = copy.lane == "fast" and "fast" or "slow"
+            elseif kind == "cap" then
+                valid = is_number(copy.max_value)
+                copy.max_value = valid and clamp(copy.max_value, MIN_VALUE, MAX_VALUE) or nil
+                if copy.mode ~= "hard" and copy.mode ~= "soft" then copy.mode = "informational" end
+                copy.adjust_rate = math.abs(tonumber(copy.adjust_rate) or 0)
+            elseif kind == "recovery_lock" then
+                valid = tonumber(copy.remaining_ms) ~= nil and tonumber(copy.remaining_ms) > 0
+            end
+            copy.id = id
+            copy.starts_at_ms = now
+            local remaining = tonumber(entry.remaining_ms)
+            copy.remaining_ms = nil
+            copy.expires_at_ms = remaining and remaining > 0 and (now + remaining) or nil
+            copy.persist = true
+            if valid then target[id] = copy end
+        end
+    end
+end
+
+local function clear_effect_registries()
+    modifiers = {}
+    caps = {}
+    recovery_locks = {}
+end
+
+local function load_state(m_data)
+    refresh_config()
+    clear_effect_registries()
+    local now = now_ms()
+    local saved = type(m_data) == "table" and m_data[SAVE_KEY] or nil
+    migrated_legacy = false
+
+    if type(saved) == "table" and is_number(saved.value) then
+        value = clamp(saved.value, MIN_VALUE, MAX_VALUE)
+        migrated_legacy = saved.migrated_legacy == true
+        restore_registry(saved.modifiers, modifiers, now, "modifier")
+        restore_registry(saved.caps, caps, now, "cap")
+        restore_registry(saved.recovery_locks, recovery_locks, now, "recovery_lock")
+        debug_log("loaded v2 save value %.2f", value)
+    else
+        local legacy = type(m_data) == "table" and tonumber(m_data[LEGACY_SAVE_KEY]) or nil
+        if legacy then
+            value = clamp(legacy, 0, 120) * (MAX_VALUE / 120)
+            migrated_legacy = true
+            log("migrated legacy composure %.2f/120 to %.2f/100", legacy, value)
+        else
+            value = starting_value
+            debug_log("new save starting value %.2f", value)
+        end
+    end
+
+    current_tier_id = compute_tier_id(value)
+    loaded_once = true
+    reset_scheduler_clock()
+    dispatch("state_loaded", {
+        value = value, tier = current_tier_id, migrated_legacy = migrated_legacy,
+    }, true)
+end
+
+-- ===================== Lifecycle =====================
+
+local function on_first_update()
+    reset_scheduler_clock()
+end
+
+local function on_level_changing()
+    reset_scheduler_clock()
+end
+
+function on_game_start()
+    refresh_config()
+    if callbacks_registered then return end
+    callbacks_registered = true
+    RegisterScriptCallback("on_option_change", refresh_config)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+    RegisterScriptCallback("actor_on_first_update", on_first_update)
+    RegisterScriptCallback("actor_on_update", on_actor_update)
+    RegisterScriptCallback("on_level_changing", on_level_changing)
+    RegisterScriptCallback("actor_on_net_destroy", on_level_changing)
+    initialized = true
+    current_tier_id = compute_tier_id(value)
+    log("v%s API %d initialized", VERSION, API_VERSION)
+end
