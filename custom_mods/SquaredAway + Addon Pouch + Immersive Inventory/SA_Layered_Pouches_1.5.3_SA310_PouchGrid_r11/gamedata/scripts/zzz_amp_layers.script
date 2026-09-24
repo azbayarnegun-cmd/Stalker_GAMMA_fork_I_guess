@@ -1,0 +1,2405 @@
+--[[
+    AMP LAYERED POUCHES ADDON
+
+    Backend for outfit, rig, belt and backpack attachment layers. Equipment
+    and pouch contents remain real actor inventory objects. The module only
+    records ownership, so weight, trading and quest references stay intact.
+
+    Public API is deliberately small. UI code and compatibility adapters may
+    call mount/unmount/route while the grid only needs hidden/keep.
+--]]
+
+local VERSION = "1.5.3-port-r11 synchronous pouch grid for SquaredAway 3.1.0-test"
+local CFG = "items\\amp_layers.ltx"
+local LAYER_ORDER = { "rig", "belt", "outfit", "backpack" }
+
+local S = {
+    ini = nil,
+    ready = false,
+    enabled = true,
+    -- Loot always enters the backpack. Pouches are filled only by an
+    -- explicit player drag; they are not automatic loot destinations.
+    autoloot = false,
+    debug = false,
+    belt_id = nil,
+    carrier = {},       -- layer -> object id the fitted pouches belong to
+    mounted = {},       -- layer -> dense array of pouch object ids
+    owner = {},         -- pouch id -> layer
+    profile = {},       -- pouch id -> profile name
+    contents = {},      -- pouch id -> dense array of actor object ids
+    contained = {},     -- object id -> pouch id
+    section_profile = {},
+    section_layers = {},
+    profiles = {},
+    layers = {},
+    carrier_slot_override = { rig = {}, backpack = {} },
+    kind_override = {},
+    routing = false,
+    pending = {},       -- object ids routed on update, never inside take callback
+    pending_set = {},
+    manual_out_until = {}, -- manual pouch -> equipment transfers are not loot
+    migrate_pending = {}, -- restored server id -> intended fitted pouch id
+    migrate_attempts = {},
+    take_ready = false, -- load/level restore also emits actor_on_item_take
+    reload_at = -10000,
+    ui = nil,
+    ui_owner = nil,
+    ui_installed = false,
+    panel_open = false,
+    panel_owner = nil,
+    panel = nil,
+    panel_target = nil,
+    panel_ate = false,
+    side_active = false,
+    side_gui = nil,
+    side_cc = nil,
+    side_bg = nil,
+    side_title = nil,
+    side_weight = nil,
+    side_rect = nil,
+    side_zone_key = nil,
+    side_sync_at = -10000,
+    side_transition_until = -10000,
+}
+
+local function log(fmt, ...)
+    local ok, msg = pcall(string.format, fmt, ...)
+    printf("[AMP-LAYERS] %s", ok and msg or tostring(fmt))
+end
+
+local function dbg(fmt, ...)
+    if S.debug then log(fmt, ...) end
+end
+
+local function split(value)
+    local out = {}
+    if type(value) ~= "string" then return out end
+    for token in string.gmatch(value, "([^,]+)") do
+        token = token:gsub("^%s+", ""):gsub("%s+$", "")
+        if token ~= "" then out[#out + 1] = token end
+    end
+    return out
+end
+
+local function csv_set(value)
+    local out = {}
+    local list = split(value)
+    for i = 1, #list do out[list[i]] = true end
+    return out
+end
+
+local function read(section, key, fallback)
+    if not (S.ini and S.ini:section_exist(section)) then return fallback end
+    local ok, value = pcall(function() return S.ini:r_string_ex(section, key) end)
+    return (ok and value ~= nil and value ~= "") and value or fallback
+end
+
+local function read_num(section, key, fallback)
+    return tonumber(read(section, key, nil)) or fallback
+end
+
+local function read_table(section, target)
+    if not (S.ini and S.ini:section_exist(section)) then return end
+    local n = S.ini:line_count(section) or 0
+    for i = 0, n - 1 do
+        local ok, _, key, value = pcall(function()
+            return S.ini:r_line_ex(section, i, "", "")
+        end)
+        if ok and type(key) == "string" and key ~= "" then target[key] = value end
+    end
+end
+
+local function actor_object(id)
+    if type(id) ~= "number" then return nil end
+    local ok, obj = pcall(level.object_by_id, id)
+    return ok and obj or nil
+end
+
+local function in_actor(obj)
+    if not (obj and db.actor) then return false end
+    if utils_item and utils_item.in_actor_inv then
+        local ok, yes = pcall(utils_item.in_actor_inv, obj)
+        if ok then return yes and true or false end
+    end
+    local ok, parent = pcall(function() return obj:parent() end)
+    return ok and parent and parent:id() == db.actor:id() or false
+end
+
+local function item_id(obj)
+    local ok, id = pcall(function() return obj:id() end)
+    return ok and type(id) == "number" and id or nil
+end
+
+local function item_sec(obj)
+    local ok, sec = pcall(function() return obj:section() end)
+    return ok and type(sec) == "string" and sec or nil
+end
+
+local function footprint(sec)
+    local w = tonumber(SYS_GetParam(2, sec, "inv_grid_width")) or 1
+    local h = tonumber(SYS_GetParam(2, sec, "inv_grid_height")) or 1
+    local scale = tonumber(SYS_GetParam(2, sec, "inv_grid_scale")) or 1
+    if scale <= 0 then scale = 1 end
+    w, h = math.ceil(w / scale), math.ceil(h / scale)
+    w, h = math.max(1, math.floor(w)), math.max(1, math.floor(h))
+    return w * h
+end
+
+local function load_config()
+    local ok, ini = pcall(ini_file, CFG)
+    if not ok or not ini then
+        log("!cannot read %s", CFG)
+        return false
+    end
+    S.ini = ini
+    S.section_profile, S.section_layers, S.profiles, S.layers, S.kind_override = {}, {}, {}, {}, {}
+    S.carrier_slot_override = { rig = {}, backpack = {} }
+    read_table("amp_pouch_sections", S.section_profile)
+    local layer_overrides = {}
+    read_table("amp_pouch_layer_overrides", layer_overrides)
+    for sec, value in pairs(layer_overrides) do S.section_layers[sec] = csv_set(value) end
+    read_table("amp_kind_overrides", S.kind_override)
+    read_table("amp_rig_attachment_slots", S.carrier_slot_override.rig)
+    read_table("amp_backpack_attachment_slots", S.carrier_slot_override.backpack)
+
+    for i = 1, #LAYER_ORDER do
+        local name = LAYER_ORDER[i]
+        local sec = "amp_layer_" .. name
+        S.layers[name] = {
+            slots = math.max(0, math.floor(read_num(sec, "slot_count", 0))),
+            accepts = csv_set(read(sec, "accepts", "")),
+        }
+    end
+
+    local names = { "magazine", "grenade", "medical", "admin", "ammo",
+                    "sustainment", "dump", "parts", "universal" }
+    for i = 1, #names do
+        local name, sec = names[i], "amp_pouch_" .. names[i]
+        S.profiles[name] = {
+            name = name,
+            kinds = csv_set(read(sec, "kinds", "")),
+            sections = csv_set(read(sec, "also_sections", "")),
+            flags = split(read(sec, "also_flags", "")),
+            cells = math.max(1, math.floor(read_num(sec, "cells", 1))),
+            stack = math.max(1, math.floor(read_num(sec, "stack", 1))),
+            priority = math.floor(read_num(sec, "priority", 100)),
+        }
+    end
+    S.ready = true
+    return true
+end
+
+local function option(id, fallback)
+    if not ui_mcm then return fallback end
+    local ok, value = pcall(ui_mcm.get, "AmpLayers/layers_general/" .. id)
+    return (ok and value ~= nil) and value or fallback
+end
+
+local function refresh_settings()
+    S.enabled = option("layers_enable", true) and true or false
+    S.autoloot = false
+    S.debug = option("layers_debug", false) and true or false
+end
+
+local function sort_kind(sec)
+    local sp = rawget(_G, "zzz_rax_sortingplus_mcm")
+    if sp and type(sp.get_sort_kind) == "function" then
+        local ok, kind = pcall(sp.get_sort_kind, sec)
+        if ok and type(kind) == "string" then return kind end
+    end
+    return S.kind_override[sec] or SYS_GetParam(0, sec, "kind", "na") or "na"
+end
+
+local function is_magazine_sec(sec)
+    local binder = rawget(_G, "magazine_binder")
+    if binder and type(binder.is_magazine) == "function" then
+        local ok, result = pcall(binder.is_magazine, sec)
+        if ok and result then return true end
+    end
+    return not not SYS_GetParam(1, sec, "is_mag") or sort_kind(sec) == "mags"
+end
+
+local function is_hand_grenade_sec(profile, sec)
+    if profile.sections[sec] then return true end
+    local class = SYS_GetParam(0, sec, "class", "")
+    return type(class) == "string" and string.sub(class, 1, 2) == "G_"
+end
+
+local function profile_takes(profile, sec)
+    if not (profile and sec) then return false end
+    -- Pouches are equipment modules, never cargo for another pouch.
+    if S.section_profile[sec] then return false end
+    -- Wearable Devices creates this invisible two-cell weapon as an animation
+    -- helper. It can briefly enter the rucksack and emit actor_on_item_take,
+    -- but it is UI state rather than player cargo and must not consume a
+    -- universal pouch or become serialized as its contents.
+    if sec == "wd_emptyhands" then return false end
+
+    -- Classification is deliberately ordered. SortingPlus/GAMMA can expose a
+    -- magazine through a broader kind as well. Dedicated magazine and dump
+    -- profiles accept it directly, and a genuinely universal profile accepts
+    -- it as general cargo. Every other specialised profile rejects it before
+    -- broad families such as `w_explosive` are considered, so a magazine can
+    -- never slip into the grenade pouch.
+    local magazine = is_magazine_sec(sec)
+    if profile.name == "magazine" or profile.name == "dump" then
+        return magazine
+    end
+    if magazine then return profile.name == "universal" end
+
+    -- GAMMA's w_explosive family also contains launchers, mines and IEDs.
+    -- The grenade pouch is intentionally limited to hand-grenade classes and
+    -- the explicitly configured vanilla grenade sections.
+    if profile.name == "grenade" then
+        return is_hand_grenade_sec(profile, sec)
+    end
+
+    if profile.kinds["*"] then return true end
+    if profile.sections[sec] then return true end
+    if profile.kinds[sort_kind(sec)] then return true end
+    for i = 1, #profile.flags do
+        if SYS_GetParam(1, sec, profile.flags[i]) then return true end
+    end
+    return false
+end
+
+local function empty_magazine(obj, sec)
+    if not (obj and sec and SYS_GetParam(1, sec, "is_mag")) then return false end
+    local mb = rawget(_G, "magazine_binder")
+    if mb and type(mb.get_data) == "function" then
+        local ok, data = pcall(mb.get_data, item_id(obj))
+        if ok and type(data) == "table" and type(data.loaded) == "table" then
+            return #data.loaded == 0
+        end
+    end
+    if not (utils_item and utils_item.get_ammo) then return false end
+    local id = item_id(obj)
+    local ok, ammo = pcall(utils_item.get_ammo, sec, id)
+    return ok and type(ammo) == "table" and #ammo == 0
+end
+
+local function mags_ejects_to_ruck()
+    local mcm = rawget(_G, "magazines_mcm")
+    if not (mcm and type(mcm.get_config) == "function") then return false end
+    local ok, value = pcall(mcm.get_config, "ejection")
+    -- Mags Redux: 0 = return to loadout, 1 = put in rucksack.
+    return ok and tonumber(value) == 1
+end
+
+local function mags_owns(id)
+    local mags = rawget(_G, "magazines")
+    if not (mags and type(mags.is_carried_mag) == "function") then return false end
+    local ok, yes = pcall(mags.is_carried_mag, id)
+    return ok and yes and true or false
+end
+
+local function used_cells(pouch_id)
+    local used, by_section = 0, {}
+    local list = S.contents[pouch_id] or {}
+    -- Once ZoneGrid has restored every owned object, its coordinates are the
+    -- exact occupancy model: stack riders share the same rectangle. This
+    -- repairs saves whose visible piles and arithmetic object count diverged.
+    local grid = rawget(_G, "zzz_amp_grid")
+    if grid and type(grid.layer_used_cells) == "function" then
+        local ok, exact = pcall(grid.layer_used_cells, pouch_id, list)
+        if ok and type(exact) == "number" then return math.max(0, exact) end
+    end
+    local prof = S.profiles[S.profile[pouch_id] or ""]
+    local fallback_stack = prof and prof.stack or 1
+    for i = 1, #list do
+        local obj = actor_object(list[i])
+        local sec = obj and item_sec(obj)
+        if sec then
+            local stack = fallback_stack
+            if grid and type(grid.layer_stack_limit) == "function" then
+                local ok, value = pcall(grid.layer_stack_limit, sec)
+                if ok and tonumber(value) then stack = math.max(1, tonumber(value)) end
+            end
+            local n = by_section[sec] or 0
+            if n % stack == 0 then used = used + footprint(sec) end
+            by_section[sec] = n + 1
+        end
+    end
+    return used
+end
+
+local function current_carrier(name)
+    if not db.actor then return false end
+    if name == "belt" then return S.belt_id end
+    if name == "outfit" then
+        local ok, obj = pcall(function() return db.actor:item_in_slot(7) end)
+        return ok and obj and item_id(obj) or nil
+    end
+    if name == "backpack" then
+        local ok, obj = pcall(function() return db.actor:item_in_slot(13) end)
+        return ok and obj and item_id(obj) or nil
+    end
+    if name == "rig" then
+        local amp = rawget(_G, "zzz_armor_mag_pouches")
+        if amp and type(amp.layer_rig_id) == "function" then
+            local ok, id = pcall(amp.layer_rig_id)
+            return ok and type(id) == "number" and id or nil
+        end
+    end
+    return nil
+end
+
+local function layer_available(name)
+    local current = current_carrier(name)
+    if not current then return false end
+    local bound = S.carrier[name]
+    return not bound or bound == current
+end
+
+local function layer_slots(name)
+    local def = S.layers[name]
+    local maximum = def and tonumber(def.slots) or 0
+    if maximum <= 0 then return 0 end
+    if name ~= "rig" and name ~= "backpack" then return maximum end
+
+    local id = current_carrier(name)
+    local obj = id and actor_object(id)
+    local sec = obj and item_sec(obj)
+    if not sec then return 0 end
+
+    local override = tonumber(S.carrier_slot_override[name]
+        and S.carrier_slot_override[name][sec])
+    if override then
+        return math.max(0, math.min(maximum, math.floor(override)))
+    end
+
+    if name == "rig" then
+        local amp = rawget(_G, "zzz_armor_mag_pouches")
+        if amp and type(amp.counts_for) == "function" then
+            local ok, counts = pcall(amp.counts_for, sec)
+            if ok and type(counts) == "table" then
+                local pockets = (tonumber(counts.small) or 0)
+                    + (tonumber(counts.medium) or 0)
+                    + (tonumber(counts.large) or 0)
+                local rated = pockets <= 4 and 3
+                    or pockets <= 7 and 4
+                    or pockets <= 11 and 5 or 6
+                return math.min(maximum, rated)
+            end
+        end
+        return math.min(maximum, 3)
+    end
+
+    local carry = tonumber(SYS_GetParam(2, sec, "additional_inventory_weight2"))
+        or tonumber(SYS_GetParam(2, sec, "additional_inventory_weight")) or 0
+    local rated = carry >= 40 and 3 or carry >= 25 and 2 or 1
+    return math.min(maximum, rated)
+end
+
+local function layer_visible_slots(name)
+    return math.max(layer_slots(name), #(S.mounted[name] or {}))
+end
+
+-- Capacity must never exceed the section that is actually drawn. Most pouch
+-- profiles match their native AMP grid exactly, but inherited variants may
+-- override amp_box_w/h without defining a second logical profile.
+local function pouch_capacity(pouch_id)
+    local obj = actor_object(pouch_id)
+    local sec = obj and item_sec(obj)
+    local pname = S.profile[pouch_id] or (sec and S.section_profile[sec])
+    local prof = pname and S.profiles[pname]
+    local logical = prof and tonumber(prof.cells) or nil
+    local cols = sec and tonumber(SYS_GetParam(2, sec, "amp_box_w")) or nil
+    local rows = sec and tonumber(SYS_GetParam(2, sec, "amp_box_h")) or nil
+    local physical = cols and rows and math.max(1, math.floor(cols))
+        * math.max(1, math.floor(rows)) or nil
+    if logical and physical then return math.min(logical, physical) end
+    return logical or physical or 1
+end
+
+local function prune()
+    -- Fitted-pouch contents are always physical actor-ruck objects. Older
+    -- builds could leave ownership behind after an item was equipped or
+    -- claimed by another inventory system. utils_item.in_actor_inv still
+    -- returns true for those objects, so existence/parent checks alone retain
+    -- an invisible item and charge its footprint against pouch capacity.
+    local ruck, ruck_known = {}, false
+    if db.actor and db.actor.iterate_ruck then
+        local ok = pcall(function()
+            db.actor:iterate_ruck(function(_, obj)
+                local id = item_id(obj)
+                if id then ruck[id] = true end
+            end)
+        end)
+        ruck_known = ok
+    end
+    S.owner, S.contained = {}, {}
+    for _, layer in ipairs(LAYER_ORDER) do
+        local src, dst = S.mounted[layer] or {}, {}
+        for i = 1, #src do
+            local id, obj = tonumber(src[i]), actor_object(tonumber(src[i]))
+            if id and obj and in_actor(obj) and S.section_profile[item_sec(obj)] then
+                dst[#dst + 1], S.owner[id] = id, layer
+                -- Section data is authoritative. This also migrates an
+                -- already-mounted large universal pouch to its new parts
+                -- profile without requiring the player to remove it first.
+                S.profile[id] = S.section_profile[item_sec(obj)]
+            end
+        end
+        S.mounted[layer] = dst
+    end
+    for pouch_id, src in pairs(S.contents) do
+        local dst = {}
+        if S.owner[pouch_id] then
+            local profile = S.profiles[S.profile[pouch_id]]
+            for i = 1, #src do
+                local id, obj = tonumber(src[i]), actor_object(tonumber(src[i]))
+                local sec = obj and item_sec(obj)
+                if id and obj and in_actor(obj) and (not ruck_known or ruck[id]) and not S.owner[id]
+                    and not S.contained[id] and profile_takes(profile, sec) then
+                    dst[#dst + 1], S.contained[id] = id, pouch_id
+                elseif id and obj and in_actor(obj) then
+                    local grid = rawget(_G, "zzz_amp_grid")
+                    if grid and type(grid.forget_position) == "function" then
+                        pcall(grid.forget_position, id)
+                    end
+                    local why = ruck_known and not ruck[id]
+                        and "no longer in actor rucksack" or "incompatible"
+                    log("released %s from pouch %s: %s",
+                        tostring(sec), tostring(pouch_id), why)
+                end
+            end
+        end
+        S.contents[pouch_id] = (#dst > 0) and dst or nil
+    end
+end
+
+function pouch_profile(sec)
+    return type(sec) == "string" and S.section_profile[sec] or nil
+end
+
+function is_pouch(sec)
+    return pouch_profile(sec) ~= nil
+end
+
+function mount(obj, requested_layer)
+    if not (S.enabled and S.ready and obj and in_actor(obj)) then return false end
+    local id, sec = item_id(obj), item_sec(obj)
+    local profile_name = sec and S.section_profile[sec]
+    if not (id and profile_name and S.profiles[profile_name]) then return false end
+    if S.owner[id] then return true end
+
+    local function try_layer(layer)
+        local def, list = S.layers[layer], S.mounted[layer] or {}
+        if not (def and layer_available(layer) and def.accepts[profile_name]) then return false end
+        local allowed = S.section_layers[sec]
+        if allowed and not allowed[layer] then return false end
+        if #list >= layer_slots(layer) then return false end
+
+        -- A layer pouch inherits the box backend. If it was opened while
+        -- loose, close that legacy window before ownership changes so there
+        -- is never a visible loose box and a fitted pouch for one object.
+        local amp = rawget(_G, "zzz_armor_mag_pouches")
+        if amp and type(amp.layer_claim) == "function" then
+            pcall(amp.layer_claim, id)
+        end
+
+        list[#list + 1], S.mounted[layer] = id, list
+        S.carrier[layer] = S.carrier[layer] or current_carrier(layer)
+        S.owner[id], S.profile[id], S.contents[id] = layer, profile_name, S.contents[id] or {}
+
+        -- A loose Layered Pouch is also a native AMP box. If the player
+        -- filled it before fitting it, turn those serialized box entries
+        -- back into real actor objects and claim their exact ids for this
+        -- pouch. Merely draining the box is not enough: the normal loot
+        -- callback is asynchronous and may be disabled, so without the ids
+        -- the objects appear in the backpack instead of this inline zone.
+        if amp and type(amp.layer_drain) == "function" then
+            local ok, made, ids = pcall(amp.layer_drain, id)
+            if ok and type(ids) == "table" then
+                local contents = S.contents[id] or {}
+                local grid = rawget(_G, "zzz_amp_grid")
+                for i = 1, #ids do
+                    local child = tonumber(ids[i])
+                    if child and not S.contained[child] then
+                        contents[#contents + 1] = child
+                        S.contained[child] = id
+                        S.migrate_pending[child] = id
+                        if grid and type(grid.forget_position) == "function" then
+                            pcall(grid.forget_position, child)
+                        end
+                    end
+                end
+                S.contents[id] = contents
+            end
+            if ok and tonumber(made) and tonumber(made) > 0 then
+                log("migrated %s native container item(s) into fitted pouch %s",
+                    tostring(made), tostring(id))
+            end
+        end
+        dbg("mounted %s on %s", sec, layer)
+        return true
+    end
+
+    -- An explicit panel selection is strict: an incompatible pouch must not
+    -- silently jump to some other carrier and make the highlighted slot lie.
+    if requested_layer then return try_layer(requested_layer) end
+    -- A fitted modular belt is an intentional carrier choice. Prefer its two
+    -- attachment points for compatible pouches; section-specific overrides
+    -- (for example backpack sustainment pouches) were already handled above.
+    if not requested_layer and layer_available("belt") and try_layer("belt") then
+        return true
+    end
+    for i = 1, #LAYER_ORDER do
+        if LAYER_ORDER[i] ~= "belt" and try_layer(LAYER_ORDER[i]) then return true end
+    end
+    return false
+end
+
+local function reconcile_pouch_contents(pouch_id)
+    -- First discard objects destroyed by use or stack merging. This is the
+    -- common source of a visually empty pouch retaining one numeric id.
+    prune()
+    -- Mags Redux may move a magazine directly into its loadout without a
+    -- ZoneGrid drag. Its icon then belongs to the loadout, but an old pouch
+    -- assignment would otherwise survive invisibly and block removal.
+    local src, keep = S.contents[pouch_id] or {}, {}
+    for i = 1, #src do
+        local id = src[i]
+        if mags_owns(id) then
+            S.contained[id] = nil
+            dbg("released magazine %s from pouch %s: owned by Mags Redux loadout",
+                tostring(id), tostring(pouch_id))
+        else
+            keep[#keep + 1] = id
+        end
+    end
+    S.contents[pouch_id] = (#keep > 0) and keep or nil
+    return #(S.contents[pouch_id] or {})
+end
+
+function unmount(obj_or_id, force)
+    local id = type(obj_or_id) == "number" and obj_or_id or item_id(obj_or_id)
+    local layer = id and S.owner[id]
+    if not layer then return false end
+    local remaining = reconcile_pouch_contents(id)
+    if remaining > 0 then
+        if not force then
+            local ids = {}
+            for i = 1, #(S.contents[id] or {}) do
+                ids[#ids + 1] = tostring(S.contents[id][i])
+            end
+            log("!unmount refused for pouch %s: %s live item(s), ids=%s",
+                tostring(id), tostring(remaining), table.concat(ids, ","))
+            return false
+        end
+        -- A carrier that leaves forcibly cannot retain an inline section.
+        -- Its contents remain real actor objects and become ordinary backpack
+        -- cargo; nothing is serialized or destroyed.
+        for i = 1, #S.contents[id] do
+            local child = S.contents[id][i]
+            S.contained[child], S.migrate_pending[child], S.migrate_attempts[child] = nil, nil, nil
+        end
+        S.contents[id] = nil
+    end
+    local amp = rawget(_G, "zzz_armor_mag_pouches")
+    if amp and type(amp.layer_release) == "function" then
+        pcall(amp.layer_release, id)
+    end
+    local list, dst = S.mounted[layer] or {}, {}
+    for i = 1, #list do if list[i] ~= id then dst[#dst + 1] = list[i] end end
+    S.mounted[layer], S.owner[id], S.profile[id] = dst, nil, nil
+    if #dst == 0 then S.carrier[layer] = nil end
+    return true
+end
+
+local function pouch_fits_layer(id, layer)
+    local obj = actor_object(id)
+    local sec = obj and item_sec(obj)
+    local profile_name = sec and (S.profile[id] or S.section_profile[sec])
+    local def = S.layers[layer]
+    if not (sec and profile_name and def and layer_available(layer)
+        and def.accepts[profile_name]) then return false end
+    local allowed = S.section_layers[sec]
+    return not allowed or allowed[layer] == true
+end
+
+-- Move an already fitted pouch without releasing its container backend.
+-- Contents therefore remain attached while the pouch changes carrier.
+local function move_mounted(id, target_layer, target_slot)
+    local source_layer = S.owner[id]
+    if not (source_layer and pouch_fits_layer(id, target_layer)) then return false end
+    local source, target = S.mounted[source_layer] or {}, S.mounted[target_layer] or {}
+    local source_slot
+    for i = 1, #source do if source[i] == id then source_slot = i break end end
+    if not source_slot then return false end
+
+    target_slot = math.max(1, math.floor(tonumber(target_slot) or (#target + 1)))
+    local displaced = target[target_slot]
+    if displaced == id then return true end
+    if displaced and not pouch_fits_layer(displaced, source_layer) then return false end
+
+    if source_layer == target_layer then
+        if displaced then
+            source[source_slot], source[target_slot] = source[target_slot], source[source_slot]
+        else
+            table.remove(source, source_slot)
+            table.insert(source, math.min(target_slot, #source + 1), id)
+        end
+        S.mounted[source_layer] = source
+        return true
+    end
+
+    if not displaced and #target >= layer_slots(target_layer) then return false end
+
+    table.remove(source, source_slot)
+    if displaced then
+        source[#source + 1] = displaced
+        S.owner[displaced] = source_layer
+        target[target_slot] = id
+    else
+        table.insert(target, math.min(target_slot, #target + 1), id)
+    end
+    S.mounted[source_layer], S.mounted[target_layer] = source, target
+    S.owner[id] = target_layer
+    if #source == 0 then S.carrier[source_layer] = nil end
+    S.carrier[target_layer] = S.carrier[target_layer] or current_carrier(target_layer)
+    return true
+end
+
+function route(obj)
+    if not (S.enabled and S.autoloot and S.ready and obj and in_actor(obj)) then return false end
+    local id, sec = item_id(obj), item_sec(obj)
+    if not (id and sec) or S.owner[id] or S.contained[id] or is_pouch(sec) then return false end
+    if S.routing then return false end
+    S.routing = true
+
+    local candidates = {}
+    for _, layer in ipairs(LAYER_ORDER) do
+        if layer_available(layer) then
+            local list = S.mounted[layer] or {}
+            for slot = 1, #list do
+                local pouch_id = list[slot]
+                local pname = S.profile[pouch_id]
+                local prof = S.profiles[pname or ""]
+                if profile_takes(prof, sec) then
+                    local priority = prof.priority
+                    if pname == "dump" and empty_magazine(obj, sec) then priority = 5 end
+                    candidates[#candidates + 1] = { id = pouch_id, p = priority,
+                        layer = layer, slot = slot, prof = prof }
+                end
+            end
+        end
+    end
+    table.sort(candidates, function(a, b)
+        if a.p ~= b.p then return a.p < b.p end
+        if a.layer ~= b.layer then
+            local ai, bi = 99, 99
+            for i = 1, #LAYER_ORDER do
+                if LAYER_ORDER[i] == a.layer then ai = i end
+                if LAYER_ORDER[i] == b.layer then bi = i end
+            end
+            return ai < bi
+        end
+        return a.slot < b.slot
+    end)
+
+    local need = footprint(sec)
+    for i = 1, #candidates do
+        local c = candidates[i]
+        if used_cells(c.id) + need <= pouch_capacity(c.id) then
+            local list = S.contents[c.id] or {}
+            list[#list + 1], S.contents[c.id], S.contained[id] = id, list, c.id
+            local grid = rawget(_G, "zzz_amp_grid")
+            if grid and type(grid.forget_position) == "function" then
+                pcall(grid.forget_position, id)
+            end
+            S.routing = false
+            dbg("routed %s -> %s/%s", sec, c.layer, tostring(c.id))
+            return true
+        end
+    end
+    S.routing = false
+    return false -- backpack grid is the fallback
+end
+
+function remove(obj_or_id)
+    local id = type(obj_or_id) == "number" and obj_or_id or item_id(obj_or_id)
+    local pouch_id = id and S.contained[id]
+    if not pouch_id then return false end
+    local list, dst = S.contents[pouch_id] or {}, {}
+    for i = 1, #list do if list[i] ~= id then dst[#dst + 1] = list[i] end end
+    S.contents[pouch_id], S.contained[id] = (#dst > 0) and dst or nil, nil
+    return true
+end
+
+-- A manual transfer into another equipment system can emit the same
+-- actor_on_item_take callback as corpse loot. Mark it before AMP changes the
+-- magazine's carried state, remove any already queued copy, and keep the
+-- suppression narrowly scoped to this object and a short transition window.
+function remove_for_equipment(obj_or_id)
+    local id = type(obj_or_id) == "number" and obj_or_id or item_id(obj_or_id)
+    if not id then return false end
+    local now = time_global and time_global() or 0
+    S.manual_out_until[id] = now + 1500
+    S.pending_set[id] = nil
+    for i = #S.pending, 1, -1 do
+        if S.pending[i] == id then table.remove(S.pending, i) end
+    end
+    return remove(id)
+end
+
+function hidden(id)
+    -- The attachment panel is now the stable representation of fitted
+    -- modules. Showing the same physical object in the backpack as well made
+    -- it look as if fitting had copied rather than equipped the pouch.
+    return type(id) == "number" and (S.owner[id] ~= nil or id == S.belt_id
+        or (S.side_active and S.contained[id] ~= nil))
+end
+
+-- Dynamic ZoneGrid bridge -------------------------------------------------
+function grid_zones(side_view)
+    if side_view and not S.side_active then return {} end
+    if not side_view and S.side_active then return {} end
+    local out = {}
+    for _, layer in ipairs(LAYER_ORDER) do
+        if layer_available(layer) then
+            for slot, pouch_id in ipairs(S.mounted[layer] or {}) do
+                local obj = actor_object(pouch_id)
+                local sec = obj and item_sec(obj)
+                local pname = S.profile[pouch_id] or (sec and S.section_profile[sec])
+                local prof = pname and S.profiles[pname]
+                if sec and prof then
+                    local cols = tonumber(SYS_GetParam(2, sec, "amp_box_w")) or prof.cells
+                    local rows = tonumber(SYS_GetParam(2, sec, "amp_box_h"))
+                    cols = math.max(1, math.floor(cols))
+                    rows = math.max(1, math.floor(rows or math.ceil(prof.cells / cols)))
+                    out[#out + 1] = {
+                        pouch_id = pouch_id, layer = layer, slot = slot,
+                        cols = cols, rows = rows, cells = cols * rows,
+                        name = game.translate_string(SYS_GetParam(0, sec, "inv_name") or sec),
+                    }
+                end
+            end
+        end
+    end
+    return out
+end
+
+function grid_zone_allows(pouch_id, id, sec)
+    -- Ordinary sections are always a valid way to take an item back out.
+    -- The exception is a native-container restoration that has not yet been
+    -- acknowledged by its target pouch. Allowing the backpack during this
+    -- short window makes a remembered/default backpack square win the race.
+    if not pouch_id then return not S.migrate_pending[id] end
+    if not (S.owner[pouch_id] and type(sec) == "string") then return false end
+    -- Equipment modules themselves remain ordinary cargo icons and must never
+    -- disappear into another pouch, including a universal one.
+    if is_pouch(sec) or SYS_GetParam(1, sec, "amp_layer_belt") then return false end
+    local pname = S.profile[pouch_id]
+    local prof = pname and S.profiles[pname]
+    local assigned = S.contained[id]
+    if assigned == pouch_id then return profile_takes(prof, sec) end
+    if not profile_takes(prof, sec) then return false end
+    return used_cells(pouch_id) + footprint(sec) <= pouch_capacity(pouch_id)
+end
+
+function grid_pouch(id)
+    return type(id) == "number" and S.contained[id] or nil
+end
+
+-- QAW works by section rather than object id.  Its meds-tab filter needs an
+-- authoritative way to ask whether at least one live copy is in a fitted
+-- Layered pouch; AMP's own pk_sec_has can only see native rig pockets.
+function grid_has_section(sec)
+    if type(sec) ~= "string" or sec == "" then return false end
+    for id, pouch_id in pairs(S.contained) do
+        if pouch_id and S.owner[pouch_id] then
+            local obj = actor_object(id)
+            if obj and item_sec(obj) == sec then return true end
+        end
+    end
+    return false
+end
+
+function grid_assign(id, sec, pouch_id)
+    if type(id) ~= "number" then return false end
+    -- Native box extraction creates a server object first. Before its client
+    -- object appears, the inventory may briefly report the ordinary backpack
+    -- square. That transient report must not erase the destination recorded
+    -- by mount(); process_migrations will repack it once the object exists.
+    local intended = S.migrate_pending[id]
+    if not pouch_id and intended then return true end
+    if pouch_id and intended == pouch_id then
+        S.migrate_pending[id], S.migrate_attempts[id] = nil, nil
+    end
+    local old = S.contained[id]
+    -- Switching between the detached personal view and the inline loot/trade
+    -- view tears down one container while building the other. ZoneGrid
+    -- captures the stale source cells during that Reset; they have no active
+    -- zone and therefore arrive here with pouch_id=nil. That is a display
+    -- transition, not a player moving the item out of its pouch.
+    local now = time_global and time_global() or 0
+    local settling = now <= (S.side_transition_until or -10000)
+    if (S.side_switching or settling) and not pouch_id and old then
+        dbg("preserved pouch %s for item %s during view transition",
+            tostring(old), tostring(id))
+        return true
+    end
+    if old == pouch_id then return true end
+    if pouch_id then
+        -- Validate a transfer without the old ownership short-circuit.
+        local pname = S.profile[pouch_id]
+        local prof = pname and S.profiles[pname]
+        if not (S.owner[pouch_id] and profile_takes(prof, sec)) then return false end
+        if old ~= pouch_id and used_cells(pouch_id) + footprint(sec) > pouch_capacity(pouch_id) then
+            return false
+        end
+    end
+    if old then remove(id) end
+    if pouch_id then
+        local list = S.contents[pouch_id] or {}
+        list[#list + 1], S.contents[pouch_id], S.contained[id] = id, list, pouch_id
+    end
+    return true
+end
+
+function keep()
+    local out = {}
+    -- The grid updates before this module in the current load order. Protect
+    -- newly taken objects for one frame so a full backpack cannot drop them
+    -- before the pouch router gets its turn.
+    for id in pairs(S.pending_set) do out[id] = true end
+    for id in pairs(S.migrate_pending) do out[id] = true end
+    -- Fitted pouch objects are hidden from the backpack grid and represented
+    -- by the attachment panel. They are equipment, not cargo competing for a
+    -- storage square, and must never be selected as overflow for dropping.
+    for id in pairs(S.owner) do out[id] = true end
+    if S.belt_id then out[S.belt_id] = true end
+    -- In personal-inventory split view these objects are carried by the
+    -- dedicated pouch container, not by actor_bag's capacity simulation.
+    if S.side_active then
+        for id in pairs(S.contained) do out[id] = true end
+    end
+    return out
+end
+
+function nodrop()
+    -- Fitted modules remain real actor objects even though the panel replaces
+    -- their backpack icons. Never drop the physical pouch on overflow and
+    -- silently dismantle its zone.
+    local out = {}
+    for id in pairs(S.owner) do out[id] = true end
+    if S.belt_id then out[S.belt_id] = true end
+    return out
+end
+
+function snapshot()
+    prune()
+    return { mounted = S.mounted, contents = S.contents, owner = S.owner,
+             contained = S.contained, profiles = S.profile }
+end
+
+local function refresh_inventory()
+    local ui = rawget(_G, "ui_inventory")
+    local gui = ui and ui.GUI
+    if gui and type(gui.On_Item_Update) == "function" then
+        pcall(function() gui:On_Item_Update() end)
+    end
+end
+
+-- Safe attachment panel ---------------------------------------------------
+-- This first UI revision deliberately does not implement drag-and-drop.
+-- Clicking an empty attachment slot arms that carrier; the next ordinary
+-- "Fit to equipment" action on a pouch mounts it there. Clicking an occupied
+-- slot removes an empty pouch. The storage backend and save format stay the
+-- same, so the panel cannot create a second source of ownership truth.
+local PANEL_LAYERS = { "rig", "outfit", "belt", "backpack" }
+
+local function panel_xml()
+    if S.panel_xml then return S.panel_xml end
+    local ok, xml = pcall(function()
+        local x = CScriptXmlInit()
+        x:ParseFile("zzz_amp_layers.xml")
+        return x
+    end)
+    if ok then S.panel_xml = xml end
+    return ok and xml or nil
+end
+
+local function panel_show(w, yes)
+    if w then pcall(function() w:Show(yes and true or false) end) end
+end
+
+local function panel_pos(w, x, y, width, height)
+    if not w then return end
+    pcall(function() w:SetWndPos(vector2():set(x, y)) end)
+    if width and height then
+        pcall(function() w:SetWndSize(vector2():set(width, height)) end)
+    end
+end
+
+local function panel_text(w, value, static)
+    if not w then return end
+    if static then
+        pcall(function() w:TextControl():SetText(value or "") end)
+    else
+        pcall(function() w:SetText(value or "") end)
+    end
+end
+
+local function panel_tint(w, a, r, g, b)
+    if w then pcall(function() w:SetTextureColor(GetARGB(a, r, g, b)) end) end
+end
+
+-- Personal inventory side column -----------------------------------------
+local SIDE_ID = "amp_layers_side"
+local SIDE_BG_RECT = { 0, 0, 1018, 1536 }
+local SIDE_BODY = { 0.0314, 0.1510, 0.9371, 0.7917 }
+local SIDE_NAME = { 0.0314, 0.0208, 0.6778, 0.1120 }
+local SIDE_FOOT = { 0.0314, 0.9531, 0.9371, 0.0365 }
+
+local function side_abs(w)
+    if not w then return nil end
+    local r = Frect():set(0, 0, 0, 0)
+    local ok = pcall(function() w:GetAbsoluteRect(r) end)
+    return ok and r or nil
+end
+
+local function side_box(rect, f)
+    return rect.x1 + (rect.x2 - rect.x1) * f[1],
+        rect.y1 + (rect.y2 - rect.y1) * f[2],
+        (rect.x2 - rect.x1) * f[3], (rect.y2 - rect.y1) * f[4]
+end
+
+local function current_layout()
+    local amp = rawget(_G, "zzz_armor_mag_pouches")
+    if amp and type(amp.layer_layout) == "function" then
+        local ok, layout = pcall(amp.layer_layout)
+        if ok and (layout == "default" or layout == "tarkov") then
+            return layout
+        end
+    end
+    -- Older AMP builds only had the Tarkov-like ordering. Keeping that as the
+    -- fallback also makes this optional addon fail gracefully with them.
+    return "tarkov"
+end
+
+local function side_supported(gui)
+    -- GetAbsoluteRect is returned in the active screen coordinate space.  It
+    -- must not be compared with the old fixed 1024-wide X-Ray UI space: on
+    -- ultrawide/HD layouts that rejected a panel which actually fits.
+    return side_abs(gui and gui.player_dialog) ~= nil
+end
+
+local function side_wanted(gui)
+    return gui and gui.mode == "inventory" and side_supported(gui) or false
+end
+
+local function side_hide()
+    panel_show(S.side_bg, false)
+    panel_show(S.side_title, false)
+    panel_show(S.side_weight, false)
+    if S.side_cc then pcall(function() S.side_cc:Show(false) end) end
+    S.side_rect = nil
+end
+
+-- The decorative side-panel windows can sit above the cell container in
+-- X-Ray's cursor ownership test.  Cross-view drag/drop must therefore use
+-- measured screen geometry, not IsCursorOverWindow(), for this one view.
+function side_cursor_over()
+    if not (S.side_active and S.side_rect) then return false end
+    local ok, pos = pcall(GetCursorPosition)
+    if not (ok and pos) then return false end
+    local r = S.side_rect
+    local x, y, w, h = side_box({ x1 = r[1], y1 = r[2],
+        x2 = r[1] + r[3], y2 = r[2] + r[4] }, SIDE_BODY)
+    return pos.x >= x and pos.x <= x + w and pos.y >= y and pos.y <= y + h
+end
+
+local function side_zones_key()
+    local zones = grid_zones(true)
+    local out = {}
+    for i = 1, #zones do
+        local z = zones[i]
+        out[#out + 1] = table.concat({ tostring(z.pouch_id), tostring(z.cols),
+            tostring(z.rows), tostring(z.layer), tostring(z.slot) }, "/")
+    end
+    return table.concat(out, ";")
+end
+
+local function side_teach_properties(gui)
+    if not (gui and type(gui.properties) == "table") then return end
+    for _, props in pairs(gui.properties) do
+        if type(props.cont) == "table" and props.cont.actor_bag then
+            props.cont[SIDE_ID] = true
+        end
+    end
+
+    -- QAW is dynamically injected with Cont_Custom rather than a `cont`
+    -- table, so the loop above cannot teach it about this sibling container.
+    -- Patch only QAW's assigned custom slot; enabling every custom functor in
+    -- the side view would expose unrelated actions that assume actor_bag.
+    local names = gui.custom_functor_names
+    local slot = type(names) == "table" and names.add_to_qaw
+    local prop = slot and gui.properties["custom_" .. tostring(slot)]
+    if prop and type(prop.cont_func) == "table" then
+        if type(gui.AMP_Layers_Cont_QAW) ~= "function" then
+            gui.AMP_Layers_Cont_QAW = function(self, obj, bag, temp, i)
+                if bag == SIDE_ID then return self.mode == "inventory" end
+                return self:Cont_Custom(obj, bag, temp, i)
+            end
+        end
+        prop.cont_func[1] = "AMP_Layers_Cont_QAW"
+    end
+end
+
+local function side_ensure(gui)
+    if not (gui and gui.equ_dialog and utils_ui and utils_ui.UICellContainer) then
+        return nil
+    end
+    if S.side_gui == gui and S.side_cc then return S.side_cc end
+
+    side_hide()
+    S.side_gui, S.side_cc = gui, nil
+    local xml = panel_xml()
+    if not xml then return nil end
+
+    local ok_controls, control_err = pcall(function()
+        -- Background first: sibling draw order is creation order.
+        S.side_bg = xml:InitStatic("layers:side_bg", gui.equ_dialog)
+        S.side_title = xml:InitTextWnd("layers:side_title", gui.equ_dialog)
+        S.side_weight = xml:InitTextWnd("layers:side_weight", gui.equ_dialog)
+        S.side_bg:InitTexture("ui\\ui_amp_layers_side")
+        S.side_bg:SetTextureRect(Frect():set(
+            SIDE_BG_RECT[1], SIDE_BG_RECT[2], SIDE_BG_RECT[3], SIDE_BG_RECT[4]))
+        S.side_bg:SetStretchTexture(true)
+    end)
+    if not ok_controls then
+        log("!side pouch furniture build failed: %s", tostring(control_err))
+        side_hide()
+        return nil
+    end
+
+    local saved = gui.xml
+    gui.xml = xml
+    local ok, cc = pcall(function()
+        return utils_ui.UICellContainer(
+            SIDE_ID, gui, nil, "layers:side_container", gui.equ_dialog)
+    end)
+    gui.xml = saved
+    if not (ok and cc) then
+        log("!side pouch container build failed: %s", tostring(cc))
+        side_hide()
+        return nil
+    end
+
+    S.side_cc = cc
+    gui.CC[SIDE_ID] = cc
+    if gui.bag_id and EDDListType then gui.bag_id[SIDE_ID] = EDDListType.iActorBag end
+    if type(gui.update_bags) == "table" then
+        local found = false
+        for i = 1, #gui.update_bags do
+            if gui.update_bags[i] == SIDE_ID then found = true break end
+        end
+        if not found then gui.update_bags[#gui.update_bags + 1] = SIDE_ID end
+    end
+    side_teach_properties(gui)
+    log("personal pouch side container built")
+    return cc
+end
+
+local function side_items()
+    local out = {}
+    if not (S.side_active and db.actor and db.actor.iterate_ruck) then return out end
+    db.actor:iterate_ruck(function(_, obj)
+        local id = obj and item_id(obj)
+        if id and S.contained[id] then out[#out + 1] = obj end
+    end)
+    return out
+end
+
+local function side_sync(reset)
+    local cc = S.side_active and side_ensure(S.side_gui) or nil
+    if not cc then return end
+    local items = side_items()
+    -- Pickups can be inserted into actor_bag before the deferred autoloot
+    -- router assigns them. Once assigned, remove that transient duplicate;
+    -- the physical object remains in the actor inventory and is added below.
+    local bag = S.side_gui and S.side_gui.CC and S.side_gui.CC.actor_bag
+    if bag and bag.indx_id then
+        for i = 1, #items do
+            local id = item_id(items[i])
+            if id and bag.indx_id[id] then
+                pcall(function() bag:RemoveItem_byID(id) end)
+            end
+        end
+    end
+    local function rebuild()
+        local grid = rawget(_G, "zzz_amp_grid")
+        if grid and type(grid.restore_layer_view) == "function" then
+            local ok, done = pcall(grid.restore_layer_view, cc, items)
+            if ok and done then return end
+            if not ok then log("!pouch-grid r11 rebuild: %s", tostring(done)) end
+        end
+        cc:Reinit(items)
+    end
+    if reset then rebuild() return end
+
+    local want = {}
+    for i = 1, #items do want[item_id(items[i])] = items[i] end
+    local have = cc.indx_id or {}
+    for id in pairs(want) do
+        if not have[id] then rebuild() return end
+    end
+    for id in pairs(have) do
+        if not want[id] then pcall(function() cc:RemoveItem_byID(id) end) end
+    end
+end
+
+-- Public UI-only refresh used after another equipment system has consumed a
+-- side-view item. It changes no ownership; side_sync merely reconciles icons
+-- with the ownership table that was already updated transactionally.
+function refresh_side()
+    if not S.side_active then return false end
+    side_sync(false)
+    return true
+end
+
+local function side_weight_text()
+    local weight = 0
+    for _, obj in ipairs(side_items()) do
+        local ok, value = pcall(function() return obj:weight() end)
+        if ok then weight = weight + (tonumber(value) or 0) end
+    end
+    return string.format("%.1f kg", weight)
+end
+
+local function side_draw(gui)
+    if not S.side_active then side_hide() return end
+    local cc = side_ensure(gui)
+    side_teach_properties(gui)
+    local player = side_abs(gui and gui.player_dialog)
+    local parent = side_abs(gui and gui.equ_dialog)
+    if not (cc and player and parent) then side_hide() return end
+
+    local ok_ratio, ratio = pcall(function() return utils_xml.screen_ratio() end)
+    ratio = ok_ratio and tonumber(ratio) or 1
+    if not ratio or ratio <= 0 then ratio = 1 end
+    local gap = 8 * ratio
+    local width, height = player.x2 - player.x1, player.y2 - player.y1
+    -- SquaredAway moves npc_dialog to the currently unused outer column in
+    -- personal inventory. Reusing that measured rectangle makes the pouch
+    -- view follow both MCM layouts: left in Anomaly Default, right in Tarkov.
+    local free = side_abs(gui and gui.npc_dialog)
+    local rect
+    if free and free.x2 > free.x1 then
+        rect = { x1 = free.x1, y1 = player.y1,
+            x2 = free.x2, y2 = player.y2 }
+        width = rect.x2 - rect.x1
+    elseif current_layout() == "default" then
+        rect = { x1 = player.x1 - gap - width, y1 = player.y1,
+            x2 = player.x1 - gap, y2 = player.y2 }
+    else
+        rect = { x1 = player.x2 + gap, y1 = player.y1,
+            x2 = player.x2 + gap + width, y2 = player.y2 }
+    end
+    local bx, by, bw, bh = side_box(rect, SIDE_BODY)
+    local tx, ty, tw, th = side_box(rect, SIDE_NAME)
+    local fx, fy, fw, fh = side_box(rect, SIDE_FOOT)
+    local changed = not S.side_rect or S.side_rect[1] ~= rect.x1
+        or S.side_rect[2] ~= rect.y1 or S.side_rect[3] ~= width
+        or S.side_rect[4] ~= height
+    local zone_key = side_zones_key()
+    if S.side_zone_key ~= zone_key then
+        S.side_zone_key = zone_key
+        changed = true
+    end
+    S.side_rect = { rect.x1, rect.y1, width, height }
+
+    panel_pos(S.side_bg, rect.x1 - parent.x1, rect.y1 - parent.y1, width, height)
+    panel_show(S.side_bg, true)
+    panel_pos(S.side_title, tx - parent.x1, ty - parent.y1, tw, th)
+    panel_text(S.side_title, game.translate_string("st_amp_side_title"))
+    panel_show(S.side_title, true)
+    panel_pos(S.side_weight, fx - parent.x1, fy - parent.y1, fw, fh)
+    panel_text(S.side_weight, side_weight_text())
+    panel_show(S.side_weight, true)
+
+    local bag = gui.CC and gui.CC.actor_bag
+    pcall(function()
+        cc:AdjustWnd(bx - parent.x1, by - parent.y1, bw, bh)
+        if changed then
+            cc:SetGridSpecs(bag and bag.grid_size or cc.grid_size,
+                bag and bag.grid_line or cc.grid_line)
+            cc:Scroll_Reinit(true)
+        end
+        cc:Show(true)
+    end)
+    if changed then side_sync(true) end
+end
+
+local function panel_hide_all()
+    local p = S.panel
+    if not p then return end
+    panel_show(p.frame, false)
+    panel_show(p.title, false)
+    panel_show(p.hint, false)
+    panel_show(p.ghost, false)
+    panel_show(p.belt_row, false)
+    panel_show(p.belt_slot, false)
+    panel_show(p.belt_fill, false)
+    panel_show(p.belt_icon, false)
+    for i = 1, #(p.rows or {}) do panel_show(p.rows[i], false) end
+    for i = 1, #(p.carriers or {}) do panel_show(p.carriers[i], false) end
+    for _, pool_name in ipairs({ "slots", "fills", "icons", "bar_bgs", "bars" }) do
+        for _, slots in pairs(p[pool_name] or {}) do
+            for i = 1, #slots do panel_show(slots[i], false) end
+        end
+    end
+end
+
+local function panel_build(gui)
+    if not (gui and gui.equ_dialog) then return false end
+    if S.panel_owner == gui and S.panel then return true end
+    panel_hide_all()
+    S.panel_owner, S.panel = gui, nil
+
+    local xml = panel_xml()
+    if not xml then return false end
+    local ok, p = pcall(function()
+        local q = { rows = {}, carriers = {}, slots = {}, fills = {},
+                    icons = {}, bar_bgs = {}, bars = {} }
+        q.frame = xml:InitStatic("layers:frame", gui.equ_dialog)
+        q.title = xml:InitTextWnd("layers:title", gui.equ_dialog)
+        q.hint = xml:InitTextWnd("layers:hint", gui.equ_dialog)
+        q.belt_row = xml:InitTextWnd("layers:row", gui.equ_dialog)
+        q.belt_slot = xml:InitStatic("layers:slot", gui.equ_dialog)
+        q.belt_fill = xml:InitStatic("layers:slot_fill", gui.equ_dialog)
+        q.belt_icon = xml:InitStatic("layers:slot_icon", gui.equ_dialog)
+        for n = 1, #PANEL_LAYERS do
+            local layer = PANEL_LAYERS[n]
+            q.rows[n] = xml:InitTextWnd("layers:row", gui.equ_dialog)
+            q.carriers[n] = xml:InitStatic("layers:carrier", gui.equ_dialog)
+            q.slots[layer] = {}
+            q.fills[layer] = {}
+            q.icons[layer] = {}
+            q.bar_bgs[layer] = {}
+            q.bars[layer] = {}
+            local count = (S.layers[layer] and S.layers[layer].slots) or 0
+            for i = 1, count do
+                q.slots[layer][i] = xml:InitStatic("layers:slot", gui.equ_dialog)
+                q.fills[layer][i] = xml:InitStatic("layers:slot_fill", gui.equ_dialog)
+                q.icons[layer][i] = xml:InitStatic("layers:slot_icon", gui.equ_dialog)
+                q.bar_bgs[layer][i] = xml:InitStatic("layers:bar_bg", gui.equ_dialog)
+                q.bars[layer][i] = xml:InitStatic("layers:bar", gui.equ_dialog)
+            end
+        end
+        -- Created last so the tab remains visible above the open drawer.
+        q.button = xml:InitStatic("layers:button", gui.equ_dialog)
+        q.ghost = xml:InitStatic("layers:ghost", gui.equ_dialog)
+        return q
+    end)
+    if not ok then
+        log("!attachment panel build failed: %s", tostring(p))
+        return false
+    end
+    S.panel = p
+    panel_text(p.button, ">", true)
+    panel_tint(p.button, 210, 45, 45, 45)
+    return true
+end
+
+local function panel_set_icon(w, pouch_id)
+    local obj = pouch_id and actor_object(pouch_id)
+    local sec = obj and item_sec(obj)
+    if sec and utils_xml then
+        local ok, aspect = pcall(function()
+            local x1, y1, x2, y2 = utils_xml.get_item_axis(sec, nil, true)
+            w:InitTexture(utils_xml.get_icons_texture(sec))
+            w:SetTextureRect(Frect():set(x1, y1, x2, y2))
+            w:SetStretchTexture(true)
+            local rw = math.abs((x2 or 0) - (x1 or 0))
+            local rh = math.abs((y2 or 0) - (y1 or 0))
+            return rh > 0 and rw / rh or 1
+        end)
+        if ok then
+            panel_text(w, "", true)
+            pcall(function() w:SetTextureColor(GetARGB(255, 255, 255, 255)) end)
+            return aspect or 1
+        end
+    end
+    pcall(function() w:InitTexture("ui_inGame2_white_rect") end)
+    panel_text(w, "+", true)
+    return 1
+end
+
+local function panel_screen_ratio()
+    local ok, ratio = pcall(function() return utils_xml.screen_ratio() end)
+    ratio = ok and tonumber(ratio) or 1
+    return math.max(0.5, math.min(1.2, ratio or 1))
+end
+
+local function panel_fit_icon(w, x, y, max_width, max_height, aspect)
+    aspect = tonumber(aspect) or 1
+    if aspect <= 0 then aspect = 1 end
+    -- X coordinates are stretched on widescreen layouts. Convert the source
+    -- aspect into UI-space before fitting so it remains correct on screen.
+    aspect = aspect * panel_screen_ratio()
+    local width, height = max_width, max_width / aspect
+    if height > max_height then
+        height = max_height
+        width = max_height * aspect
+    end
+    width = math.max(1, math.floor(width + 0.5))
+    height = math.max(1, math.floor(height + 0.5))
+    panel_pos(w, x + math.floor((max_width - width) / 2),
+        y + math.floor((max_height - height) / 2), width, height)
+end
+
+local function panel_profile_name(profile)
+    if not profile then return game.translate_string("st_amp_panel_filter_unknown") end
+    return game.translate_string("st_amp_panel_filter_" .. tostring(profile))
+end
+
+local function panel_anchor(gui)
+    if not (gui and gui.CC and gui.equ_dialog) then return nil end
+    local cc
+    for _, id in ipairs({ "actor_bag", "actor_trade_bag" }) do
+        local candidate = gui.CC[id]
+        if candidate then
+            local ok, shown = pcall(function() return candidate:IsShown() end)
+            if ok and shown then cc = candidate break end
+        end
+    end
+    if not (cc and cc.prof) then return nil end
+    local bag, parent, free = Frect(), Frect(), Frect()
+    local ok = pcall(function()
+        cc.prof:GetAbsoluteRect(bag)
+        gui.equ_dialog:GetAbsoluteRect(parent)
+        if gui.npc_dialog then gui.npc_dialog:GetAbsoluteRect(free) end
+    end)
+    if not ok then return nil end
+    return bag.x1 - parent.x1, bag.y1 - parent.y1,
+        bag.x2 - parent.x1, bag.y2 - parent.y1,
+        free.x1 - parent.x1, free.y1 - parent.y1,
+        free.x2 - parent.x1, free.y2 - parent.y1,
+        current_layout()
+end
+
+local panel_hit, panel_slot_at, panel_held
+
+local function panel_draw(gui)
+    if not panel_build(gui) then return end
+    local p = S.panel
+    local bx1, by1, bx2, _, fx1, _, fx2, _, layout = panel_anchor(gui)
+    if not bx1 then
+        panel_hide_all()
+        panel_show(p.button, false)
+        S.panel_drag = nil
+        if gui and gui.item_in_hold == "amp_layers_panel" then gui.item_in_hold = false end
+        return
+    end
+    -- The attachment drawer deliberately opens over the optional side column.
+    -- A full-width matching column reaches the right edge of X-Ray's UI space,
+    -- so moving the drawer beyond it would make its controls inaccessible.
+    local anchor_right = bx2
+    local default_side = gui.mode == "inventory" and layout == "default"
+        and fx1 and fx2 and fx2 > fx1
+    -- A real side tab: outside the inventory frame, in the strip marked by
+    -- the player, rather than floating over the last inventory column.
+    local button_x = default_side and (fx2 - 46) or (anchor_right + 18)
+    -- Keep the tab immediately above the inventory body. Its X coordinate is
+    -- deliberately unchanged, while the small upper margin keeps it near the
+    -- outer edge without covering pouch or backpack cells.
+    local button_height = 82
+    local button_y = math.max(4, by1 - button_height - 4)
+    panel_pos(p.button, button_x, button_y, 28, button_height)
+    panel_text(p.button, default_side
+        and (S.panel_open and ">" or "<")
+        or (S.panel_open and "<" or ">"), true)
+    panel_show(p.button, true)
+    if not S.panel_open then
+        panel_hide_all()
+        panel_show(p.button, true)
+        return
+    end
+
+    -- Open into the unused screen area to the RIGHT of the player grid. The
+    -- rig and pouch-zone cells are created dynamically and can otherwise be
+    -- newer siblings drawn over this drawer. Outside their rectangle there is
+    -- no draw-order contest at all. Do not fall back based on GetWidth here:
+    -- this UI reports the parent width and absolute bag coordinates in
+    -- different horizontal scales on widescreen layouts, which made the old
+    -- safety test falsely move the drawer back inside on every open.
+    local left = default_side and (fx2 - 50 - 260) or (anchor_right + 50)
+    local top = by1 + 4
+    if S.panel_target and not layer_available(S.panel_target) then
+        S.panel_target = nil
+    end
+    local panel_height = 148
+    for _, layer in ipairs(PANEL_LAYERS) do
+        panel_height = panel_height + (layer_available(layer) and 66 or 28)
+    end
+    panel_pos(p.frame, left, top, 260, panel_height)
+    panel_tint(p.frame, 238, 12, 12, 12)
+    panel_show(p.frame, true)
+    panel_pos(p.title, left + 8, top + 6, 244, 22)
+    panel_text(p.title, game.translate_string("st_amp_panel_title"))
+    panel_show(p.title, true)
+    panel_pos(p.hint, left + 8, top + 30, 244, 30)
+    local hint = S.panel_target and game.translate_string("st_amp_panel_choose")
+        or game.translate_string("st_amp_panel_dnd_hint")
+    panel_text(p.hint, hint)
+    panel_show(p.hint, true)
+
+    local hover_hint
+    local external_obj = (not S.panel_drag and panel_held) and panel_held(gui) or nil
+    local external_id = external_obj and item_id(external_obj) or nil
+    local ui_ratio = panel_screen_ratio()
+    local slot_width = math.max(18, math.floor(36 * ui_ratio + 0.5))
+    local slot_step = slot_width + math.max(3, math.floor(4 * ui_ratio + 0.5))
+    local inset = math.max(1, math.floor(2 * ui_ratio + 0.5))
+    local bar_margin = math.max(2, math.floor(4 * ui_ratio + 0.5))
+    local bar_width = math.max(12, slot_width - bar_margin * 2)
+    local y = top + 66
+    for n = 1, #PANEL_LAYERS do
+        local layer = PANEL_LAYERS[n]
+        local available = layer_available(layer)
+        local carrier_id = available and current_carrier(layer) or nil
+        local carrier = p.carriers[n]
+        if carrier_id then
+            local aspect = panel_set_icon(carrier, carrier_id)
+            panel_fit_icon(carrier, left + 10, y,
+                math.max(10, math.floor(18 * ui_ratio + 0.5)), 18, aspect)
+            panel_show(carrier, true)
+        else
+            panel_pos(carrier, left + 10, y + 3, 4, 12)
+            pcall(function() carrier:InitTexture("ui_inGame2_white_rect") end)
+            panel_tint(carrier, 220, 105, 45, 40)
+            panel_show(carrier, true)
+        end
+        panel_pos(p.rows[n], left + 34, y, 216, 18)
+        local label = game.translate_string("st_amp_panel_" .. layer)
+        local total = layer_slots(layer)
+        label = string.format("%s  %s/%s", label,
+            tostring(#(S.mounted[layer] or {})), tostring(total))
+        if not available then label = label .. " - " .. game.translate_string("st_amp_panel_absent") end
+        panel_text(p.rows[n], label)
+        panel_show(p.rows[n], true)
+
+        local mounted = S.mounted[layer] or {}
+        local slots = p.slots[layer] or {}
+        for i = 1, #slots do
+            local border = slots[i]
+            local fill = p.fills[layer][i]
+            local icon = p.icons[layer][i]
+            local bar_bg = p.bar_bgs[layer][i]
+            local bar = p.bars[layer][i]
+            if not available or i > layer_visible_slots(layer) then
+                panel_show(border, false)
+                panel_show(fill, false)
+                panel_show(icon, false)
+                panel_show(bar_bg, false)
+                panel_show(bar, false)
+            else
+                local x = left + 10 + (i - 1) * slot_step
+                panel_pos(border, x, y + 22, slot_width, 36)
+                panel_pos(fill, x + inset, y + 24,
+                    slot_width - inset * 2, 32)
+                panel_pos(bar_bg, x + bar_margin, y + 52, bar_width, 4)
+                panel_pos(bar, x + bar_margin, y + 52, 1, 3)
+                pcall(function() border:InitTexture("ui_inGame2_white_rect") end)
+                pcall(function() fill:InitTexture("ui_inGame2_white_rect") end)
+                panel_tint(border, 235, 83, 91, 56)
+                panel_tint(fill, 245, 19, 22, 20)
+                panel_text(fill, mounted[i] and "" or "+", true)
+                panel_show(border, true)
+                panel_show(fill, true)
+                panel_show(icon, mounted[i] ~= nil)
+                panel_show(bar_bg, mounted[i] ~= nil)
+                panel_show(bar, mounted[i] ~= nil)
+            end
+            local selected = S.panel_target == layer and not mounted[i]
+            if available and mounted[i] then
+                local aspect = panel_set_icon(icon, mounted[i])
+                local x = left + 10 + (i - 1) * slot_step
+                local icon_margin = math.max(2, math.floor(3 * ui_ratio + 0.5))
+                panel_fit_icon(icon, x + icon_margin, y + 25,
+                    slot_width - icon_margin * 2, 27, aspect)
+                panel_tint(bar_bg, 235, 30, 30, 27)
+                local obj = actor_object(mounted[i])
+                local sec = obj and item_sec(obj)
+                local pname = S.profile[mounted[i]] or (sec and S.section_profile[sec])
+                local prof = pname and S.profiles[pname]
+                local used = used_cells(mounted[i])
+                local cells = prof and pouch_capacity(mounted[i]) or 0
+                local ratio = cells > 0 and math.min(1, used / cells) or 0
+                panel_pos(bar, x + bar_margin, y + 52,
+                    math.max(1, math.floor(bar_width * ratio + 0.5)), 3)
+                if ratio >= 0.9 then
+                    panel_tint(bar, 255, 160, 55, 40)
+                elseif ratio >= 0.65 then
+                    panel_tint(bar, 255, 185, 135, 45)
+                else
+                    panel_tint(bar, 255, 105, 135, 65)
+                end
+                if panel_hit and panel_hit(border) then
+                    local title = sec and game.translate_string(
+                        SYS_GetParam(0, sec, "inv_name") or sec) or "?"
+                    hover_hint = string.format("%s | %s | %s/%s", title,
+                        panel_profile_name(pname), tostring(used), tostring(cells))
+                end
+            elseif available and selected then
+                panel_tint(border, 245, 180, 132, 38)
+                panel_tint(fill, 245, 37, 32, 20)
+            end
+            local drag = S.panel_drag
+            local drag_id = drag and drag.id or external_id
+            if available and drag_id then
+                local valid = pouch_fits_layer(drag_id, layer)
+                local other = mounted[i]
+                if not drag and other then valid = false end
+                if valid and drag and other and other ~= drag.id then
+                    valid = pouch_fits_layer(other, drag.layer)
+                end
+                local hovered = panel_hit and panel_hit(border)
+                if valid then
+                    panel_tint(border, hovered and 255 or 225,
+                        hovered and 115 or 75, hovered and 165 or 125,
+                        hovered and 65 or 48)
+                elseif hovered then
+                    panel_tint(border, 250, 150, 50, 42)
+                end
+            end
+        end
+        y = y + (available and 66 or 28)
+    end
+
+    -- The belt is equipment rather than another storage section, so keep its
+    -- dedicated socket at the bottom with a small visual break after BACKPACK.
+    y = y + 8
+    panel_pos(p.belt_row, left + 34, y, 216, 18)
+    panel_text(p.belt_row, game.translate_string("st_amp_panel_belt_platform"))
+    panel_show(p.belt_row, true)
+    local belt_x = left + 10
+    panel_pos(p.belt_slot, belt_x, y + 22, slot_width, 36)
+    panel_pos(p.belt_fill, belt_x + inset, y + 24,
+        slot_width - inset * 2, 32)
+    pcall(function() p.belt_slot:InitTexture("ui_inGame2_white_rect") end)
+    pcall(function() p.belt_fill:InitTexture("ui_inGame2_white_rect") end)
+    panel_tint(p.belt_slot, 235, 112, 96, 48)
+    panel_tint(p.belt_fill, 245, 23, 22, 17)
+    panel_text(p.belt_fill, S.belt_id and "" or "+", true)
+    panel_show(p.belt_slot, true)
+    panel_show(p.belt_fill, true)
+    panel_show(p.belt_icon, S.belt_id ~= nil)
+    if S.belt_id then
+        local aspect = panel_set_icon(p.belt_icon, S.belt_id)
+        local icon_margin = math.max(2, math.floor(3 * ui_ratio + 0.5))
+        panel_fit_icon(p.belt_icon, belt_x + icon_margin, y + 25,
+            slot_width - icon_margin * 2, 27, aspect)
+    end
+    local belt_drag_obj = (not S.panel_drag and external_obj) or nil
+    local belt_drag_sec = belt_drag_obj and item_sec(belt_drag_obj)
+    local belt_drag_valid = belt_drag_sec
+        and SYS_GetParam(1, belt_drag_sec, "amp_layer_belt") and not S.belt_id
+    if belt_drag_valid then
+        local hovered = panel_hit and panel_hit(p.belt_slot)
+        panel_tint(p.belt_slot, hovered and 255 or 225,
+            hovered and 115 or 75, hovered and 165 or 125,
+            hovered and 65 or 48)
+    elseif belt_drag_sec and panel_hit and panel_hit(p.belt_slot) then
+        panel_tint(p.belt_slot, 250, 150, 50, 42)
+    end
+    if hover_hint then panel_text(p.hint, hover_hint) end
+
+    local drag = S.panel_drag
+    local now = time_global and time_global() or 0
+    if drag and now - (drag.tg or now) >= 100 then
+        local okp, cursor = pcall(GetCursorPosition)
+        local parent = Frect()
+        local okr = pcall(function() gui.equ_dialog:GetAbsoluteRect(parent) end)
+        if okp and cursor and okr then
+            local aspect = panel_set_icon(p.ghost, drag.id)
+            panel_fit_icon(p.ghost, cursor.x - parent.x1 + 8,
+                cursor.y - parent.y1 + 8,
+                math.max(17, math.floor(34 * ui_ratio + 0.5)), 34, aspect)
+            panel_tint(p.ghost, 215, 255, 255, 255)
+            panel_show(p.ghost, true)
+        end
+    else
+        panel_show(p.ghost, false)
+    end
+end
+
+panel_hit = function(w)
+    if not w then return false end
+    local okp, pos = pcall(GetCursorPosition)
+    if not (okp and pos) then return false end
+    local r = Frect()
+    local okr = pcall(function() w:GetAbsoluteRect(r) end)
+    return okr and pos.x >= r.x1 and pos.x <= r.x2 and pos.y >= r.y1 and pos.y <= r.y2
+end
+
+panel_slot_at = function()
+    local p = S.panel
+    if not p then return nil end
+    for _, layer in ipairs(PANEL_LAYERS) do
+        for i, w in ipairs(p.slots[layer] or {}) do
+            if i <= layer_visible_slots(layer) and panel_hit(w)
+                and layer_available(layer) then return layer, i end
+        end
+    end
+    return nil
+end
+
+local function panel_notice(key)
+    if news_manager and db.actor then
+        news_manager.send_tip(db.actor, game.translate_string(key))
+    end
+end
+
+local function panel_belt_at()
+    return S.panel_open and S.panel and panel_hit(S.panel.belt_slot)
+end
+
+panel_held = function(gui)
+    local grid = rawget(_G, "zzz_amp_grid")
+    if grid and type(grid.held) == "function" then
+        local ok, obj, src, idx = pcall(grid.held, gui)
+        if ok and obj then return obj, src, idx end
+    end
+    local name = gui and gui.item_in_hold
+    local src = name and gui.CC and gui.CC[name]
+    local idx = src and src.hold and src.hold.idx
+    if not idx then return nil end
+    local ok, obj = pcall(function() return src:GetObj(idx) end)
+    return ok and obj or nil, src, idx
+end
+
+local function panel_release_held(gui, src)
+    if src then
+        pcall(function() if src.hold and src.hold.ico then src.hold.ico:Show(false) end end)
+        if src.hold then src.hold.idx, src.hold.tg = false, false end
+        src.scroll_pause = false
+        pcall(function() src:On_Select(false) end)
+    end
+    if gui then gui.item_in_hold = false end
+end
+
+local function panel_over_actor_bag(gui)
+    if not (gui and gui.CC) then return false end
+    for _, name in ipairs({ "actor_bag", "actor_trade_bag" }) do
+        local cc = gui.CC[name]
+        if cc then
+            local ok, over = pcall(function() return cc:IsCursorOverWindow() end)
+            if ok and over then return true end
+        end
+    end
+    return false
+end
+
+local function panel_press(gui)
+    local p = S.panel
+    if not p then return false end
+    if panel_hit(p.button) then
+        S.panel_open = not S.panel_open
+        if not S.panel_open then S.panel_target = nil end
+        return true
+    end
+    if not S.panel_open then return false end
+    if panel_belt_at() then
+        if S.belt_id then
+            S.panel_drag = { id = S.belt_id, belt = true,
+                tg = time_global and time_global() or 0 }
+            if gui then gui.item_in_hold = "amp_layers_panel" end
+        end
+        return true
+    end
+    local layer, slot = panel_slot_at()
+    if layer then
+        local id = (S.mounted[layer] or {})[slot]
+        if id then
+            S.panel_drag = { id = id, layer = layer, slot = slot,
+                tg = time_global and time_global() or 0 }
+            if gui then gui.item_in_hold = "amp_layers_panel" end
+        else
+            S.panel_target = (S.panel_target == layer) and nil or layer
+            if S.panel_target then panel_notice("st_amp_panel_choose") end
+        end
+        return true
+    end
+    return panel_hit(p.frame)
+end
+
+local function panel_drop_own(gui)
+    local drag = S.panel_drag
+    if not drag then return false end
+    S.panel_drag = nil
+    panel_show(S.panel and S.panel.ghost, false)
+    if gui and gui.item_in_hold == "amp_layers_panel" then gui.item_in_hold = false end
+
+    local layer, slot = panel_slot_at()
+    local now = time_global and time_global() or 0
+    local quick = now - (drag.tg or now) < 100
+    local done = true
+    if drag.belt then
+        if panel_belt_at() then
+            if quick and not unequip_belt(drag.id) then
+                panel_notice("st_amp_layer_not_empty")
+            end
+        elseif panel_over_actor_bag(gui) then
+            local obj = actor_object(drag.id)
+            local sec = obj and item_sec(obj)
+            local grid = rawget(_G, "zzz_amp_grid")
+            local positioned = true
+            if grid and type(grid.reserve) == "function" then
+                local ok, result = pcall(grid.reserve, drag.id, sec, false)
+                positioned = ok and result and true or false
+            end
+            if not positioned then
+                panel_notice("st_amp_layer_no_slot")
+            elseif not unequip_belt(drag.id) then
+                panel_notice("st_amp_layer_not_empty")
+            end
+        end
+        S.panel_target = nil
+        refresh_inventory()
+        return done
+    end
+    if layer then
+        if layer == drag.layer and slot == drag.slot then
+            if quick and not unmount(drag.id) then
+                panel_notice("st_amp_layer_not_empty")
+            end
+        elseif not move_mounted(drag.id, layer, slot) then
+            panel_notice("st_amp_layer_no_slot")
+        end
+    elseif panel_over_actor_bag(gui) then
+        -- A fitted pouch is hidden from the actor list, so this drag does not
+        -- pass through ZoneGrid's ordinary incoming-item hook. Reserve the
+        -- square under the cursor ourselves before making the pouch visible.
+        -- Otherwise its pre-mount saved coordinate wins on the rebuild and it
+        -- jumps back to the place from which it was originally equipped.
+        if reconcile_pouch_contents(drag.id) > 0 then
+            panel_notice("st_amp_layer_not_empty")
+        else
+            local obj = actor_object(drag.id)
+            local sec = obj and item_sec(obj)
+            local grid = rawget(_G, "zzz_amp_grid")
+            local positioned = true
+            if grid and type(grid.reserve) == "function" then
+                local ok, result = pcall(grid.reserve, drag.id, sec, false)
+                positioned = ok and result and true or false
+            end
+            if not positioned then
+                panel_notice("st_amp_layer_no_slot")
+            elseif not unmount(drag.id) then
+                panel_notice("st_amp_layer_not_empty")
+            end
+        end
+    end
+    S.panel_target = nil
+    refresh_inventory()
+    return done
+end
+
+local function panel_drop_from_inventory(gui)
+    if not S.panel_open then return false end
+    local obj, src = panel_held(gui)
+    if not obj then return false end
+
+    -- Trader and container lists use the same hold mechanism as the actor bag.
+    -- A click in one of those lists is selection, never an equipment drag.
+    local source_id = src and src.ID
+    local actor_source = source_id == "actor_bag"
+        or source_id == "actor_trade_bag"
+    if not (actor_source and in_actor(obj)) then return false end
+
+    local belt_slot = panel_belt_at()
+    local layer, slot = panel_slot_at()
+    local over_panel = S.panel and panel_hit(S.panel.frame)
+    if not (belt_slot or layer or over_panel) then return false end
+
+    local id, sec = item_id(obj), item_sec(obj)
+    local is_belt = sec and SYS_GetParam(1, sec, "amp_layer_belt")
+    local occupied = layer and (S.mounted[layer] or {})[slot]
+    local can_fit = layer and not occupied and sec and is_pouch(sec)
+    panel_release_held(gui, src)
+    local fitted = belt_slot and is_belt and not S.belt_id and set_belt(obj)
+        or (can_fit and mount(obj, layer)) or false
+    if not fitted then panel_notice("st_amp_layer_no_slot") end
+    S.panel_target = nil
+    refresh_inventory()
+    return true
+end
+
+local function panel_keyboard(dik, action)
+    if dik ~= DIK_keys.MOUSE_1 then return false end
+    local gui = S.panel_owner
+    local pressed = action == ui_events.WINDOW_KEY_PRESSED
+    if pressed then
+        local ours = panel_press(gui)
+        S.panel_ate = ours and true or false
+        return ours
+    end
+    if panel_drop_own(gui) then
+        S.panel_ate = false
+        return true
+    end
+    if panel_drop_from_inventory(gui) then
+        S.panel_ate = false
+        return true
+    end
+    if S.panel_ate then
+        S.panel_ate = false
+        return true
+    end
+    return false
+end
+
+local function ui_draw(gui)
+    -- ZoneGrid owns the visible cells. This hook only makes an already-open
+    -- inventory rebuild after equipment state changes.
+    S.ui_owner = gui
+    -- Reset can run before this addon installs its UI hook.  Reconcile the
+    -- mode here as well so an inventory that is already open still acquires
+    -- the experimental side column.
+    local wanted = side_wanted(gui)
+    if wanted ~= S.side_active and not S.side_switching then
+        S.side_switching = true
+        S.side_transition_until = (time_global and time_global() or 0) + 1500
+        if wanted then
+            S.side_active = side_ensure(gui) ~= nil
+            if S.side_active then
+                log("personal pouch side container activated (mode=%s)", tostring(gui.mode))
+                pcall(side_sync, true)
+                refresh_inventory()
+            end
+        else
+            S.side_active = false
+            side_hide()
+            refresh_inventory()
+        end
+        S.side_switching = false
+    end
+    local now = time_global and time_global() or 0
+    if S.side_active and now - (S.side_sync_at or -10000) >= 200 then
+        S.side_sync_at = now
+        pcall(side_sync, false)
+    end
+    pcall(side_draw, gui)
+    panel_draw(gui)
+end
+
+local function install_ui()
+    if S.ui_installed then return end
+    local ui = rawget(_G, "ui_inventory")
+    local cls = ui and ui.UIInventory
+    if not cls or type(cls.Update) ~= "function" then
+        log("!UI Rework G.A.M.M.A. Style - Sota is missing or loaded after AMP; pouch grids disabled")
+        return
+    end
+    if type(cls.Reset) == "function" and not S.side_reset_base then
+        S.side_reset_base = cls.Reset
+        cls.Reset = function(self, ...)
+            -- Set this before ParseInventory runs inside Reset: it decides
+            -- whether pouch contents belong to actor_bag or the side column.
+            local wanted = side_wanted(self)
+            S.side_switching = true
+            S.side_transition_until = (time_global and time_global() or 0) + 1500
+            if wanted then
+                -- Build first. A failed optional UI must fall back to inline
+                -- zones rather than hiding pouch contents from both views.
+                S.side_active = side_ensure(self) ~= nil
+            else
+                S.side_active = false
+            end
+            local result = S.side_reset_base(self, ...)
+            if S.side_active then
+                pcall(side_ensure, self)
+                pcall(side_draw, self)
+                pcall(side_sync, true)
+            else
+                side_hide()
+            end
+            S.side_switching = false
+            return result
+        end
+    end
+    if type(cls.Cont_Custom) == "function" and not S.side_custom_base then
+        S.side_custom_base = cls.Cont_Custom
+        cls.Cont_Custom = function(self, obj, bag, temp, i)
+            if bag == SIDE_ID then bag = "actor_bag" end
+            return S.side_custom_base(self, obj, bag, temp, i)
+        end
+    end
+    -- Keep the synthetic side-container id all the way through InitProperties.
+    -- ui_inventory preconditions such as Cond_Childs index self.CC[bag];
+    -- pretending that a side-view item is in actor_bag makes that lookup nil
+    -- and can hard-crash on right click.  Instead, refresh the property
+    -- container permissions immediately before each side-view menu is built.
+    -- This also catches GAMMA/addon property rows installed after side_ensure.
+    if type(cls.InitProperties) == "function" and not S.side_props_base then
+        S.side_props_base = cls.InitProperties
+        cls.InitProperties = function(self, obj, bag, ...)
+            if bag == SIDE_ID then
+                side_teach_properties(self)
+            end
+            return S.side_props_base(self, obj, bag, ...)
+        end
+    end
+    local base = cls.Update
+    cls.Update = function(self, ...)
+        local result = base(self, ...)
+        -- UIInventory is a Lua controller, not a CUIWindow, and therefore has
+        -- no IsShown method. Update itself only runs for the live inventory.
+        -- The old guard consequently hid the panel on every single frame.
+        if self and self.equ_dialog then ui_draw(self) end
+        return result
+    end
+    if type(cls.OnKeyboard) == "function" and not S.panel_key_base then
+        S.panel_key_base = cls.OnKeyboard
+        cls.OnKeyboard = function(self, dik, action)
+            local ok, eaten = pcall(panel_keyboard, dik, action)
+            if not ok then log("!attachment panel input: %s", tostring(eaten)) end
+            if ok and eaten then return true end
+            return S.panel_key_base(self, dik, action)
+        end
+    end
+    S.ui_installed = true
+    log("fitted pouch-grid hook and attachment panel installed")
+end
+
+function set_belt(obj)
+    if not (obj and in_actor(obj)) then return false end
+    local id, sec = item_id(obj), item_sec(obj)
+    if not SYS_GetParam(1, sec, "amp_layer_belt") then return false end
+    if S.belt_id and S.belt_id ~= id then return false end
+    S.belt_id = id
+    S.carrier.belt = S.belt_id
+    log("equipped modular belt %s; %s attachment slot(s) active",
+        tostring(S.belt_id), tostring((S.layers.belt and S.layers.belt.slots) or 0))
+    if news_manager then
+        news_manager.send_tip(db.actor,
+            game.translate_string("st_amp_layer_equip_belt") .. ": 2")
+    end
+    refresh_inventory()
+    return S.belt_id ~= nil
+end
+
+function unequip_belt(obj_or_id)
+    local id = type(obj_or_id) == "number" and obj_or_id or item_id(obj_or_id)
+    if not (id and id == S.belt_id) then return false end
+    if #(S.mounted.belt or {}) > 0 then return false end
+    S.belt_id, S.carrier.belt = nil, nil
+    log("modular belt unequipped")
+    refresh_inventory()
+    return true
+end
+
+local function menu_mount(obj, bag, mode)
+    return mode == "inventory" and in_actor(obj)
+        and is_pouch(item_sec(obj)) and not S.owner[item_id(obj)]
+end
+
+local function menu_mount_name() return "st_amp_layer_mount" end
+local function menu_mount_action(obj)
+    local id = item_id(obj)
+    local requested = S.panel_target
+    if mount(obj, requested) then
+        S.panel_target = nil
+        local layer = id and S.owner[id]
+        local slot = 0
+        for i = 1, #(S.mounted[layer] or {}) do
+            if S.mounted[layer][i] == id then slot = i break end
+        end
+        log("mounted %s (%s) on %s slot %s", tostring(item_sec(obj)),
+            tostring(id), tostring(layer), tostring(slot))
+        if news_manager then
+            local text = string.format("%s: %s #%s",
+                game.translate_string("st_amp_layer_mount"),
+                string.upper(tostring(layer)), tostring(slot))
+            news_manager.send_tip(db.actor, text)
+        end
+        refresh_inventory()
+    elseif news_manager then
+        log("!mount refused for %s (%s): no compatible free slot",
+            tostring(item_sec(obj)), tostring(id))
+        news_manager.send_tip(db.actor, game.translate_string("st_amp_layer_no_slot"))
+    end
+end
+
+local function menu_unmount(obj, bag, mode)
+    return mode == "inventory" and S.owner[item_id(obj)] ~= nil
+end
+
+local function menu_unmount_name() return "st_amp_layer_unmount" end
+local function menu_unmount_action(obj)
+    if not unmount(obj) and news_manager then
+        news_manager.send_tip(db.actor, game.translate_string("st_amp_layer_not_empty"))
+    else
+        refresh_inventory()
+    end
+end
+
+local function menu_belt(obj, bag, mode)
+    local sec = item_sec(obj)
+    return mode == "inventory" and in_actor(obj)
+        and sec and SYS_GetParam(1, sec, "amp_layer_belt")
+        and not S.belt_id
+end
+
+local function menu_belt_name() return "st_amp_layer_equip_belt" end
+local function menu_belt_action(obj) set_belt(obj) end
+
+local function menu_unbelt(obj, bag, mode)
+    return mode == "inventory" and item_id(obj) == S.belt_id
+end
+
+local function menu_unbelt_name() return "st_amp_layer_unequip_belt" end
+local function menu_unbelt_action(obj)
+    if not unequip_belt(obj) then
+        if news_manager then
+            news_manager.send_tip(db.actor, game.translate_string("st_amp_layer_not_empty"))
+        end
+    end
+end
+
+local function carrier_for(obj)
+    local id, sec = item_id(obj), item_sec(obj)
+    if not (id and sec and db.actor) then return nil end
+    for _, layer in ipairs(LAYER_ORDER) do
+        if S.carrier[layer] == id then return layer end
+    end
+    if id == S.belt_id then return "belt" end
+    local ok, worn = pcall(function() return db.actor:item_in_slot(7) end)
+    if ok and worn and worn:id() == id then return "outfit" end
+    ok, worn = pcall(function() return db.actor:item_in_slot(13) end)
+    if ok and worn and worn:id() == id then return "backpack" end
+    local amp = rawget(_G, "zzz_armor_mag_pouches")
+    if amp and type(amp.layer_rig_id) == "function" then
+        local good, rid = pcall(amp.layer_rig_id)
+        if good and rid == id then return "rig" end
+    end
+    return nil
+end
+
+local function menu_open(obj, bag, mode)
+    return false
+end
+
+local function menu_open_name() return "st_amp_layer_open" end
+local function menu_open_action(obj)
+    return
+end
+
+local function menu_strip(obj, bag, mode)
+    local layer = carrier_for(obj)
+    if not (mode == "inventory" and layer) then return false end
+    local list = S.mounted[layer] or {}
+    for i = 1, #list do
+        if reconcile_pouch_contents(list[i]) == 0 then return true end
+    end
+    return false
+end
+
+local function menu_strip_name() return "st_amp_layer_strip_empty" end
+local function menu_strip_action(obj)
+    local layer = carrier_for(obj)
+    if not layer then return end
+    local list = S.mounted[layer] or {}
+    for i = #list, 1, -1 do
+        if reconcile_pouch_contents(list[i]) == 0 then unmount(list[i]) end
+    end
+end
+
+local function queue_looted(obj)
+    -- X-Ray reports every restored inventory object through the same callback
+    -- used by real pickups, before actor_on_first_update. Those objects already
+    -- have deliberate saved grid positions and must never be treated as loot.
+    if not (S.autoloot and S.ready and S.take_ready) then return end
+    local id, sec = item_id(obj), item_sec(obj)
+    if not (id and sec) or is_pouch(sec) then return end
+    local now = time_global and time_global() or 0
+    local manual_until = S.manual_out_until[id]
+    if manual_until and now <= manual_until then
+        S.pending_set[id] = nil
+        if S.contained[id] then remove(id) end
+        dbg("ignored manual equipment transfer for %s", tostring(id))
+        return
+    elseif manual_until then
+        S.manual_out_until[id] = nil
+    end
+    if S.pending_set[id] then return end
+    -- A magazine ejected by Mags Redux is reported as actor_on_item_take just
+    -- like corpse loot. Respect its explicit "empty magazines to rucksack"
+    -- setting instead of immediately overriding it with our dump-pouch route.
+    local just_reloaded = now - (S.reload_at or -10000) >= 0
+        and now - (S.reload_at or -10000) < 1500
+    if mags_ejects_to_ruck() and SYS_GetParam(1, sec, "is_mag")
+        and (just_reloaded or empty_magazine(obj, sec)) then
+        if S.contained[id] then remove(id) end
+        dbg("left empty magazine %s in rucksack by Mags Redux setting", tostring(id))
+        return
+    end
+    S.pending[#S.pending + 1] = id
+    S.pending_set[id] = true
+end
+
+local function on_weapon_reload()
+    S.reload_at = time_global and time_global() or 0
+end
+
+local function on_take(obj)
+    queue_looted(obj)
+end
+
+-- Interaction Dot Marks' Alt action bypasses actor_on_item_take and emits
+-- this callback after transfer_item instead.
+local function on_take_from_box(box, obj)
+    queue_looted(obj)
+end
+
+local function actor_inventory_ids()
+    local ids = {}
+    if not db.actor then return ids end
+    pcall(function()
+        db.actor:iterate_inventory(function(_, obj)
+            local id = item_id(obj)
+            if id then ids[id] = true end
+        end)
+    end)
+    return ids
+end
+
+local function install_autolooter_hook()
+    local auto = rawget(_G, "z_auto_looter")
+    if not auto then pcall(function() auto = z_auto_looter end) end
+    if not (auto and type(auto.handle_loot) == "function") then return false end
+    if auto.handle_loot == S.autoloot_hook then return true end
+
+    local base = auto.handle_loot
+    local wrapped = function(source, ...)
+        local before = actor_inventory_ids()
+        local result = base(source, ...)
+        if db.actor then
+            pcall(function()
+                db.actor:iterate_inventory(function(_, obj)
+                    local id = item_id(obj)
+                    if id and not before[id] then queue_looted(obj) end
+                end)
+            end)
+        end
+        return result
+    end
+    S.autoloot_hook = wrapped
+    auto.handle_loot = wrapped
+    log("GAMMA Autolooter transfer hook installed")
+    return true
+end
+
+local function process_pending()
+    if S.autoloot and not S.autoloot_hook then install_autolooter_hook() end
+
+    -- Finish native-container migration only after the corresponding client
+    -- objects exist. Reassert ownership because UI insertion and callbacks can
+    -- run between alife_create_item and this frame, then force one clean grid
+    -- rebuild with no remembered backpack position.
+    local migrated = false
+    for id, pouch_id in pairs(S.migrate_pending) do
+        local obj = actor_object(id)
+        if obj and in_actor(obj) and S.owner[pouch_id] then
+            local list, found = S.contents[pouch_id] or {}, false
+            for i = 1, #list do if list[i] == id then found = true break end end
+            if not found then list[#list + 1] = id end
+            S.contents[pouch_id], S.contained[id] = list, pouch_id
+            local grid = rawget(_G, "zzz_amp_grid")
+            if grid and type(grid.forget_position) == "function" then
+                pcall(grid.forget_position, id)
+            end
+            S.migrate_attempts[id] = (S.migrate_attempts[id] or 0) + 1
+            if S.migrate_attempts[id] > 30 then
+                log("!migration placement timed out for item %s in pouch %s; using backpack",
+                    tostring(id), tostring(pouch_id))
+                S.migrate_pending[id], S.migrate_attempts[id] = nil, nil
+                remove(id)
+            end
+            migrated = true
+        elseif not S.owner[pouch_id] then
+            S.migrate_pending[id], S.migrate_attempts[id] = nil, nil
+        end
+    end
+    if migrated then refresh_inventory() end
+
+    if not (S.enabled and S.autoloot) then
+        S.pending, S.pending_set = {}, {}
+        return
+    end
+    -- Bulk looters can transfer hundreds of objects in one frame. Route a
+    -- bounded batch so opening a packed corpse does not freeze the UI.
+    local count, routed = math.min(20, #S.pending), 0
+    for i = 1, count do
+        local id = table.remove(S.pending)
+        S.pending_set[id] = nil
+        local obj = actor_object(id)
+        if obj and in_actor(obj) and route(obj) then routed = routed + 1 end
+    end
+    if routed > 0 then
+        log("autoloot routed %s of %s transferred item(s)", tostring(routed), tostring(count))
+        refresh_inventory()
+    end
+end
+
+local function suspend_loot_routing()
+    S.take_ready = false
+    S.pending, S.pending_set = {}, {}
+end
+
+local function resume_loot_routing()
+    -- Discard anything reported while the actor inventory was reconstructed.
+    S.pending, S.pending_set = {}, {}
+    S.take_ready = true
+    dbg("loot routing enabled after inventory restore")
+end
+
+local function on_drop(obj)
+    local id = item_id(obj)
+    if not id then return end
+
+    -- A carrier leaving the actor cannot keep actor-owned pouch objects hidden.
+    -- Detach them first; their box contents remain inside the pouch and travel
+    -- with it through the existing AMP serialization.
+    for _, layer in ipairs(LAYER_ORDER) do
+        if S.carrier[layer] == id then
+            local list = S.mounted[layer] or {}
+            for i = #list, 1, -1 do unmount(list[i], true) end
+            S.carrier[layer] = nil
+        end
+    end
+    remove(id)
+    if S.owner[id] then
+        S.contents[id], S.owner[id], S.profile[id] = nil, nil, nil
+    end
+    if S.belt_id == id then S.belt_id = nil end
+    prune()
+end
+
+local function save_state(m)
+    prune()
+    local state = { belt = S.belt_id, mounted = {}, contents = {}, profiles = {}, carriers = {} }
+    for _, layer in ipairs(LAYER_ORDER) do
+        local list = S.mounted[layer] or {}
+        if #list > 0 then state.mounted[layer] = table.concat(list, ",") end
+    end
+    for id, list in pairs(S.contents) do
+        if #list > 0 then state.contents[tostring(id)] = table.concat(list, ",") end
+    end
+    for id, profile in pairs(S.profile) do state.profiles[tostring(id)] = profile end
+    for layer, id in pairs(S.carrier) do state.carriers[layer] = id end
+    m.amp_layers_v2 = state
+end
+
+local function numbers(value)
+    local out = {}
+    if type(value) ~= "string" then return out end
+    for token in string.gmatch(value, "(%d+)") do out[#out + 1] = tonumber(token) end
+    return out
+end
+
+local function load_state(m)
+    suspend_loot_routing()
+    S.mounted, S.owner, S.profile, S.contents, S.contained, S.carrier = {}, {}, {}, {}, {}, {}
+    S.migrate_pending, S.migrate_attempts = {}, {}
+    local state = m.amp_layers_v2
+    if type(state) ~= "table" then return end
+    S.belt_id = type(state.belt) == "number" and state.belt or nil
+    if type(state.carriers) == "table" then
+        for layer, id in pairs(state.carriers) do
+            if S.layers[layer] and type(id) == "number" then S.carrier[layer] = id end
+        end
+    end
+    for _, layer in ipairs(LAYER_ORDER) do
+        local list = numbers(type(state.mounted) == "table" and state.mounted[layer])
+        S.mounted[layer] = list
+        for i = 1, #list do
+            S.owner[list[i]] = layer
+            local saved = type(state.profiles) == "table" and state.profiles[tostring(list[i])]
+            S.profile[list[i]] = saved
+        end
+    end
+    if type(state.contents) == "table" then
+        for pouch, value in pairs(state.contents) do S.contents[tonumber(pouch)] = numbers(value) end
+    end
+    -- Object ids are not resolvable during load_state. Validation belongs to
+    -- actor_on_first_update, after the level and actor inventory exist.
+end
+
+local function migrate_legacy_boxes()
+    local amp = rawget(_G, "zzz_armor_mag_pouches")
+    if not (amp and type(amp.layer_drain) == "function") then return end
+    local n = 0
+    for _, layer in ipairs(LAYER_ORDER) do
+        for i = 1, #(S.mounted[layer] or {}) do
+            local pouch_id = S.mounted[layer][i]
+            local ok, made, ids = pcall(amp.layer_drain, pouch_id)
+            if ok and type(ids) == "table" then
+                local contents = S.contents[pouch_id] or {}
+                local grid = rawget(_G, "zzz_amp_grid")
+                for j = 1, #ids do
+                    local id = tonumber(ids[j])
+                    if id and not S.contained[id] then
+                        contents[#contents + 1], S.contained[id] = id, pouch_id
+                        S.migrate_pending[id] = pouch_id
+                        if grid and type(grid.forget_position) == "function" then
+                            pcall(grid.forget_position, id)
+                        end
+                    end
+                end
+                S.contents[pouch_id] = contents
+            end
+            if ok then n = n + (tonumber(made) or 0) end
+        end
+    end
+    -- Upgrade cleanup for pouches that were loose while 1.2.x was saved.
+    -- They no longer expose the AMP box menu, so any old serialized contents
+    -- are handed back to the backpack once instead of becoming inaccessible.
+    if db.actor then
+        pcall(function()
+            db.actor:iterate_inventory(function(_, obj)
+                local id, sec = item_id(obj), item_sec(obj)
+                if id and is_pouch(sec) and not S.owner[id] then
+                    local ok, made = pcall(amp.layer_drain, id)
+                    if ok then n = n + (tonumber(made) or 0) end
+                end
+            end)
+        end)
+    end
+    if n > 0 then log("migrated %s item(s) from legacy pouch windows", tostring(n)) end
+end
+
+function on_game_start()
+    load_config()
+    refresh_settings()
+    RegisterScriptCallback("actor_on_update", process_pending)
+    RegisterScriptCallback("actor_on_item_drop", on_drop)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+    RegisterScriptCallback("on_before_level_changing", suspend_loot_routing)
+    RegisterScriptCallback("actor_on_first_update", prune)
+    RegisterScriptCallback("actor_on_first_update", migrate_legacy_boxes)
+    RegisterScriptCallback("actor_on_first_update", install_ui)
+    RegisterScriptCallback("actor_on_first_update", resume_loot_routing)
+    RegisterScriptCallback("on_option_change", refresh_settings)
+    if custom_functor_autoinject and custom_functor_autoinject.add_functor then
+        custom_functor_autoinject.add_functor("amp_layer_mount", menu_mount,
+            menu_mount_name, menu_mount, menu_mount_action)
+        custom_functor_autoinject.add_functor("amp_layer_unmount", menu_unmount,
+            menu_unmount_name, menu_unmount, menu_unmount_action)
+        custom_functor_autoinject.add_functor("amp_layer_belt", menu_belt,
+            menu_belt_name, menu_belt, menu_belt_action)
+        custom_functor_autoinject.add_functor("amp_layer_unbelt", menu_unbelt,
+            menu_unbelt_name, menu_unbelt, menu_unbelt_action)
+        custom_functor_autoinject.add_functor("amp_layer_open", menu_open,
+            menu_open_name, menu_open, menu_open_action)
+        custom_functor_autoinject.add_functor("amp_layer_strip", menu_strip,
+            menu_strip_name, menu_strip, menu_strip_action)
+    end
+    log("version %s ready", VERSION)
+end

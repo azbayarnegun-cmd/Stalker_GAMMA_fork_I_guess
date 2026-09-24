@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+    <string id="st_amp_panel_title"><text>POUCH ATTACHMENTS</text></string>
+    <string id="st_amp_panel_hint"><text>Click an empty slot to select its carrier.</text></string>
+    <string id="st_amp_panel_choose"><text>Now right-click a pouch and choose Fit to equipment.</text></string>
+    <string id="st_amp_panel_rig"><text>LOAD-BEARING RIG</text></string>
+    <string id="st_amp_panel_outfit"><text>SUIT</text></string>
+    <string id="st_amp_panel_belt"><text>BELT POUCHES</text></string>
+    <string id="st_amp_panel_backpack"><text>BACKPACK</text></string>
+    <string id="st_amp_panel_absent"><text>NOT EQUIPPED</text></string>
+    <string id="st_amp_panel_belt_platform"><text>MODULAR BELT</text></string>
+    <string id="st_amp_side_title"><text>POUCH STORAGE</text></string>
+</string_table>

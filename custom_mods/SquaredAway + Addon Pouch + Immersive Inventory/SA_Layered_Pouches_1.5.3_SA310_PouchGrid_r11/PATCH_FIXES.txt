@@ -1,0 +1,84 @@
+SA Layered Pouches Addon 1.5.3 + SquaredAway 3.1.0-test - Patched
+
+Replacement package. Load after SquaredAway 3.1.0-test.
+Disable every older Layered Pouches build or compatibility hotfix.
+
+Fixes:
+1. Multi-pouch grid rendering
+   - Initializes the missing local `shown` table in ZoneGrid draw_bounds.
+   - Prevents the protected draw pass from aborting after the first pouch.
+
+2. Rig/pouch right-click Use compatibility
+   - Keeps `amp_layers_side` as the real UI container id.
+   - Refreshes actor_bag property permissions onto the side container immediately
+     before InitProperties builds a right-click menu.
+   - This allows the normal `Use` property to be considered even when other
+     GAMMA mods installed/changed menu properties after the side panel was built.
+
+3. Unsafe container remap avoided
+   - An older hotfix remapped amp_layers_side -> actor_bag for the whole InitProperties call.
+   - That could make ui_inventory Cond_Childs look for a side-view item inside
+     actor_bag and dereference a nil cell (`ci`), causing the reported fatal CTD.
+   - r2 does not remap the bag id globally.
+
+No balance, ownership/save format, stack, capacity, cache, or item-filter changes.
+
+r2 behavior fixes:
+4. Loot destination
+   - Native loot and GAMMA Autolooter transfers stay in actor_bag.
+   - Fitted pouches are filled only by manual drag and drop.
+
+5. Quick Action Wheel
+   - Includes the nil-safe SA 3.1/QAW bridge directly in this replacement.
+   - Add to QAW is available for worn-rig and fitted-pouch contents.
+   - Ordinary backpack items remain excluded from manual Add to QAW.
+
+6. Rig right-click Use
+   - Temporarily permits only the stock Use property on actor_equ while the
+     rig-pocket context menu is built, then restores the original property.
+
+r3 behavior fixes:
+7. Manual pouch placement
+   - Uses the measured fitted-pouch grid rectangle for cross-view drops.
+   - Decorative overlay windows can no longer hide the actual drop target.
+
+8. Stable Add to Quick Action Wheel
+   - Uses the explicit rig/side-container menu context while properties build.
+   - If the current tab is dynamic, full, or already contains the item, the
+     first compatible regular tab is used instead of hiding the entry.
+
+9. Clean rig stripping
+   - Releases each stored object once, removing false "no server object"
+     errors caused by the old object-release plus id-release pair.
+
+r4 source-verified QAW fixes:
+10. Fitted-pouch context action
+    - QAW uses a dynamic Cont_Custom property, not the normal container table.
+    - Only QAW's injected slot is taught to accept amp_layers_side.
+
+11. Fitted-pouch meds remain on the wheel
+    - SquaredAway's QAW meds filter now checks both native AMP rig pockets and
+      fitted Layered pouch ownership by section.
+
+r5 log-confirmed fixes:
+12. Backpack <-> fitted-pouch drag release
+    - Sota suppresses On_CC_DragDrop when its stale source hover equals hold.idx.
+    - The transfer is now resolved in UICellContainer:On_Drag before the base
+      clears the held item, using the same zone/fit/capacity transaction.
+
+13. Rig tooltip log flood
+    - UIInfoItem instances are keyed without invoking their unsupported __eq.
+
+r6 confirmed target-priority fix:
+14. Fitted-pouch storage cells win over the docked AMP panel background
+    - Cross-view storage is checked immediately after true floating windows.
+    - The coarse rig-panel rectangle can no longer convert a pouch-storage drop
+      into the rejected "Only pouches go in the rig's pouch slots" action.
+    - Native side-container hit testing is restored, with measured geometry as
+      a fallback when a decorative Layered window owns the cursor.
+r7 ground-drop safety fix:
+- The fitted-pouch side column overlaps Sota UI's stock trash rectangle.
+- Any unhandled release over the side column is now consumed before Action_Drop.
+- Invalid pouch contents remain in the backpack/source container.
+- Item-on-item drops over occupied fitted-pouch cells use Layered's measured
+  side-column hit test and ignore only the docked rig background.

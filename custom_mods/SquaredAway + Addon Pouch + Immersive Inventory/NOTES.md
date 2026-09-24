@@ -5,8 +5,8 @@
 | Folder | Version | What it is | Uploaded so far |
 |---|---|---|---|
 | `Squared Away 3.1.0/` | 3.1.0 | Rigs, pouches, boxes (`amp_*`): item defs (`mod_system_amp_boxes/amp_rigs/zz_amp_pouches.ltx`), scripts (`zzz_armor_mag_pouches`, `zzz_amp_grid`, `zzz_amp_weardev`, `zzz_amp_compat`, MCMs, `zzz_zzz_qaw_meds_pocket_only`), UI (`zzz_amp*.xml`, `actor_menu_grid_16.xml`, `ui_inventory_16.xml`), textures (`ui_actor_menu.dds` 62 MB, `ui_amp_boxes.dds`, `ui_amp_rigs.dds`), sounds, trader stock, crafting, loadouts | **Complete** (71 files; full zip via chat 2026-09-24) |
-| `SA_Layered_Pouches_1.5.3_SA310_PouchGrid_r11/` | 1.5.3 (for SA 3.1.0, PouchGrid r11) | Layered pouches addon for Squared Away (`amp_layers`) | 31 config/text files; **no scripts (incomplete?)** |
-| `HD_Inventory_Icons_Framework/` | MO2 d2026.9.4 | HD icon framework and icon layering/overrides | 14 scripts |
+| `SA_Layered_Pouches_1.5.3_SA310_PouchGrid_r11/` | 1.5.3 r11 (for SA 3.1.0) | Layered pouches (`amp_layers`): item defs, `zzz_amp_layers.script` + MCM, patched copies of `zzz_amp_grid` / `zzz_armor_mag_pouches` / `haru_quick_action_wheel_mcm`, textures `ui_amp_layers*.dds`, README/INSTALL/PATCH notes | **Complete** (61 files; chat zip 2026-09-24) |
+| `HD_Inventory_Icons_Framework/` | MO2 d2026.9.4 | HD icon framework and icon layering/overrides (scripts only, no textures) | **Complete** (14 scripts; chat zip identical to the web upload) |
 | `FIUT_StashOnly_v1.0.0/` | 1.0.0 | Category headers in stash inventory | 7 files |
 | `501-_Seamless_Inventory_Sort/` | MO2 d2026.9.4 | Keeps SortingPlus order after modifying/moving items. **Requires SortingPlus** (GAMMA `110- SortingPlus`) | 4 files |
 
@@ -32,7 +32,15 @@ Squared Away needs its versions for the grid/rig UI, so it must load after those
 
 **Squared Away files replaced by your own addons (intended):** `zzz_amp_grid.script` (10, then 55), `zzz_armor_mag_pouches.script` (62), and `mod_grok_items_tier_amp.ltx`, `mod_grok_treasure_manager_amp.ltx`, `zzz_grid_stacks.ltx` (30).
 
-**Still undefined:** `amp_pouch_provisions`, `amplayer_sustainment_pouch_t1`–`t3` are modified by your addons but not defined in any uploaded file. They're probably in the full Layered Pouches.
+**Still undefined:** `amp_pouch_provisions`, `amplayer_sustainment_pouch` and `_t1`–`_t3` are modified by addon 20 but defined in no uploaded mod (not in the full Layered Pouches either). Addon 20's comments point to **Smart Loot Routing v1.0.1**, which isn't uploaded.
+
+**Script override chain (confirmed by `xray_hitech.log`, 22 Sep 2026):**
+| Script | Squared Away 3.1.0 | Layered Pouches r11 | Your addons | Version running in-game |
+|---|---|---|---|---|
+| `zzz_amp_grid.script` | 0.65.0-test | +Layered-1.5.3-r11 | 10 (Consolidated-1.0.1), **55** (+ExternalNoStack-1.0.0) | **55** |
+| `zzz_armor_mag_pouches.script` | 3.1.0-test | +Layered-1.5.3-port-r9 | **62** (StableCore-1.0.1 + UBGLUtilityFix-1.0.1) | **62** |
+| `haru_quick_action_wheel_mcm.script` | — | Layered copy | 40 | (also GAMMA `Quick Action Wheel Balance`) |
+Layered Pouches wants to load after SquaredAway 3.1.0, Sota UI, Quick Action Wheel and GAMMA Wheel Balance (INSTALL_R11.txt). Your addons 10–62 must stay after Layered Pouches, as they are now.
 
 No path conflicts for FIUT or Seamless Sort (they use DLTX `mod_*` / `zzz_*` files). Squared Away's trade DLTX stacks on top of GAMMA's trader configs (`G.A.M.M.A. Economy`).
 

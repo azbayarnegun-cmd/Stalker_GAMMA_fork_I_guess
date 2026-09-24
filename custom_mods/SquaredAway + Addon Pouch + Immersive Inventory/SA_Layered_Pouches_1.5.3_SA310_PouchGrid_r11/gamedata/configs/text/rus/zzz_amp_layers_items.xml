@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+  <string id="ui_mcm_menu_AmpLayers">
+    <text>Многослойный инвентарь</text>
+  </string>
+  <string id="ui_mcm_AmpLayers_layers_general">
+    <text>Слои экипировки</text>
+  </string>
+  <string id="ui_mcm_AmpLayers_layers_general_layers_enable">
+    <text>Включить слои экипировки</text>
+  </string>
+  <string id="ui_mcm_AmpLayers_layers_general_layers_autoloot">
+    <text>Раскладывать добычу по установленным подсумкам</text>
+  </string>
+  <string id="ui_mcm_AmpLayers_layers_general_layers_debug">
+    <text>Отладочный журнал</text>
+  </string>
+  <string id="st_amp_layer_mount">
+    <text>Установить на экипировку</text>
+  </string>
+  <string id="st_amp_layer_unmount">
+    <text>Снять с экипировки</text>
+  </string>
+  <string id="st_amp_layer_equip_belt">
+    <text>Надеть разгрузочный пояс</text>
+  </string>
+  <string id="st_amp_layer_unequip_belt">
+    <text>Снять разгрузочный пояс</text>
+  </string>
+  <string id="st_amp_layer_open">
+    <text>Открыть установленные подсумки</text>
+  </string>
+  <string id="st_amp_layer_strip_empty">
+    <text>Снять пустые подсумки</text>
+  </string>
+  <string id="st_amp_layer_no_slot">
+    <text>Нет свободного совместимого крепления</text>
+  </string>
+  <string id="st_amp_layer_not_empty">
+    <text>Перед снятием освободите подсумок</text>
+  </string>
+  <string id="st_amp_belt_name">
+    <text>Модульный разгрузочный пояс</text>
+  </string>
+  <string id="st_amp_belt_descr">
+    <text>Разгрузочный пояс с двумя точками крепления для сбросной сумки, аптечки или универсального подсумка.</text>
+  </string>
+  <string id="st_amp_pouch_magazine_name">
+    <text>Подсумок для магазинов</text>
+  </string>
+  <string id="st_amp_pouch_magazine_descr">
+    <text>Жёсткий подсумок для магазинов. Поднятые магазины сначала направляются сюда.</text>
+  </string>
+  <string id="st_amp_pouch_grenade_name">
+    <text>Гранатный подсумок</text>
+  </string>
+  <string id="st_amp_pouch_grenade_descr">
+    <text>Усиленный подсумок для ручных гранат и метательных взрывных устройств.</text>
+  </string>
+  <string id="st_amp_pouch_medical_name">
+    <text>Подсумок-аптечка</text>
+  </string>
+  <string id="st_amp_pouch_medical_descr">
+    <text>Маркированный подсумок быстрого доступа только для медикаментов.</text>
+  </string>
+  <string id="st_amp_pouch_admin_name">
+    <text>Административный подсумок</text>
+  </string>
+  <string id="st_amp_pouch_admin_descr">
+    <text>Плоский защищённый подсумок для документов, записок и КПК. Активные квестовые предметы остаются в рюкзаке.</text>
+  </string>
+  <string id="st_amp_pouch_universal_name">
+    <text>Универсальный подсумок</text>
+  </string>
+  <string id="st_amp_pouch_universal_descr">
+    <text>Универсальная сумка, принимающая любой предмет, если в специальном подсумке нет места.</text>
+  </string>
+  <string id="st_amp_pouch_universal_s_name">
+    <text>Малый универсальный подсумок</text>
+  </string>
+  <string id="st_amp_pouch_universal_s_descr">
+    <text>Компактный универсальный подсумок с внутренней сеткой 2 на 2.</text>
+  </string>
+  <string id="st_amp_pouch_universal_l_name">
+    <text>Большой универсальный подсумок</text>
+  </string>
+  <string id="st_amp_pouch_universal_l_descr">
+    <text>Вместительный универсальный подсумок 5 на 4 для рюкзака или разгрузки.</text>
+  </string>
+  <string id="st_amp_pouch_sustainment_name">
+    <text>Сухарная сумка</text>
+  </string>
+  <string id="st_amp_pouch_sustainment_descr">
+    <text>Крепящаяся на рюкзак сумка для еды и напитков.</text>
+  </string>
+  <string id="st_amp_pouch_dump_name">
+    <text>Сумка для сброса магазинов</text>
+  </string>
+  <string id="st_amp_pouch_dump_descr">
+    <text>Складная поясная сумка для магазинов, извлечённых при перезарядке.</text>
+  </string>
+</string_table>
