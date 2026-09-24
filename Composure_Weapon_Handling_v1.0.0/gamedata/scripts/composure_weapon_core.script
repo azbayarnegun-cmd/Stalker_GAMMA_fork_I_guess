@@ -1,0 +1,299 @@
+--[[
+    Composure Weapon Handling v1.
+    Reads Framework snapshots and never changes Composure or ballistics.
+--]]
+
+local VERSION = "1.0.0"
+local REQUIRED_FRAMEWORK_API = 2
+local OWNER = "composure_weapon"
+local LOG = "[composure_weapon:v1.0.0]"
+
+local callbacks_registered = false
+local listeners_registered = false
+local last_update_ms = nil
+local runtime_active = false
+local last_state = nil
+local module_errors = {}
+local last_diagnostic_ms = nil
+
+local function now_ms()
+    if time_global then return time_global() end
+    return 0
+end
+
+local function log(fmt, ...)
+    printf(LOG .. " " .. fmt, ...)
+end
+
+local function cfg(key, fallback)
+    if composure_weapon_mcm and composure_weapon_mcm.get_config then
+        local ok, value = pcall(composure_weapon_mcm.get_config, key)
+        if ok and value ~= nil then return value end
+    end
+    return fallback
+end
+
+local function clamp(v, lo, hi)
+    if v < lo then return lo end
+    if v > hi then return hi end
+    return v
+end
+
+local function framework_ready()
+    if not composure_framework or not composure_framework.supports or not composure_framework.get_snapshot then return false end
+    local ok, supported = pcall(composure_framework.supports, REQUIRED_FRAMEWORK_API)
+    return ok and supported == true
+end
+
+local function safe_call(name, object, method, ...)
+    if not object or type(object[method]) ~= "function" then
+        module_errors[name] = (module_errors[name] or 0) + 1
+        return false, "module unavailable"
+    end
+    local ok, result, detail = pcall(object[method], ...)
+    if not ok then
+        module_errors[name] = (module_errors[name] or 0) + 1
+        log("%s.%s failed: %s", name, method, tostring(result))
+        return false, result
+    end
+    return result, detail
+end
+
+local function config_snapshot()
+    return {
+        enabled = cfg("enabled", true) == true,
+        overall_strength = clamp(tonumber(cfg("overall_strength", 1)) or 1, 0, 1.5),
+        start_composure = clamp(tonumber(cfg("start_composure", 69)) or 69, 40, 85),
+        max_stability_loss = clamp(tonumber(cfg("max_stability_loss", 0.55)) or 0.55, 0, 0.80),
+        enable_recoil = cfg("enable_recoil", true) == true,
+        recoil_strength = clamp(tonumber(cfg("recoil_strength", 0.35)) or 0.35, 0, 0.75),
+        enable_recovery = cfg("enable_recovery", true) == true,
+        recovery_penalty = clamp(tonumber(cfg("recovery_penalty", 0.35)) or 0.35, 0, 0.60),
+        enable_settle = cfg("enable_settle", true) == true,
+        max_settle_extra = clamp(tonumber(cfg("max_settle_extra", 0.25)) or 0.25, 0, 0.60),
+        enable_dynamic_stability = cfg("enable_dynamic_stability", true) == true,
+        stability_recovery = clamp(tonumber(cfg("stability_recovery", 0.55)) or 0.55, 0.10, 1.50),
+        moving_penalty = clamp(tonumber(cfg("moving_penalty", 0.18)) or 0.18, 0, 0.50),
+        sprint_penalty = clamp(tonumber(cfg("sprint_penalty", 0.45)) or 0.45, 0, 0.75),
+        crouch_bonus = clamp(tonumber(cfg("crouch_bonus", 0.12)) or 0.12, 0, 0.30),
+        stationary_bonus = clamp(tonumber(cfg("stationary_bonus", 0.08)) or 0.08, 0, 0.30),
+        enable_shot_accumulation = cfg("enable_shot_accumulation", true) == true,
+        instability_per_shot = clamp(tonumber(cfg("instability_per_shot", 0.08)) or 0.08, 0, 0.20),
+        automatic_extra = clamp(tonumber(cfg("automatic_extra", 0.04)) or 0.04, 0, 0.15),
+        burst_recovery = clamp(tonumber(cfg("burst_recovery", 0.35)) or 0.35, 0.05, 1),
+        preserve_first_shot = cfg("preserve_first_shot", true) == true,
+        enable_sway_adapters = cfg("enable_sway_adapters", true) == true,
+        preview_enabled = cfg("preview_enabled", false) == true,
+        preview_composure = clamp(tonumber(cfg("preview_composure", 25)) or 25, 0, 100),
+        debug_log = cfg("debug_log", false) == true,
+        diagnostic_interval = clamp(tonumber(cfg("diagnostic_interval", 3)) or 3, 1, 15),
+    }
+end
+
+local function active_weapon()
+    if not db or not db.actor or not db.actor.active_item then return nil end
+    local ok, item = pcall(function() return db.actor:active_item() end)
+    if not ok or not item then return nil end
+    if IsWeapon then
+        local valid, weapon = pcall(IsWeapon, item)
+        if valid and not weapon then return nil end
+    end
+    return item
+end
+
+local function cleanup()
+    safe_call("recoil", composure_weapon_recoil, "cleanup")
+    safe_call("sway", composure_weapon_sway, "cleanup")
+    safe_call("movement", composure_weapon_movement, "reset")
+    safe_call("stability", composure_weapon_stability, "reset")
+    runtime_active, last_state, last_update_ms = false, nil, nil
+end
+
+function set_disturbance(id, amount, opts)
+    return safe_call("stability", composure_weapon_stability, "set_disturbance", id, amount, opts)
+end
+
+function clear_disturbance(id)
+    return safe_call("stability", composure_weapon_stability, "clear_disturbance", id)
+end
+
+function clear_disturbance_owner(owner)
+    return safe_call("stability", composure_weapon_stability, "clear_owner", owner)
+end
+
+function register_sway_adapter(id, fn, opts)
+    return safe_call("sway", composure_weapon_sway, "register_adapter", id, fn, opts)
+end
+
+function unregister_sway_adapter(id)
+    return safe_call("sway", composure_weapon_sway, "unregister_adapter", id)
+end
+
+local function on_disturbance_event(_, payload)
+    local data = type(payload) == "table" and payload.metadata or nil
+    if type(data) ~= "table" then return end
+    local id = data.id or data.kind or "event"
+    set_disturbance(tostring(id), tonumber(data.amount) or 0, {
+        owner = payload.owner or "external",
+        ttl = data.ttl or data.duration,
+    })
+end
+
+local function register_listeners()
+    if listeners_registered or not framework_ready() then return end
+    listeners_registered = composure_framework.register_listener(
+        "composure_weapon.disturbance", "weapon.disturbance", on_disturbance_event,
+        { owner = OWNER, priority = 0 }
+    ) == true
+end
+
+local function unregister_listeners()
+    if composure_framework and composure_framework.unregister_listener then
+        pcall(composure_framework.unregister_listener, "composure_weapon.disturbance", "weapon.disturbance")
+    end
+    listeners_registered = false
+end
+
+local function on_actor_update()
+    local now = now_ms()
+    local interval = clamp(tonumber(cfg("update_ms", 50)) or 50, 25, 250)
+    if last_update_ms and now - last_update_ms < interval then return end
+    local dt = last_update_ms and clamp((now - last_update_ms) / 1000, 0, 0.5) or interval / 1000
+    last_update_ms = now
+
+    if not framework_ready() then
+        if runtime_active then cleanup(); last_update_ms = now end
+        return
+    end
+    register_listeners()
+    local ok, snapshot = pcall(composure_framework.get_snapshot)
+    if not ok or type(snapshot) ~= "table" then
+        if runtime_active then cleanup(); last_update_ms = now end
+        return
+    end
+
+    local config = config_snapshot()
+    local source_value = clamp(tonumber(snapshot.value) or 100, 0, 100)
+    local value = config.preview_enabled and config.preview_composure or source_value
+    local weapon = active_weapon()
+    local enabled = config.enabled and value > 0 and weapon ~= nil
+    local movement = composure_weapon_movement.sample(db and db.actor or nil)
+    local state = composure_weapon_stability.update(value, movement, dt, config)
+    state.tier = snapshot.tier
+    state.source_value = source_value
+    state.preview_enabled = config.preview_enabled
+    state.movement = movement
+    state.enabled = enabled
+    last_state = state
+
+    safe_call("recoil", composure_weapon_recoil, "sync", weapon, state, config, enabled)
+    safe_call("sway", composure_weapon_sway, "sync", state, enabled and config.enable_sway_adapters)
+    runtime_active = enabled
+
+    if config.debug_log and (not last_diagnostic_ms or now - last_diagnostic_ms >= config.diagnostic_interval * 1000) then
+        last_diagnostic_ms = now
+        log("value=%.1f source=%.1f preview=%s stability=%.3f ceiling=%.3f pressure=%.3f shot=%.3f move=%.3f external=%.3f active=%s",
+            value, source_value, tostring(config.preview_enabled), state.current, state.ceiling, state.pressure,
+            state.shot_load, state.movement_load, state.disturbance_load, tostring(enabled))
+    end
+end
+
+local function on_weapon_fired()
+    if not runtime_active then return end
+    safe_call("stability", composure_weapon_stability, "on_shot", config_snapshot())
+end
+
+local function on_zoom_in()
+    safe_call("movement", composure_weapon_movement, "set_ads", true)
+end
+
+local function on_zoom_out()
+    safe_call("movement", composure_weapon_movement, "set_ads", false)
+end
+
+local function on_jump()
+    safe_call("movement", composure_weapon_movement, "on_jump")
+end
+
+local function on_land(fall_speed)
+    safe_call("movement", composure_weapon_movement, "on_land", fall_speed)
+end
+
+local function invalidate_weapon()
+    safe_call("recoil", composure_weapon_recoil, "invalidate")
+end
+
+local function on_option_change()
+    cleanup()
+end
+
+local function on_first_update()
+    cleanup()
+    register_listeners()
+end
+
+local function on_level_changing()
+    cleanup()
+    unregister_listeners()
+end
+
+function get_snapshot()
+    if type(last_state) ~= "table" then return nil end
+    local out = {}
+    for key, value in pairs(last_state) do out[key] = value end
+    return out
+end
+
+function get_version() return VERSION end
+function get_diagnostics()
+    return {
+        version = VERSION,
+        framework_ready = framework_ready(),
+        runtime_active = runtime_active,
+        module_errors = module_errors,
+        recoil = composure_weapon_recoil and composure_weapon_recoil.get_diagnostics and composure_weapon_recoil.get_diagnostics() or nil,
+        sway = composure_weapon_sway and composure_weapon_sway.get_diagnostics and composure_weapon_sway.get_diagnostics() or nil,
+    }
+end
+
+function debug_dump(source)
+    local diagnostics = get_diagnostics()
+    local state = last_state
+    log("DIAG source=%s version=%s framework=%s active=%s", tostring(source or "manual"), VERSION,
+        tostring(diagnostics.framework_ready), tostring(runtime_active))
+    if state then
+        log("DIAG value=%.1f source_value=%.1f preview=%s current=%.3f target=%.3f ceiling=%.3f pressure=%.3f sway=%.3f",
+            tonumber(state.value) or -1, tonumber(state.source_value) or -1, tostring(state.preview_enabled),
+            tonumber(state.current) or -1, tonumber(state.target) or -1, tonumber(state.ceiling) or -1,
+            tonumber(state.pressure) or -1, tonumber(state.sway_signal) or -1)
+    else
+        log("DIAG no active state")
+    end
+    return diagnostics
+end
+
+local function on_key_press(key)
+    local default_key = DIK_keys and DIK_keys.DIK_F11 or 87
+    local configured = math.floor(tonumber(cfg("diagnostic_key", default_key)) or default_key)
+    if key == configured then debug_dump("key") end
+end
+
+function on_game_start()
+    if callbacks_registered then return end
+    callbacks_registered = true
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("actor_on_first_update", on_first_update)
+    RegisterScriptCallback("actor_on_update", on_actor_update)
+    RegisterScriptCallback("actor_on_weapon_fired", on_weapon_fired)
+    RegisterScriptCallback("actor_on_weapon_zoom_in", on_zoom_in)
+    RegisterScriptCallback("actor_on_weapon_zoom_out", on_zoom_out)
+    RegisterScriptCallback("actor_on_jump", on_jump)
+    RegisterScriptCallback("actor_on_land", on_land)
+    RegisterScriptCallback("actor_item_to_slot", invalidate_weapon)
+    RegisterScriptCallback("actor_item_to_ruck", invalidate_weapon)
+    RegisterScriptCallback("actor_on_item_drop", invalidate_weapon)
+    RegisterScriptCallback("on_level_changing", on_level_changing)
+    RegisterScriptCallback("actor_on_net_destroy", on_level_changing)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    log("v%s initialized; Framework API %d and GAMMA Modded Exes required", VERSION, REQUIRED_FRAMEWORK_API)
+end

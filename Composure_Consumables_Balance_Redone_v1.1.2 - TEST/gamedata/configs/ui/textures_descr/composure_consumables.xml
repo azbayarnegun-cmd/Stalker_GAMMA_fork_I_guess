@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<w>
+    <file name="ui\composure\composure">
+        <texture id="ui_composure_stat_composure" x="0" y="0" width="64" height="64" />
+    </file>
+    <file name="ui\composure\duration">
+        <texture id="ui_composure_stat_duration" x="0" y="0" width="64" height="64" />
+    </file>
+    <file name="ui\composure\recovery">
+        <texture id="ui_composure_stat_recovery" x="0" y="0" width="64" height="64" />
+    </file>
+    <file name="ui\composure\stress">
+        <texture id="ui_composure_stat_stress" x="0" y="0" width="64" height="64" />
+    </file>
+    <file name="ui\composure\crash">
+        <texture id="ui_composure_stat_crash" x="0" y="0" width="64" height="64" />
+    </file>
+</w>

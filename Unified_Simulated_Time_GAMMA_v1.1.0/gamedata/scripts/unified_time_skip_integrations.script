@@ -1,0 +1,617 @@
+-- Unified Simulated Time - GAMMA v1.1.0
+-- Runtime-only integrations. No GAMMA base script is replaced.
+
+local VERSION = "1.1.0"
+local LOG = "[unified_time_skip]"
+local routes = ini_file("misc\\unified_level_transition_routes.ltx")
+local callbacks_registered = false
+local raw_change_game_time = level.change_game_time
+local suppress_transition_clock = false
+local previous_sim_passthrough = false
+local CLOCK_GUARD_GROUP = "unified_time_skip"
+local CLOCK_GUARD_ID = "clear_transition_clock_guard"
+
+local transition_class = nil
+local original_transition = nil
+local wrapped_transition = nil
+local transition_in_progress = false
+local transition_previous_invulnerable_time = nil
+local ARRIVAL_GRACE_REAL_SECONDS = 120
+
+local original_sleep = nil
+local wrapped_sleep = nil
+local original_books = nil
+local wrapped_books = nil
+local original_anabiotic = nil
+local wrapped_anabiotic = nil
+local original_flash = nil
+local wrapped_flash = nil
+local original_prepare = nil
+local wrapped_prepare = nil
+local original_gather = nil
+local wrapped_gather = nil
+local original_soulslike = nil
+local wrapped_soulslike = nil
+
+-- This narrow guard is active only while GAMMA's original transition is being
+-- committed. It prevents an old transition addon from applying a second clock
+-- jump and also sits safely underneath an accidentally retained v1.2.0 catch-all.
+level.change_game_time = function(d, h, m)
+    if suppress_transition_clock then
+        if unified_time_skip_mcm and unified_time_skip_mcm.get_config
+        and unified_time_skip_mcm.get_config("debug_log") == true then
+            printf(LOG .. " suppressed duplicate transition clock jump: %s min",
+                tostring((tonumber(d) or 0) * 1440 + (tonumber(h) or 0) * 60 + (tonumber(m) or 0)))
+        end
+        return
+    end
+    return raw_change_game_time(d, h, m)
+end
+
+local function cfg(key, fallback)
+    if unified_time_skip_mcm and unified_time_skip_mcm.get_config then
+        local ok, value = pcall(unified_time_skip_mcm.get_config, key)
+        if ok and value ~= nil then return value end
+    end
+    return fallback
+end
+
+local function enabled(key)
+    return cfg("master_enabled", true) == true and cfg(key, false) == true
+end
+
+local function log(fmt, ...)
+    local ok, message = pcall(string.format, fmt, ...)
+    printf(LOG .. " " .. (ok and message or tostring(fmt)))
+end
+
+local function debug_log(fmt, ...)
+    if cfg("debug_log", false) == true then log(fmt, ...) end
+end
+
+local function clamp(value, lo, hi)
+    value = tonumber(value) or lo
+    if value < lo then return lo end
+    if value > hi then return hi end
+    return value
+end
+
+local function other_skip_active()
+    if simulated_time and simulated_time.is_active then
+        local ok, active = pcall(simulated_time.is_active)
+        if ok and active then return true end
+    end
+    if consumable_time_skip and consumable_time_skip.is_active then
+        local ok, active = pcall(consumable_time_skip.is_active)
+        if ok and active then return true end
+    end
+    return false
+end
+
+local function environment_managers()
+    local surge = nil
+    local psi = nil
+    if surge_manager and surge_manager.get_surge_manager then
+        local ok, value = pcall(surge_manager.get_surge_manager)
+        if ok then surge = value end
+    end
+    if psi_storm_manager and psi_storm_manager.get_psi_storm_manager then
+        local ok, value = pcall(psi_storm_manager.get_psi_storm_manager)
+        if ok then psi = value end
+    end
+    return surge, psi
+end
+
+local function event_is_active(manager)
+    return manager and manager.started == true and manager.finished ~= true
+end
+
+local function active_environment_event()
+    local surge, psi = environment_managers()
+    if event_is_active(surge) then return true, "emission" end
+    if event_is_active(psi) then return true, "psi_storm" end
+    return false, nil
+end
+
+local function event_remaining(manager, last_key)
+    if not (manager and manager._delta and manager[last_key]) then return nil end
+    local ok, elapsed = pcall(function()
+        return game.get_game_time():diffSec(manager[last_key])
+    end)
+    if not ok then return nil end
+    return math.max(0, (tonumber(manager._delta) or 0) - (tonumber(elapsed) or 0))
+end
+
+local function capture_environment_remaining()
+    local surge, psi = environment_managers()
+    return {
+        surge = event_remaining(surge, "last_surge_time"),
+        psi = event_remaining(psi, "last_psi_storm_time"),
+    }
+end
+
+local function remaining_after_travel(environment, minutes)
+    local passed = math.max(0, tonumber(minutes) or 0) * 60
+    return {
+        surge = environment and environment.surge ~= nil
+            and math.max(0, environment.surge - passed) or nil,
+        psi = environment and environment.psi ~= nil
+            and math.max(0, environment.psi - passed) or nil,
+    }
+end
+
+local function restore_environment_countdown(environment)
+    local surge, psi = environment_managers()
+    if surge and environment and environment.surge ~= nil then
+        surge.last_surge_time = game.get_game_time()
+        surge._delta = math.max(0, tonumber(environment.surge) or 0)
+    end
+    if psi and environment and environment.psi ~= nil then
+        psi.last_psi_storm_time = game.get_game_time()
+        psi._delta = math.max(0, tonumber(environment.psi) or 0)
+    end
+end
+
+-- Move both event deadlines forward by exactly the game time about to pass.
+-- Their countdown therefore remains frozen throughout transition simulation.
+local function hold_environment_events(minutes)
+    local seconds = math.max(0, tonumber(minutes) or 0) * 60
+    local surge, psi = environment_managers()
+    if surge and surge._delta then surge._delta = surge._delta + seconds end
+    if psi and psi._delta then psi._delta = psi._delta + seconds end
+end
+
+local function protect_actor_for_transition()
+    if not bind_stalker_ext then return end
+    if transition_previous_invulnerable_time == nil then
+        transition_previous_invulnerable_time = bind_stalker_ext.invulnerable_time
+    end
+    bind_stalker_ext.invulnerable_time = time_global() + 60000
+end
+
+local function restore_actor_protection()
+    if not bind_stalker_ext then
+        transition_previous_invulnerable_time = nil
+        return
+    end
+    local previous = tonumber(transition_previous_invulnerable_time)
+    bind_stalker_ext.invulnerable_time = previous and math.max(previous, time_global() + 1)
+        or time_global() + 1
+    transition_previous_invulnerable_time = nil
+end
+
+local function transition_step_count(minutes)
+    if minutes <= 30 then return 1 end
+    if minutes <= 60 then return 2 end
+    if minutes <= 120 then return 4 end
+    return 5
+end
+
+local function route_number(section, key, fallback)
+    if not routes or not section or not routes:section_exist(section) then return fallback end
+    if not routes:line_exist(section, key) then return fallback end
+    local ok, value = pcall(function() return routes:r_string(section, key) end)
+    if ok and value ~= nil then return tonumber(value) or fallback end
+    return fallback
+end
+
+local function choose_transition_minutes(section)
+    local fallback_min = math.floor(clamp(cfg("transition_fallback_min", 60), 1, 360))
+    local fallback_max = math.floor(clamp(cfg("transition_fallback_max", 120), 1, 360))
+    if fallback_max < fallback_min then fallback_max = fallback_min end
+
+    if not (routes and section and routes:section_exist(section)) then
+        return math.random(fallback_min, fallback_max), "fallback"
+    end
+
+    -- The original transition addon defaults a known route to 1h01-1h59
+    -- when its section has no explicit duration fields.
+    local hmin = route_number(section, "hours_min", 1)
+    local hmax = route_number(section, "hours_max", hmin)
+    local mmin = route_number(section, "minutes_min", 1)
+    local mmax = route_number(section, "minutes_max", 59)
+    if hmax < hmin then hmax = hmin end
+    if mmax < mmin then mmax = mmin end
+
+    local minutes = math.random(hmin, hmax) * 60 + math.random(mmin, mmax)
+    if minutes <= 0 then minutes = math.random(fallback_min, fallback_max) end
+    return minutes, "route"
+end
+
+local function transition_storage()
+    if not (alife_storage_manager and alife_storage_manager.get_state) then return nil end
+    local ok, state = pcall(alife_storage_manager.get_state)
+    if ok then return state end
+    return nil
+end
+
+local function remember_transition(minutes, environment)
+    local state = transition_storage()
+    if not state then return end
+    state.unified_time_skip_arrival_minutes = minutes
+    state.unified_time_skip_surge_remaining = environment and environment.surge or nil
+    state.unified_time_skip_psi_remaining = environment and environment.psi or nil
+    state.unified_time_skip_arrival_grace = true
+end
+
+local function apply_arrival_event_grace(state)
+    if not (state and state.unified_time_skip_arrival_grace == true) then return end
+    local surge, psi = environment_managers()
+    local factor = 1
+    if level and level.get_time_factor then
+        local ok, value = pcall(level.get_time_factor)
+        if ok then factor = math.max(1, tonumber(value) or 1) end
+    end
+    local grace_game_seconds = ARRIVAL_GRACE_REAL_SECONDS * factor
+    local now = game.get_game_time()
+
+    if surge and state.unified_time_skip_surge_remaining ~= nil then
+        surge.last_surge_time = now
+        surge._delta = math.max(
+            math.max(0, tonumber(state.unified_time_skip_surge_remaining) or 0),
+            grace_game_seconds)
+    end
+    if psi and state.unified_time_skip_psi_remaining ~= nil then
+        psi.last_psi_storm_time = game.get_game_time()
+        psi._delta = math.max(
+            math.max(0, tonumber(state.unified_time_skip_psi_remaining) or 0),
+            grace_game_seconds)
+    end
+
+    state.unified_time_skip_surge_remaining = nil
+    state.unified_time_skip_psi_remaining = nil
+    state.unified_time_skip_arrival_grace = nil
+    debug_log("arrival anomaly grace applied: %d real seconds", ARRIVAL_GRACE_REAL_SECONDS)
+end
+
+local function notify_arrival()
+    local state = transition_storage()
+    if not state then return end
+    apply_arrival_event_grace(state)
+    restore_actor_protection()
+    local minutes = tonumber(state.unified_time_skip_arrival_minutes)
+    state.unified_time_skip_arrival_minutes = nil
+    if not minutes or cfg("show_messages", true) ~= true then return end
+    local message = string.format("%d %s", minutes,
+        game.translate_string("st_uts_travel_minutes_passed"))
+    if actor_menu and actor_menu.set_msg then
+        pcall(actor_menu.set_msg, 1, message, 5)
+    else
+        log("%s", message)
+    end
+end
+
+local function clear_transition_clock_guard()
+    if RemoveTimeEvent then pcall(RemoveTimeEvent, CLOCK_GUARD_GROUP, CLOCK_GUARD_ID) end
+    suppress_transition_clock = false
+    if simulated_time then simulated_time.passthrough = previous_sim_passthrough == true end
+    previous_sim_passthrough = false
+    return true
+end
+
+local function start_transition_clock_guard()
+    suppress_transition_clock = true
+    if simulated_time then
+        previous_sim_passthrough = simulated_time.passthrough == true
+        simulated_time.passthrough = true
+    end
+    if CreateTimeEvent then
+        pcall(CreateTimeEvent, CLOCK_GUARD_GROUP, CLOCK_GUARD_ID, 12,
+            clear_transition_clock_guard)
+    end
+end
+
+local function begin_transition(self, args, orig)
+    if transition_in_progress or other_skip_active() then return false end
+    if not (simulated_time and simulated_time.advance) then return false end
+
+    local environment_active, environment_name = active_environment_event()
+    if environment_active then
+        local message = game.translate_string("st_uts_transition_blocked_anomaly")
+        if actor_menu and actor_menu.set_msg then
+            pcall(actor_menu.set_msg, 1, message, 5)
+        else
+            log("%s", message)
+        end
+        debug_log("transition blocked: active %s", tostring(environment_name))
+        return true
+    end
+
+    local section = self and self.name or nil
+    local minutes, source = choose_transition_minutes(section)
+    local step_count = transition_step_count(minutes)
+    local step_size = math.ceil(minutes / step_count)
+    local environment_before = capture_environment_remaining()
+    transition_in_progress = true
+    protect_actor_for_transition()
+
+    local started = simulated_time.advance(minutes, {
+        label = game.translate_string("st_sim_traveling"),
+        steps = step_count,
+        on_step = function(elapsed, total)
+            local next_minutes = math.min(step_size, total - elapsed)
+            hold_environment_events(next_minutes)
+            protect_actor_for_transition()
+        end,
+        on_abort = function(reason, sim_state)
+            transition_in_progress = false
+            local elapsed = sim_state and sim_state.elapsed_min or 0
+            restore_environment_countdown(
+                remaining_after_travel(environment_before, elapsed))
+            restore_actor_protection()
+            debug_log("protected transition aborted: %s", tostring(reason))
+        end,
+        on_complete = function()
+            transition_in_progress = false
+            local environment = remaining_after_travel(environment_before, minutes)
+            remember_transition(minutes, environment)
+
+            -- Keep a short guard through GAMMA's delayed transition callback.
+            start_transition_clock_guard()
+            local ok, result = pcall(orig, self, unpack(args))
+            if not ok then
+                clear_transition_clock_guard()
+                apply_arrival_event_grace(transition_storage())
+                restore_actor_protection()
+                log("level transition continuation failed: %s", tostring(result))
+            end
+        end,
+    })
+
+    if not started then
+        transition_in_progress = false
+        restore_actor_protection()
+        return false
+    end
+    debug_log("transition %s: %d minutes, %d dynamic steps (%s)",
+        tostring(section), minutes, step_count, source)
+    return true
+end
+
+local function install_transition_wrapper()
+    if not (ui_sr_teleport and ui_sr_teleport.msg_box_ui) then return false end
+    local class_ref = ui_sr_teleport.msg_box_ui
+    if not class_ref.OnMsgOk then return false end
+    if class_ref == transition_class and class_ref.OnMsgOk == wrapped_transition then return true end
+
+    transition_class = class_ref
+    original_transition = class_ref.OnMsgOk
+    local captured_original = original_transition
+    wrapped_transition = function(self, ...)
+        if not enabled("level_transition_enabled") then
+            return captured_original(self, ...)
+        end
+        local args = {...}
+        if begin_transition(self, args, captured_original) then return end
+        return captured_original(self, unpack(args))
+    end
+    class_ref.OnMsgOk = wrapped_transition
+    debug_log("installed level-transition wrapper")
+    return true
+end
+
+local function install_sleep_wrapper()
+    if not (ui_sleep_dialog and ui_sleep_dialog.dream_callback) then return false end
+    if ui_sleep_dialog.dream_callback == wrapped_sleep then return true end
+    original_sleep = ui_sleep_dialog.dream_callback
+    local captured_original = original_sleep
+    wrapped_sleep = function(...)
+        if not enabled("sleep_enabled") or other_skip_active() then
+            return captured_original(...)
+        end
+        local GUI = ui_sleep_dialog.GUI
+        if not GUI then return captured_original(...) end
+        local hours = GUI.forced or GUI.time_track:GetIValue()
+        if ui_sleep_dialog.get_immersive_sleep_hours then
+            hours = ui_sleep_dialog.get_immersive_sleep_hours(hours)
+        end
+        local snap = {
+            last_sleep = actor_status_sleep and actor_status_sleep.last_sleep,
+            last_drink = actor_status_thirst and actor_status_thirst.last_drink,
+        }
+        return simulated_time.advance(hours * 60, {
+            label = game.translate_string("st_sim_sleeping"),
+            on_complete = function()
+                if snap.last_sleep ~= nil then actor_status_sleep.last_sleep = snap.last_sleep end
+                if snap.last_drink ~= nil then actor_status_thirst.last_drink = snap.last_drink end
+                db.actor.power = 1
+                SendScriptCallback("actor_on_sleep", hours)
+                ui_sleep_dialog.dream_callback2()
+            end,
+        })
+    end
+    ui_sleep_dialog.dream_callback = wrapped_sleep
+    debug_log("installed sleep wrapper")
+    return true
+end
+
+local function install_books_wrapper()
+    if not (Wait and Wait.wait) then return false end
+    if Wait.wait == wrapped_books then return true end
+    original_books = Wait.wait
+    local captured_original = original_books
+    wrapped_books = function(obj)
+        if not enabled("books_enabled") or other_skip_active() then
+            return captured_original(obj)
+        end
+        if not obj then return end
+        local labels = {
+            cards = game.translate_string("st_sim_playing_cards"),
+            porn = game.translate_string("st_sim_enjoying_magazine"),
+            porn2 = game.translate_string("st_sim_enjoying_magazine"),
+        }
+        local captured = simulated_time.capture_time(captured_original, true, obj)
+        if captured and captured > 0 then
+            return simulated_time.advance(captured, {
+                label = labels[obj:section()] or game.translate_string("st_sim_reading"),
+            })
+        end
+    end
+    Wait.wait = wrapped_books
+    debug_log("installed books wrapper")
+    return true
+end
+
+local function install_anabiotic_wrapper()
+    if not (bind_stalker_ext and bind_stalker_ext.anabiotic_callback) then return false end
+    if bind_stalker_ext.anabiotic_callback == wrapped_anabiotic then return true end
+    original_anabiotic = bind_stalker_ext.anabiotic_callback
+    local captured_original = original_anabiotic
+    wrapped_anabiotic = function(...)
+        if not enabled("anabiotic_enabled") or other_skip_active() then
+            return captured_original(...)
+        end
+        local captured = simulated_time.capture_time(captured_original, false, ...)
+        if captured and captured > 0 then
+            return simulated_time.advance(captured, {
+                label = game.translate_string("st_sim_unconscious"),
+                on_complete = function()
+                    level_weathers.get_weather_manager():forced_weather_change()
+                end,
+            })
+        end
+    end
+    bind_stalker_ext.anabiotic_callback = wrapped_anabiotic
+    debug_log("installed anabiotic wrapper")
+    return true
+end
+
+local function install_flash_wrapper()
+    if not (drx_da_main and drx_da_main.anomalies_hit_functions) then return false end
+    local current = drx_da_main.anomalies_hit_functions.zone_mine_flash
+    if not current then return false end
+    if current == wrapped_flash then return true end
+    original_flash = current
+    local captured_original = original_flash
+    wrapped_flash = function(...)
+        if not enabled("flash_enabled") or other_skip_active() then
+            return captured_original(...)
+        end
+        local captured = simulated_time.capture_time(captured_original, false, ...)
+        if captured and captured > 0 then
+            return simulated_time.advance(captured, {
+                label = game.translate_string("st_sim_disoriented"),
+            })
+        end
+    end
+    drx_da_main.anomalies_hit_functions.zone_mine_flash = wrapped_flash
+    debug_log("installed flash wrapper")
+    return true
+end
+
+local function install_placeable_campfire_wrappers()
+    if not campfire_placeable then return false end
+    if campfire_placeable.prepare_campfire and campfire_placeable.prepare_campfire ~= wrapped_prepare then
+        original_prepare = campfire_placeable.prepare_campfire
+        local captured_prepare = original_prepare
+        wrapped_prepare = function(...)
+            if not enabled("placeable_campfire_enabled") or other_skip_active() then
+                return captured_prepare(...)
+            end
+            local minutes = math.random(5, 10)
+            return simulated_time.advance(minutes, {
+                label = game.translate_string("st_sim_preparing_campfire"),
+                on_complete = function()
+                    CreateTimeEvent("placing_cf", "placing_cf", 2, campfire_placeable.place_campfire)
+                end,
+            })
+        end
+        campfire_placeable.prepare_campfire = wrapped_prepare
+    end
+    if campfire_placeable.gather_wood and campfire_placeable.gather_wood ~= wrapped_gather then
+        original_gather = campfire_placeable.gather_wood
+        local captured_gather = original_gather
+        wrapped_gather = function(obj)
+            if not enabled("placeable_campfire_enabled") or other_skip_active() then
+                return captured_gather(obj)
+            end
+            local captured = simulated_time.capture_time(captured_gather, true, obj)
+            if captured and captured > 0 then
+                return simulated_time.advance(captured, {
+                    label = game.translate_string("st_sim_gathering_wood"),
+                })
+            end
+        end
+        campfire_placeable.gather_wood = wrapped_gather
+    end
+    return true
+end
+
+local function install_soulslike_wrapper()
+    if not (soulslike and soulslike.dream_callback) then return false end
+    if soulslike.dream_callback == wrapped_soulslike then return true end
+    original_soulslike = soulslike.dream_callback
+    local captured_original = original_soulslike
+    wrapped_soulslike = function(...)
+        if not enabled("soulslike_enabled") or other_skip_active() then
+            return captured_original(...)
+        end
+        level.add_cam_effector("camera_effects\\sleep.anm", 10, false, "soulslike.wakeup_callback")
+        local hours = math.random(6, 14)
+        local respawn_health = db.actor.health
+        local function keep_invulnerable()
+            if bind_stalker_ext then bind_stalker_ext.invulnerable_time = time_global() + 30000 end
+        end
+        keep_invulnerable()
+        return simulated_time.advance(hours * 60, {
+            label = game.translate_string("st_sim_recovering"),
+            on_step = keep_invulnerable,
+            on_complete = function()
+                db.actor:set_health_ex(respawn_health)
+                if bind_stalker_ext then bind_stalker_ext.invulnerable_time = time_global() + 1 end
+                db.actor.power = 1
+                SendScriptCallback("actor_on_sleep", hours)
+            end,
+        })
+    end
+    soulslike.dream_callback = wrapped_soulslike
+    debug_log("installed soulslike wrapper")
+    return true
+end
+
+local function install_all()
+    install_transition_wrapper()
+    install_sleep_wrapper()
+    install_books_wrapper()
+    install_anabiotic_wrapper()
+    install_flash_wrapper()
+    install_placeable_campfire_wrappers()
+    install_soulslike_wrapper()
+end
+
+local function first_update()
+    install_all()
+    notify_arrival()
+end
+
+local function game_load()
+    transition_in_progress = false
+    clear_transition_clock_guard()
+    install_all()
+end
+
+function on_game_start()
+    install_all()
+    if callbacks_registered or not RegisterScriptCallback then return end
+    callbacks_registered = true
+    RegisterScriptCallback("actor_on_first_update", first_update)
+    RegisterScriptCallback("on_game_load", game_load)
+    log("v%s initialized", VERSION)
+end
+
+function test_transition(minutes)
+    if other_skip_active() then return false end
+    minutes = math.floor(clamp(minutes or 15, 1, 360))
+    return simulated_time.advance(minutes, {
+        label = game.translate_string("st_sim_traveling"),
+        on_complete = function() log("transition simulation test completed: %d minutes", minutes) end,
+    })
+end
+
+function get_transition_step_count(minutes)
+    return transition_step_count(math.max(0, tonumber(minutes) or 0))
+end
+
+function get_version()
+    return VERSION
+end

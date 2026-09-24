@@ -1,0 +1,384 @@
+-- Composure Consumables — Balance Redone v1.1.2 tooltip integration.
+--
+-- GAMMA UI compatibility notes:
+-- * Native icon rows are registered in utils_ui's booster stat table.
+-- * Custom rows are sorted immediately after the stock Duration row so they are
+--   not pushed beyond fixed/limited consumable stat-row pools used by some UI mods.
+-- * The active Sota/GAMMA panel accepts native registration but does not render
+--   the rows, so the clean compact footer is the reliable default.
+
+local VERSION = "1.1.2"
+local native_registered = false
+local fallback_installed = false
+local base_build_desc_footer = nil
+local fallback_seen = {}
+
+local ICON_COMPOSURE = "ui_composure_stat_composure"
+local ICON_DURATION = "ui_composure_stat_duration"
+local ICON_RECOVERY = "ui_composure_stat_recovery"
+local ICON_STRESS = "ui_composure_stat_stress"
+local ICON_CRASH = "ui_composure_stat_crash"
+
+local function cfg(key, fallback)
+    if composure_consumables_mcm and composure_consumables_mcm.get_config then
+        local ok, value = pcall(composure_consumables_mcm.get_config, key)
+        if ok and value ~= nil then return value end
+    end
+    return fallback
+end
+
+local function as_bool(value, fallback)
+    if value == nil then return fallback end
+    if value == true or value == 1 or value == "1" or value == "true" then return true end
+    if value == false or value == 0 or value == "0" or value == "false" then return false end
+    return fallback
+end
+
+local function tooltips_enabled()
+    return as_bool(cfg("tooltips", true), true)
+end
+
+local function native_enabled()
+    return tooltips_enabled() and as_bool(cfg("try_native_rows", false), false)
+end
+
+local function fallback_enabled()
+    return tooltips_enabled() and as_bool(cfg("composure_block", true), true)
+end
+
+local function debug_enabled()
+    return as_bool(cfg("debug_log", false), false)
+end
+
+local function row_for(sec)
+    if not tooltips_enabled() then return nil end
+    return composure_consumables_data and composure_consumables_data.get(sec) or nil
+end
+
+local function diag(fmt, ...)
+    if not debug_enabled() then return end
+    local ok, msg = pcall(string.format, fmt, ...)
+    printf("[composure_tooltip:redone-v1.1.2] " .. (ok and msg or tostring(fmt)))
+end
+
+-- Native stat value functors. utils_ui calls these as (obj, sec, ...).
+function ui_stat_instant_positive(obj, sec)
+    local row = row_for(sec)
+    if not row then return nil end
+    local value = tonumber(row.instant) or 0
+    return value > 0 and value or nil
+end
+
+function ui_stat_instant_negative(obj, sec)
+    local row = row_for(sec)
+    if not row then return nil end
+    local value = tonumber(row.instant) or 0
+    return value < 0 and value or nil
+end
+
+function ui_stat_recovery(obj, sec)
+    local row = row_for(sec)
+    if not row then return nil end
+    local value = tonumber(row.gradual) or 0
+    return value > 0 and value or nil
+end
+
+function ui_stat_crash(obj, sec)
+    local row = row_for(sec)
+    if not row then return nil end
+    local value = tonumber(row.gradual) or 0
+    return value < 0 and value or nil
+end
+
+function ui_stat_duration(obj, sec)
+    local row = row_for(sec)
+    if not row then return nil end
+    local gradual = tonumber(row.gradual) or 0
+    local duration = tonumber(row.duration) or 0
+    return gradual ~= 0 and duration > 0 and duration or nil
+end
+
+function ui_stat_resistance(obj, sec, source)
+    local row = row_for(sec)
+    local resistance = row and row.resistance or nil
+    if not resistance or resistance.source ~= source then return nil end
+    local value = tonumber(resistance.value) or 0
+    return value > 0 and value or nil
+end
+
+function ui_stat_resistance_duration(obj, sec)
+    local row = row_for(sec)
+    local resistance = row and row.resistance or nil
+    if not resistance then return nil end
+    local duration = tonumber(resistance.duration) or 0
+    if duration <= 0 then return nil end
+    local main_duration = tonumber(row.duration) or 0
+    local gradual = tonumber(row.gradual) or 0
+    if gradual ~= 0 and main_duration == duration then return nil end
+    return duration
+end
+
+function ui_stat_gain_positive(obj, sec)
+    local row = row_for(sec)
+    local gain = row and row.gain_buff or nil
+    if not gain then return nil end
+    local value = tonumber(gain.value) or 0
+    return value > 0 and value or nil
+end
+
+function ui_stat_gain_negative(obj, sec)
+    local row = row_for(sec)
+    local gain = row and row.gain_buff or nil
+    if not gain then return nil end
+    local value = tonumber(gain.value) or 0
+    return value < 0 and value or nil
+end
+
+function ui_stat_gain_duration(obj, sec)
+    local row = row_for(sec)
+    local gain = row and row.gain_buff or nil
+    if not gain then return nil end
+    local duration = tonumber(gain.duration) or 0
+    if duration <= 0 then return nil end
+    local main_duration = tonumber(row.duration) or 0
+    local gradual = tonumber(row.gradual) or 0
+    if gradual ~= 0 and main_duration == duration then return nil end
+    return duration
+end
+
+local function register_native_stats()
+    if native_registered then return true end
+    if not native_enabled() then return false end
+    if not utils_ui or type(utils_ui.prepare_stats_table) ~= "function" then
+        diag("native unavailable: utils_ui missing")
+        return false
+    end
+
+    local ok = pcall(utils_ui.prepare_stats_table)
+    if not ok or type(utils_ui.stats_table) ~= "table" or type(utils_ui.stats_table["booster"]) ~= "table" then
+        diag("native unavailable: booster stats table missing")
+        return false
+    end
+
+    local booster = utils_ui.stats_table["booster"]
+
+    -- Keep custom rows directly after stock boost_time (index 1). Some GAMMA UI
+    -- variants have a finite stat control pool, so indices 100+ can disappear.
+    booster["composure_instant_positive"] = {
+        index = 1.10, typ = "float", name = "ui_composure_stat_composure",
+        icon_p = ICON_COMPOSURE, icon_n = ICON_COMPOSURE,
+        track = false, magnitude = 1, unit = "", compare = false,
+        sign = true, show_always = false,
+        value_functor = {"zzz_composure_consumables_tooltip", "ui_stat_instant_positive"},
+    }
+    booster["composure_instant_negative"] = {
+        index = 1.10, typ = "float", name = "ui_composure_stat_composure",
+        icon_p = ICON_CRASH, icon_n = ICON_CRASH,
+        track = false, magnitude = 1, unit = "", compare = false,
+        sign = true, show_always = false,
+        value_functor = {"zzz_composure_consumables_tooltip", "ui_stat_instant_negative"},
+    }
+    booster["composure_recovery"] = {
+        index = 1.20, typ = "float", name = "ui_composure_stat_recovery",
+        icon_p = ICON_RECOVERY, icon_n = ICON_RECOVERY,
+        track = false, magnitude = 1, unit = "", compare = false,
+        sign = true, show_always = false,
+        value_functor = {"zzz_composure_consumables_tooltip", "ui_stat_recovery"},
+    }
+    booster["composure_crash"] = {
+        index = 1.20, typ = "float", name = "ui_composure_stat_crash",
+        icon_p = ICON_CRASH, icon_n = ICON_CRASH,
+        track = false, magnitude = 1, unit = "", compare = false,
+        sign = true, show_always = false,
+        value_functor = {"zzz_composure_consumables_tooltip", "ui_stat_crash"},
+    }
+    booster["composure_duration"] = {
+        index = 1.30, typ = "float", name = "ui_composure_stat_duration",
+        icon_p = ICON_DURATION, icon_n = ICON_DURATION,
+        track = false, magnitude = 1, unit = "ui_inv_seconds", compare = false,
+        sign = true, show_always = false,
+        value_functor = {"zzz_composure_consumables_tooltip", "ui_stat_duration"},
+    }
+
+    local sources = {
+        { key = "combat", name = "ui_composure_stat_combat_stress" },
+        { key = "pain", name = "ui_composure_stat_pain_stress" },
+        { key = "bleeding_shock", name = "ui_composure_stat_bleeding_stress" },
+        { key = "radiation", name = "ui_composure_stat_radiation_stress" },
+        { key = "chemical", name = "ui_composure_stat_chemical_stress" },
+        { key = "psy", name = "ui_composure_stat_psy_stress" },
+        { key = "physical_strain", name = "ui_composure_stat_physical_stress" },
+        { key = "all_noncombat", name = "ui_composure_stat_noncombat_stress" },
+    }
+    for _, source in ipairs(sources) do
+        booster["composure_resist_" .. source.key] = {
+            index = 1.40, typ = "float", name = source.name,
+            icon_p = ICON_STRESS, icon_n = ICON_STRESS,
+            track = false, magnitude = 100, unit = "st_perc", compare = false,
+            sign = true, sign_inverse_txt = true, show_always = false,
+            value_functor = {"zzz_composure_consumables_tooltip", "ui_stat_resistance", source.key},
+        }
+    end
+
+    booster["composure_resistance_duration"] = {
+        index = 1.50, typ = "float", name = "ui_composure_stat_protection_duration",
+        icon_p = ICON_DURATION, icon_n = ICON_DURATION,
+        track = false, magnitude = 1, unit = "ui_inv_seconds", compare = false,
+        sign = true, show_always = false,
+        value_functor = {"zzz_composure_consumables_tooltip", "ui_stat_resistance_duration"},
+    }
+    booster["composure_gain_positive"] = {
+        index = 1.60, typ = "float", name = "ui_composure_stat_gain",
+        icon_p = ICON_RECOVERY, icon_n = ICON_RECOVERY,
+        track = false, magnitude = 100, unit = "st_perc", compare = false,
+        sign = true, show_always = false,
+        value_functor = {"zzz_composure_consumables_tooltip", "ui_stat_gain_positive"},
+    }
+    booster["composure_gain_negative"] = {
+        index = 1.60, typ = "float", name = "ui_composure_stat_gain",
+        icon_p = ICON_CRASH, icon_n = ICON_CRASH,
+        track = false, magnitude = 100, unit = "st_perc", compare = false,
+        sign = true, show_always = false,
+        value_functor = {"zzz_composure_consumables_tooltip", "ui_stat_gain_negative"},
+    }
+    booster["composure_gain_duration"] = {
+        index = 1.70, typ = "float", name = "ui_composure_stat_gain_duration",
+        icon_p = ICON_DURATION, icon_n = ICON_DURATION,
+        track = false, magnitude = 1, unit = "ui_inv_seconds", compare = false,
+        sign = true, show_always = false,
+        value_functor = {"zzz_composure_consumables_tooltip", "ui_stat_gain_duration"},
+    }
+
+    native_registered = true
+    diag("native rows registered")
+    return true
+end
+
+local function signed(value)
+    value = tonumber(value) or 0
+    if value > 0 then return "+" .. tostring(value) end
+    return tostring(value)
+end
+
+-- The optional compact fallback uses deliberate inline separators. Some GAMMA
+-- UI builds flatten description line breaks, which caused v1.1.0's run-on text.
+local function color_tag(value, beneficial_override)
+    local beneficial = beneficial_override
+    if beneficial == nil then beneficial = (tonumber(value) or 0) > 0 end
+    return beneficial and "%c[d_green]" or "%c[d_red]"
+end
+
+local COLOR_RESET = "%c[ui_gray_1]"
+
+local function colored_line(label, text, value_for_color, beneficial_override)
+    return color_tag(value_for_color, beneficial_override) .. label .. ": " .. text .. COLOR_RESET
+end
+
+local function duration_text(seconds)
+    seconds = math.floor((tonumber(seconds) or 0) + 0.5)
+    if seconds > 0 and seconds % 60 == 0 then
+        local minutes = math.floor(seconds / 60)
+        return tostring(minutes) .. " min"
+    end
+    return tostring(seconds) .. " sec"
+end
+
+local function fallback_block(sec)
+    local row = row_for(sec)
+    if not row then return nil end
+    local segments = {}
+    local instant = tonumber(row.instant) or 0
+    local gradual = tonumber(row.gradual) or 0
+    local duration = tonumber(row.duration) or 0
+
+    if instant ~= 0 then
+        segments[#segments + 1] = colored_line("Instant", signed(instant), instant)
+    end
+    if gradual > 0 then
+        segments[#segments + 1] = colored_line("Over time", signed(gradual), gradual)
+    end
+    if gradual < 0 then
+        segments[#segments + 1] = colored_line("After-effect", signed(gradual), gradual)
+    end
+    if gradual ~= 0 and duration > 0 then
+        segments[#segments + 1] = colored_line("Duration", duration_text(duration), gradual)
+    end
+
+    local resistance = row.resistance
+    if resistance and (tonumber(resistance.value) or 0) > 0 then
+        local names = {
+            combat = "Combat Stress", pain = "Pain Stress", bleeding_shock = "Bleeding/Shock Stress",
+            radiation = "Radiation Stress", chemical = "Chemical Stress", psy = "Psy Stress",
+            physical_strain = "Physical Stress", all_noncombat = "Non-Combat Stress",
+        }
+        -- Stress resistance is beneficial even though the displayed value is negative.
+        local pct = math.floor((resistance.value * 100) + 0.5)
+        segments[#segments + 1] = colored_line(names[resistance.source] or "Stress", "-" .. tostring(pct) .. "%", 1, true)
+        local rd = tonumber(resistance.duration) or 0
+        if rd > 0 and not (gradual ~= 0 and rd == duration) then
+            segments[#segments + 1] = colored_line("Protection", tostring(rd) .. " sec", 1, true)
+        end
+    end
+
+    local gain = row.gain_buff
+    if gain and (tonumber(gain.value) or 0) ~= 0 then
+        local gain_pct = gain.value * 100
+        gain_pct = gain_pct >= 0 and math.floor(gain_pct + 0.5) or math.ceil(gain_pct - 0.5)
+        segments[#segments + 1] = colored_line("Composure Gain", signed(gain_pct) .. "%", gain_pct)
+        local gd = tonumber(gain.duration) or 0
+        if gd > 0 and not (gradual ~= 0 and gd == duration) then
+            segments[#segments + 1] = colored_line("Gain", tostring(gd) .. " sec", gain_pct)
+        end
+    end
+
+    if #segments == 0 then return nil end
+    return COLOR_RESET .. "COMPOSURE EFFECTS  •  " .. table.concat(segments, "  |  ")
+end
+
+local function composure_footer(obj, sec, str)
+    local original = base_build_desc_footer(obj, sec, str)
+    if not fallback_enabled() then return original end
+    local block = fallback_block(sec)
+    if not block then
+        if debug_enabled() and sec and not fallback_seen[sec] then
+            fallback_seen[sec] = true
+            diag("hover sec=%s mapped=false", tostring(sec))
+        end
+        return original
+    end
+    if debug_enabled() and sec and not fallback_seen[sec] then
+        fallback_seen[sec] = true
+        diag("hover sec=%s mapped=true fallback=shown native_registered=%s", tostring(sec), tostring(native_registered))
+    end
+    return (original or "") .. "\\n\\n" .. block
+end
+
+local function install_fallback()
+    if fallback_installed then return true end
+    if not ui_item or type(ui_item.build_desc_footer) ~= "function" then
+        diag("footer fallback unavailable: ui_item.build_desc_footer missing")
+        return false
+    end
+    base_build_desc_footer = ui_item.build_desc_footer
+    ui_item.build_desc_footer = composure_footer
+    fallback_installed = true
+    diag("footer fallback installed")
+    return true
+end
+
+local function install_tooltips()
+    local native_ok = register_native_stats()
+    local fallback_ok = false
+    if fallback_enabled() then fallback_ok = install_fallback() end
+    return native_ok or fallback_ok
+end
+
+local function on_first_update()
+    install_tooltips()
+end
+
+function on_game_start()
+    install_tooltips()
+    RegisterScriptCallback("actor_on_first_update", on_first_update)
+    printf("[composure_tooltip:redone-v1.1.2] initialized native=" .. tostring(native_registered) .. " fallback=" .. tostring(fallback_installed))
+end

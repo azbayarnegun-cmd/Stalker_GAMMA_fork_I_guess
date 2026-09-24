@@ -1,0 +1,659 @@
+-- Consumable Time-Skip v1.0.5
+-- Standalone stepped world simulation for selected long-use consumables.
+
+local VERSION = "1.0.5"
+local PPE_ID = 52770
+local CAM_ID = 52771
+local SCREEN_W, SCREEN_H = 1024, 768
+local MAX_ALIFE_OBJECTS = 65534
+local MAX_ALIFE_PROCESS_MS = 999999
+
+local _change_game_time = level.change_game_time
+local state = nil
+local pending = nil
+local approved_use = nil
+local overlay = nil
+local last_update_ms = nil
+local recent_combat_ms = -1000000
+
+-- Missing section IDs are harmless. Other addons may register more IDs at runtime.
+local item_registry = {
+    tea                  = { category = "coffee", minutes_key = "coffee_minutes", label = "st_cts_tea" },
+    coffee               = { category = "coffee", minutes_key = "coffee_minutes", label = "st_cts_coffee" },
+    brewed_coffee        = { category = "coffee", minutes_key = "coffee_minutes", label = "st_cts_coffee" },
+    vodka                = { category = "alcohol", minutes_key = "alcohol_minutes", label = "st_cts_alcohol" },
+    vodka2               = { category = "alcohol", minutes_key = "alcohol_minutes", label = "st_cts_alcohol" },
+    vodka_quality        = { category = "alcohol", minutes_key = "alcohol_minutes", label = "st_cts_alcohol" },
+    hand_rolling_tobacco = { category = "tobacco", minutes_key = "tobacco_minutes", minimum_minutes = 15, delay_key = "tobacco_animation_delay", label = "st_cts_tobacco" },
+    cigar                = { category = "tobacco", minutes_key = "tobacco_minutes", minimum_minutes = 15, delay_key = "tobacco_animation_delay", label = "st_cts_cigar" },
+}
+
+local excluded_alcohol = {
+    beer = true,
+    beer2 = true,
+}
+
+local function cfg(key, fallback)
+    if consumable_time_skip_mcm and consumable_time_skip_mcm.get_config then
+        local ok, value = pcall(consumable_time_skip_mcm.get_config, key)
+        if ok and value ~= nil then return value end
+    end
+    return fallback
+end
+
+local function debug_log(fmt, ...)
+    if not cfg("debug_log", false) then return end
+    printf("[CTS] " .. fmt, ...)
+end
+
+local function tr(id)
+    local ok, value = pcall(game.translate_string, id)
+    return (ok and value and value ~= id) and value or id
+end
+
+local function notify(id)
+    local text = tr(id)
+    if actor_menu and actor_menu.set_msg then
+        pcall(actor_menu.set_msg, 1, text, 4)
+    else
+        printf("[CTS] %s", text)
+    end
+end
+
+local function notify_text(text)
+    if db and db.actor and news_manager and news_manager.send_tip then
+        pcall(news_manager.send_tip, db.actor, text, nil, nil, 5000)
+    elseif actor_menu and actor_menu.set_msg then
+        pcall(actor_menu.set_msg, 1, text, 5)
+    else
+        printf("[CTS] %s", text)
+    end
+end
+
+local function elapsed_text(minutes, interrupted)
+    minutes = math.max(0, math.floor(tonumber(minutes) or 0))
+    local unit = minutes == 1 and tr("st_cts_minute") or tr("st_cts_minutes")
+    local prefix = interrupted and (tr("st_cts_interrupted_prefix") .. " ") or ""
+    return string.format("%s%d %s %s", prefix, minutes, unit, tr("st_cts_passed"))
+end
+
+local function item_section(obj, section)
+    if section and section ~= "" then return section end
+    if obj then
+        local ok, value = pcall(function() return obj:section() end)
+        if ok then return value end
+    end
+    return nil
+end
+
+local function section_value(section, key, reader)
+    if not section or not ini_sys or not ini_sys.line_exist then return nil end
+    local ok, exists = pcall(ini_sys.line_exist, ini_sys, section, key)
+    if not ok or not exists then return nil end
+    local fn = ini_sys[reader]
+    if not fn then return nil end
+    local read_ok, value = pcall(fn, ini_sys, section, key)
+    return read_ok and value or nil
+end
+
+local function is_strong_alcohol(section)
+    if not cfg("alcohol_enabled", true) or excluded_alcohol[section] then return false end
+    if string.find(string.lower(section or ""), "beer", 1, true) then return false end
+    local kind = section_value(section, "kind", "r_string")
+    local alcohol = tonumber(section_value(section, "eat_alcohol", "r_float")) or 0
+    return kind == "i_drink" and alcohol > 0
+end
+
+local function resolve_entry(section)
+    local entry = item_registry[section]
+    if entry and entry.category and not cfg(entry.category .. "_enabled", true) then return nil end
+    if entry then return entry end
+    if is_strong_alcohol(section) then
+        return { category = "alcohol", minutes_key = "alcohol_minutes", label = "st_cts_alcohol" }
+    end
+    return nil
+end
+
+local function pos_distance(a, b)
+    if not a or not b then return 999999 end
+    local dx, dy, dz = a.x - b.x, a.y - b.y, a.z - b.z
+    return math.sqrt(dx * dx + dy * dy + dz * dz)
+end
+
+local function object_alive(obj)
+    if not obj then return false end
+    -- X-Ray userdata can throw while merely resolving an unsupported member.
+    -- Keep both member lookup and invocation inside the protected closure.
+    local ok, alive = pcall(function() return obj:alive() end)
+    return ok and alive
+end
+
+local function object_kind(obj)
+    local monster, stalker = false, false
+    if IsMonster then
+        local ok, result = pcall(IsMonster, obj)
+        monster = ok and result or false
+    end
+    if IsStalker then
+        local ok, result = pcall(IsStalker, obj)
+        stalker = ok and result or false
+    end
+    return monster, stalker
+end
+
+local function is_enemy(obj)
+    if not db.actor then return false end
+    if game_relations and game_relations.get_npcs_relation then
+        local ok, relation = pcall(game_relations.get_npcs_relation, obj, db.actor)
+        if ok then return relation == game_object.enemy end
+    end
+    local ok, relation = pcall(function() return obj:relation(db.actor) end)
+    if ok then return relation == game_object.enemy end
+    return false
+end
+
+local function targets_actor(obj)
+    if not obj or not db.actor then return false end
+    local ok, enemy = pcall(function() return obj:best_enemy() end)
+    if not ok or not enemy then return false end
+    local ok_id, enemy_id = pcall(function() return enemy:id() end)
+    return ok_id and enemy_id == db.actor:id()
+end
+
+local function scan_threats(prestart)
+    if not db.actor or not level.iterate_nearest then return nil end
+    local actor_pos = db.actor:position()
+    local human_radius = tonumber(cfg("human_radius", 40)) or 40
+    local mutant_radius = tonumber(cfg("mutant_radius", 20)) or 20
+    local max_radius = math.max(human_radius, mutant_radius, 80)
+    local found = nil
+
+    level.iterate_nearest(actor_pos, max_radius, function(obj)
+        if found or not obj then return end
+        local monster, stalker = object_kind(obj)
+        if not monster and not stalker then return end
+        if not object_alive(obj) then return end
+
+        local ok_id, id = pcall(function() return obj:id() end)
+        if ok_id and id == db.actor:id() then return end
+        if not is_enemy(obj) then return end
+
+        local ok_pos, object_pos = pcall(function() return obj:position() end)
+        if not ok_pos then return end
+        local distance = pos_distance(actor_pos, object_pos)
+        if prestart then
+            if targets_actor(obj) then found = obj end
+        elseif (monster and distance <= mutant_radius)
+            or (stalker and (distance <= human_radius or targets_actor(obj))) then
+            found = obj
+        end
+    end)
+    return found
+end
+
+local function actor_in_enclosed_cover()
+    if not surge_manager or not surge_manager.actor_in_cover then return false end
+    local ok, covered = pcall(surge_manager.actor_in_cover)
+    return ok and covered or false
+end
+
+local function manager_active(module, getter)
+    if not module or type(module[getter]) ~= "function" then return false end
+    local ok, manager = pcall(module[getter])
+    return ok and manager and manager.started == true and manager.finished ~= true or false
+end
+
+local function emission_active()
+    if manager_active(surge_manager, "get_surge_manager") then return true end
+    if xr_conditions and xr_conditions.surge_started then
+        local ok, active = pcall(xr_conditions.surge_started)
+        if ok then return active == true end
+    end
+    return false
+end
+
+local function psi_storm_active()
+    return manager_active(psi_storm_manager, "get_psi_storm_manager")
+end
+
+local function active_environment_event()
+    if emission_active() then return true, "emission" end
+    if psi_storm_active() then return true, "psi_storm" end
+    return false, nil
+end
+
+local function supported_shelter_category(category)
+    return category == "alcohol" or category == "coffee" or category == "tobacco"
+end
+
+local function actor_in_event_cover(event_kind)
+    if event_kind == "psi_storm" and psi_storm_manager
+        and type(psi_storm_manager.actor_in_cover) == "function" then
+        local ok, covered = pcall(psi_storm_manager.actor_in_cover)
+        if ok and covered then return true end
+    end
+    -- GAMMA normally shares registered surge shelters between emissions and
+    -- psy-storms, so retain the established surge-cover test as the fallback.
+    return actor_in_enclosed_cover()
+end
+
+local function sheltered_event_consumable(category)
+    if not supported_shelter_category(category)
+        or cfg("allow_sheltered_event_consumables", true) ~= true then return false end
+    local active, event_kind = active_environment_event()
+    return active and actor_in_event_cover(event_kind), event_kind
+end
+
+class "CTSBlackOverlay" (CUIScriptWnd)
+
+function CTSBlackOverlay:__init() super()
+    self:SetWndRect(Frect():set(0, 0, SCREEN_W, SCREEN_H))
+    self.bg = CUIStatic()
+    self.bg:SetWndRect(Frect():set(0, 0, SCREEN_W, SCREEN_H))
+    self.bg:InitTexture("ui\\consumable_time_skip\\black")
+    self.bg:SetStretchTexture(true)
+    self:AttachChild(self.bg)
+    self:SetAlpha(0)
+end
+
+function CTSBlackOverlay:SetAlpha(alpha)
+    local a = math.max(0, math.min(255, math.floor(alpha + 0.5)))
+    self.bg:SetTextureColor(GetARGB(a, 255, 255, 255))
+end
+
+local function show_overlay()
+    if overlay then return end
+    overlay = CTSBlackOverlay()
+    get_hud():AddDialogToRender(overlay)
+end
+
+local function remove_overlay()
+    if not overlay then return end
+    pcall(function() get_hud():RemoveDialogToRender(overlay) end)
+    overlay = nil
+end
+
+local function set_input_locked(locked)
+    if locked then
+        pcall(level.disable_input)
+    else
+        pcall(level.enable_input)
+    end
+end
+
+local function save_alife_state()
+    local a = alife()
+    return {
+        opu = ini_sys:r_u32("alife", "objects_per_update"),
+        opt = ini_sys:r_u32("alife", "process_time"),
+        dist = a:switch_distance(),
+    }
+end
+
+local function restore_alife(saved)
+    if not saved then return end
+    local a = alife()
+    a:set_switch_distance(saved.dist)
+    a:set_objects_per_update(saved.opu)
+    a:set_process_time(saved.opt)
+end
+
+local function simulate_step(minutes)
+    local a = alife()
+    local saved = save_alife_state()
+    local ok, err = pcall(function()
+        a:set_switch_distance(0)
+        a:set_objects_per_update(MAX_ALIFE_OBJECTS)
+        a:set_process_time(MAX_ALIFE_PROCESS_MS)
+        _change_game_time(0, 0, minutes)
+        a:force_update()
+    end)
+    pcall(restore_alife, saved)
+    if not ok then error(err) end
+end
+
+local function dispatch_complete(total, interrupted, elapsed, reason)
+    -- Custom callbacks are exposed through the public registration API below.
+    -- Sending an unregistered X-Ray callback name produces a stack trace.
+end
+
+local function process_simulated_modifiers(minutes)
+    local processed = false
+    if cfg("advance_composure", true) and consumable_time_skip_composure
+        and consumable_time_skip_composure.advance then
+        local ok, result = pcall(consumable_time_skip_composure.advance, minutes)
+        processed = ok and result == true
+        if not ok then printf("[CTS] Composure bridge failed: %s", tostring(result)) end
+    end
+end
+
+local function release_deferred_composure(section)
+    if not section or not composure_consumables
+        or not composure_consumables.release_time_skip_effect then return end
+    local ok, err = pcall(composure_consumables.release_time_skip_effect, section)
+    if not ok then printf("[CTS] deferred Composure release failed: %s", tostring(err)) end
+end
+
+local function finish_skip(interrupted, reason)
+    if not state then return end
+    local elapsed, total, section = state.elapsed, state.total, state.section
+    state = nil
+    pending = nil
+    approved_use = nil
+
+    dispatch_complete(total, interrupted, elapsed, reason)
+
+    if interrupted then
+        remove_overlay() -- deliberate hard cut
+        set_input_locked(false)
+        if cfg("interruption_disorientation", true) then
+            pcall(level.add_cam_effector, "camera_effects\\sleep.anm", CAM_ID, false, "")
+        end
+        notify("st_cts_interrupted")
+        notify_text(elapsed_text(elapsed, true))
+        release_deferred_composure(section)
+        debug_log("interrupted at %s/%s min: %s", elapsed, total, reason or "threat")
+    else
+        debug_log("completed %s min", total)
+        state = {
+            phase = "fade_out",
+            fade = 1,
+            elapsed = elapsed,
+            total = total,
+            complete_cleanup = true,
+            release_section = section,
+        }
+    end
+end
+
+local function cleanup(reason)
+    if state then debug_log("cleanup: %s", reason or "unknown") end
+    local deferred_section = state and (state.section or state.release_section)
+        or pending and pending.section
+    state = nil
+    pending = nil
+    approved_use = nil
+    remove_overlay()
+    set_input_locked(false)
+    pcall(level.remove_cam_effector, CAM_ID)
+    release_deferred_composure(deferred_section)
+end
+
+local function prestart_blocked(category)
+    if state or pending then return true, "busy" end
+    if simulated_time and simulated_time.is_active then
+        local ok, active = pcall(simulated_time.is_active)
+        if ok and active then return true, "external_time_skip" end
+    end
+    local sheltered_exception, event_kind = sheltered_event_consumable(category)
+    if time_global() - recent_combat_ms < 15000 and not sheltered_exception then
+        return true, "recent_combat"
+    end
+    if scan_threats(true) and not sheltered_exception then return true, "detected" end
+    return false, sheltered_exception and ("sheltered_" .. tostring(event_kind)) or nil
+end
+
+local function resolve_minutes(entry)
+    if entry.minutes then return entry.minutes end
+    return math.max(entry.minimum_minutes or 1,
+        math.floor(tonumber(cfg(entry.minutes_key, 5)) or 5))
+end
+
+local function begin_skip(minutes, label, enclosure_override, prechecked, section, category)
+    if not prechecked then
+        local blocked, reason = prestart_blocked(category)
+        if blocked then
+            notify("st_cts_blocked")
+            debug_log("start blocked: %s", reason)
+            return false
+        end
+    end
+
+    local enclosed = enclosure_override
+    if enclosed == nil then enclosed = actor_in_enclosed_cover() end
+    show_overlay()
+    set_input_locked(true)
+    state = {
+        phase = "fade_in",
+        fade = 0,
+        elapsed = 0,
+        total = math.max(1, math.floor(tonumber(minutes) or 1)),
+        step = math.max(1, math.floor(tonumber(cfg("step_minutes", 3)) or 3)),
+        settle = math.max(0, math.floor(tonumber(cfg("settle_frames", 2)) or 2)),
+        settle_left = 0,
+        enclosed = enclosed and cfg("enclosed_uninterruptible", true),
+        label = label,
+        section = section,
+    }
+    debug_log("start %s min; enclosed=%s", state.total, tostring(state.enclosed))
+    return true
+end
+
+local function update_state(dt)
+    if not state then return end
+    local fade_seconds = math.max(0.1, tonumber(cfg("fade_seconds", 0.6)) or 0.6)
+
+    if state.phase == "fade_in" then
+        state.fade = math.min(1, state.fade + dt / fade_seconds)
+        if overlay then overlay:SetAlpha(state.fade * 255) end
+        if state.fade >= 1 then state.phase = "step" end
+        return
+    end
+
+    if state.phase == "fade_out" then
+        state.fade = math.max(0, state.fade - dt / fade_seconds)
+        if overlay then overlay:SetAlpha(state.fade * 255) end
+        if state.fade <= 0 then
+            local release_section = state.release_section
+            local elapsed = state.elapsed
+            state = nil
+            remove_overlay()
+            set_input_locked(false)
+            release_deferred_composure(release_section)
+            notify_text(elapsed_text(elapsed, false))
+        end
+        return
+    end
+
+    if state.phase == "settle" then
+        if state.settle_left > 0 then
+            state.settle_left = state.settle_left - 1
+            return
+        end
+        if not state.enclosed and scan_threats(false) then
+            finish_skip(true, "nearby_threat")
+            return
+        end
+        if state.elapsed >= state.total then
+            finish_skip(false)
+        else
+            state.phase = "step"
+        end
+        return
+    end
+
+    if state.phase == "step" then
+        local amount = math.min(state.step, state.total - state.elapsed)
+        local ok, err = pcall(simulate_step, amount)
+        if not ok then
+            printf("[CTS] simulation step failed: %s", tostring(err))
+            finish_skip(true, "simulation_error")
+            return
+        end
+        state.elapsed = state.elapsed + amount
+        process_simulated_modifiers(amount)
+        state.settle_left = state.settle
+        state.phase = "settle"
+    end
+end
+
+local function on_actor_update()
+    local now = time_global()
+    local dt = last_update_ms and math.max(0, math.min(0.25, (now - last_update_ms) / 1000)) or 0
+    last_update_ms = now
+
+    if pending then
+        if now >= (pending.ready_ms or 0) then
+            local request = pending
+            pending = nil
+            begin_skip(request.minutes, request.label, request.enclosed,
+                request.prechecked, request.section, request.category)
+        end
+    end
+    update_state(dt)
+end
+
+local function on_item_before_use(obj, flags)
+    if not cfg("enabled", true) then return end
+    local section = item_section(obj)
+    local entry = section and resolve_entry(section)
+    if not entry then return end
+    local blocked, reason = prestart_blocked(entry.category)
+    if blocked then
+        if flags then flags.ret_value = false end
+        notify("st_cts_blocked")
+        debug_log("item use blocked (%s): %s", section, reason)
+        approved_use = nil
+        return
+    end
+    approved_use = {
+        section = section,
+        category = entry.category,
+        expires_ms = time_global() + 5000,
+        enclosed = actor_in_enclosed_cover(),
+    }
+    if composure_consumables and composure_consumables.prepare_time_skip_effect then
+        pcall(composure_consumables.prepare_time_skip_effect, section)
+    end
+    debug_log("precheck allowed: %s; enclosed=%s", section, tostring(approved_use.enclosed))
+end
+
+local function on_item_use(obj, section)
+    if not cfg("enabled", true) then return end
+    section = item_section(obj, section)
+    local entry = section and resolve_entry(section)
+    if not entry then return end
+
+    local approval = approved_use
+    local prechecked = approval and approval.section == section
+        and time_global() <= approval.expires_ms
+    approved_use = nil
+
+    -- This callback fires at the actual vanilla consumption/effect moment.
+    -- The skip begins next update, after the item effect has been committed.
+    pending = {
+        minutes = resolve_minutes(entry),
+        label = entry.label,
+        section = section,
+        category = entry.category,
+        enclosed = prechecked and approval.enclosed or nil,
+        prechecked = prechecked == true,
+        ready_ms = time_global() + math.max(0,
+            (tonumber(cfg(entry.delay_key or "post_use_delay", 0)) or 0) * 1000),
+    }
+    debug_log("queued item=%s duration=%s prechecked=%s", section,
+        tostring(pending.minutes), tostring(pending.prechecked))
+end
+
+local function on_npc_fighting_actor()
+    recent_combat_ms = time_global()
+    if state and not state.enclosed then finish_skip(true, "npc_alert") end
+end
+
+local function on_actor_hit()
+    recent_combat_ms = time_global()
+    if state and not state.enclosed then finish_skip(true, "actor_hit") end
+end
+
+local function on_key_press(key)
+    if not cfg("tester_enabled", false) then return end
+    if key ~= cfg("tester_key", (DIK_keys and DIK_keys.DIK_F10) or 68) then return end
+    test(cfg("tester_minutes", 5), false)
+end
+
+-- Public API for compatibility patches and console testing.
+function register_item(section, minutes, label_id)
+    if not section or section == "" then return false end
+    item_registry[section] = { minutes = math.max(1, math.floor(tonumber(minutes) or 1)), label = label_id }
+    return true
+end
+
+function register_meal(section)
+    if not section or section == "" then return false end
+    item_registry[section] = { minutes_key = "meal_minutes", label = "st_cts_meal" }
+    return true
+end
+
+function test(minutes, enclosure_override)
+    if not db.actor then return false end
+    return begin_skip(minutes or cfg("tester_minutes", 5), "st_cts_test", enclosure_override)
+end
+
+-- Public door for the late callback bridge. It permits only CTS-recognized
+-- alcohol, prepared coffee/tea, and slow tobacco during an active emission or
+-- psy-storm while inside registered event cover. Busy/external skips remain
+-- authoritative blockers.
+function can_allow_sheltered_event_consumable(obj, section)
+    if not cfg("enabled", true) then return false end
+    section = item_section(obj, section)
+    local entry = section and resolve_entry(section)
+    if not entry or not sheltered_event_consumable(entry.category) then return false end
+    if state or pending then return false end
+    if simulated_time and simulated_time.is_active then
+        local ok, active = pcall(simulated_time.is_active)
+        if ok and active then return false end
+    end
+    return true
+end
+
+function get_registered_duration(section)
+    local entry = resolve_entry(section)
+    return entry and resolve_minutes(entry) or nil
+end
+
+function test_threat_scan()
+    local threat = scan_threats(false)
+    printf("[CTS] threat scan: %s", threat and "THREAT" or "clear")
+    return threat ~= nil
+end
+
+function test_enclosure()
+    local enclosed = actor_in_enclosed_cover()
+    printf("[CTS] enclosure: %s", tostring(enclosed))
+    return enclosed
+end
+
+function is_active()
+    return state ~= nil or pending ~= nil
+end
+
+function abort(reason)
+    if not state then return false end
+    finish_skip(true, reason or "api")
+    return true
+end
+
+function get_status()
+    if not state then return { active = false } end
+    return {
+        active = true,
+        phase = state.phase,
+        elapsed = state.elapsed,
+        total = state.total,
+        enclosed = state.enclosed,
+    }
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_update", on_actor_update)
+    RegisterScriptCallback("actor_on_item_before_use", on_item_before_use)
+    RegisterScriptCallback("actor_on_item_use", on_item_use)
+    RegisterScriptCallback("npc_on_fighting_actor", on_npc_fighting_actor)
+    RegisterScriptCallback("actor_on_before_hit", on_actor_hit)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("on_level_changing", function() cleanup("level_change") end)
+    RegisterScriptCallback("actor_on_net_destroy", function() cleanup("actor_destroy") end)
+    RegisterScriptCallback("actor_on_first_update", function() cleanup("first_update") end)
+    printf("[CTS] Consumable Time-Skip v%s loaded; sheltered event consumables=%s",
+        VERSION, tostring(cfg("allow_sheltered_event_consumables", true) == true))
+end

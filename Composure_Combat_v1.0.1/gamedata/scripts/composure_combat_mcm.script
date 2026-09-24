@@ -1,0 +1,163 @@
+-- Composure Combat v1.0.1 settings.
+
+local defaults = {
+    enabled = true,
+    combat_distance = 150,
+    grace_period = 2,
+    end_inertia = 10,
+
+    alert_rate = 0.10,
+    engaged_rate = 0.20,
+    overwhelmed_rate = 0.30,
+    maximum_continuous_rate = 0.30,
+
+    hit_enabled = true,
+    hit_band_1 = 1.0,
+    hit_band_2 = 1.5,
+    hit_band_3 = 2.5,
+    hit_band_4 = 3.5,
+    hit_band_5 = 5.0,
+
+    near_miss_enabled = true,
+    near_miss_radius = 3.0,
+    extreme_near_miss_radius = 1.0,
+    near_normal_1 = 0.45,
+    near_normal_2 = 0.30,
+    near_normal_3 = 0.15,
+    near_extreme_1 = 0.75,
+    near_extreme_2 = 0.50,
+    near_extreme_3 = 0.25,
+    near_miss_deprogress = 3.0,
+
+    instant_fraction = 0.30,
+    deferred_duration = 30,
+    instant_cap_1s = 5.0,
+    instant_cap_3s = 7.5,
+
+    recovery_lock = true,
+    post_combat_delay = 15,
+    rebound_enabled = true,
+    rebound_delay = 20,
+    rebound_percent = 1.0,
+    rebound_max = 30,
+
+    debug_key = DIK_keys.DIK_F6,
+    test_mode = false,
+    test_action = 0,
+    forced_phase_duration = 15,
+    debug_log = false,
+}
+
+function get_config(key)
+    if ui_mcm then
+        local value = ui_mcm.get("composure_combat/" .. key)
+        if value ~= nil then return value end
+    end
+    return defaults[key]
+end
+
+function on_mcm_load()
+    return {
+        id = "composure_combat",
+        sh = true,
+        gr = {
+            { id = "enabled", type = "check", val = 1, def = true },
+            { id = "combat_distance", type = "track", val = 2,
+              min = 25, max = 300, step = 5, def = 150 },
+            { id = "grace_period", type = "track", val = 2,
+              min = 0, max = 10, step = 0.5, prec = 1, def = 2 },
+            { id = "end_inertia", type = "track", val = 2,
+              min = 2, max = 30, step = 1, def = 10 },
+
+            { id = "line1", type = "line" },
+
+            { id = "alert_rate", type = "track", val = 2,
+              min = 0, max = 0.30, step = 0.01, prec = 2, def = 0.10 },
+            { id = "engaged_rate", type = "track", val = 2,
+              min = 0, max = 0.30, step = 0.01, prec = 2, def = 0.20 },
+            { id = "overwhelmed_rate", type = "track", val = 2,
+              min = 0, max = 0.30, step = 0.01, prec = 2, def = 0.30 },
+            { id = "maximum_continuous_rate", type = "track", val = 2,
+              min = 0.05, max = 0.30, step = 0.01, prec = 2, def = 0.30 },
+
+            { id = "line2", type = "line" },
+
+            { id = "hit_enabled", type = "check", val = 1, def = true },
+            { id = "hit_band_1", type = "track", val = 2,
+              min = 0, max = 8, step = 0.25, prec = 2, def = 1.0 },
+            { id = "hit_band_2", type = "track", val = 2,
+              min = 0, max = 8, step = 0.25, prec = 2, def = 1.5 },
+            { id = "hit_band_3", type = "track", val = 2,
+              min = 0, max = 8, step = 0.25, prec = 2, def = 2.5 },
+            { id = "hit_band_4", type = "track", val = 2,
+              min = 0, max = 8, step = 0.25, prec = 2, def = 3.5 },
+            { id = "hit_band_5", type = "track", val = 2,
+              min = 0, max = 10, step = 0.25, prec = 2, def = 5.0 },
+
+            { id = "line3", type = "line" },
+
+            { id = "near_miss_enabled", type = "check", val = 1, def = true },
+            { id = "near_miss_radius", type = "track", val = 2,
+              min = 1, max = 6, step = 0.25, prec = 2, def = 3.0 },
+            { id = "extreme_near_miss_radius", type = "track", val = 2,
+              min = 0.25, max = 3, step = 0.25, prec = 2, def = 1.0 },
+            { id = "near_normal_1", type = "track", val = 2,
+              min = 0, max = 2, step = 0.05, prec = 2, def = 0.45 },
+            { id = "near_normal_2", type = "track", val = 2,
+              min = 0, max = 2, step = 0.05, prec = 2, def = 0.30 },
+            { id = "near_normal_3", type = "track", val = 2,
+              min = 0, max = 2, step = 0.05, prec = 2, def = 0.15 },
+            { id = "near_extreme_1", type = "track", val = 2,
+              min = 0, max = 2, step = 0.05, prec = 2, def = 0.75 },
+            { id = "near_extreme_2", type = "track", val = 2,
+              min = 0, max = 2, step = 0.05, prec = 2, def = 0.50 },
+            { id = "near_extreme_3", type = "track", val = 2,
+              min = 0, max = 2, step = 0.05, prec = 2, def = 0.25 },
+            { id = "near_miss_deprogress", type = "track", val = 2,
+              min = 1, max = 15, step = 0.5, prec = 1, def = 3.0 },
+
+            { id = "line4", type = "line" },
+
+            { id = "instant_fraction", type = "track", val = 2,
+              min = 0, max = 1, step = 0.05, prec = 2, def = 0.30 },
+            { id = "deferred_duration", type = "track", val = 2,
+              min = 5, max = 120, step = 5, def = 30 },
+            { id = "instant_cap_1s", type = "track", val = 2,
+              min = 0.5, max = 10, step = 0.5, prec = 1, def = 5.0 },
+            { id = "instant_cap_3s", type = "track", val = 2,
+              min = 1, max = 20, step = 0.5, prec = 1, def = 7.5 },
+
+            { id = "line5", type = "line" },
+
+            { id = "recovery_lock", type = "check", val = 1, def = true },
+            { id = "post_combat_delay", type = "track", val = 2,
+              min = 0, max = 60, step = 1, def = 15 },
+            { id = "rebound_enabled", type = "check", val = 1, def = true },
+            { id = "rebound_delay", type = "track", val = 2,
+              min = 5, max = 60, step = 1, def = 20 },
+            { id = "rebound_percent", type = "track", val = 2,
+              min = 0, max = 1, step = 0.05, prec = 2, def = 1.0 },
+            { id = "rebound_max", type = "track", val = 2,
+              min = 0, max = 50, step = 1, def = 30 },
+
+            { id = "line6", type = "line" },
+
+            { id = "debug_key", type = "key_bind", val = 2, def = DIK_keys.DIK_F6 },
+            { id = "test_mode", type = "check", val = 1, def = false },
+            { id = "test_action", type = "list", val = 2, def = 0,
+              content = {
+                  { 0, "ui_mcm_composure_combat_test_status" },
+                  { 1, "ui_mcm_composure_combat_test_near" },
+                  { 2, "ui_mcm_composure_combat_test_extreme" },
+                  { 3, "ui_mcm_composure_combat_test_hit" },
+                  { 4, "ui_mcm_composure_combat_test_alert" },
+                  { 5, "ui_mcm_composure_combat_test_engaged" },
+                  { 6, "ui_mcm_composure_combat_test_overwhelmed" },
+                  { 7, "ui_mcm_composure_combat_test_end" },
+              } },
+            { id = "forced_phase_duration", type = "track", val = 2,
+              min = 5, max = 60, step = 5, def = 15 },
+            { id = "debug_log", type = "check", val = 1, def = false },
+        },
+    }
+end

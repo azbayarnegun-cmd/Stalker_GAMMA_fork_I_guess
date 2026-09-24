@@ -1,0 +1,135 @@
+-- Optional Composure Framework v2 compatibility for Consumable Time-Skip.
+-- Uses only the Framework's public API and remains inert when it is absent.
+
+local EPSILON = 0.0001
+
+local function copy_common(entry)
+    return {
+        owner = entry.owner,
+        enabled = entry.enabled,
+        category = entry.category,
+        label = entry.label,
+        flavor = entry.flavor,
+        priority = entry.priority,
+        persist = entry.persist,
+        metadata = entry.metadata,
+    }
+end
+
+local function modifier_opts(entry, duration)
+    local opts = copy_common(entry)
+    opts.duration = duration
+    opts.lane = entry.lane
+    opts.group = entry.group
+    opts.refundable = entry.refundable
+    opts.scope = entry.scope
+    opts.bypass_recovery_lock = entry.bypass_recovery_lock
+    opts.bypass_policies = entry.bypass_policies
+    return opts
+end
+
+local function age_modifier(entry, seconds)
+    if not entry.remaining_ms then return end
+    local remaining = math.max(0, entry.remaining_ms / 1000 - seconds)
+    composure_framework.remove_modifier(entry.id)
+    if remaining > EPSILON then
+        composure_framework.upsert_modifier(entry.id, entry.rate, modifier_opts(entry, remaining))
+    end
+end
+
+local function age_cap(entry, seconds)
+    if not entry.remaining_ms then return end
+    local remaining = math.max(0, entry.remaining_ms / 1000 - seconds)
+    composure_framework.remove_cap(entry.id)
+    if remaining > EPSILON then
+        local opts = copy_common(entry)
+        opts.duration = remaining
+        opts.mode = entry.mode
+        opts.adjust_rate = entry.adjust_rate
+        composure_framework.set_cap(entry.id, entry.max_value, opts)
+    end
+end
+
+local function age_lock(entry, seconds)
+    local remaining = math.max(0, (entry.remaining_ms or 0) / 1000 - seconds)
+    composure_framework.clear_recovery_lock(entry.id)
+    if remaining > EPSILON then
+        composure_framework.set_recovery_lock(entry.id, remaining, copy_common(entry))
+    end
+end
+
+local function smallest_window(snapshot, remaining)
+    local window = remaining
+    for _, bucket in ipairs({ snapshot.modifiers or {}, snapshot.caps or {}, snapshot.recovery_locks or {} }) do
+        for _, entry in ipairs(bucket) do
+            if entry.remaining_ms then
+                window = math.min(window, math.max(EPSILON, entry.remaining_ms / 1000))
+            end
+        end
+    end
+    return window
+end
+
+local function apply_modifiers(snapshot, seconds)
+    for _, entry in ipairs(snapshot.modifiers or {}) do
+        if entry.enabled ~= false and math.abs(tonumber(entry.rate) or 0) > EPSILON then
+            composure_framework.apply_delta("simulated_time." .. entry.id,
+                entry.rate * seconds, {
+                    owner = entry.owner or "consumable_time_skip",
+                    kind = "simulated_time",
+                    category = entry.category,
+                    scope = entry.scope,
+                    refundable = entry.refundable,
+                    bypass_recovery_lock = entry.bypass_recovery_lock,
+                    bypass_policies = entry.bypass_policies,
+                    metadata = entry.metadata,
+                })
+        end
+    end
+
+    local value = composure_framework.get_value()
+    local best = nil
+    for _, cap in ipairs(snapshot.caps or {}) do
+        local enforcing = cap.mode == "hard" or (cap.mode == "soft" and (cap.adjust_rate or 0) > 0)
+        if enforcing and (not best or cap.max_value < best.max_value) then best = cap end
+    end
+    if best and value > best.max_value then
+        local loss = value - best.max_value
+        if best.mode == "soft" then loss = math.min(loss, (best.adjust_rate or 0) * seconds) end
+        composure_framework.apply_delta("simulated_time.cap." .. best.id, -loss, {
+            owner = best.owner or "consumable_time_skip",
+            kind = "simulated_time_cap",
+            bypass_recovery_lock = true,
+            bypass_policies = true,
+        })
+    end
+end
+
+local function age_snapshot(snapshot, seconds)
+    for _, entry in ipairs(snapshot.modifiers or {}) do age_modifier(entry, seconds) end
+    for _, entry in ipairs(snapshot.caps or {}) do age_cap(entry, seconds) end
+    for _, entry in ipairs(snapshot.recovery_locks or {}) do age_lock(entry, seconds) end
+end
+
+function advance(minutes)
+    if not composure_framework or not composure_framework.get_snapshot
+        or not composure_framework.apply_delta then
+        return false
+    end
+
+    local remaining = math.max(0, (tonumber(minutes) or 0) * 60)
+    local guard = 0
+    while remaining > EPSILON and guard < 256 do
+        guard = guard + 1
+        local snapshot = composure_framework.get_snapshot()
+        local window = math.min(remaining, smallest_window(snapshot, remaining))
+        apply_modifiers(snapshot, window)
+        age_snapshot(snapshot, window)
+        remaining = remaining - window
+    end
+    return remaining <= EPSILON
+end
+
+function is_available()
+    return composure_framework ~= nil and composure_framework.get_snapshot ~= nil
+end

@@ -1,0 +1,61 @@
+-- Samples movement and stance without changing actor movement.
+
+local ads = false
+local jumped_until = 0
+local landed_until = 0
+
+local function now_ms()
+    if time_global then return time_global() end
+    return 0
+end
+
+local function move_state(name)
+    if not IsMoveState then return false end
+    local ok, value = pcall(IsMoveState, name)
+    return ok and value == true
+end
+
+local function actor_speed(actor)
+    if not actor or not actor.get_movement_speed then return 0 end
+    local ok, value = pcall(function() return actor:get_movement_speed() end)
+    if not ok then return 0 end
+    return math.max(0, tonumber(value) or 0)
+end
+
+function set_ads(active)
+    ads = active == true
+end
+
+function on_jump()
+    jumped_until = now_ms() + 900
+end
+
+function on_land(fall_speed)
+    local speed = math.abs(tonumber(fall_speed) or 0)
+    landed_until = now_ms() + math.min(1400, 350 + speed * 35)
+end
+
+function sample(actor)
+    local now = now_ms()
+    local speed = actor_speed(actor)
+    local sprinting = move_state("mcSprint")
+    local crouched = move_state("mcCrouch")
+    local accelerated = move_state("mcAccel")
+    local moving = sprinting or accelerated or speed > 0.10
+    local airborne = now < jumped_until
+    local landing = now < landed_until
+    return {
+        speed = speed,
+        moving = moving,
+        sprinting = sprinting,
+        accelerated = accelerated,
+        crouched = crouched,
+        ads = ads,
+        airborne = airborne,
+        landing = landing,
+    }
+end
+
+function reset()
+    ads, jumped_until, landed_until = false, 0, 0
+end

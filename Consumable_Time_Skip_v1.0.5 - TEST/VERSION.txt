@@ -1,0 +1,3 @@
+Consumable Time-Skip
+Version: 1.0.5
+Target: S.T.A.L.K.E.R. Anomaly / GAMMA with modded executables and MCM

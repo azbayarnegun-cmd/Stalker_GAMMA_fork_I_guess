@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="st_sim_simulating">
+		<text>Симуляция</text>
+	</string>
+	<string id="st_sim_time_left">
+		<text>Осталось</text>
+	</string>
+	<string id="st_sim_h">
+		<text>ч</text>
+	</string>
+	<string id="st_sim_m">
+		<text>м</text>
+	</string>
+	<string id="st_sim_sleeping">
+		<text>Сон</text>
+	</string>
+	<string id="st_sim_unconscious">
+		<text>Без сознания</text>
+	</string>
+	<string id="st_sim_preparing_campfire">
+		<text>Разведение костра</text>
+	</string>
+	<string id="st_sim_gathering_wood">
+		<text>Сбор дров</text>
+	</string>
+	<string id="st_sim_reading">
+		<text>Чтение</text>
+	</string>
+	<string id="st_sim_playing_cards">
+		<text>Игра в карты</text>
+	</string>
+	<string id="st_sim_enjoying_magazine">
+		<text>Культурное просвещение</text>
+	</string>
+	<string id="st_sim_recovering">
+		<text>Восстановление</text>
+	</string>
+	<string id="st_sim_disoriented">
+		<text>Дезориентация</text>
+	</string>
+	<string id="st_sim_traveling">
+		<text>Путешествие</text>
+	</string>
+</string_table>

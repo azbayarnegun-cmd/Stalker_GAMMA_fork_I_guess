@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<string_table>
+    <string id="ui_mcm_menu_composure_recovery"><text>Composure - Recovery</text></string>
+
+    <string id="ui_mcm_composure_recovery_enabled"><text>Enable Composure Recovery</text></string>
+    <string id="ui_mcm_composure_recovery_enabled_desc"><text>Master switch for automatic safe-state Composure recovery.</text></string>
+
+    <string id="ui_mcm_composure_recovery_recovery_rate"><text>Recovery rate per second</text></string>
+    <string id="ui_mcm_composure_recovery_recovery_rate_desc"><text>Flat Composure restored per real second while every safety condition is satisfied. Default 0.020, equal to 1.2 points per minute.</text></string>
+
+    <string id="ui_mcm_composure_recovery_recovery_target"><text>Recovery target</text></string>
+    <string id="ui_mcm_composure_recovery_recovery_target_desc"><text>Automatic recovery stops at this Composure value. Default 65.</text></string>
+
+    <string id="ui_mcm_composure_recovery_recovery_delay"><text>Safety delay</text></string>
+    <string id="ui_mcm_composure_recovery_recovery_delay_desc"><text>Seconds of uninterrupted safety required after combat, damage, firing, a recovery lock, loading, or changing levels.</text></string>
+
+    <string id="ui_mcm_composure_recovery_respect_recovery_locks"><text>Respect recovery locks</text></string>
+    <string id="ui_mcm_composure_recovery_respect_recovery_locks_desc"><text>Stops recovery while Combat or another module reports that recovery is unsafe. The full safety delay begins after the lock clears.</text></string>
+
+    <string id="ui_mcm_composure_recovery_block_at_pass_out"><text>Block recovery at Pass Out</text></string>
+    <string id="ui_mcm_composure_recovery_block_at_pass_out_desc"><text>Prevents passive recovery from automatically reviving the actor from zero Composure.</text></string>
+
+    <string id="ui_mcm_composure_recovery_detect_active_combat"><text>Detect active combat</text></string>
+    <string id="ui_mcm_composure_recovery_detect_active_combat_desc"><text>Uses GAMMA's actor-combat targeting table to stop recovery when nearby humans or mutants are actively fighting the actor.</text></string>
+
+    <string id="ui_mcm_composure_recovery_combat_distance"><text>Combat detection distance</text></string>
+    <string id="ui_mcm_composure_recovery_combat_distance_desc"><text>Maximum distance in metres at which an actor-targeting enemy blocks recovery. Default 100.</text></string>
+
+    <string id="ui_mcm_composure_recovery_combat_inertia"><text>Combat inertia</text></string>
+    <string id="ui_mcm_composure_recovery_combat_inertia_desc"><text>Minimum number of seconds combat remains unsafe after the last actively targeting enemy disappears.</text></string>
+
+    <string id="ui_mcm_composure_recovery_reset_on_damage"><text>Reset delay when damaged</text></string>
+    <string id="ui_mcm_composure_recovery_reset_on_damage_desc"><text>Any actor hit removes the recovery source and restarts the safety delay.</text></string>
+
+    <string id="ui_mcm_composure_recovery_reset_on_weapon_fire"><text>Reset delay when firing</text></string>
+    <string id="ui_mcm_composure_recovery_reset_on_weapon_fire_desc"><text>Firing the actor's weapon removes the recovery source and restarts the safety delay.</text></string>
+
+    <string id="ui_mcm_composure_recovery_debug_key"><text>Diagnostic key</text></string>
+    <string id="ui_mcm_composure_recovery_debug_key_desc"><text>Shows the current recovery state, safety-delay time, and detected combatants. Default F9.</text></string>
+
+    <string id="ui_mcm_composure_recovery_debug_log"><text>Debug logging</text></string>
+    <string id="ui_mcm_composure_recovery_debug_log_desc"><text>Writes recovery state changes to the X-Ray log.</text></string>
+</string_table>

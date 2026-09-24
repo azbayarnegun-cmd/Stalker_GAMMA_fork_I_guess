@@ -1,0 +1,82 @@
+-- Consumable Time-Skip v1.0.5 - MCM settings
+
+local defaults = {
+    enabled = true,
+    alcohol_enabled = true,
+    alcohol_minutes = 120,
+    allow_sheltered_event_consumables = true,
+    coffee_enabled = true,
+    coffee_minutes = 30,
+    tobacco_enabled = true,
+    tobacco_minutes = 15,
+    tobacco_animation_delay = 8.0,
+    meal_minutes = 15,
+    advance_composure = true,
+    step_minutes = 3,
+    human_radius = 40,
+    mutant_radius = 20,
+    fade_seconds = 0.60,
+    settle_frames = 2,
+    enclosed_uninterruptible = true,
+    interruption_disorientation = true,
+    tester_enabled = false,
+    tester_key = (DIK_keys and DIK_keys.DIK_F10) or 68,
+    tester_minutes = 5,
+    debug_log = false,
+}
+
+local KEY_F10 = (DIK_keys and DIK_keys.DIK_F10) or 68
+
+function get_config(key)
+    if ui_mcm and ui_mcm.get then
+        local ok, value = pcall(ui_mcm.get, "consumable_time_skip/" .. key)
+        if ok and value ~= nil then return value end
+    end
+    return defaults[key]
+end
+
+function on_mcm_load()
+    return {
+        id = "consumable_time_skip",
+        sh = true,
+        gr = {
+            { id = "enabled", type = "check", val = 1, def = true },
+
+            { id = "line1", type = "line" },
+            { id = "alcohol_enabled", type = "check", val = 1, def = true },
+            { id = "alcohol_minutes", type = "track", val = 2,
+              min = 1, max = 240, step = 1, def = 120 },
+            { id = "allow_sheltered_event_consumables", type = "check", val = 1, def = true },
+            { id = "coffee_enabled", type = "check", val = 1, def = true },
+            { id = "coffee_minutes", type = "track", val = 2,
+              min = 1, max = 120, step = 1, def = 30 },
+            { id = "tobacco_enabled", type = "check", val = 1, def = true },
+            { id = "tobacco_minutes", type = "track", val = 2,
+              min = 15, max = 60, step = 1, def = 15 },
+            { id = "tobacco_animation_delay", type = "track", val = 2,
+              min = 0, max = 15, step = 0.5, prec = 1, def = 8.0 },
+            { id = "advance_composure", type = "check", val = 1, def = true },
+
+            { id = "line2", type = "line" },
+            { id = "step_minutes", type = "track", val = 2,
+              min = 1, max = 10, step = 1, def = 3 },
+            { id = "human_radius", type = "track", val = 2,
+              min = 10, max = 100, step = 5, def = 40 },
+            { id = "mutant_radius", type = "track", val = 2,
+              min = 5, max = 60, step = 5, def = 20 },
+            { id = "fade_seconds", type = "track", val = 2,
+              min = 0.10, max = 2.00, step = 0.10, prec = 1, def = 0.60 },
+            { id = "settle_frames", type = "track", val = 2,
+              min = 0, max = 10, step = 1, def = 2 },
+            { id = "enclosed_uninterruptible", type = "check", val = 1, def = true },
+            { id = "interruption_disorientation", type = "check", val = 1, def = true },
+
+            { id = "line3", type = "line" },
+            { id = "tester_enabled", type = "check", val = 1, def = false },
+            { id = "tester_key", type = "key_bind", val = 2, def = KEY_F10 },
+            { id = "tester_minutes", type = "track", val = 2,
+              min = 1, max = 120, step = 1, def = 5 },
+            { id = "debug_log", type = "check", val = 1, def = false },
+        },
+    }
+end

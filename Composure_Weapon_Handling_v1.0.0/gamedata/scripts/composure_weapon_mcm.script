@@ -1,0 +1,118 @@
+-- Composure Weapon Handling v1 settings and MCM definition.
+
+local KEY_F11 = (DIK_keys and DIK_keys.DIK_F11) or 87
+
+local defaults = {
+    enabled = true,
+    update_ms = 50,
+    overall_strength = 1.0,
+    start_composure = 69,
+    max_stability_loss = 0.55,
+
+    enable_recoil = true,
+    recoil_strength = 0.35,
+    enable_recovery = true,
+    recovery_penalty = 0.35,
+
+    enable_settle = true,
+    max_settle_extra = 0.25,
+
+    enable_dynamic_stability = true,
+    stability_recovery = 0.55,
+    moving_penalty = 0.18,
+    sprint_penalty = 0.45,
+    crouch_bonus = 0.12,
+    stationary_bonus = 0.08,
+
+    enable_shot_accumulation = true,
+    instability_per_shot = 0.08,
+    automatic_extra = 0.04,
+    burst_recovery = 0.35,
+    preserve_first_shot = true,
+
+    enable_sway_adapters = true,
+    preview_enabled = false,
+    preview_composure = 25,
+    debug_log = false,
+    diagnostic_interval = 3,
+    diagnostic_key = KEY_F11,
+}
+
+function get_config(key)
+    if ui_mcm and ui_mcm.get then
+        local ok, value = pcall(ui_mcm.get, "composure_weapon/" .. key)
+        if ok and value ~= nil then return value end
+    end
+    return defaults[key]
+end
+
+function get_defaults()
+    local out = {}
+    for key, value in pairs(defaults) do out[key] = value end
+    return out
+end
+
+function on_mcm_load()
+    return {
+        id = "composure_weapon",
+        sh = true,
+        gr = {
+            { id = "enabled", type = "check", val = 1, def = true },
+            { id = "overall_strength", type = "track", val = 2,
+              min = 0, max = 1.5, step = 0.05, prec = 2, def = 1.0 },
+            { id = "start_composure", type = "track", val = 2,
+              min = 40, max = 85, step = 1, def = 69 },
+            { id = "max_stability_loss", type = "track", val = 2,
+              min = 0, max = 0.80, step = 0.05, prec = 2, def = 0.55 },
+
+            { id = "line1", type = "line" },
+            { id = "enable_recoil", type = "check", val = 1, def = true },
+            { id = "recoil_strength", type = "track", val = 2,
+              min = 0, max = 0.75, step = 0.05, prec = 2, def = 0.35 },
+            { id = "enable_recovery", type = "check", val = 1, def = true },
+            { id = "recovery_penalty", type = "track", val = 2,
+              min = 0, max = 0.60, step = 0.05, prec = 2, def = 0.35 },
+
+            { id = "line2", type = "line" },
+            { id = "enable_settle", type = "check", val = 1, def = true },
+            { id = "max_settle_extra", type = "track", val = 2,
+              min = 0, max = 0.60, step = 0.05, prec = 2, def = 0.25 },
+
+            { id = "line3", type = "line" },
+            { id = "enable_dynamic_stability", type = "check", val = 1, def = true },
+            { id = "stability_recovery", type = "track", val = 2,
+              min = 0.10, max = 1.50, step = 0.05, prec = 2, def = 0.55 },
+            { id = "moving_penalty", type = "track", val = 2,
+              min = 0, max = 0.50, step = 0.05, prec = 2, def = 0.18 },
+            { id = "sprint_penalty", type = "track", val = 2,
+              min = 0, max = 0.75, step = 0.05, prec = 2, def = 0.45 },
+            { id = "crouch_bonus", type = "track", val = 2,
+              min = 0, max = 0.30, step = 0.05, prec = 2, def = 0.12 },
+            { id = "stationary_bonus", type = "track", val = 2,
+              min = 0, max = 0.30, step = 0.05, prec = 2, def = 0.08 },
+
+            { id = "line4", type = "line" },
+            { id = "enable_shot_accumulation", type = "check", val = 1, def = true },
+            { id = "instability_per_shot", type = "track", val = 2,
+              min = 0, max = 0.20, step = 0.01, prec = 2, def = 0.08 },
+            { id = "automatic_extra", type = "track", val = 2,
+              min = 0, max = 0.15, step = 0.01, prec = 2, def = 0.04 },
+            { id = "burst_recovery", type = "track", val = 2,
+              min = 0.05, max = 1.00, step = 0.05, prec = 2, def = 0.35 },
+            { id = "preserve_first_shot", type = "check", val = 1, def = true },
+
+            { id = "line5", type = "line" },
+            { id = "enable_sway_adapters", type = "check", val = 1, def = true },
+            { id = "line6", type = "line" },
+            { id = "preview_enabled", type = "check", val = 1, def = false },
+            { id = "preview_composure", type = "track", val = 2,
+              min = 0, max = 100, step = 1, def = 25 },
+            { id = "update_ms", type = "track", val = 2,
+              min = 25, max = 250, step = 25, def = 50 },
+            { id = "debug_log", type = "check", val = 1, def = false },
+            { id = "diagnostic_interval", type = "track", val = 2,
+              min = 1, max = 15, step = 1, def = 3 },
+            { id = "diagnostic_key", type = "key_bind", val = 2, def = KEY_F11 },
+        },
+    }
+end

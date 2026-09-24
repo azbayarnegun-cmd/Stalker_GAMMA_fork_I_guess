@@ -1,0 +1,11 @@
+; Promote sleep deprivation / thirst state from file-local to module-level
+; so simulated_time_sleep.script can snapshot and restore them around the
+; simulated advance. Without this, actor_on_update drain ticks that fire
+; many times during the stepped advance inflate these values far beyond
+; what vanilla (single-frame time jump) produces.
+
+[actor_status_sleep]
+last_sleep
+
+[actor_status_thirst]
+last_drink

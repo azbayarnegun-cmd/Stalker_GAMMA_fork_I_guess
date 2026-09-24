@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<string_table>
+    <string id="ui_mcm_menu_composure_weapon"><text>Composure - Weapon Handling</text></string>
+    <string id="ui_mcm_composure_weapon_enabled"><text>Enable Weapon Handling</text></string>
+    <string id="ui_mcm_composure_weapon_enabled_desc"><text>Applies reversible handling consequences from Framework state. Never changes Composure or ballistics.</text></string>
+    <string id="ui_mcm_composure_weapon_overall_strength"><text>Overall effect strength</text></string>
+    <string id="ui_mcm_composure_weapon_overall_strength_desc"><text>Scales the complete handling system. Zero leaves the addon active but neutral.</text></string>
+    <string id="ui_mcm_composure_weapon_start_composure"><text>Effect start Composure</text></string>
+    <string id="ui_mcm_composure_weapon_start_composure_desc"><text>Effects begin smoothly at this value. Default: 69.</text></string>
+    <string id="ui_mcm_composure_weapon_max_stability_loss"><text>Maximum stability-ceiling loss</text></string>
+    <string id="ui_mcm_composure_weapon_max_stability_loss_desc"><text>Maximum fraction removed from the settled stability ceiling near Breaking Point.</text></string>
+
+    <string id="ui_mcm_composure_weapon_enable_recoil"><text>Enable recoil-control penalty</text></string>
+    <string id="ui_mcm_composure_weapon_enable_recoil_desc"><text>Increases reversible camera-recoil parameters as Weapon Stability falls.</text></string>
+    <string id="ui_mcm_composure_weapon_recoil_strength"><text>Recoil-control strength</text></string>
+    <string id="ui_mcm_composure_weapon_recoil_strength_desc"><text>Maximum scaling applied to native hip-fire and zoom camera recoil.</text></string>
+    <string id="ui_mcm_composure_weapon_enable_recovery"><text>Enable recoil-recovery penalty</text></string>
+    <string id="ui_mcm_composure_weapon_enable_recovery_desc"><text>Reduces native camera-recoil relaxation speed while stability is poor.</text></string>
+    <string id="ui_mcm_composure_weapon_recovery_penalty"><text>Recoil-recovery strength</text></string>
+    <string id="ui_mcm_composure_weapon_recovery_penalty_desc"><text>Maximum reduction to hip-fire and zoom recoil relaxation speed.</text></string>
+
+    <string id="ui_mcm_composure_weapon_enable_settle"><text>Enable ADS settling</text></string>
+    <string id="ui_mcm_composure_weapon_enable_settle_desc"><text>Adds a small reversible delay to the weapon's native ADS transition as stability falls.</text></string>
+    <string id="ui_mcm_composure_weapon_max_settle_extra"><text>Maximum extra ADS time</text></string>
+    <string id="ui_mcm_composure_weapon_max_settle_extra_desc"><text>Maximum seconds added to the weapon's original ADS transition time.</text></string>
+
+    <string id="ui_mcm_composure_weapon_enable_dynamic_stability"><text>Enable dynamic Weapon Stability</text></string>
+    <string id="ui_mcm_composure_weapon_enable_dynamic_stability_desc"><text>Allows movement, sprinting, stance, landing, and stationary recovery to change current stability.</text></string>
+    <string id="ui_mcm_composure_weapon_stability_recovery"><text>Stability recovery speed</text></string>
+    <string id="ui_mcm_composure_weapon_stability_recovery_desc"><text>Base stability restored per real second before stance and Composure scaling.</text></string>
+    <string id="ui_mcm_composure_weapon_moving_penalty"><text>Moving instability</text></string>
+    <string id="ui_mcm_composure_weapon_moving_penalty_desc"><text>Temporary stability loss while walking, running, or strafing.</text></string>
+    <string id="ui_mcm_composure_weapon_sprint_penalty"><text>Sprint instability</text></string>
+    <string id="ui_mcm_composure_weapon_sprint_penalty_desc"><text>Temporary stability loss while sprinting or airborne.</text></string>
+    <string id="ui_mcm_composure_weapon_crouch_bonus"><text>Crouch stabilization</text></string>
+    <string id="ui_mcm_composure_weapon_crouch_bonus_desc"><text>Improves stability target and recovery while crouched without removing the Composure ceiling.</text></string>
+    <string id="ui_mcm_composure_weapon_stationary_bonus"><text>Stationary stabilization</text></string>
+    <string id="ui_mcm_composure_weapon_stationary_bonus_desc"><text>Improves the stability target while the actor remains still.</text></string>
+
+    <string id="ui_mcm_composure_weapon_enable_shot_accumulation"><text>Enable shot accumulation</text></string>
+    <string id="ui_mcm_composure_weapon_enable_shot_accumulation_desc"><text>Repeated shots build temporary instability and make sustained fire harder.</text></string>
+    <string id="ui_mcm_composure_weapon_instability_per_shot"><text>Instability per shot</text></string>
+    <string id="ui_mcm_composure_weapon_instability_per_shot_desc"><text>Base stability disturbance applied after each shot.</text></string>
+    <string id="ui_mcm_composure_weapon_automatic_extra"><text>Rapid-fire accumulation</text></string>
+    <string id="ui_mcm_composure_weapon_automatic_extra_desc"><text>Additional disturbance when the next shot occurs within 180 milliseconds.</text></string>
+    <string id="ui_mcm_composure_weapon_burst_recovery"><text>Burst recovery speed</text></string>
+    <string id="ui_mcm_composure_weapon_burst_recovery_desc"><text>How quickly accumulated shot instability clears after firing stops.</text></string>
+    <string id="ui_mcm_composure_weapon_preserve_first_shot"><text>Preserve prepared first shot</text></string>
+    <string id="ui_mcm_composure_weapon_preserve_first_shot_desc"><text>Reduces accumulation from the first shot after a pause. The shot itself is fired before instability is added.</text></string>
+
+    <string id="ui_mcm_composure_weapon_enable_sway_adapters"><text>Enable sway adapter signal</text></string>
+    <string id="ui_mcm_composure_weapon_enable_sway_adapters_desc"><text>Publishes normalized sway pressure to optional adapters. The base addon never changes bullet dispersion or forces camera motion.</text></string>
+    <string id="ui_mcm_composure_weapon_preview_enabled"><text>Enable handling preview</text></string>
+    <string id="ui_mcm_composure_weapon_preview_enabled_desc"><text>Uses the preview value for Weapon Handling only. It never changes the Framework Composure value.</text></string>
+    <string id="ui_mcm_composure_weapon_preview_composure"><text>Preview Composure</text></string>
+    <string id="ui_mcm_composure_weapon_preview_composure_desc"><text>Presentation-only test value used while handling preview is enabled. Test 70, 69, 50, 40, 16, 1, and 0.</text></string>
+    <string id="ui_mcm_composure_weapon_update_ms"><text>Update interval (milliseconds)</text></string>
+    <string id="ui_mcm_composure_weapon_update_ms_desc"><text>How frequently Framework, movement, and weapon targets are sampled.</text></string>
+    <string id="ui_mcm_composure_weapon_debug_log"><text>Debug logging</text></string>
+    <string id="ui_mcm_composure_weapon_debug_log_desc"><text>Periodically logs current stability, pressure, movement, shot load, and preview state.</text></string>
+    <string id="ui_mcm_composure_weapon_diagnostic_interval"><text>Diagnostic interval (seconds)</text></string>
+    <string id="ui_mcm_composure_weapon_diagnostic_interval_desc"><text>Interval used by periodic diagnostics when debug logging is enabled.</text></string>
+    <string id="ui_mcm_composure_weapon_diagnostic_key"><text>Diagnostic key</text></string>
+    <string id="ui_mcm_composure_weapon_diagnostic_key_desc"><text>Writes an immediate Weapon Handling diagnostic snapshot to the log. Default: F11.</text></string>
+</string_table>

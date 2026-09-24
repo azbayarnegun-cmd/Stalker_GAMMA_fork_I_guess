@@ -1,0 +1,67 @@
+--[[
+    True continuous player sway has no safe native Lua setter in the audited
+    GAMMA surface. This module publishes a normalized signal to optional,
+    owner-scoped adapters and never changes bullet dispersion or camera angles.
+--]]
+
+local adapters = {}
+local errors = {}
+
+function register_adapter(id, fn, opts)
+    opts = opts or {}
+    if type(id) ~= "string" or id == "" or type(fn) ~= "function" then return false end
+    local owner = tostring(opts.owner or "external")
+    local existing = adapters[id]
+    if existing and existing.owner ~= owner then return false end
+    adapters[id] = { id = id, owner = owner, fn = fn, cleanup = opts.cleanup, priority = tonumber(opts.priority) or 0 }
+    return true
+end
+
+function unregister_adapter(id)
+    local entry = adapters[id]
+    if not entry then return false end
+    if type(entry.cleanup) == "function" then pcall(entry.cleanup) end
+    adapters[id] = nil
+    return true
+end
+
+function clear_owner(owner)
+    local ids = {}
+    for id, entry in pairs(adapters) do if entry.owner == owner then table.insert(ids, id) end end
+    for _, id in ipairs(ids) do unregister_adapter(id) end
+    return #ids
+end
+
+local function sorted()
+    local out = {}
+    for _, entry in pairs(adapters) do table.insert(out, entry) end
+    table.sort(out, function(a, b)
+        if a.priority == b.priority then return a.id < b.id end
+        return a.priority > b.priority
+    end)
+    return out
+end
+
+function sync(state, enabled)
+    local signal = enabled and state.sway_signal or 0
+    for _, entry in ipairs(sorted()) do
+        local ok, err = pcall(entry.fn, signal, state)
+        if not ok then
+            errors[entry.id] = (errors[entry.id] or 0) + 1
+            printf("[composure_weapon:v1] sway adapter '%s' failed: %s", entry.id, tostring(err))
+        end
+    end
+    return true
+end
+
+function cleanup()
+    local neutral = { sway_signal = 0, pressure = 0, current = 1, ceiling = 1 }
+    sync(neutral, false)
+    return true
+end
+
+function get_diagnostics()
+    local count = 0
+    for _ in pairs(adapters) do count = count + 1 end
+    return { adapters = count, errors = errors, native_sway = false }
+end

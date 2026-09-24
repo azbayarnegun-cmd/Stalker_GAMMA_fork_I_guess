@@ -1,0 +1,480 @@
+--[[
+    composure_consumables.script
+    Composure Consumables — Balance Redone v1.1.2
+
+    Applies the spreadsheet-defined effects when standard GAMMA consumables are
+    used. The module depends on Composure Core / Framework API 2 and never owns
+    the authoritative Composure value.
+
+    Target runtime: Anomaly/GAMMA LuaJIT (Lua 5.1 semantics).
+--]]
+
+local VERSION = "1.1.2"
+local REQUIRED_FRAMEWORK_API = 2
+local OWNER = "composure_consumables"
+local POLICY_ID = "consumables.balance_policy"
+local SAVE_KEY = "composure_consumables_v1"
+local LOG = "[composure_consumables:v1]"
+
+local INSTANT_GAIN_CAP = 20
+local INSTANT_LOSS_CAP = 20
+local RESISTANCE_CAP = 0.50
+local GAIN_BUFF_CAP = 0.50
+
+local enabled = true
+local instant_scale = 1.0
+local gradual_scale = 1.0
+local resistance_scale = 1.0
+local gain_buff_scale = 1.0
+local bypass_recovery_locks = true
+local debug_key = nil
+local debug_enabled = false
+
+local active_resistances = {}
+local active_gain_buffs = {}
+local callbacks_registered = false
+local dependency_error_logged = false
+local last_used = nil
+local use_count = 0
+local disabled_cleanup_pending = false
+local deferred_requests = {}
+local deferred_effects = {}
+
+local function now_ms()
+    if time_global then return time_global() end
+    return 0
+end
+
+local function log(fmt, ...)
+    local ok, msg = pcall(string.format, fmt, ...)
+    printf(LOG .. " " .. (ok and msg or tostring(fmt)))
+end
+
+local function debug_log(fmt, ...)
+    if debug_enabled then log(fmt, ...) end
+end
+
+local function clamp(value, lo, hi)
+    if value < lo then return lo end
+    if value > hi then return hi end
+    return value
+end
+
+local function cfg(key, fallback)
+    if composure_consumables_mcm and composure_consumables_mcm.get_config then
+        local ok, result = pcall(composure_consumables_mcm.get_config, key)
+        if ok and result ~= nil then return result end
+    end
+    return fallback
+end
+
+local function refresh_config()
+    enabled = cfg("enabled", true) == true
+    instant_scale = clamp(tonumber(cfg("instant_scale", 1.0)) or 1.0, 0, 2)
+    gradual_scale = clamp(tonumber(cfg("gradual_scale", 1.0)) or 1.0, 0, 2)
+    resistance_scale = clamp(tonumber(cfg("resistance_scale", 1.0)) or 1.0, 0, 2)
+    gain_buff_scale = clamp(tonumber(cfg("gain_buff_scale", 1.0)) or 1.0, 0, 2)
+    bypass_recovery_locks = cfg("bypass_recovery_locks", true) == true
+    debug_key = cfg("debug_key", DIK_keys and DIK_keys.DIK_F8 or nil)
+    debug_enabled = cfg("debug_log", false) == true
+end
+
+local function framework_ready()
+    return composure_framework
+        and type(composure_framework.supports) == "function"
+        and composure_framework.supports(REQUIRED_FRAMEWORK_API)
+        and type(composure_framework.apply_instant) == "function"
+        and type(composure_framework.add_temporary_modifier) == "function"
+        and type(composure_framework.register_adjustment_policy) == "function"
+end
+
+local function report_missing_framework_once()
+    if dependency_error_logged then return end
+    dependency_error_logged = true
+    log("Composure Core / Framework API %d not found; Consumables is inactive", REQUIRED_FRAMEWORK_API)
+end
+
+local function prune_effects()
+    local now = now_ms()
+    for group, effect in pairs(active_resistances) do
+        if now >= (effect.expires_at_ms or 0) then active_resistances[group] = nil end
+    end
+    for group, effect in pairs(active_gain_buffs) do
+        if now >= (effect.expires_at_ms or 0) then active_gain_buffs[group] = nil end
+    end
+end
+
+local function source_matches(effect_source, request_source)
+    if not request_source or request_source == "" then return false end
+    if effect_source == request_source then return true end
+    if effect_source == "all_noncombat" then
+        return request_source ~= "combat"
+            and request_source ~= "human_combat"
+            and request_source ~= "mutant_combat"
+    end
+    return false
+end
+
+local function strongest_resistance(source_type)
+    local strongest = 0
+    for _, effect in pairs(active_resistances) do
+        if source_matches(effect.source, source_type) then
+            strongest = math.max(strongest, tonumber(effect.value) or 0)
+        end
+    end
+    return clamp(strongest * resistance_scale, 0, RESISTANCE_CAP)
+end
+
+local function strongest_gain_modifiers()
+    local positive = 0
+    local negative = 0
+    for _, effect in pairs(active_gain_buffs) do
+        local value = (tonumber(effect.value) or 0) * gain_buff_scale
+        if value > positive then positive = value end
+        if value < negative then negative = value end
+    end
+    return clamp(positive, 0, GAIN_BUFF_CAP), clamp(negative, -GAIN_BUFF_CAP, 0)
+end
+
+local function adjustment_policy(amount, context, state)
+    if not enabled or type(amount) ~= "number" or amount == 0 then return amount end
+    prune_effects()
+    context = context or {}
+    local metadata = context.metadata or {}
+    local adjusted = amount
+
+    if adjusted > 0 then
+        local positive, negative = strongest_gain_modifiers()
+        adjusted = adjusted * clamp(1 + positive + negative, 0.5, 1.5)
+    elseif metadata.composure_consumable_penalty ~= true then
+        -- Source-specific protection is intentionally strict: an unknown or
+        -- missing source_type receives no specialized reduction.
+        local resistance = strongest_resistance(metadata.source_type)
+        adjusted = adjusted * (1 - resistance)
+    end
+
+    -- Spreadsheet global cap is applied after item aggregation and potency.
+    if metadata.composure_consumable_instant == true then
+        adjusted = clamp(adjusted, -INSTANT_LOSS_CAP, INSTANT_GAIN_CAP)
+    end
+    return adjusted
+end
+
+local function register_policy()
+    if not framework_ready() then
+        report_missing_framework_once()
+        return false
+    end
+    dependency_error_logged = false
+    if composure_framework.unregister_adjustment_policy then
+        composure_framework.unregister_adjustment_policy(POLICY_ID)
+    end
+    return composure_framework.register_adjustment_policy(POLICY_ID, adjustment_policy, {
+        owner = OWNER,
+        priority = 40,
+    }) == true
+end
+
+local function clear_runtime_effects(clear_gradual)
+    active_resistances = {}
+    active_gain_buffs = {}
+    deferred_requests = {}
+    deferred_effects = {}
+    if clear_gradual and framework_ready() and composure_framework.clear_owner_effects then
+        composure_framework.clear_owner_effects(OWNER)
+    end
+end
+
+local function effect_strength(value)
+    return math.abs(tonumber(value) or 0)
+end
+
+local function activate_effect(bucket, group, value, duration, row, source)
+    value = tonumber(value) or 0
+    duration = tonumber(duration) or 0
+    if duration <= 0 or value == 0 then return end
+
+    local previous = bucket[group]
+    local kept_value = value
+    local kept_source = source
+    local kept_name = row.name
+    if previous and effect_strength(previous.value) > effect_strength(value) then
+        kept_value = previous.value
+        kept_source = previous.source
+        kept_name = previous.name
+    end
+
+    bucket[group] = {
+        value = kept_value,
+        source = kept_source,
+        name = kept_name,
+        section = row.sections[1],
+        expires_at_ms = now_ms() + duration * 1000,
+    }
+end
+
+local function gradual_id(row)
+    return "consumables.gradual." .. row.key
+end
+
+local function add_gradual_effect(row, used_section, gradual, duration)
+    composure_framework.add_temporary_modifier(gradual_id(row), gradual / duration, duration, {
+        owner = OWNER,
+        lane = "slow",
+        category = "consumable",
+        group = row.stacking_group,
+        label = row.name,
+        flavor = row.rationale,
+        persist = true,
+        bypass_recovery_lock = gradual > 0 and bypass_recovery_locks,
+        metadata = {
+            item_section = used_section,
+            item_name = row.name,
+            source_type = "consumable_crash",
+            composure_consumable_penalty = gradual < 0,
+        },
+    })
+end
+
+local function should_defer(used_section)
+    local expires = deferred_requests[used_section]
+    deferred_requests[used_section] = nil
+    return expires ~= nil and now_ms() <= expires
+end
+
+local function apply_row(row, used_section)
+    if not framework_ready() then
+        report_missing_framework_once()
+        return false
+    end
+    if row.activation ~= "On use" then return false end
+    prune_effects()
+
+    -- The instant portion happens before newly granted potency buffs so an
+    -- item never amplifies its own immediate hit. Timed recovery can benefit.
+    local row_instant_scale = row.fixed_effect and 1.0 or instant_scale
+    local row_gradual_scale = row.fixed_effect and 1.0 or gradual_scale
+    local instant = clamp((tonumber(row.instant) or 0) * row_instant_scale,
+        -INSTANT_LOSS_CAP, INSTANT_GAIN_CAP)
+    if instant ~= 0 then
+        composure_framework.apply_instant("consumables.instant." .. row.key, instant, {
+            owner = OWNER,
+            category = "consumable",
+            scope = row.type,
+            bypass_recovery_lock = instant > 0 and bypass_recovery_locks,
+            metadata = {
+                item_section = used_section,
+                item_name = row.name,
+                source_type = "consumable",
+                composure_consumable_instant = true,
+                composure_consumable_penalty = instant < 0,
+            },
+        })
+    end
+
+    local gradual = (tonumber(row.gradual) or 0) * row_gradual_scale
+    local duration = tonumber(row.duration) or 0
+    if gradual ~= 0 and duration > 0 then
+        if should_defer(used_section) then
+            deferred_effects[used_section] = {
+                row = row, gradual = gradual, duration = duration,
+            }
+            debug_log("deferred gradual effect for %s until time-skip wake", used_section)
+        else
+            add_gradual_effect(row, used_section, gradual, duration)
+        end
+    end
+
+    if row.resistance then
+        activate_effect(active_resistances,
+            row.stacking_group or row.resistance.id or row.key,
+            row.resistance.value, row.resistance.duration, row, row.resistance.source)
+    end
+    if row.gain_buff then
+        activate_effect(active_gain_buffs,
+            row.stacking_group or row.key,
+            row.gain_buff.value, row.gain_buff.duration, row, nil)
+    end
+
+    last_used = { section = used_section, name = row.name, at_ms = now_ms() }
+    use_count = use_count + 1
+    debug_log("used %s [%s]: instant=%+.2f gradual=%+.2f/%ds",
+        row.name, used_section, instant, gradual, duration)
+    return true
+end
+
+local function on_actor_item_use(obj)
+    if not enabled or not obj or not obj.section then return end
+    local ok, section = pcall(obj.section, obj)
+    if not ok or not section then return end
+    local row = composure_consumables_data and composure_consumables_data.get(section) or nil
+    if row then apply_row(row, section) end
+end
+
+local function serialize_bucket(bucket)
+    local out = {}
+    local now = now_ms()
+    for group, effect in pairs(bucket) do
+        local remaining = math.max(0, (effect.expires_at_ms or now) - now)
+        if remaining > 0 then
+            out[group] = {
+                value = effect.value,
+                source = effect.source,
+                name = effect.name,
+                section = effect.section,
+                remaining_ms = remaining,
+            }
+        end
+    end
+    return out
+end
+
+local function restore_bucket(saved)
+    local out = {}
+    local now = now_ms()
+    if type(saved) ~= "table" then return out end
+    for group, effect in pairs(saved) do
+        local remaining = tonumber(effect.remaining_ms) or 0
+        if remaining > 0 and tonumber(effect.value) then
+            out[group] = {
+                value = effect.value,
+                source = effect.source,
+                name = effect.name,
+                section = effect.section,
+                expires_at_ms = now + remaining,
+            }
+        end
+    end
+    return out
+end
+
+local function save_state(m_data)
+    prune_effects()
+    m_data[SAVE_KEY] = {
+        version = VERSION,
+        resistances = serialize_bucket(active_resistances),
+        gain_buffs = serialize_bucket(active_gain_buffs),
+        use_count = use_count,
+    }
+end
+
+local function load_state(m_data)
+    refresh_config()
+    local saved = m_data and m_data[SAVE_KEY] or nil
+    active_resistances = restore_bucket(saved and saved.resistances)
+    active_gain_buffs = restore_bucket(saved and saved.gain_buffs)
+    use_count = tonumber(saved and saved.use_count) or 0
+    register_policy()
+    disabled_cleanup_pending = not enabled
+    if not enabled then clear_runtime_effects(true) end
+end
+
+local function on_option_change()
+    refresh_config()
+    register_policy()
+    disabled_cleanup_pending = not enabled
+    if not enabled then clear_runtime_effects(true) end
+end
+
+local function on_actor_update()
+    prune_effects()
+    -- Also clear on the first post-load frame. This is independent of callback
+    -- order, so Core cannot restore a persisted gradual effect after an
+    -- earlier disabled-state cleanup.
+    if disabled_cleanup_pending and framework_ready() then
+        clear_runtime_effects(true)
+        disabled_cleanup_pending = false
+    end
+    if enabled and not framework_ready() and not dependency_error_logged then
+        report_missing_framework_once()
+    end
+end
+
+local function remaining_seconds(effect)
+    return math.max(0, ((effect and effect.expires_at_ms) or now_ms()) - now_ms()) / 1000
+end
+
+local function on_key_press(key)
+    if not debug_key or key ~= debug_key then return end
+    prune_effects()
+    local resistance_count, gain_count = 0, 0
+    for _ in pairs(active_resistances) do resistance_count = resistance_count + 1 end
+    for _ in pairs(active_gain_buffs) do gain_count = gain_count + 1 end
+    local value = framework_ready() and composure_framework.get_value() or -1
+    log("value=%.2f uses=%d resistances=%d gain_buffs=%d last=%s",
+        value, use_count, resistance_count, gain_count,
+        last_used and (last_used.name .. " [" .. last_used.section .. "]") or "none")
+    for group, effect in pairs(active_resistances) do
+        log("resistance %s: %.0f%% %s %.1fs", group, effect.value * 100,
+            tostring(effect.source), remaining_seconds(effect))
+    end
+    for group, effect in pairs(active_gain_buffs) do
+        log("gain buff %s: %+.0f%% %.1fs", group, effect.value * 100,
+            remaining_seconds(effect))
+    end
+    if db and db.actor and news_manager then
+        news_manager.send_tip(db.actor,
+            string.format("Consumables: %d resistance | %d gain buffs", resistance_count, gain_count),
+            nil, nil, 4000)
+    end
+end
+
+function get_version() return VERSION end
+
+-- Consumable Time-Skip compatibility. The instant effect remains at the
+-- consumption moment; only the newly consumed gradual effect waits for wake.
+function prepare_time_skip_effect(section)
+    if type(section) ~= "string" or section == "" then return false end
+    deferred_requests[section] = now_ms() + 15000
+    return true
+end
+
+function release_time_skip_effect(section)
+    local effect = deferred_effects[section]
+    deferred_effects[section] = nil
+    deferred_requests[section] = nil
+    if not effect or not framework_ready() then return false end
+    add_gradual_effect(effect.row, section, effect.gradual, effect.duration)
+    debug_log("released deferred gradual effect for %s", section)
+    return true
+end
+
+function get_item_effect(section)
+    return composure_consumables_data and composure_consumables_data.get(section) or nil
+end
+
+function get_active_effects()
+    prune_effects()
+    return {
+        resistances = active_resistances,
+        gain_buffs = active_gain_buffs,
+    }
+end
+
+function get_diagnostics()
+    prune_effects()
+    return {
+        version = VERSION,
+        enabled = enabled,
+        framework_ready = framework_ready(),
+        mapped_sections = composure_consumables_data and composure_consumables_data.get_section_count() or 0,
+        use_count = use_count,
+        last_used = last_used,
+        effects = get_active_effects(),
+    }
+end
+
+function on_game_start()
+    refresh_config()
+    register_policy()
+    if callbacks_registered then return end
+    callbacks_registered = true
+    RegisterScriptCallback("actor_on_item_use", on_actor_item_use)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("actor_on_update", on_actor_update)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    log("v%s initialized with %d mapped item sections", VERSION,
+        composure_consumables_data and composure_consumables_data.get_section_count() or 0)
+end

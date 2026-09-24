@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="st_sim_simulating">
+		<text>Simulating</text>
+	</string>
+	<string id="st_sim_time_left">
+		<text>Time left</text>
+	</string>
+	<string id="st_sim_h">
+		<text>h</text>
+	</string>
+	<string id="st_sim_m">
+		<text>m</text>
+	</string>
+	<string id="st_sim_sleeping">
+		<text>Sleeping</text>
+	</string>
+	<string id="st_sim_unconscious">
+		<text>Unconscious</text>
+	</string>
+	<string id="st_sim_preparing_campfire">
+		<text>Preparing campfire</text>
+	</string>
+	<string id="st_sim_gathering_wood">
+		<text>Gathering wood</text>
+	</string>
+	<string id="st_sim_reading">
+		<text>Reading</text>
+	</string>
+	<string id="st_sim_playing_cards">
+		<text>Playing cards</text>
+	</string>
+	<string id="st_sim_enjoying_magazine">
+		<text>Enjoying a magazine</text>
+	</string>
+	<string id="st_sim_recovering">
+		<text>Recovering</text>
+	</string>
+	<string id="st_sim_disoriented">
+		<text>Disoriented</text>
+	</string>
+	<string id="st_sim_traveling">
+		<text>Traveling</text>
+	</string>
+</string_table>

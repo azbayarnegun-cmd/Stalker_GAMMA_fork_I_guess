@@ -1,0 +1,811 @@
+--[[
+    composure_hud.script
+    Composure HUD v3.3 - optional Framework API 2 snapshot display.
+
+    Modes:
+      0 = Live Feedback: exact mechanics, direction, rate, cap/lock, causes.
+      1 = Minimal Immersion: state and a first-person contextual thought.
+
+    Normal HUD operation is read-only. An explicit, disabled-by-default tester
+    can apply small debug deltas through Framework's public API.
+--]]
+
+local VERSION = "3.6.0"
+local REQUIRED_FRAMEWORK_API = 2
+local OWNER = "composure_hud"
+local DISPLAY_ID = "hud.check"
+local LOG = "[composure_hud:v3.6]"
+local EPSILON = 0.000001
+
+local MODE_IMMERSION = 0
+local MODE_LIVE = 1
+
+local enabled = true
+local mode = MODE_IMMERSION
+local show_detailed_diagnostics = false
+local show_value = false
+local show_bar = true
+local show_direction = true
+local live_show_rates = true
+local live_show_modifiers = true
+local live_max_causes = 5
+local live_show_combat = true
+local show_top_text = true
+local fade_in_ms = 750
+local visible_ms = 4000
+local fade_out_ms = 1250
+local refresh_ms = 150
+local trend_smoothing_ms = 1000
+local trend_deadzone = 0.05
+local direction_delay_ms = 300
+local trend_thresholds = { 0.25, 0.75, 1.50, 3.00 }
+local horizontal_offset = 0
+local vertical_offset = 0
+local maximum_opacity = 1.0
+local show_instant_pulse = true
+local debug_enabled = false
+local tester_enabled = false
+local tester_step = 3
+local check_key = (DIK_keys and DIK_keys.DIK_F10) or 68
+local tester_decrease_key = (DIK_keys and DIK_keys.DIK_MINUS) or 12
+local tester_increase_key = (DIK_keys and DIK_keys.DIK_EQUALS) or 13
+
+local HUD = nil
+local provider_registered = false
+local callbacks_registered = false
+local dependency_error_logged = false
+local flavor = {}
+local close_hud
+
+-- ===================== Utility =====================
+
+local function log(fmt, ...)
+    local ok, message = pcall(string.format, fmt, ...)
+    printf(LOG .. " " .. (ok and message or tostring(fmt)))
+end
+
+local function debug_log(fmt, ...)
+    if debug_enabled then log(fmt, ...) end
+end
+
+local function clamp(v, lo, hi)
+    if v < lo then return lo end
+    if v > hi then return hi end
+    return v
+end
+
+local function cfg(key, fallback)
+    if composure_hud_mcm and composure_hud_mcm.get_config then
+        local ok, result = pcall(composure_hud_mcm.get_config, key)
+        if ok and result ~= nil then return result end
+    end
+    return fallback
+end
+
+local function framework_ready()
+    return composure_framework
+        and type(composure_framework.supports) == "function"
+        and composure_framework.supports(REQUIRED_FRAMEWORK_API)
+        and type(composure_framework.get_snapshot) == "function"
+        and type(composure_framework.register_check_display) == "function"
+end
+
+local function effective_snapshot(snapshot)
+    if composure_feedback_test and composure_feedback_test.apply_snapshot then
+        local ok, result = pcall(composure_feedback_test.apply_snapshot, snapshot)
+        if ok and type(result) == "table" then return result end
+    end
+    return snapshot
+end
+
+local function report_missing_framework_once()
+    if dependency_error_logged then return end
+    dependency_error_logged = true
+    log("Framework API %d not found; HUD is inactive", REQUIRED_FRAMEWORK_API)
+end
+
+local function refresh_config()
+    enabled = cfg("enabled", true) == true
+    -- v1.2.4 has one check-triggered HUD. Diagnostics is an independent layer.
+    mode = MODE_IMMERSION
+    show_detailed_diagnostics = cfg("show_detailed_diagnostics", false) == true
+    -- Fresh v1.2.5 keys intentionally ignore the two contradictory legacy
+    -- Live/Minimal bar switches found in existing MCM profiles.
+    show_value = cfg("show_value_v125", false) == true
+    show_bar = cfg("show_bar_v125", true) == true
+    show_direction = cfg("show_direction_v125", true) == true
+    live_show_rates = cfg("live_show_rates", true) == true
+    live_show_modifiers = cfg("live_show_modifiers", true) == true
+    live_max_causes = math.floor(clamp(tonumber(cfg("live_max_causes", 5)) or 5, 1, 8))
+    live_show_combat = cfg("live_show_combat", true) == true
+    show_top_text = cfg("show_top_text", true) == true
+    show_instant_pulse = cfg("show_instant_pulse", true) == true
+    fade_in_ms = math.floor(clamp(tonumber(cfg("fade_in", 0.75)) or 0.75, 0.05, 3) * 1000)
+    visible_ms = math.floor(clamp(tonumber(cfg("visible_duration", 4.0)) or 4.0, 0.5, 15) * 1000)
+    fade_out_ms = math.floor(clamp(tonumber(cfg("fade_out", 1.25)) or 1.25, 0.05, 4) * 1000)
+    refresh_ms = math.floor(clamp(tonumber(cfg("refresh_ms", 150)) or 150, 50, 1000))
+    trend_smoothing_ms = math.floor(clamp(tonumber(cfg("trend_smoothing", 1.0)) or 1.0, 0.1, 3) * 1000)
+    trend_deadzone = clamp(tonumber(cfg("trend_deadzone", 0.05)) or 0.05, 0, 0.5)
+    direction_delay_ms = math.floor(clamp(tonumber(cfg("direction_delay", 0.30)) or 0.30, 0, 1.5) * 1000)
+    trend_thresholds[1] = clamp(tonumber(cfg("threshold_1", 0.25)) or 0.25, 0.05, 10)
+    trend_thresholds[2] = math.max(trend_thresholds[1], tonumber(cfg("threshold_2", 0.75)) or 0.75)
+    trend_thresholds[3] = math.max(trend_thresholds[2], tonumber(cfg("threshold_3", 1.50)) or 1.50)
+    trend_thresholds[4] = math.max(trend_thresholds[3], tonumber(cfg("threshold_4", 3.00)) or 3.00)
+    horizontal_offset = math.floor(clamp(tonumber(cfg("horizontal_offset", 0)) or 0, -300, 300))
+    vertical_offset = math.floor(clamp(tonumber(cfg("vertical_offset", 0)) or 0, -20, 300))
+    maximum_opacity = clamp((tonumber(cfg("maximum_opacity", 100)) or 100) / 100, 0.20, 1.0)
+    debug_enabled = cfg("debug_log", false) == true
+    tester_enabled = cfg("tester_enabled", false) == true
+    tester_step = math.floor(clamp(tonumber(cfg("tester_step", 3)) or 3, 1, 10))
+    check_key = tonumber(cfg("check_key", check_key)) or check_key
+    tester_decrease_key = tonumber(cfg("tester_decrease_key", tester_decrease_key)) or tester_decrease_key
+    tester_increase_key = tonumber(cfg("tester_increase_key", tester_increase_key)) or tester_increase_key
+end
+
+local function title_words(id)
+    local text = tostring(id or "Unknown")
+    text = string.gsub(text, "^[^.]+%.", "")
+    text = string.gsub(text, "_", " ")
+    text = string.gsub(text, "(%a)([%w']*)", function(first, rest)
+        return string.upper(first) .. rest
+    end)
+    return text
+end
+
+local function tier_rgb(tier)
+    if tier == "high" then return 90, 190, 105 end
+    if tier == "medium_high" then return 145, 190, 90 end
+    if tier == "medium" then return 205, 190, 75 end
+    if tier == "medium_low" then return 225, 145, 55 end
+    if tier == "low" then return 220, 90, 45 end
+    if tier == "breaking_point" then return 205, 48, 42 end
+    return 120, 30, 30
+end
+
+local function state_color(tier, alpha)
+    local r, g, b = tier_rgb(tier)
+    return GetARGB(alpha or 255, r, g, b)
+end
+
+local function direction_word(direction)
+    if direction > 0 then return "IMPROVING" end
+    if direction < 0 then return "DETERIORATING" end
+    return "STABLE"
+end
+
+local function add_flavor(id, group, positive, negative, priority)
+    flavor[id] = {
+        group = group or id,
+        positive = positive,
+        negative = negative,
+        priority = tonumber(priority) or 10,
+    }
+end
+
+-- Built-in generic vocabulary. Add-ons should prefer supplying `flavor` in
+-- Framework modifier metadata, or register a more specific phrase here.
+add_flavor("main.natural_recovery", "recovery", "My breathing is slowly settling", nil, 5)
+add_flavor("environment.darkness", "darkness", nil, "The darkness is starting to get to me", 50)
+add_flavor("environment.rain", "weather", nil, "This weather is wearing me down", 30)
+add_flavor("environment.campfire", "comfort", "The fire is helping me settle down", nil, 50)
+add_flavor("environment.safe_base", "safety", "I finally feel safe here", nil, 60)
+add_flavor("environment.home", "home", "Being home is letting me breathe again", nil, 70)
+add_flavor("combat.firefight", "combat", nil, "I'm still under too much pressure", 90)
+add_flavor("combat.aftershock", "combat", nil, "I'm still shaken from the firefight", 85)
+add_flavor("physical.low_health", "physical", nil, "My condition is weighing on me", 80)
+add_flavor("consumables.meal", "comfort", "A proper meal has taken the edge off", nil, 40)
+
+function register_flavor(id, group, positive, negative, priority)
+    if type(id) ~= "string" or id == "" then return false end
+    add_flavor(id, group, positive, negative, priority)
+    return true
+end
+
+local function modifier_rate(modifier, snapshot)
+    local rate = tonumber(modifier and modifier.effective_rate)
+    if rate then return rate end
+    rate = tonumber(modifier and modifier.rate) or 0
+
+    -- Framework v2 snapshots expose base per-source rates. When Main is
+    -- present, use its public multiplier accessors for the displayed source
+    -- rate. The aggregate snapshot.net_rate remains authoritative.
+    if composure_main and snapshot and snapshot.tier then
+        if rate < 0 and composure_main.get_tier_loss_multiplier then
+            local ok, multiplier = pcall(composure_main.get_tier_loss_multiplier, snapshot.tier)
+            if ok and type(multiplier) == "number" then rate = rate * multiplier end
+        elseif rate > 0 and composure_main.get_tier_recovery_multiplier then
+            local ok, multiplier = pcall(composure_main.get_tier_recovery_multiplier, snapshot.tier)
+            if ok and type(multiplier) == "number" then rate = rate * multiplier end
+        end
+    end
+    return rate
+end
+
+local function modifier_label(modifier)
+    return modifier.label or title_words(modifier.id)
+end
+
+local function modifier_score(modifier, snapshot)
+    local registered = flavor[modifier.id or ""]
+    return math.abs(modifier_rate(modifier, snapshot)) * 1000
+        + (tonumber(modifier.priority) or 0)
+        + (registered and registered.priority or 0)
+end
+
+local function sorted_modifiers(snapshot)
+    local sorted = {}
+    if not live_show_modifiers then return sorted end
+    for _, modifier in ipairs(snapshot.modifiers or {}) do
+        if math.abs(modifier_rate(modifier, snapshot)) > EPSILON then
+            table.insert(sorted, modifier)
+        end
+    end
+    table.sort(sorted, function(a, b)
+        local aa, bb = modifier_score(a, snapshot), modifier_score(b, snapshot)
+        if aa == bb then return tostring(a.id) < tostring(b.id) end
+        return aa > bb
+    end)
+    return sorted
+end
+
+local function generic_flavor(modifier, positive)
+    local category = modifier.category or modifier.group or "other"
+    if positive then
+        if category == "safety" then return "I feel safer here" end
+        if category == "comfort" or category == "consumable" then return "Something is helping me settle down" end
+        if category == "physical" then return "Feeling better is easing my nerves" end
+        return "I'm starting to calm down"
+    end
+    if category == "combat" or category == "threat" then return "The danger is getting to me" end
+    if category == "environment" then return "The Zone is wearing me down" end
+    if category == "physical" then return "My condition is making it hard to focus" end
+    return "Something is putting me on edge"
+end
+
+local function flavor_for(modifier, snapshot)
+    if modifier.flavor and modifier.flavor ~= "" then return modifier.flavor end
+    local registered = flavor[modifier.id or ""]
+    local positive = modifier_rate(modifier, snapshot) >= 0
+    if registered then
+        local phrase = registered.negative
+        if positive then phrase = registered.positive end
+        if phrase then return phrase end
+    end
+    return generic_flavor(modifier, positive)
+end
+
+local function punctuation(text)
+    if not text or text == "" then return "" end
+    local last = string.sub(text, -1)
+    if last == "." or last == "!" or last == "?" then return text end
+    return text .. "."
+end
+
+local function tier_thought(tier)
+    if tier == "high" then return "I feel ready for the Zone." end
+    if tier == "medium_high" then return "My nerves are holding." end
+    if tier == "medium" then return "I feel steady enough." end
+    if tier == "medium_low" then return "I'm starting to lose focus." end
+    if tier == "low" then return "I'm barely holding myself together." end
+    if tier == "breaking_point" then return "I need to get out. Now." end
+    return "Everything is fading away."
+end
+
+local function short_status_fallback(tier)
+    if tier == "high" then return "Clear and collected." end
+    if tier == "medium_high" then return "Calm and focused." end
+    if tier == "medium" then return "Holding steady." end
+    if tier == "medium_low" then return "Starting to unravel." end
+    if tier == "low" then return "Struggling to stay composed." end
+    if tier == "breaking_point" then return "Barely holding together." end
+    return "Everything is fading."
+end
+
+local function status_description(snapshot)
+    if composure_thoughts and type(composure_thoughts.get_status_description) == "function" then
+        local ok, result = pcall(composure_thoughts.get_status_description, snapshot)
+        if ok and type(result) == "string" and string.find(result, "%S") then return result end
+    end
+    return short_status_fallback(snapshot.tier)
+end
+
+local function recent_event_thought(snapshot)
+    local now = time_global()
+    for _, record in ipairs(snapshot.recent_events or {}) do
+        local data = record.data
+        local age = now - (tonumber(record.time_ms) or 0)
+        if record.event == "delta_applied"
+            and type(data) == "table"
+            and data.kind ~= "continuous"
+            and age >= 0 and age <= 5000
+            and math.abs(tonumber(data.actual) or 0) > EPSILON then
+            local metadata = type(data.metadata) == "table" and data.metadata or {}
+            local pseudo_modifier = {
+                id = data.id,
+                category = data.category,
+                rate = data.actual,
+                effective_rate = data.actual,
+                flavor = metadata.flavor,
+            }
+            return punctuation(flavor_for(pseudo_modifier, snapshot))
+        end
+    end
+    return nil
+end
+
+local function immersion_thought(snapshot)
+    if snapshot.recovery_locked then
+        local sorted = sorted_modifiers(snapshot)
+        if sorted[1] and modifier_rate(sorted[1], snapshot) < 0 then
+            return punctuation(flavor_for(sorted[1], snapshot))
+        end
+        return "I'm too tense to settle down."
+    end
+
+    local recent = recent_event_thought(snapshot)
+    if recent then return recent end
+
+    local sorted = sorted_modifiers(snapshot)
+    if sorted[1] then return punctuation(flavor_for(sorted[1], snapshot)) end
+    if snapshot.effective_cap and snapshot.value >= snapshot.effective_cap then
+        return "Something is keeping me from feeling fully composed."
+    end
+    return tier_thought(snapshot.tier)
+end
+
+local function live_detail(snapshot)
+    local rate = tonumber(snapshot.net_rate) or 0
+    local lines = {}
+    local sorted = sorted_modifiers(snapshot)
+    local gains, losses = {}, {}
+    local gain_total, loss_total = 0, 0
+    local seen = {}
+    for _, modifier in ipairs(sorted) do
+        local label = modifier_label(modifier)
+        if not seen[label] then
+            local per_minute = modifier_rate(modifier, snapshot) * 60
+            local remaining = tonumber(modifier.remaining_ms)
+            local suffix = remaining and string.format(" (%ds)", math.max(0, math.ceil(remaining / 1000))) or ""
+            local entry = { label = label, rate = per_minute, suffix = suffix }
+            if per_minute >= 0 then
+                gains[#gains + 1] = entry
+                gain_total = gain_total + per_minute
+            else
+                losses[#losses + 1] = entry
+                loss_total = loss_total + per_minute
+            end
+            seen[label] = true
+            if #gains + #losses >= live_max_causes then break end
+        end
+    end
+
+    lines[#lines + 1] = string.format("GAIN TOTAL %+.2f/min", gain_total)
+    for index, entry in ipairs(gains) do
+        lines[#lines + 1] = string.format("  %d. %s %+.2f/m%s", index, entry.label, entry.rate, entry.suffix)
+    end
+    lines[#lines + 1] = string.format("LOSS TOTAL %+.2f/min", loss_total)
+    for index, entry in ipairs(losses) do
+        lines[#lines + 1] = string.format("  %d. %s %+.2f/m%s", index, entry.label, entry.rate, entry.suffix)
+    end
+    if live_show_rates then
+        lines[#lines + 1] = string.format("TOTAL %+.2f/min", rate * 60)
+    else
+        lines[#lines + 1] = "TOTAL " .. direction_word(snapshot.direction or 0)
+    end
+
+    if snapshot.recovery_locked then lines[#lines + 1] = "RECOVERY LOCKED" end
+    if snapshot.effective_cap then lines[#lines + 1] = string.format("CAP %.0f", snapshot.effective_cap) end
+
+    if live_show_combat and composure_combat and type(composure_combat.get_state) == "function" then
+        local ok, combat = pcall(composure_combat.get_state)
+        if ok and type(combat) == "table" and (combat.test_mode or combat.active or combat.cooldown or combat.forced_phase) then
+            lines[#lines + 1] = "COMBAT STRESS TEST"
+            lines[#lines + 1] = string.format("  Phase: %s", string.upper(tostring(combat.phase or "safe")))
+            lines[#lines + 1] = string.format("  Encounter: %s #%d", combat.active and "ACTIVE" or (combat.cooldown and "COOLDOWN" or "IDLE"), tonumber(combat.encounter) or 0)
+            lines[#lines + 1] = string.format("  Hostiles: %d  Threat: %.2f", tonumber(combat.hostile_count) or 0, tonumber(combat.threat_score) or 0)
+            lines[#lines + 1] = string.format("  Sustained: -%.2f/s", tonumber(combat.sustained_rate) or 0)
+            lines[#lines + 1] = string.format("  Deferred: -%.2f", tonumber(combat.deferred_remaining) or 0)
+            lines[#lines + 1] = string.format("  Encounter loss: -%.2f  Start: %.1f", tonumber(combat.combat_loss) or 0, tonumber(combat.starting_composure) or 0)
+            lines[#lines + 1] = string.format("  Recovery lock: %s", combat.recovery_locked and "YES" or "NO")
+            if combat.forced_phase then
+                lines[#lines + 1] = string.format("  Forced: %s (%ds)", tostring(combat.forced_phase), math.ceil((tonumber(combat.forced_remaining_ms) or 0) / 1000))
+            end
+        end
+    end
+    if snapshot.feedback_test and composure_feedback_test and composure_feedback_test.show_banner
+        and composure_feedback_test.show_banner() then
+        table.insert(lines, 1, string.format("[FEEDBACK TEST %.0f]", snapshot.value or 0))
+    end
+    -- X-Ray can collapse plain newlines in a complex-mode TextWnd.  Explicit
+    -- spaced pipes preserve separation on every renderer/backend.
+    return table.concat(lines, "  |  ")
+end
+
+-- ===================== UI window =====================
+
+class "ComposureHUDWindow" (CUIScriptWnd)
+
+function ComposureHUDWindow:__init() super()
+    self:SetWndRect(Frect():set(0, 0, 1024, 768))
+    self:SetAutoDelete(true)
+    self.xml = CScriptXmlInit()
+    self.xml:ParseFile("ui_composure_hud.xml")
+    self.panel = self.xml:InitStatic("panel", self)
+    self.status_text = self.xml:InitTextWnd("panel:status", self.panel)
+    self.number_text = self.xml:InitTextWnd("panel:number", self.panel)
+    self.bar_bg = self.xml:InitStatic("panel:bar_bg", self.panel)
+    self.bar = self.xml:InitProgressBar("panel:bar", self.panel)
+    self.detail_panel = self.xml:InitStatic("detail_panel", self)
+    self.detail_text = self.xml:InitTextWnd("detail_panel:detail", self.detail_panel)
+    self.loss_arrows, self.gain_arrows = {}, {}
+    self.loss_alpha, self.gain_alpha = {}, {}
+    for index = 1, 5 do
+        self.loss_arrows[index] = self.xml:InitStatic("panel:loss_" .. index, self.panel)
+        self.gain_arrows[index] = self.xml:InitStatic("panel:gain_" .. index, self.panel)
+        self.loss_alpha[index], self.gain_alpha[index] = 0, 0
+    end
+    self.bar:SetRange(0, 100)
+    self.bar:ShowBackground(false)
+    self.bar:UseColor(false)
+    self.panel:SetWndPos(vector2():set(442 + horizontal_offset, 36 + vertical_offset))
+    self.detail_panel:SetWndPos(vector2():set(358 + horizontal_offset, 64 + vertical_offset))
+    self.master_alpha = 0
+    self.phase = "fade_in"
+    self.phase_start_ms = time_global()
+    self.phase_alpha_start = 0
+    self.hold_until_ms = nil
+    self.next_refresh_ms = 0
+    self.last_update_ms = time_global()
+    self.last_trend_ms = nil
+    self.smoothed_rate = 0
+    self.committed_direction = 0
+    self.pending_direction = nil
+    self.pending_since_ms = nil
+    self.arrow_direction = 0
+    self.arrow_count = 0
+    self.current_tier = "medium"
+    self.current_instant = nil
+    self.finished = false
+    self.persistent = false
+end
+
+function ComposureHUDWindow:__finalize()
+end
+
+local function latest_instant_delta(snapshot, now)
+    if not show_instant_pulse then return nil end
+    local latest_time, latest = -1, nil
+    for _, record in ipairs(snapshot.recent_events or {}) do
+        local data = record.data
+        local record_time = tonumber(record.time_ms) or 0
+        local age = now - record_time
+        if record.event == "delta_applied" and type(data) == "table"
+            and data.kind ~= "continuous" and age >= 0 and age <= 1500
+            and math.abs(tonumber(data.actual) or 0) > EPSILON and record_time > latest_time then
+            latest_time, latest = record_time, tonumber(data.actual)
+        end
+    end
+    return latest
+end
+
+local function rate_arrow_count(rate)
+    local amount = math.abs(rate)
+    if amount <= trend_deadzone then return 0 end
+    if amount <= trend_thresholds[1] then return 1 end
+    if amount <= trend_thresholds[2] then return 2 end
+    if amount <= trend_thresholds[3] then return 3 end
+    if amount <= trend_thresholds[4] then return 4 end
+    return 5
+end
+
+local function loss_rgb(count)
+    if count <= 1 then return 225, 190, 65 end
+    if count == 2 then return 230, 150, 55 end
+    if count == 3 then return 230, 100, 45 end
+    if count == 4 then return 220, 55, 42 end
+    return 155, 28, 30
+end
+
+function ComposureHUDWindow:UpdateTrend(snapshot, now)
+    local target = (tonumber(snapshot.net_rate) or 0) * 60
+    if not self.last_trend_ms then
+        self.smoothed_rate = target
+    else
+        local elapsed = math.max(0, now - self.last_trend_ms)
+        local factor = 1 - math.exp(-elapsed / math.max(1, trend_smoothing_ms))
+        self.smoothed_rate = self.smoothed_rate + (target - self.smoothed_rate) * factor
+    end
+    self.last_trend_ms = now
+    local wanted = 0
+    if self.smoothed_rate > trend_deadzone then wanted = 1 end
+    if self.smoothed_rate < -trend_deadzone then wanted = -1 end
+    if wanted ~= self.committed_direction then
+        if self.pending_direction ~= wanted then
+            self.pending_direction, self.pending_since_ms = wanted, now
+        elseif now - (self.pending_since_ms or now) >= direction_delay_ms then
+            self.committed_direction = wanted
+            self.pending_direction, self.pending_since_ms = nil, nil
+        end
+    else
+        self.pending_direction, self.pending_since_ms = nil, nil
+    end
+    self.arrow_direction = self.committed_direction
+    self.arrow_count = self.arrow_direction == 0 and 0 or rate_arrow_count(self.smoothed_rate)
+end
+
+function ComposureHUDWindow:RenderSnapshot(snapshot)
+    snapshot = effective_snapshot(snapshot)
+    local now = time_global()
+    self:UpdateTrend(snapshot, now)
+    local info = snapshot.tier_info or {}
+    local label = info.label or title_words(snapshot.tier)
+    self.current_tier = snapshot.tier or "medium"
+    -- v4.0.1 compatibility: the top HUD always communicates condition tier.
+    -- Direction arrows carry short-term gain/loss information instead.
+    self.current_instant = nil
+    local status = status_description(snapshot)
+    if not show_top_text then status = "" end
+    self.status_text:SetText(status)
+    self.status_text:Show(status ~= "")
+    self.number_text:SetText(show_value and string.format("%.1f", snapshot.value or 0) or "")
+    self.bar_bg:Show(show_bar)
+    self.bar:Show(show_bar)
+    self.bar:SetProgressPos(clamp(snapshot.value or 0, 0, 100))
+    if not show_direction then self.arrow_direction, self.arrow_count = 0, 0 end
+
+    if show_detailed_diagnostics then
+        self.detail_text:SetText(live_detail(snapshot))
+        self.detail_panel:Show(true)
+        self.detail_text:Show(true)
+    else
+        self.detail_text:SetText("")
+        self.detail_panel:Show(false)
+        self.detail_text:Show(false)
+    end
+end
+
+function ComposureHUDWindow:Apply(snapshot, persistent)
+    local now = time_global()
+    self.persistent = persistent == true
+    self.finished = false
+    self.phase = "fade_in"
+    self.phase_start_ms = now
+    self.phase_alpha_start = self.master_alpha or 0
+    self.hold_until_ms = nil
+    self.next_refresh_ms = now + refresh_ms
+    self:RenderSnapshot(snapshot)
+end
+
+function ComposureHUDWindow:UpdateFade(now)
+    if self.phase == "fade_in" then
+        local progress = clamp((now - self.phase_start_ms) / math.max(1, fade_in_ms), 0, 1)
+        self.master_alpha = self.phase_alpha_start + (1 - self.phase_alpha_start) * progress
+        if progress >= 1 then
+            if self.persistent then self.phase = "persistent"
+            else self.phase, self.hold_until_ms = "hold", now + visible_ms end
+        end
+    elseif self.phase == "hold" and now >= (self.hold_until_ms or now) then
+        self.phase, self.phase_start_ms, self.phase_alpha_start = "fade_out", now, self.master_alpha
+    elseif self.phase == "fade_out" then
+        local progress = clamp((now - self.phase_start_ms) / math.max(1, fade_out_ms), 0, 1)
+        self.master_alpha = self.phase_alpha_start * (1 - progress)
+        if progress >= 1 then self.finished = true end
+    elseif self.phase == "persistent" then
+        self.master_alpha = 1
+    end
+end
+
+function ComposureHUDWindow:ApplyAlpha(frame_dt)
+    local alpha = math.floor(255 * maximum_opacity * clamp(self.master_alpha, 0, 1))
+    local r, g, b = tier_rgb(self.current_tier)
+    self.status_text:SetTextColor(GetARGB(alpha, r, g, b))
+    self.number_text:SetTextColor(GetARGB(alpha, r, g, b))
+    self.detail_text:SetTextColor(GetARGB(alpha, 220, 220, 220))
+    self.bar:SetColor(GetARGB(alpha, r, g, b))
+    self.bar_bg:SetTextureColor(GetARGB(math.floor(alpha * 0.55), 255, 255, 255))
+    local arrow_factor = clamp(frame_dt / 150, 0, 1)
+    local lr, lg, lb = loss_rgb(self.arrow_count)
+    for index = 1, 5 do
+        local loss_target = self.arrow_direction < 0 and index <= self.arrow_count and 1 or 0
+        local gain_target = self.arrow_direction > 0 and index <= self.arrow_count and 1 or 0
+        self.loss_alpha[index] = self.loss_alpha[index] + (loss_target - self.loss_alpha[index]) * arrow_factor
+        self.gain_alpha[index] = self.gain_alpha[index] + (gain_target - self.gain_alpha[index]) * arrow_factor
+        local la, ga = math.floor(alpha * self.loss_alpha[index]), math.floor(alpha * self.gain_alpha[index])
+        self.loss_arrows[index]:SetTextureColor(GetARGB(la, lr, lg, lb))
+        self.gain_arrows[index]:SetTextureColor(GetARGB(ga, 65, 205, 95))
+        self.loss_arrows[index]:Show(la > 0)
+        self.gain_arrows[index]:Show(ga > 0)
+    end
+end
+
+function ComposureHUDWindow:Update()
+    CUIScriptWnd.Update(self)
+    local now = time_global()
+    local frame_dt = math.max(0, now - (self.last_update_ms or now))
+    self.last_update_ms = now
+    self:UpdateFade(now)
+    if now >= (self.next_refresh_ms or 0) and framework_ready() then
+        self.next_refresh_ms = now + refresh_ms
+        local ok, snapshot = pcall(composure_framework.get_snapshot)
+        if ok and type(snapshot) == "table" then
+            local rendered, err = pcall(function() self:RenderSnapshot(snapshot) end)
+            if not rendered then
+                log("render failed: %s", tostring(err))
+                self.finished = true
+            end
+        elseif not ok then
+            log("snapshot refresh failed: %s", tostring(snapshot))
+            self.finished = true
+        end
+    end
+    self:ApplyAlpha(frame_dt)
+end
+
+close_hud = function()
+    if not HUD then return end
+    if get_hud and get_hud() then
+        pcall(function() get_hud():RemoveDialogToRender(HUD) end)
+    end
+    HUD = nil
+end
+
+local function ensure_hud()
+    if HUD then return true end
+    if not db or not db.actor or not get_hud or not get_hud() then return false end
+
+    local ok, window = pcall(ComposureHUDWindow)
+    if not ok or not window then
+        log("constructor failed: %s", tostring(window))
+        return false
+    end
+
+    HUD = window
+    local added, err = pcall(function()
+        -- Passive HUD: render only. Register_UI makes the full-screen
+        -- CUIScriptWnd participate in UI/input ownership and can block F7.
+        get_hud():AddDialogToRender(HUD)
+    end)
+    if not added then
+        log("AddDialogToRender failed: %s", tostring(err))
+        if get_hud and get_hud() then
+            pcall(function() get_hud():RemoveDialogToRender(HUD) end)
+        end
+        HUD = nil
+        return false
+    end
+    return true
+end
+
+local function show_snapshot(snapshot)
+    if not enabled or type(snapshot) ~= "table" then return false end
+    snapshot = effective_snapshot(snapshot)
+    if not ensure_hud() then return false end
+    local ok, err = pcall(function() HUD:Apply(snapshot, false) end)
+    if not ok then
+        log("display failed: %s", tostring(err))
+        close_hud()
+        return false
+    end
+    return true
+end
+
+-- ===================== Framework registration and lifecycle =====================
+
+local function register_provider()
+    if not framework_ready() then report_missing_framework_once(); return false end
+    dependency_error_logged = false
+    local ok = composure_framework.register_check_display(DISPLAY_ID, show_snapshot, {
+        owner = OWNER,
+        priority = 100,
+    })
+    if not ok then
+        log("Check display registration failed")
+        return false
+    end
+    composure_framework.set_owner_enabled(OWNER, enabled)
+    provider_registered = true
+    return true
+end
+
+local function apply_mode_change()
+    close_hud()
+    register_provider()
+end
+
+local function on_option_change()
+    refresh_config()
+    apply_mode_change()
+end
+
+local function actor_update_impl()
+    if not provider_registered then register_provider() end
+    if not enabled or not framework_ready() then close_hud(); return end
+
+    if HUD and HUD.finished then
+        close_hud()
+    end
+end
+
+local function on_actor_update()
+    local ok, err = pcall(actor_update_impl)
+    if not ok then
+        log("actor update failed: %s", tostring(err))
+        close_hud()
+    end
+end
+
+local function on_first_update()
+    close_hud()
+    register_provider()
+    on_actor_update()
+end
+
+function show()
+    if not framework_ready() then return false end
+    local ok, snapshot = pcall(composure_framework.get_snapshot)
+    if not ok then return false end
+    return show_snapshot(snapshot)
+end
+
+function get_version()
+    return VERSION
+end
+
+function debug_status()
+    log("v%s enabled=%s diagnostics=%s provider=%s hud=%s phase=%s rate=%s direction=%s arrows=%s check_key=%s tester=%s step=%s",
+        VERSION, tostring(enabled), tostring(show_detailed_diagnostics),
+        tostring(provider_registered), tostring(HUD ~= nil),
+        tostring(HUD and HUD.phase), tostring(HUD and HUD.smoothed_rate),
+        tostring(HUD and HUD.arrow_direction), tostring(HUD and HUD.arrow_count),
+        tostring(check_key),
+        tostring(tester_enabled), tostring(tester_step))
+end
+
+local function gameplay_input_free()
+    if not is_hud_free then return true end
+    local ok, free = pcall(is_hud_free)
+    return not ok or free == true
+end
+
+local function on_key_press(key)
+    if not gameplay_input_free() then return end
+    if enabled and framework_ready() and key == check_key then
+        local shown = show()
+        debug_log("Check Composure key pressed: shown=%s", tostring(shown))
+        return
+    end
+    if not tester_enabled or not enabled or not framework_ready() then return end
+    local delta = nil
+    if key == tester_decrease_key then delta = -tester_step end
+    if key == tester_increase_key then delta = tester_step end
+    if not delta then return end
+    local ok, actual = pcall(composure_framework.apply_delta,
+        "hud.tester", delta, {
+            owner = OWNER,
+            kind = "debug",
+            category = "debug",
+            bypass_recovery_lock = true,
+            bypass_policies = true,
+            metadata = { tester = true },
+        })
+    if not ok then
+        log("tester delta failed: %s", tostring(actual))
+        return
+    end
+    debug_log("tester requested=%s actual=%s", tostring(delta), tostring(actual))
+    show()
+end
+
+function on_game_start()
+    refresh_config()
+    register_provider()
+    if callbacks_registered then return end
+    callbacks_registered = true
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("actor_on_first_update", on_first_update)
+    RegisterScriptCallback("actor_on_update", on_actor_update)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("on_level_changing", close_hud)
+    RegisterScriptCallback("actor_on_net_destroy", close_hud)
+    log("v%s initialized", VERSION)
+end

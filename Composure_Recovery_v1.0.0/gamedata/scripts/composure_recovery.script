@@ -1,0 +1,315 @@
+--[[
+    composure_recovery.script
+    Composure Recovery v1.0.0
+
+    Flat, safe-state recovery for Composure Core / Framework API 2.
+    This module never changes tiers or loss values. It owns only its explicit
+    recovery source and removes that source whenever safety conditions fail.
+
+    Target runtime: Anomaly/GAMMA LuaJIT (Lua 5.1 semantics).
+--]]
+
+local VERSION = "1.0.0"
+local REQUIRED_FRAMEWORK_API = 2
+local OWNER = "composure_recovery"
+local MODIFIER_ID = "recovery.safe_passive"
+local LOG = "[composure_recovery:v1]"
+
+local enabled = true
+local recovery_rate = 0.02
+local recovery_target = 65
+local recovery_delay = 15
+local respect_recovery_locks = true
+local block_at_pass_out = true
+local detect_active_combat = true
+local combat_distance = 100
+local combat_inertia = 10
+local reset_on_damage = true
+local reset_on_weapon_fire = true
+local debug_key = nil
+local debug_enabled = false
+
+local callbacks_registered = false
+local dependency_error_logged = false
+local modifier_active = false
+local registered_rate = nil
+local unsafe_until_ms = 0
+local next_evaluation_ms = 0
+local evaluation_interval_ms = 500
+local last_block_reason = "initializing"
+local last_combat_count = 0
+
+local function now_ms()
+    if time_global then return time_global() end
+    return 0
+end
+
+local function log(fmt, ...)
+    printf(LOG .. " " .. fmt, ...)
+end
+
+local function debug_log(fmt, ...)
+    if debug_enabled then log(fmt, ...) end
+end
+
+local function clamp(v, lo, hi)
+    if v < lo then return lo end
+    if v > hi then return hi end
+    return v
+end
+
+local function cfg(key, fallback)
+    if composure_recovery_mcm and composure_recovery_mcm.get_config then
+        local ok, result = pcall(composure_recovery_mcm.get_config, key)
+        if ok and result ~= nil then return result end
+    end
+    return fallback
+end
+
+local function refresh_config()
+    enabled = cfg("enabled", true) == true
+    recovery_rate = clamp(tonumber(cfg("recovery_rate", 0.02)) or 0.02, 0, 0.25)
+    recovery_target = clamp(tonumber(cfg("recovery_target", 65)) or 65, 1, 100)
+    recovery_delay = clamp(tonumber(cfg("recovery_delay", 15)) or 15, 0, 120)
+    respect_recovery_locks = cfg("respect_recovery_locks", true) == true
+    block_at_pass_out = cfg("block_at_pass_out", true) == true
+    detect_active_combat = cfg("detect_active_combat", true) == true
+    combat_distance = clamp(tonumber(cfg("combat_distance", 100)) or 100, 10, 250)
+    combat_inertia = clamp(tonumber(cfg("combat_inertia", 10)) or 10, 0, 60)
+    reset_on_damage = cfg("reset_on_damage", true) == true
+    reset_on_weapon_fire = cfg("reset_on_weapon_fire", true) == true
+    debug_key = cfg("debug_key", DIK_keys and DIK_keys.DIK_F9 or nil)
+    debug_enabled = cfg("debug_log", false) == true
+end
+
+local function framework_ready()
+    return composure_framework
+        and type(composure_framework.supports) == "function"
+        and composure_framework.supports(REQUIRED_FRAMEWORK_API)
+        and type(composure_framework.get_value) == "function"
+        and type(composure_framework.upsert_modifier) == "function"
+        and type(composure_framework.remove_modifier) == "function"
+        and type(composure_framework.is_recovery_locked) == "function"
+end
+
+local function report_missing_framework_once()
+    if dependency_error_logged then return end
+    dependency_error_logged = true
+    log("Composure Core / Framework API %d not found; Recovery is inactive", REQUIRED_FRAMEWORK_API)
+end
+
+local function remove_recovery_modifier()
+    if framework_ready() then composure_framework.remove_modifier(MODIFIER_ID) end
+    modifier_active = false
+    registered_rate = nil
+end
+
+local function mark_unsafe(reason, duration_seconds)
+    local duration = math.max(0, tonumber(duration_seconds) or recovery_delay)
+    unsafe_until_ms = math.max(unsafe_until_ms, now_ms() + duration * 1000)
+    last_block_reason = reason or "unsafe"
+    remove_recovery_modifier()
+end
+
+local function active_combat_count()
+    if not detect_active_combat or not db or not db.actor then return 0 end
+    if not xr_combat_ignore or type(xr_combat_ignore.fighting_with_actor_npcs) ~= "table" then return 0 end
+
+    local actor_position = db.actor:position()
+    local max_distance_sqr = combat_distance * combat_distance
+    local count = 0
+
+    for id in pairs(xr_combat_ignore.fighting_with_actor_npcs) do
+        local storage = db.storage and db.storage[id]
+        local npc = storage and storage.object
+        if npc and npc:alive() and npc:position():distance_to_sqr(actor_position) <= max_distance_sqr then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+local function configured_slow_interval_seconds()
+    if not framework_ready() or type(composure_framework.get_diagnostics) ~= "function" then return 5 end
+    local ok, data = pcall(composure_framework.get_diagnostics)
+    local interval = ok and data and data.scheduler and tonumber(data.scheduler.slow_interval_ms) or nil
+    if not interval or interval <= 0 then return 5 end
+    return math.max(0.5, interval / 1000)
+end
+
+local function desired_modifier_rate(value)
+    local remaining = recovery_target - value
+    if remaining <= 0 then return 0 end
+    return math.min(recovery_rate, remaining / configured_slow_interval_seconds())
+end
+
+local function ensure_recovery_modifier(value)
+    local desired_rate = desired_modifier_rate(value)
+    if desired_rate <= 0 then
+        remove_recovery_modifier()
+        return
+    end
+
+    local exists = composure_framework.has_modifier
+        and composure_framework.has_modifier(MODIFIER_ID)
+    if modifier_active and exists and registered_rate
+        and math.abs(registered_rate - desired_rate) < 0.000001 then
+        return
+    end
+
+    local ok = composure_framework.upsert_modifier(MODIFIER_ID, desired_rate, {
+        owner = OWNER,
+        lane = "slow",
+        category = "recovery",
+        group = "safe_recovery",
+        label = "Natural Recovery",
+        flavor = "The danger has passed. My breathing is settling.",
+        priority = 10,
+        metadata = {
+            target = recovery_target,
+            configured_rate = recovery_rate,
+        },
+    })
+
+    modifier_active = ok == true
+    registered_rate = modifier_active and desired_rate or nil
+    if modifier_active then
+        last_block_reason = "recovering"
+        debug_log("recovery started at +%.3f/s toward %.1f", desired_rate, recovery_target)
+    end
+end
+
+local function actor_is_alive()
+    return db and db.actor and db.actor:alive()
+end
+
+local function evaluate_recovery()
+    if not framework_ready() then
+        report_missing_framework_once()
+        remove_recovery_modifier()
+        return
+    end
+    dependency_error_logged = false
+
+    if not enabled then
+        last_block_reason = "disabled"
+        remove_recovery_modifier()
+        return
+    end
+    if not actor_is_alive() then
+        last_block_reason = "actor unavailable"
+        remove_recovery_modifier()
+        return
+    end
+
+    local value = composure_framework.get_value()
+    if value >= recovery_target then
+        last_block_reason = "target reached"
+        remove_recovery_modifier()
+        return
+    end
+    if block_at_pass_out and value <= 0 then
+        last_block_reason = "pass out"
+        remove_recovery_modifier()
+        return
+    end
+    if respect_recovery_locks and composure_framework.is_recovery_locked() then
+        mark_unsafe("recovery lock", recovery_delay)
+        return
+    end
+
+    last_combat_count = active_combat_count()
+    if last_combat_count > 0 then
+        mark_unsafe("active combat", math.max(recovery_delay, combat_inertia))
+        return
+    end
+    if now_ms() < unsafe_until_ms then
+        last_block_reason = "safety delay"
+        remove_recovery_modifier()
+        return
+    end
+
+    ensure_recovery_modifier(value)
+end
+
+local function on_actor_update()
+    local now = now_ms()
+    if now < next_evaluation_ms then return end
+    next_evaluation_ms = now + evaluation_interval_ms
+    evaluate_recovery()
+end
+
+local function on_actor_before_hit(hit_info, bone_id, flags)
+    if reset_on_damage then mark_unsafe("recent damage", recovery_delay) end
+end
+
+local function on_actor_weapon_fired(obj, weapon, ammo_elapsed, grenade_elapsed, ammo_type, grenade_type)
+    if reset_on_weapon_fire then mark_unsafe("recent weapon fire", recovery_delay) end
+end
+
+local function reset_lifecycle_delay()
+    remove_recovery_modifier()
+    unsafe_until_ms = now_ms() + recovery_delay * 1000
+    next_evaluation_ms = 0
+    last_block_reason = "lifecycle delay"
+end
+
+local function on_option_change()
+    refresh_config()
+    reset_lifecycle_delay()
+end
+
+local function on_key_press(key)
+    if not debug_key or key ~= debug_key then return end
+    local value = framework_ready() and composure_framework.get_value() or -1
+    local remaining = math.max(0, unsafe_until_ms - now_ms()) / 1000
+    log("value=%.2f active=%s reason=%s delay=%.1fs combat=%d rate=%.3f target=%.1f",
+        value, tostring(modifier_active), tostring(last_block_reason), remaining,
+        last_combat_count, recovery_rate, recovery_target)
+    if db and db.actor and news_manager then
+        news_manager.send_tip(db.actor,
+            string.format("Recovery: %s | %.1fs | enemies %d",
+                tostring(last_block_reason), remaining, last_combat_count),
+            nil, nil, 4000)
+    end
+end
+
+function get_version()
+    return VERSION
+end
+
+function is_recovering()
+    return modifier_active == true
+end
+
+function get_diagnostics()
+    return {
+        version = VERSION,
+        enabled = enabled,
+        framework_ready = framework_ready(),
+        modifier_active = modifier_active,
+        registered_rate = registered_rate,
+        configured_rate = recovery_rate,
+        target = recovery_target,
+        unsafe_remaining_ms = math.max(0, unsafe_until_ms - now_ms()),
+        block_reason = last_block_reason,
+        active_combat_count = last_combat_count,
+    }
+end
+
+function on_game_start()
+    refresh_config()
+    reset_lifecycle_delay()
+    if callbacks_registered then return end
+    callbacks_registered = true
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("load_state", reset_lifecycle_delay)
+    RegisterScriptCallback("actor_on_first_update", reset_lifecycle_delay)
+    RegisterScriptCallback("actor_on_update", on_actor_update)
+    RegisterScriptCallback("actor_on_before_hit", on_actor_before_hit)
+    RegisterScriptCallback("actor_on_weapon_fired", on_actor_weapon_fired)
+    RegisterScriptCallback("on_level_changing", reset_lifecycle_delay)
+    RegisterScriptCallback("actor_on_net_destroy", reset_lifecycle_delay)
+    log("v%s initialized", VERSION)
+end

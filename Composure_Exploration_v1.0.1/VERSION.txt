@@ -1,0 +1,3 @@
+Composure Exploration v1.0.1
+Framework API: 2
+Balance source: Composure_Exploration_v1.0.0_Balance(1).xlsx

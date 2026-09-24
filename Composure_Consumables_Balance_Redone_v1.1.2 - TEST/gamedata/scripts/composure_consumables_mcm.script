@@ -1,0 +1,53 @@
+-- Composure Consumables — Balance Redone v1.1.2 settings.
+
+local defaults = {
+    enabled = true,
+    tooltips = true,
+    try_native_rows = false,
+    composure_block = true,
+    instant_scale = 1.0,
+    gradual_scale = 1.0,
+    resistance_scale = 1.0,
+    gain_buff_scale = 1.0,
+    bypass_recovery_locks = true,
+    debug_key = DIK_keys.DIK_F8,
+    debug_log = false,
+}
+
+function get_config(key)
+    if ui_mcm then
+        local value = ui_mcm.get("composure_consumables/" .. key)
+        if value ~= nil then return value end
+    end
+    return defaults[key]
+end
+
+function on_mcm_load()
+    return {
+        id = "composure_consumables",
+        sh = true,
+        gr = {
+            { id = "enabled", type = "check", val = 1, def = true },
+            { id = "tooltips", type = "check", val = 1, def = true },
+            { id = "composure_block", type = "check", val = 1, def = true },
+            { id = "try_native_rows", type = "check", val = 1, def = false },
+
+            { id = "line1", type = "line" },
+
+            { id = "instant_scale", type = "track", val = 2,
+              min = 0, max = 2, step = 0.05, prec = 2, def = 1.0 },
+            { id = "gradual_scale", type = "track", val = 2,
+              min = 0, max = 2, step = 0.05, prec = 2, def = 1.0 },
+            { id = "resistance_scale", type = "track", val = 2,
+              min = 0, max = 2, step = 0.05, prec = 2, def = 1.0 },
+            { id = "gain_buff_scale", type = "track", val = 2,
+              min = 0, max = 2, step = 0.05, prec = 2, def = 1.0 },
+            { id = "bypass_recovery_locks", type = "check", val = 1, def = true },
+
+            { id = "line2", type = "line" },
+
+            { id = "debug_key", type = "key_bind", val = 2, def = DIK_keys.DIK_F8 },
+            { id = "debug_log", type = "check", val = 1, def = false },
+        },
+    }
+end
