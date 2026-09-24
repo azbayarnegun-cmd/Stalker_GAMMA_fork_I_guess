@@ -20,7 +20,7 @@ A modular "composure" (stress/nerve) system for GAMMA. **Core** owns the value, 
 
 **File conflicts:** none with GAMMA (`G.A.M.M.A/modpack_addons/*`, `modpack_patches/`), none with the other `custom_mods`, none between the Composure folders.
 
-**Installed in-game but not uploaded** (seen in `xray_hitech.log`, 22 Sep 2026): `composure_heartbeat` (heartbeat audio), `composure_visuals` (vignette textures `ui\composure_visuals\vignette_*`) and `composure_hud` (probably the **Feedback** module). Upload them to back them up.
+**Composure Feedback (installed, not uploaded):** one module that merges heartbeat audio (`composure_heartbeat`), screen effects (`composure_visuals`, vignette textures `ui\composure_visuals\vignette_*`) and the HUD (`composure_hud`). Seen running in `xray_hitech.log` (22 Sep 2026). Other READMEs reference v1.1.1 / v1.2.6; loads right after Core.
 
 **Log observations (22 Sep 2026):** Composure ran without script errors. Heartbeat reported `errors=0` and tiers `medium`/`medium_low`. Cosmetic bug: Exploration logs `arrival validated with %d clock samples` without filling in the number (unformatted `printf`, same as SA addon 50).
 
