@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="windows-1251"?>
+
+<!-- 
+	MCM
+-->
+<string_table>
+
+
+	<string id="ui_mcm_toxic_air_title">
+		<text>Токсичный Воздух</text>
+	</string>
+	<string id="ui_mcm_menu_toxic_air">
+		<text>Токсичный Воздух</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_mono_sin_exception">
+		<text>Исключение для Припяти и Рыжего леса</text>
+	</string>
+	<string id="ui_mcm_toxic_air_mono_sin_exception_desc">
+		<text>Даёт возможность дышать без баллона и маски в Припяти и Рыжем лесу (работает только при игре за Монолит или Грех).</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_enable_hud">
+		<text>Показывать HUD</text>
+	</string>
+	<string id="ui_mcm_toxic_air_enable_hud_desc">
+		<text>Отображает состояние установленного баллона или фильтра на экране.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_position_x">
+		<text>Позиция HUD по X</text>
+	</string>
+	<string id="ui_mcm_toxic_air_position_y">
+		<text>Позиция HUD по Y</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_toxic_damage_mult">
+		<text>Урон от токсичного воздуха</text>
+	</string>
+	<string id="ui_mcm_toxic_air_toxic_damage_mult_desc">
+		<text>Множитель урона от токсичного воздуха, получаемого при недостаточной защите от воздуха. \n 
+				\n По умолчанию: 1.0</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_flow_rate_mult">
+		<text>Расход воздуха</text>
+	</string>
+	<string id="ui_mcm_toxic_air_flow_rate_mult_desc">
+		<text>Множитель скорости расхода воздуха из кислородного баллона. \n 
+				\n По умолчанию: 1.0</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_tank_sprint_mult">
+		<text>Множитель расхода при беге (только баллоны)</text>
+	</string>
+	<string id="ui_mcm_toxic_air_tank_sprint_mult_desc">
+		<text>Множитель расхода воздуха из кислородного баллона во время бега. \n 
+				\n По умолчанию: 2.0</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_trader_items">
+		<text>Запас фильтров/баллонов у торговцев</text>
+	</string>
+	<string id="ui_mcm_toxic_air_trader_items_desc">
+		<text>Множитель количества предметов (фильтров и баллонов), появляющихся в ассортименте торговцев. \n 
+				\n По умолчанию: 2.0</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_filter_animation">
+		<text>Анимации</text>
+	</string>
+	<string id="ui_mcm_toxic_air_filter_animation_desc">
+		<text>Включает или отключает анимации замены фильтра и анимацию камеры при использовании баллона (только для экипированных предметов).</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_sound_toggle">
+		<text>Звуковые эффекты</text>
+	</string>
+	<string id="ui_mcm_toxic_air_sound_toggle_desc">
+		<text>Включает или отключает звуки удушья в токсичных зонах при недостаточной защите от воздуха.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_ppe_toggle">
+		<text>Визуальные эффекты</text>
+	</string>
+	<string id="ui_mcm_toxic_air_ppe_toggle_desc">
+		<text>Включает или отключает экранные эффекты в токсичных зонах при недостаточной защите от воздуха.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_metro_toggle">
+		<text>Сигнал тревоги в стиле Metro</text>
+	</string>
+	<string id="ui_mcm_toxic_air_metro_toggle_desc">
+		<text>Включает или отключает звуковой сигнал часов в стиле Metro, когда фильтр заканчивается.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_metro_message_toggle">
+		<text>Уведомления о состоянии фильтра</text>
+	</string>
+	<string id="ui_mcm_toxic_air_metro_message_toggle_desc">
+		<text>Включает или отключает всплывающие сообщения, когда уровень фильтра низкий.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_metro_alert_20">
+		<text>Уведомление на 20%</text>
+	</string>
+	<string id="ui_mcm_toxic_air_metro_alert_20_desc">
+		<text>Включает предупреждение, когда состояние фильтра или баллона достигает 20%.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_metro_alert_15">
+		<text>Уведомление на 15%</text>
+	</string>
+	<string id="ui_mcm_toxic_air_metro_alert_15_desc">
+		<text>Включает предупреждение, когда состояние фильтра или баллона достигает 15%.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_metro_alert_10">
+		<text>Уведомление на 10%</text>
+	</string>
+	<string id="ui_mcm_toxic_air_metro_alert_10_desc">
+		<text>Включает предупреждение, когда состояние фильтра или баллона достигает 10%.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_metro_alert_0">
+		<text>Уведомление на 0%</text>
+	</string>
+	<string id="ui_mcm_toxic_air_metro_alert_0_desc">
+		<text>Включает предупреждение, когда фильтр или баллон полностью израсходованы.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_destroy_empty_filters">
+		<text>Уничтожать пустые фильтры</text>
+	</string>
+	<string id="ui_mcm_toxic_air_destroy_empty_filters_desc">
+		<text>Если включено, фильтры ниже порогового состояния будут уничтожены при снятии с экипировки вместо возврата в инвентарь.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_destroy_empty_filters_threshold">
+		<text>Порог уничтожения (%)</text>
+	</string>
+	<string id="ui_mcm_toxic_air_destroy_empty_filters_threshold_desc">
+		<text>Фильтры с этим процентом состояния или ниже будут уничтожены при снятии. \n
+				\n По умолчанию: 5%</text>
+	</string>
+
+	
+	<string id="ui_mcm_toxic_air_destroy_empty_filters_mode">
+		<text>Обработка пустых фильтров</text>
+	</string>
+	<string id="ui_mcm_toxic_air_destroy_empty_filters_mode_desc">
+		<text>Что делать с фильтрами ниже порога: Уничтожить (без деталей) или Разобрать (получить детали).</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_destroy_empty_filters_mode_lst_destroy">
+		<text>Уничтожить</text>
+	</string>
+	<string id="ui_mcm_toxic_air_destroy_empty_filters_mode_lst_disassemble">
+		<text>Разобрать</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_filter_message_toggle">
+		<text>Показывать сообщения фильтра</text>
+	</string>
+	<string id="ui_mcm_toxic_air_filter_message_toggle_desc">
+		<text>Показывать сообщения при установке или снятии фильтров.</text>
+	</string>
+
+<string id="st_filter_destroyed">
+		<text>От этого фильтра толку больше нет ...</text>
+	</string>
+
+	<string id="st_filter_disassembled">
+		<text>Пустой фильтр был разобран на детали.</text>
+	</string>
+
+	<string id="st_filter_removed">
+		<text>Фильтр был снят.</text>
+	</string>
+
+	<string id="st_filter_removed_tank_equipped">
+		<text>Фильтр снят, кислородный баллон надет.</text>
+	</string>
+
+
+	<string id="st_no_equipment_for_filter">
+		<text>Нет подходящего шлема или костюма для установки фильтра!</text>
+	</string>
+
+	<string id="st_no_filter_in_inventory">
+		<text>В инвентаре нет фильтров!</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_title_keybind">
+		<text>Настройки клавиш</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_filter_keybind">
+		<text>Клавиша переключения фильтра</text>
+	</string>
+	<string id="ui_mcm_toxic_air_filter_keybind_desc">
+		<text>Нажмите эту клавишу для быстрой установки или снятия фильтра со шлема/костюма.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_filter_keybind_modifier">
+		<text>Клавиша-модификатор</text>
+	</string>
+	<string id="ui_mcm_toxic_air_filter_keybind_modifier_desc">
+		<text>Дополнительная клавиша (Shift, Ctrl, Alt), которую нужно удерживать вместе с основной.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_filter_keybind_mode">
+		<text>Режим активации</text>
+	</string>
+	<string id="ui_mcm_toxic_air_filter_keybind_mode_desc">
+		<text>Как нажимать клавишу: одиночное нажатие, двойное нажатие или удержание.</text>
+	</string>
+
+
+	<string id="ui_mcm_toxic_air_delete_items">
+		<text>УДАЛИТЬ ВСЕ БАЛЛОНЫ ПРИ СЛЕДУЮЩЕЙ ЗАГРУЗКЕ?</text>
+	</string>
+	<string id="ui_mcm_toxic_air_delete_items_desc">
+		<text>Чтобы предотвратить повреждение сохранений, эта опция удалит все новые предметы, добавленные этим аддоном, при следующей загрузке. \n 
+				\n Если вы хотите удалить аддон: \n
+				\n 1) Включите эту опцию; \n
+				\n 2) Сохранитесь, загрузитесь, сохранитесь снова; \n
+				\n 3) Выйдите из игры и отключите аддон.</text>
+	</string>
+
+
+
+	<string id="st_toxic_air_destroy_empty_filters_mode_lst_destroy">
+		<text>Уничтожить</text>
+	</string>
+	<string id="st_toxic_air_destroy_empty_filters_mode_lst_disassemble">
+		<text>Разобрать</text>
+	</string>
+
+	<string id="toxic_air_destroy_empty_filters_mode_lst_destroy">
+		<text>Уничтожить</text>
+	</string>
+	<string id="toxic_air_destroy_empty_filters_mode_lst_disassemble">
+		<text>Разобрать</text>
+	</string>
+
+
+	<string id="toxic_air_destroy_empty_filters_mode_lst_st_destroy">
+		<text>Уничтожить</text>
+	</string>
+	<string id="toxic_air_destroy_empty_filters_mode_lst_st_disassemble">
+		<text>Разобрать</text>
+	</string>
+
+
+	<string id="st_filter_equip">
+		<text>Надеть фильтр</text>
+	</string>
+	<string id="st_filter_remove">
+		<text>Снять фильтр</text>
+	</string>
+
+
+	<string id="st_equipped_filter">
+		<text>Установлен фильтр:</text>
+	</string>
+
+	<string id="st_compatible_locations">
+		<text>Защищает до:</text>
+	</string>
+	<string id="st_tier_southern_prefix">
+		<text>Южные локации</text>
+	</string>
+	<string id="st_tier_central_prefix">
+		<text>Центральные локации</text>
+	</string>
+	<string id="st_tier_southern">
+		<text>Южные локации (Свалка, Янтарь)</text>
+	</string>
+	<string id="st_tier_central">
+		<text>Центральные локации (Мёртвый город, Росток и др.)</text>
+	</string>
+	<string id="st_tier_northern">
+		<text>Северные локации (Радар, Рыжий лес и др.)</text>
+	</string>
+
+
+	<string id="st_tank_equip">
+		<text>Надеть баллон</text>
+	</string>
+	<string id="st_tank_remove">
+		<text>Снять баллон</text>
+	</string>
+
+<string id="st_no_belt_space">
+		<text>Нет места на поясе для кислородного баллона!</text>
+	</string>
+
+
+	<!-- Location names for filter compatibility display -->
+	<string id="st_loc_cordon">
+		<text>Кордон</text>
+	</string>
+	<string id="st_loc_great_swamp">
+		<text>Болота</text>
+	</string>
+	<string id="st_loc_meadow">
+		<text>Поляна</text>
+	</string>
+	<string id="st_loc_darkscape">
+		<text>Тёмная лощина</text>
+	</string>
+	<string id="st_loc_agroprom">
+		<text>Агропром</text>
+	</string>
+	<string id="st_loc_bar">
+		<text>Бар</text>
+	</string>
+	<string id="st_loc_dark_valley">
+		<text>Тёмная долина</text>
+	</string>
+	<string id="st_loc_garbage">
+		<text>Свалка</text>
+	</string>
+	<string id="st_loc_yantar">
+		<text>Янтарь</text>
+	</string>
+	<string id="st_loc_truck_cemetery">
+		<text>Кладбище техники</text>
+	</string>
+	<string id="st_loc_jupiter">
+		<text>Юпитер</text>
+	</string>
+	<string id="st_loc_zaton">
+		<text>Затон</text>
+	</string>
+	<string id="st_loc_army_warehouses">
+		<text>Склады</text>
+	</string>
+	<string id="st_loc_dead_city">
+		<text>Мёртвый город</text>
+	</string>
+	<string id="st_loc_rostok">
+		<text>Росток</text>
+	</string>
+	<string id="st_loc_radar">
+		<text>Радар</text>
+	</string>
+	<string id="st_loc_red_forest">
+		<text>Рыжий лес</text>
+	</string>
+	<string id="st_loc_limansk">
+		<text>Лиманск</text>
+	</string>
+	<string id="st_loc_pripyat">
+		<text>Припять</text>
+	</string>
+	<string id="st_loc_pripyat_outskirts">
+		<text>Окрестности Припяти</text>
+	</string>
+	<string id="st_loc_hospital">
+		<text>Госпиталь</text>
+	</string>
+	<string id="st_loc_cnpp">
+		<text>ЧАЭС</text>
+	</string>
+	<string id="st_loc_cnpp_2">
+		<text>ЧАЭС-2</text>
+	</string>
+	<string id="st_loc_generators">
+		<text>Генераторы</text>
+	</string>
+	<string id="st_loc_underground_labs">
+		<text>Подземные лаборатории</text>
+	</string>
+	<string id="st_loc_agroprom_underground">
+		<text>Подземелье Агропрома</text>
+	</string>
+	<string id="st_loc_lab_x18">
+		<text>Лаборатория X-18</text>
+	</string>
+	<string id="st_loc_lab_x16">
+		<text>Лаборатория X-16</text>
+	</string>
+	<string id="st_loc_jupiter_underground">
+		<text>Подземелье Юпитера</text>
+	</string>
+	<string id="st_loc_bunker">
+		<text>Бункер</text>
+	</string>
+	<string id="st_loc_lab_x8">
+		<text>Лаборатория X-8</text>
+	</string>
+	<string id="st_loc_monolith_control">
+		<text>Центр управления Монолита</text>
+	</string>
+	<string id="st_loc_sarcophagus">
+		<text>Саркофаг</text>
+	</string>
+	<string id="st_loc_warlab">
+		<text>Военная лаборатория</text>
+	</string>
+	<string id="st_up_to">
+		<text>до</text>
+	</string>
+
+</string_table>

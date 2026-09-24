@@ -1,0 +1,58 @@
+craft_recipes = {
+	jar = {
+		af_mask_filter_homemade = {
+			"jar, charcoal:1, armor_repair_fa:1, prt_i_paper",
+			"jar, charcoal:1, armor_repair_fa:1, underwear",
+			"jar, charcoal:1, armor_repair_fa:1, prt_o_fabrics_3",
+			"jar, charcoal:1, armor_repair_fa:1, prt_o_fabrics_1",
+			"jar, charcoal:1, armor_repair_fa:1, sewing_kit_b",
+
+			"jar, drug_charcoal:1, armor_repair_fa:1, prt_i_paper",
+			"jar, drug_charcoal:1, armor_repair_fa:1, underwear",
+			"jar, drug_charcoal:1, armor_repair_fa:1, prt_o_fabrics_3",
+			"jar, drug_charcoal:1, armor_repair_fa:1, prt_o_fabrics_1",
+			"jar, drug_charcoal:1, armor_repair_fa:1, sewing_kit_b",
+
+			"jar, charcoal:1, duct_tape, prt_i_paper",
+			"jar, charcoal:1, duct_tape, underwear",
+			"jar, charcoal:1, duct_tape, prt_o_fabrics_3",
+			"jar, charcoal:1, duct_tape, prt_o_fabrics_1",
+			"jar, charcoal:1, duct_tape, sewing_kit_b",
+
+			"jar, drug_charcoal:1, duct_tape, prt_i_paper",
+			"jar, drug_charcoal:1, duct_tape, underwear",
+			"jar, drug_charcoal:1, duct_tape, prt_o_fabrics_3",
+			"jar, drug_charcoal:1, duct_tape, prt_o_fabrics_1",
+			"jar, drug_charcoal:1, duct_tape, sewing_kit_b",
+		},
+	},
+	mineral_water = {
+		af_mask_filter_homemade = {
+			"mineral_water:1, charcoal:1, armor_repair_fa:1, prt_i_paper",
+			"mineral_water:1, charcoal:1, armor_repair_fa:1, underwear",
+			"mineral_water:1, charcoal:1, armor_repair_fa:1, prt_o_fabrics_3",
+			"mineral_water:1, charcoal:1, armor_repair_fa:1, prt_o_fabrics_1",
+			"mineral_water:1, charcoal:1, armor_repair_fa:1, sewing_kit_b",
+
+			"mineral_water:1, drug_charcoal:1, armor_repair_fa:1, prt_i_paper",
+			"mineral_water:1, drug_charcoal:1, armor_repair_fa:1, underwear",
+			"mineral_water:1, drug_charcoal:1, armor_repair_fa:1, prt_o_fabrics_3",
+			"mineral_water:1, drug_charcoal:1, armor_repair_fa:1, prt_o_fabrics_1",
+			"mineral_water:1, drug_charcoal:1, armor_repair_fa:1, sewing_kit_b",
+
+			"mineral_water:1, charcoal:1, duct_tape, prt_i_paper",
+			"mineral_water:1, charcoal:1, duct_tape, underwear",
+			"mineral_water:1, charcoal:1, duct_tape, prt_o_fabrics_3",
+			"mineral_water:1, charcoal:1, duct_tape, prt_o_fabrics_1",
+			"mineral_water:1, charcoal:1, duct_tape, sewing_kit_b",
+
+			"mineral_water:1, drug_charcoal:1, duct_tape, prt_i_paper",
+			"mineral_water:1, drug_charcoal:1, duct_tape, underwear",
+			"mineral_water:1, drug_charcoal:1, duct_tape, prt_o_fabrics_3",
+			"mineral_water:1, drug_charcoal:1, duct_tape, prt_o_fabrics_1",
+			"mineral_water:1, drug_charcoal:1, duct_tape, sewing_kit_b",
+		},
+	}
+}
+
+demonized_crafter.add_craft_recipe(craft_recipes)

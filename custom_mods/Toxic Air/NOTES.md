@@ -1,14 +1,15 @@
 # Toxic Air add-ons
 
-**Status:** uploaded 2026-09-24 via chat zips (MO2 `meta.ini` removed). Both are small config mods on top of **Toxic Air v2 Redux** (the base mod isn't in GAMMA and isn't uploaded; SA addon 40 requires it).
+**Status:** uploaded 2026-09-24 via chat zips (MO2 `meta.ini` removed). Two small config mods on top of **Toxic Air v2 Redux** (base mod, also uploaded here; SA addon 40 requires it).
 
 | Folder | MO2 version | Files | What it does |
 |---|---|---|---|
+| `Toxic_Air_v2_REDUX_by_Priler/` | base mod | 108 (zip + separate `textures.zip`, both via chat) | Gas masks/filters and oxygen tanks: `toxic_air.script` + MCM, QAW compat, filter-refill-on-drag, crafter/loadout helpers, item configs (`items_oxygentanks.ltx`, `items_anm_filters.ltx`, filter disassembly), UI, anims, meshes, sounds, textures (`ui_oxygen_tank*.dds`, `ui_toxic_air.dds`, `usable_items/filter/*`) |
 | `Toxic_Air_economy_rebalance_for_GAMMA/` | d2026.9.6 | `configs/items/items/items_oxygentanks.ltx` | Rebalanced prices for the oxygen tanks (`af_oxygen_tank_*`) and gas-mask filters (`af_mask_filter_*`) |
 | `ToxicAir_BigCanisters_v2 - TEST/` | d2026.9.13 (own TEST) | the same `items_oxygentanks.ltx` + `textures/ui/ui_oxygen_tank_big.dds` | The rebalance file with the 5 oxygen tanks turned into 1×3 inventory items using the new `ui_oxygen_tank_big` icon sheet, and **lower prices** |
 
-## They replace the same file
-Both ship `configs/items/items/items_oxygentanks.ltx`, so MO2 reads only the higher-priority one. With BigCanisters loaded after the rebalance, **the rebalance mod has no effect**. All its values come through BigCanisters' copy, with these differences:
+## Three copies of the same file
+The base mod and both add-ons ship `configs/items/items/items_oxygentanks.ltx`, so MO2 reads only the highest-priority one. Intended order: Redux → rebalance → BigCanisters. With BigCanisters last, **neither the base values nor the rebalance are used**. All its values come through BigCanisters' copy, with these differences:
 
 | Section | Rebalance | BigCanisters |
 |---|---|---|
@@ -21,5 +22,8 @@ Both ship `configs/items/items/items_oxygentanks.ltx`, so MO2 reads only the hig
 
 If the cheaper prices aren't intended, copy the rebalance costs into BigCanisters' file (only the `icons_texture` / `inv_grid_*` lines need to differ).
 
-- **File conflicts with GAMMA:** none (Toxic Air isn't part of GAMMA).
+- **File conflicts with GAMMA** (Redux only; its textures don't clash):
+  - `custom_functor_autoinject.script`: also in `G.A.M.M.A. Arti Recipes Overhaul` (and disabled Mags Redux). **Same code**, only comment/blank-line differences, so it's harmless either way.
+  - `trader_autoinject.script`: also in `G.A.M.M.A. Weapon Pack`, `G.A.M.M.A. Arti Recipes Overhaul`, `245- Hideout Furniture`. Toxic Air's copy is **older**: it lacks GAMMA Weapon Pack's `not npc` nil check and the Sidorovich/Forester (`esc_m_trader`, `red_m_lesnik`) 20 m distance fix. If Toxic Air loads after GAMMA, that fix is lost. Safest: delete Toxic Air's `trader_autoinject.script` in MO2 (or load it before GAMMA's addons) so GAMMA's newer copy wins.
+  - `toxic_air_qaw_compat.script`: also in SA addon 40, which replaces it intentionally.
 - **My changes:** none

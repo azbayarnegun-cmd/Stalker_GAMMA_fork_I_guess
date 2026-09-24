@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+
+	<string id="st_af_oxygen_tank_1_name">
+		<text>Emergency Oxygen Tank</text>
+	</string>
+	<string id="st_af_oxygen_tank_1_descr">
+		<text>An Emergency Oxygen tank, rated for a couple of hours of pressurized air. Caution must be taken when using this tank; as well as regular testing of the tank's quality. As many are often produced with little more than a welder and scrap metal. It is often said that a Stalker who relies on nothing but an Emergency tank is a fool who plays with stakes far beyond their control. Often these tanks are found with simple straps attached to them or even shoved in pockets to act as a first line of defence for those without access to funding, or wealth of their own. \n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_red] • %c[ui_gray_2] makeshift technological item\n
+		%c[d_red] • %c[ui_gray_2] low quality\n
+		%c[d_green] • %c[ui_gray_2] ability to breathe in most Northern locations\n
+		%c[d_red] • %c[ui_gray_2] not suitable for most underground locations\n
+		%c[d_blue] • %c[ui_gray_2] airflow rate:%c[ui_gray_1] medium\n
+		</text>
+	</string>
+
+	<string id="st_af_oxygen_tank_1soviet_name">
+		<text>Soviet Oxygen Canister</text>
+	</string>
+	<string id="st_af_oxygen_tank_1soviet_descr">
+		<text>An FG-130 canister, proudly made in the Soviet Union. First manufactured in 1971 and used for protection against hazards found in industrial and agriculture manufacture. Considered lightweight among oxygen tanks, but still bulky compared to filters. The outdated design requires a hose and an outfit attachment point, and offers far less protection than even Zone-made emergency oxygen kits. May or may not increase defense against acidic threats.  \n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_red] • %c[ui_gray_2] low quality\n
+		%c[d_green] • %c[ui_gray_2] ability to breathe in most Northern locations\n
+		%c[d_red] • %c[ui_gray_2] not suitable for most underground locations\n
+		%c[d_green] • %c[ui_gray_2] airflow rate:%c[ui_gray_1] low\n
+		</text>
+	</string>
+
+	<string id="st_af_oxygen_tank_2_name">
+		<text>Modern Oxygen Tank</text>
+	</string>
+	<string id="st_af_oxygen_tank_2_descr">
+		<text>A rather common multi liters oxygen tank, often found among more experienced stalkers that sport SEVA suits. It is unknown how these tanks manage to appear in the Zone; however it is speculated that they are imported through unknown black market routes. Each tank is coated in a special Zone made coating to keep the apparatus from degrading in the harshest of anomaly fields. The results produced from this coting are rather speculative, though many stalkers still prefer it over a heavier insulation. The tank is rated to provide around three hours of oxygen to a pressurized rig, unlike its heavier Zone found cousin often found in the hands of the Ecologist's expeditions. \n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_cyan] • %c[ui_gray_2] high quality\n
+		%c[d_green] • %c[ui_gray_2] ability to breathe in Northern locations\n
+		%c[d_red] • %c[ui_gray_2] not suitable for most underground locations\n
+		%c[d_green] • %c[ui_gray_2] airflow rate:%c[ui_gray_1] low\n
+		</text>
+	</string>
+
+	<string id="st_af_oxygen_tank_3_name">
+		<text>Scientific Oxygen Tank</text>
+	</string>
+	<string id="st_af_oxygen_tank_3_descr">
+		<text>A rather heavy, metal cylinder designed for use with the SSP-99 Ecologist suit. The manufacturer of said tanks is unknown; it is often assumed that they are imported into the Zone through The Kiev Institute. The tank is coated in a rubberized polymer to prevent conduction with electrical anomalies; while also remaining light enough for researchers to carry around. Attached to the tank is also a set of heavy duty straps designed to take abuse from anything a science team could throw at it. The tank is rated to carry around 90 minutes of a high pressure oxygen mixture through its provided regulator. \n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_cyan] • %c[ui_gray_2] high quality\n
+		%c[d_green] • %c[ui_gray_2] ability to breathe in Northern locations\n
+		%c[d_green] • %c[ui_gray_2] ability to breathe underground\n
+		%c[d_red] • %c[ui_gray_2] airflow rate:%c[ui_gray_1] high\n
+		</text>
+	</string>
+
+	<string id="st_af_oxygen_tank_3military_name">
+		<text>Continuous Air Supply Unit</text>
+	</string>
+	<string id="st_af_oxygen_tank_3military_descr">
+		<text>[WARNING: UNUSED DEBUG ITEM]Ordinarily used by military and special forces. Requires a power source, but can be used indefinitely. Effectively a scientific oxygen tank without the weight or airflow issues, however this piece of kit is extremely rare and extremely expensive, making it more of a what-if in the eyes of most Zone operators. \n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_cyan] • %c[ui_gray_2] high quality\n
+		%c[d_green] • %c[ui_gray_2] ability to breathe in Northern locations\n
+		%c[d_green] • %c[ui_gray_2] ability to breathe underground\n
+		%c[d_green] • %c[ui_gray_2] airflow rate:%c[ui_gray_1] infinite with power source\n
+		%c[d_red] • %c[ui_gray_2] incredibly rare\n
+		</text>
+	</string>
+
+
+	<string id="st_af_mask_filter_1_name">
+		<text>GP-5 Filter</text>
+	</string>
+	<string id="st_af_mask_filter_1_descr">
+		<text>An old Soviet GP-5 gas mask filter is the cheapest choice for stalkers traveling to the Zone for the first time. Despite its weak protection against the Zone environment, it may still be the best alternative when there is nothing else to replace already used gas mask filters in an emergency. The sources of import of this model are still the subject of rumors. Likely contains Asbestos, but it's the Zone after all.\n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_red] • %c[ui_gray_2] low quality\n
+		%c[d_red] • %c[ui_gray_2] protection:%c[ui_gray_1] low\n
+		</text>
+	</string>
+
+	<string id="st_af_mask_filter_2_name">
+		<text>M10 filter</text>
+	</string>
+	<string id="st_af_mask_filter_2_descr">
+		<text>The GOST M10 standard is the most commonly used gas mask filter in the Zone. It still does not provide adequate protection for raids to the farthest North, but it remains a good choice for a walk up to Pripyat. This gas mask filter is widely sold in the Zone, and is mainly smuggled in by Mercenaries and Loners. The ratio of price, rarity and quality of this gas mask filter makes it the most suitable choice for any stalker. Comes with 60mm and 40mm thread adapters to increase compatibility across platforms.\n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_cyan] • %c[ui_gray_2] high quality\n
+		%c[d_blue] • %c[ui_gray_2] protection:%c[ui_gray_1] medium\n
+		</text>
+	</string>
+
+	<string id="st_af_mask_filter_2dolg_name">
+		<text>M10 'Protector' Filter</text>
+	</string>
+	<string id="st_af_mask_filter_2dolg_descr">
+		<text>The M10 "Protector" variant is a modification made by Duty engineers in the Zone. It still does not provide adequate protection for the highly toxic tunnels underneath Pripyat, but it does offer higher protection than the standard model, which allows for deeper assaults into contaminated lairs for those on a budget. This gas mask filter is only available in Duty inventories, and is an affordable lightweight option for increased protection in contrast to the bulky oxygen tanks, expensive Ecologist options, and shady merc imports. Certain liberties taken with the M10's original design have resulted in a somewhat increased weight and decreased flow rate as a consequence of the increased protection.\n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_blue] • %c[ui_gray_2] medium quality\n
+		%c[d_green] • %c[ui_gray_2] protection:%c[ui_gray_1] high\n
+		</text>
+	</string>
+
+	<string id="st_af_mask_filter_3_name">
+		<text>NBC-70 CBRN Filter</text>
+	</string>
+	<string id="st_af_mask_filter_3_descr">
+		<text>The NBC-70 CBRN is said to be the finest gas mask filter available in the Zone. The most reliable, but also rare and expensive filter with increased protection against very harmful airborne toxic particles. Supplied and used mainly by ecologists, which makes it quite difficult to obtain without good enough connections among these factions. Despite the fact that it still isn't as good as oxygen tanks, it's still able to give you enough protection at the far North locations, even if it's just an extra hour. Some stalkers even heard about ecologists using these filters during their raids into underground locations, which is yet to confirm. \n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_cyan] • %c[ui_gray_2] high quality\n
+		%c[d_green] • %c[ui_gray_2] protection:%c[ui_gray_1] high\n
+		</text>
+	</string>
+	
+	<string id="st_af_mask_filter_3isg_name">
+		<text>NBC-77 SOF filter</text>
+	</string>
+	<string id="st_af_mask_filter_3isg_descr">
+		<text>A modern gas mask filter used by special forces around the globe. Offers top-of-the-line protection against harmful airborne toxic particles and nuclear hazards while still remaining incredibly compact, lightweight and efficient, especially compared to an oxygen tank. The label reads "MIRA SAFETY - Made in Czech Republic, EU. CE 1024. Manufactering date: 2018/11. UNISG SOF Special Composite NBC-77 Protective Filter - for use in hazardous combat environments"... \n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_cyan] • %c[ui_gray_2] high quality\n
+		%c[d_green] • %c[ui_gray_2] protection:%c[ui_gray_1] high\n
+		%c[d_red] • %c[ui_gray_2] incredibly rare\n
+		</text>
+	</string>
+
+	<string id="st_af_mask_filter_homemade_name">
+		<text>Makeshift Filter</text>
+	</string>
+	<string id="st_af_mask_filter_homemade_descr">
+		<text>A "true marvel" of Zone engineering, this makeshift filter consists of an empty plastic bottle densely packed with some charcoal and cloth/cotton, all put together with hopes, dreams, and duct tape. Extremely low quality and feels terrible to use, but offers just enough protection to stay alive and provide a short stop-gap measure in an emergency situation. \n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_green] • %c[ui_gray_2] craftable\n
+		%c[d_red] • %c[ui_gray_2] makeshift technological item\n
+		%c[d_red] • %c[ui_gray_2] low quality\n
+		%c[d_red] • %c[ui_gray_2] protection:%c[ui_gray_1] high\n
+		%c[d_red] • %c[ui_gray_2] expires quickly\n
+		</text>
+	</string>
+	
+	<string id="st_af_mask_filter_dp1_name">
+		<text>DP-1 Filter</text>
+	</string>
+	<string id="st_af_mask_filter_dp1_descr">
+		<text>A bulky Soviet-made filter first introduced in the early 1970s, designed to convert carbon monoxide into carbon dioxide. Usually tan colored, with two ridges spaced evenly around the middle of the canister. Contains hopcalite sandwiched between desiccant and cotton mesh, held inside the canister with metal grids and springs. Offers long lifespan, but very little protection, even compared to a GP-5. In addition to the standard 40mm GOST male thread for attaching to the mask or extension hose, the DP-1 features a GOST threaded female port on the air intake, sealed with a metal cap instead of a rubber plug like other Soviet filters. This second threading was intended for the user to attach a primary filter, as the DP-1 was not designed for CBRN protection. \n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_red] • %c[ui_gray_2] low quality\n
+		%c[d_red] • %c[ui_gray_2] protection:%c[ui_gray_1] low\n
+		</text>
+	</string>
+
+	<string id="st_af_mask_filter_ms4_name">
+		<text>MS-4 Filter</text>
+	</string>
+	<string id="st_af_mask_filter_ms4_descr">
+		<text>A Polish-made gas mask filter designed for Civil Defence use. Inferior to most filters due to the quality of the carbon sorbent used. Initially created in the 1980s, and discontinued in the late 90s. 40mm GOST compatible and generally long-lasting, but inefficient in terms of protection. \n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_blue] • %c[ui_gray_2] medium quality\n
+		%c[d_red] • %c[ui_gray_2] protection:%c[ui_gray_1] low\n
+		</text>
+	</string>
+
+	<string id="st_af_mask_filter_r18_name">
+		<text>R18 NBC Filter</text>
+	</string>
+	<string id="st_af_mask_filter_r18_descr">
+		<text>The R18 filter canister is a Hungarian-made modern 40mm NATO NBC filter originally issued for military purposes. Mainly only used by Mercenaries crossing into the Zone from the outside world through forbidden and heavily irradiated paths. Due to compatability issues, these filters are often discarded in favor of the far more common GOST-compatible type. The Gamma Technical Corporation's R18 NBC filter was designed to meet the relevant criteria specified in the AEP-73 NATO Standard for protection against chemical and biological warfare agents in aerosol, liquid or vapour form, meaning the protection level is high. The main elements, the particle filter and the activated carbon have been selected to provide low respiratory resistance and weight while meeting the requirements of the AEP-73 NATO Standard - however, this filter has already seen much use, therefore it is likely to expire soon. The body of the filter canister is made from aluminium alloy that provides a very robust product, which is corrosion resistant and extremely durable against shocks and impacts. It is fitted with a standard connection thread according to EN 148-1 and STANAG 4155 requirements and is intended to use with a full face mask. Shelflife is 10 years. \n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_cyan] • %c[ui_gray_2] high quality\n
+		%c[d_green] • %c[ui_gray_2] protection:%c[ui_gray_1] high\n
+		%c[d_red] • %c[ui_gray_2] soon to expire\n
+		</text>
+	</string>
+
+	<string id="st_af_mask_filter_m58_name">
+		<text>Refurbished M.58 Filter</text>
+	</string>
+	<string id="st_af_mask_filter_m58_descr">
+		<text>The M.58 filter was the Italian standard filter from 1958 to the 1990s. Has particulate filtering at the bottom and a layer of activated charcoal and other blocking substances at the top. Very clean design for such an old filter, and as such is a very good and cheap alternative for up-and-coming expeditionary assistants. The Red Cross are issued with a specially marked M.58 filter, which this particular model seems to possess. Although, the stock is low for these kinds of filters, and as such they are somewhat rare. Ecologists still offer them at a low price, however. \n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_cyan] • %c[ui_gray_2] high quality\n
+		%c[d_red] • %c[ui_gray_2] protection:%c[ui_gray_1] low\n
+		</text>
+	</string>
+
+	<string id="st_af_mask_filter_fp5_name">
+		<text>FP-5 Filter</text>
+	</string>
+	<string id="st_af_mask_filter_fp5_descr">
+		<text>[WARNING: UNUSED DEBUG ITEM - ICON IS ALSO NOT ADJUSTED]In use by Ukraine and Poland from the 1990s to present day in military, police, and others. The FP-5 filter canister was developed for the MP-5, which replaced communist-era masks in Polish military service. The adoption of this NATO STANAG 4155 filter canister came within a few years of Poland and Ukraine's accession to the military alliance. Generally bulkier and longer lasting than scientific filters, but also less protective. Can thread onto GOST masks as well due to the relatively tolerant threads of the SHM-62u. \n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_cyan] • %c[ui_gray_2] high quality\n
+		%c[d_green] • %c[ui_gray_2] protection:%c[ui_gray_1] high\n
+		</text>
+	</string>
+
+	<string id="st_af_mask_filter_mof6_name">
+		<text>MOF-6 Filter</text>
+	</string>
+	<string id="st_af_mask_filter_mof6_descr">
+		<text>Lightweight Czechoslovak gas mask filter supplied in a protective wrapping of grease-proof paper. Often imported by Bandits for use in scouting and collections. Provides general respiratory protection against consequences of chemical warfare agents, toxic substances, radioactive particles, and biological warfare agents. \n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_blue] • %c[ui_gray_2] medium quality\n
+		%c[d_blue] • %c[ui_gray_2] protection:%c[ui_gray_1] medium\n
+		</text>
+	</string>
+
+	<string id="st_af_mask_filter_clearsky_name">
+		<text>N750-CS Filter</text>
+	</string>
+	<string id="st_af_mask_filter_clearsky_descr">
+		<text>[WARNING: UNUSED DEBUG ITEM]Brainchild of Novikov, the N750-CS is extremely lightweight and protective. While ordinarily a filter design like this would prove ineffective in the field and become a burden very quickly, Novikov came up with the idea of using anti-Radiation artefacts as filter material, creating the first ever super-efficient gas mask filter. The project is still top secret, however, and only a select few Clear Sky operatives are ever allowed to use or even carry this piece of equipment at any given time. \n
+		%c[ui_gray_2]PROPERTIES:\n
+		%c[d_cyan] • %c[ui_gray_2] technological item\n
+		%c[d_cyan] • %c[ui_gray_2] high quality\n
+		%c[d_green] • %c[ui_gray_2] protection:%c[ui_gray_1] high\n
+		%c[d_red] • %c[ui_gray_2] incredibly rare\n
+		</text>
+	</string>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	<string id="st_air_is_toxic">
+		<text>Air is too toxic, it's getting hard to breathe</text>
+	</string>
+
+	<string id="st_remove_filter">
+		<text>Remove filter</text>
+	</string>
+
+	<string id="st_wrong_equip">
+		<text>You can not attach filter to this item</text>
+	</string>
+
+	<string id="st_already_active">
+		<text>Item already has filter</text>
+	</string>
+
+	<string id="st_filter_descr">
+		<text>Filter condition:</text>
+	</string>
+
+	<string id="st_krug_xd">
+		<text>•</text>
+	</string>
+
+	<string id="st_filter_location_rate">
+		<text>Location impact:</text>
+	</string>
+
+	<string id="st_filter_flow_rate">
+		<text>Filter degradation:</text>
+	</string>
+
+	<string id="st_tank_flow_rate">
+		<text>Air consumption:</text>
+	</string>
+
+	<string id="st_tank_doesnt_protect">
+		<text>Does not protect on current location</text>
+	</string>
+
+	<string id="st_tank_per_min">
+		<text>% per hour</text>
+	</string>
+
+</string_table>

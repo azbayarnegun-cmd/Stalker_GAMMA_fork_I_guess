@@ -1,0 +1,81 @@
+local defaults = {
+	["mono_sin_exception"] = true,
+	["enable_hud"] = true,
+	["position_x"] = 865,
+	["position_y"] = 700,
+	["toxic_damage_mult"] = 2,
+	["flow_rate_mult"] = 1.5,
+	["tank_sprint_mult"] = 2,
+	["trader_items"] = 1,
+	["filter_animation"] = true,
+	["sound_toggle"] = true,
+	["metro_toggle"] = true,
+	["metro_message_toggle"] = true,
+	["metro_alert_20"] = false,
+	["metro_alert_15"] = true,
+	["metro_alert_10"] = true,
+	["metro_alert_0"] = true,
+	["ppe_toggle"] = false,
+	["destroy_empty_filters"] = true,
+	["destroy_empty_filters_threshold"] = 5,
+	["destroy_empty_filters_mode"] = 1,
+	["filter_message_toggle"] = true,
+	["filter_keybind"] = 0,
+	["filter_keybind_modifier"] = 0,
+	["filter_keybind_mode"] = 0,
+	["delete_items"] = false,
+}
+
+function get_config(key)
+	if ui_mcm then return ui_mcm.get("toxic_air/"..key) else return defaults[key] end
+end
+
+function on_mcm_load()
+	op = { id= "toxic_air",sh=true ,gr={
+			{ id= "title",type= "slide",link= "ui_options_slider_player",text="ui_mcm_toxic_air_title",size= {512,50},spacing= 20 },
+			{id= "divider", type = "line" },
+			{id = "mono_sin_exception", type = "check", val = 1, def = true},
+			{id= "divider", type = "line" },
+			{id = "enable_hud", type = "check", val = 1, def = true},
+			{id = "position_x", type = "input", val = 2, min=0, max=1000, def = 865},
+			{id = "position_y", type = "input", val = 2, min=0, max=1000, def = 700},
+			{id= "divider", type = "line" },
+			{id = "toxic_damage_mult", type = "track", val = 2, min=0.1,max=4,step=0.1, def = 2},
+			{id = "flow_rate_mult", type = "track", val = 2, min=0.01,max=3,step=0.01, def = 1.5},
+			{id = "tank_sprint_mult", type = "track", val = 2, min=1,max=5,step=0.05, def = 2},
+			{id = "trader_items", type = "track", val = 2, min=1,max=5,step=1, def = 1},
+			{id= "divider", type = "line" },
+			{id = "filter_animation", type = "check", val = 1, def = true},
+			{id = "sound_toggle", type = "check", val = 1, def = true},
+			{id = "metro_toggle", type = "check", val = 1, def = true},
+			{id = "metro_message_toggle", type = "check", val = 1, def = true},
+			{id = "metro_alert_20", type = "check", val = 1, def = false},
+			{id = "metro_alert_15", type = "check", val = 1, def = true},
+			{id = "metro_alert_10", type = "check", val = 1, def = true},
+			{id = "metro_alert_0", type = "check", val = 1, def = true},
+			{id = "ppe_toggle", type = "check", val = 1, def = false},
+			{id= "divider", type = "line" },
+			{id = "destroy_empty_filters", type = "check", val = 1, def = true},
+			{id = "destroy_empty_filters_threshold", type = "track", val = 2, min=0, max=20, step=1, def = 5},
+			{id = "destroy_empty_filters_mode", type = "list", val = 2, def = 1,
+				content = { {0, "st_destroy"}, {1, "st_disassemble"} }
+			},
+			{id = "filter_message_toggle", type = "check", val = 1, def = true},
+			{id= "divider", type = "line" },
+			{id = "title_keybind", type = "title", text = "ui_mcm_toxic_air_title_keybind"},
+			{id = "filter_keybind", type = "key_bind", val = 2, def = 0},
+			{id = "filter_keybind_modifier", type = ui_mcm and ui_mcm.kb_mod_radio or "radio_h", val = 2, def = 0, hint = "mcm_kb_modifier",
+				content = { {0, "mcm_kb_mod_none"}, {1, "mcm_kb_mod_shift"}, {2, "mcm_kb_mod_ctrl"}, {3, "mcm_kb_mod_alt"} }
+			},
+			{id = "filter_keybind_mode", type = ui_mcm and ui_mcm.kb_mod_radio or "radio_h", val = 2, def = 0, hint = "mcm_kb_mode",
+				content = { {0, "mcm_kb_mode_press"}, {1, "mcm_kb_mode_dtap"}, {2, "mcm_kb_mode_hold"} }
+			},
+			{id= "divider", type = "line" },
+			{id= "divider", type = "line" },
+			{id= "divider", type = "line" },
+			{id = "delete_items", type = "check", val = 1, def = false},
+		}
+	}
+
+	return op
+end

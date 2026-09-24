@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+
+	<string id="st_not_same_tank">
+		<text>%c[d_red]You need identical oxygen tanks in order to consolidate their air supply!</text>
+	</string>
+
+	<string id="st_not_same_filter">
+		<text>%c[d_red]You need identical mask filters in order to consolidate their condition!</text>
+	</string>
+
+	<string id="st_filter_timer_warning">
+		<text>%c[d_red]WARNING: FILTER EXPIRED! REPLACE NOW!</text>
+	</string>
+
+	<string id="st_filter_timer_warning2">
+		<text>%c[d_red]Alarm: Filter is low.</text>
+	</string>
+	
+	<string id="st_filter_on">
+		<text>%c[d_cyan]Filter has been equipped.</text>
+	</string>
+	
+	<string id="st_filter_on_tanks_removed">
+		<text>%c[d_cyan]Filter equipped: oxygen tanks have been taken off...</text>
+	</string>
+	
+	<string id="st_tanks_removed">
+		<text>Oxygen tanks have been removed from belt.</text>
+	</string>
+
+	<string id="st_already_has_equipment">
+		<text>%c[d_red]You already have an oxygen tank, or your mask has a filter equipped, or you are missing appropriate headgear!</text>
+	</string>
+
+	<string id="st_no_headgear">
+		<text>%c[d_red]You need to wear appropriate headgear to use an oxygen tank!</text>
+	</string>
+
+	<string id="st_has_filter_equipped">
+		<text>%c[d_red]Your mask already has a filter equipped! Remove it first to use an oxygen tank.</text>
+	</string>
+
+	<string id="st_has_tank_equipped">
+		<text>%c[d_red]You already have an oxygen tank on your belt!</text>
+	</string>
+
+
+</string_table>
