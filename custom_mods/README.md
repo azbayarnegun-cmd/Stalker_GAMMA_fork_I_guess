@@ -37,6 +37,6 @@ There's no size limit; upload the whole mod. Big binary files (`.dds`, `.ogg`, `
 | Mod | Source | Version | Enabled | Notes |
 |---|---|---|---|---|
 | [Alife set: xlibs, AlifePlus, AlifeTactics, AlifeBalance, AlifeGuard](Alife%20Plus%20-%20damian_sirbu/NOTES.md) | [github](https://github.com/damiansirbu-stalker) | 1.8.5 / 1.8.7 / 1.2.0 / 1.1.3 / 1.3.1 | yes | Uploaded. No file conflicts with GAMMA; see NOTES for required settings |
-| [BODYCAM: PiP & 3DSS](BODYCAM%20-%20PiP%20and%203DSS/NOTES.md) | ? | ? | yes | Needs modded exes. Awaiting upload |
+| [BODYCAM: PiP & 3DSS compat patch + modded exes gamedata](BODYCAM%20-%20PiP%20and%203DSS/NOTES.md) | ? | patch 1.7; exes 2026.9.2 / MT-TEST 2026.7.13 | yes | Uploaded. Must load after 3DSS for GAMMA; two exes gamedata versions conflict (keep one) |
 | [Composure](Composure/NOTES.md) | own mod | ? | yes | Awaiting upload |
 | [SquaredAway + Addon Pouch + Immersive Inventory](SquaredAway%20+%20Addon%20Pouch%20+%20Immersive%20Inventory/NOTES.md) | ? | ? | yes | Awaiting upload |
