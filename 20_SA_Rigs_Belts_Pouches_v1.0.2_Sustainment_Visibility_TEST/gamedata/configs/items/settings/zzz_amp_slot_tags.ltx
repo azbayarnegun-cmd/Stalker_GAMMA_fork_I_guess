@@ -1,0 +1,86 @@
+; ============================================================
+;  POCKET TAGS - THREE COLOURS, THREE JOBS
+;
+;  Replaces the inert copy Core ships. Disable this mod and every
+;  pocket goes back to grey, holds anything and quick-uses as before.
+;
+;    YELLOW   2x2, 3x1, 2x1     magazines and ammunition. NOTHING is
+;                               quick from a yellow pocket, and a
+;                               reload draws only from these.
+;
+;    GREEN    g1, w2 to w6      food, drink, devices and BANDAGES are
+;                               quick. Everything else goes in, and is
+;                               stored rather than fast.
+;
+;    RED      1x1               everything green does, plus every
+;                               other medicine - antirads, injectors,
+;                               pills, and MEDKITS. The only pocket a
+;                               medkit is fast from.
+;
+;  RED IS GREEN PLUS THE PHARMACY, on purpose, and it is not a rule
+;  that stops you keeping a flask in one. The cost is the square: you
+;  spent the scarcest pocket on the rig on a drink. That is a decision
+;  with a price, which is better than a refusal that would only annoy
+;  you the day you wanted the drink to be fast.
+;
+;  EVERY POCKET HOLDS ANYTHING except a magazine, which goes in a
+;  yellow pocket and nowhere else. All the rest is about the wheel.
+; ============================================================
+
+[amp_slot_tag_by_shape]
+2x2 = ammo
+3x1 = ammo
+2x1 = ammo
+1x1 = med
+g1  = soft
+w2  = soft
+w3  = soft
+w4  = soft
+w5  = soft
+w6  = soft
+
+; ============================================================
+;  AMMUNITION - yellow
+;
+;  reload = true is what makes a reload draw from here and nowhere
+;  else. It also widens Squared Away's ammunition gate to cover guns
+;  the magazine mod supports, which is what let a shotgun feed from a
+;  backpack. Still behind MCM's "ammo gate" switch.
+; ============================================================
+[amp_slot_tag_ammo]
+takes  = *
+quick  =
+reload = true
+colour = 200,170,60
+
+; ============================================================
+;  SUPPLIES - green
+;
+;  quick_like is a SUBSTRING, and it is here because kinds cannot say
+;  this: a bandage is i_medical exactly as a medkit is, so "bandages
+;  but not the rest of the medicine" is unsayable in kinds. One word
+;  covers every bandage in the game and every one a mod adds later.
+;
+;  If your install calls them something else, add it beside - the list
+;  takes several, comma separated.
+; ============================================================
+[amp_slot_tag_soft]
+takes       = *
+never_flags = is_mag
+quick       = i_food, i_drink, i_device
+quick_like  = bandage
+colour      = 70,150,95
+
+; ============================================================
+;  MEDICAL - red, and the scarcest thing on a rig
+;
+;  Bright against a torn pocket's dark desaturated red (96,40,40); a
+;  torn one also blacks out its interior, which is the second cue. If
+;  they still read alike on your monitor, white - 220,220,225 - is the
+;  medical-cross convention and clashes with nothing.
+; ============================================================
+[amp_slot_tag_med]
+takes       = *
+never_flags = is_mag
+quick       = i_food, i_drink, i_device, i_medical
+colour      = 190,60,60

@@ -1,0 +1,32 @@
+; ============================================================
+;  LAYERED POUCHES - EXTRAS SLOT 01 - belt ladder
+;
+;  Empty on purpose. zzz_amp_layers.script reads items\amp_layers.ltx
+;  first and then these eight files over the top of it, so a feature
+;  mod can add a pouch, a profile or a layer rule by shipping ONE of
+;  them instead of overriding the addon's whole config - which is a
+;  file only one mod can win.
+;
+;  Later file wins on a repeated key. A key ending in _add CONCATENATES
+;  instead, which is how two mods each add to the same list without
+;  either knowing about the other:
+;
+;      [amp_layer_belt]
+;      accepts_add = medical_small
+;
+;  CLAIMED NUMBERS - written down here because the script does not
+;  enforce them:
+;
+;      01  belt ladder
+;      02  Layered magazine pouches
+;      03  Layered medical pouches
+;      04  free
+;      05  free
+;      06  free
+;      07  free
+;      08  free
+;
+;  This stub exists so that a slot nobody has claimed is an empty file
+;  rather than a missing one, which the engine would rather complain
+;  about in a player's log.
+; ============================================================

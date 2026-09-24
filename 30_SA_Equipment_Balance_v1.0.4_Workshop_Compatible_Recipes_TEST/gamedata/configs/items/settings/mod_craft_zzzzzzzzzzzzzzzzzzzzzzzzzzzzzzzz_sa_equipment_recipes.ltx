@@ -1,0 +1,84 @@
+![2]
+
+; Rig utility: cloth body, closure hardware and weatherproofing.
+x_amppouch_g1 = 1, recipe_basic_1,prt_o_fabrics_1,2,sewing_thread,2,prt_i_fasteners,1,duct_tape,1
+x_amppouch_g2 = 1, recipe_basic_2,amppouch_g1,1,prt_o_fabrics_1,2,sewing_thread,2,prt_i_fasteners,1
+x_amppouch_g3 = 1, recipe_advanced_1,amppouch_g2,1,prt_o_fabrics_2,3,prt_i_fasteners,2,duct_tape,1
+x_amppouch_g4 = 1, recipe_advanced_2,amppouch_g3,1,prt_o_fabrics_3,3,prt_i_fasteners,2,prt_i_plastic,2
+
+; Rig magazine: reinforced retention hardware.
+x_amppouch_y1 = 1, recipe_basic_1,prt_o_fabrics_2,2,sewing_thread,2,prt_i_fasteners,2,prt_i_scrap,1
+x_amppouch_y2 = 1, recipe_basic_2,amppouch_y1,1,prt_o_fabrics_2,2,sewing_thread,3,prt_i_fasteners,2
+x_amppouch_y3 = 2, recipe_advanced_1,amppouch_y2,1,prt_o_fabrics_2,3,prt_i_fasteners,2,prt_i_scrap,2
+x_amppouch_y4 = 2, recipe_advanced_2,amppouch_y3,1,prt_o_fabrics_3,3,prt_i_fasteners,3,prt_i_scrap,2
+x_amppouch_y5 = 2, recipe_advanced_2,amppouch_y4,1,prt_o_fabrics_3,4,prt_i_scrap,3,prt_i_plastic,2
+
+; Rig medical: construction materials only, never medical consumables.
+x_amppouch_r1 = 2, recipe_advanced_1,prt_o_fabrics_3,4,sewing_thread,4,prt_i_fasteners,2,prt_i_plastic,2
+x_amppouch_r2 = 2, recipe_advanced_2,amppouch_r1,1,prt_o_fabrics_4,3,prt_i_fasteners,3,prt_i_plastic,3
+
+; Layered magazine: rigid inserts and retention hardware.
+x_amplayer_magazine_pouch_t1 = 1, recipe_basic_1,prt_o_fabrics_1,3,sewing_thread,3,prt_i_fasteners,2,prt_i_scrap,1
+x_amplayer_magazine_pouch_t2 = 1, recipe_basic_2,amplayer_magazine_pouch_t1,1,prt_o_fabrics_2,3,sewing_thread,4,prt_i_fasteners,2
+x_amplayer_magazine_pouch = 2, recipe_advanced_1,amplayer_magazine_pouch_t2,1,prt_o_fabrics_3,4,prt_i_scrap,2,prt_i_plastic,1
+
+; Grenade: reinforced attachment and impact-resistant inserts.
+x_amplayer_grenade_pouch_t1 = 1, recipe_basic_1,prt_o_fabrics_2,3,sewing_thread,3,prt_i_fasteners,2,prt_i_scrap,1
+x_amplayer_grenade_pouch = 2, recipe_basic_2,amplayer_grenade_pouch_t1,1,prt_o_fabrics_3,4,prt_i_fasteners,3,prt_i_scrap,2
+
+; Medical: cleanable, reinforced construction; no medical contents consumed.
+x_amplayer_medical_pouch_t1 = 1, recipe_basic_1,prt_o_fabrics_2,3,sewing_thread,3,prt_i_fasteners,1,prt_i_plastic,2
+x_amplayer_medical_pouch = 2, recipe_basic_2,amplayer_medical_pouch_t1,1,prt_o_fabrics_3,4,prt_i_plastic,2,duct_tape,1
+
+; Administrative: dividers, closures and weatherproofing.
+x_amplayer_admin_pouch_t1 = 1, recipe_basic_1,prt_o_fabrics_1,3,sewing_thread,3,prt_i_fasteners,1,prt_i_plastic,1
+x_amplayer_admin_pouch = 1, recipe_basic_2,amplayer_admin_pouch_t1,1,prt_o_fabrics_2,4,sewing_thread,4,prt_i_fasteners,2
+
+; Universal, dump and parts pouches.
+x_amplayer_universal_pouch_s = 1, recipe_basic_1,prt_o_fabrics_2,4,sewing_thread,4,prt_i_fasteners,2,prt_i_plastic,1
+x_amplayer_universal_pouch = 2, recipe_basic_2,amplayer_universal_pouch_s,1,prt_o_fabrics_3,5,prt_i_fasteners,3,prt_i_plastic,2
+x_amplayer_dump_pouch = 1, recipe_basic_2,amplayer_magazine_pouch_t1,1,prt_o_fabrics_2,3,prt_i_fasteners,2,prt_i_scrap,1
+x_amplayer_universal_pouch_l = 2, recipe_advanced_2,amplayer_universal_pouch,1,prt_o_fabrics_3,6,prt_i_fasteners,4,prt_i_scrap,4
+
+; Strict field-tool pouches. T2 is an upgrade from an empty, unequipped T1.
+x_amplayer_utility_pouch_t1 = 1, recipe_basic_1,prt_o_fabrics_1,3,sewing_thread,3,prt_i_fasteners,1,prt_i_plastic,1
+x_amplayer_utility_pouch_t2 = 1, recipe_basic_2,amplayer_utility_pouch_t1,1,prt_o_fabrics_2,3,prt_i_fasteners,2,prt_i_plastic,1
+
+; Hunter Kit: washable heavy construction and reinforced mounting.
+x_amplayer_hunter_pouch_t1 = 1, recipe_advanced_1,prt_o_fabrics_2,5,prt_o_fabrics_3,2,prt_i_fasteners,2,prt_i_plastic,1
+x_amplayer_sustainment_pouch = 2, recipe_advanced_2,amplayer_hunter_pouch_t1,1,prt_o_fabrics_3,7,prt_o_fabrics_4,2,prt_i_scrap,2
+
+; Sustainment T1-T4: waterproof liners and closures.
+x_amplayer_sustainment_pouch_t1 = 1, recipe_basic_1,prt_o_fabrics_1,3,sewing_thread,3,prt_i_plastic,1,duct_tape,1
+x_amplayer_sustainment_pouch_t2 = 1, recipe_basic_2,amplayer_sustainment_pouch_t1,1,prt_o_fabrics_2,3,sewing_thread,4,prt_i_plastic,1
+x_amplayer_sustainment_pouch_t3 = 2, recipe_advanced_1,amplayer_sustainment_pouch_t2,1,prt_o_fabrics_3,4,prt_i_fasteners,2,prt_i_plastic,2
+x_amplayer_sustainment_pouch_t4 = 2, recipe_advanced_2,amplayer_sustainment_pouch_t3,1,prt_o_fabrics_4,4,prt_i_plastic,3,duct_tape,2
+
+; Belt ladder: progressive load-bearing hardware.
+x_amplayer_belt_t1 = 1, recipe_basic_1,prt_o_fabrics_1,6,sewing_thread,5,prt_i_fasteners,2
+x_amplayer_belt_t2 = 1, recipe_basic_2,amplayer_belt_t1,1,prt_o_fabrics_2,6,sewing_thread,5,prt_i_fasteners,3
+x_amplayer_belt_t3 = 2, recipe_advanced_1,amplayer_belt_t2,1,prt_o_fabrics_3,8,prt_i_fasteners,4,prt_i_scrap,1
+x_amplayer_belt_t4 = 2, recipe_advanced_2,amplayer_belt_t3,1,prt_o_fabrics_4,8,prt_i_fasteners,5,prt_i_plastic,2
+x_amplayer_belt_t5 = 2, recipe_advanced_2,amplayer_belt_t4,1,prt_o_fabrics_4,10,prt_i_fasteners,6,prt_i_scrap,3
+
+; Chest rigs: pouch sets plus the harness materials that hold them together.
+x_amprig_bandolier = 1, recipe_advanced_1,amppouch_y1,1,amppouch_g3,1,sewing_thread,4,prt_o_fabrics_1,5
+x_amprig_scout = 1, recipe_advanced_1,amppouch_y2,1,amppouch_g3,1,sewing_thread,4,prt_o_fabrics_1,6
+x_amprig_harness = 1, recipe_advanced_2,amppouch_y1,2,amppouch_g4,1,sewing_thread,4,prt_o_fabrics_1,8
+x_amprig_barakholka = 1, recipe_advanced_2,amppouch_y2,1,amppouch_g1,1,amppouch_g4,1,prt_o_fabrics_1,8
+x_amprig_nylon = 1, recipe_advanced_2,amppouch_y2,1,amppouch_y1,1,amppouch_g4,1,prt_o_fabrics_3,9
+x_amprig_vydra = 1, recipe_advanced_2,amppouch_y1,2,amppouch_g1,1,amppouch_g4,1,prt_o_fabrics_3,9
+x_amprig_warsaw = 1, recipe_advanced_2,amppouch_y2,2,amppouch_g4,1,sewing_thread,5,prt_o_fabrics_3,10
+x_amprig_karkas = 2, recipe_advanced_2,amppouch_y1,3,amppouch_g2,1,amppouch_g4,1,prt_o_fabrics_4,12
+x_amprig_smersh = 2, recipe_advanced_2,amppouch_y2,1,amppouch_y1,2,amppouch_g1,1,amppouch_g4,1
+x_amprig_bastion = 2, recipe_advanced_2,amppouch_y2,1,amppouch_y1,2,amppouch_g2,1,amppouch_g4,1
+x_amprig_volya = 2, recipe_advanced_2,amppouch_y2,2,amppouch_y1,1,amppouch_g1,1,amppouch_g4,1
+x_amprig_chicom = 2, recipe_advanced_2,amppouch_y2,3,amppouch_g2,1,amppouch_g4,1,prt_o_fabrics_4,15
+x_amprig_leshy = 2, recipe_advanced_2,amppouch_y2,2,amppouch_y1,1,amppouch_g2,1,amppouch_g4,1
+x_amprig_rubezh = 2, recipe_advanced_2,amppouch_y2,2,amppouch_y1,1,amppouch_g2,1,amppouch_g4,1
+x_amprig_carrier = 2, recipe_advanced_2,amppouch_y5,1,amppouch_y2,1,amppouch_g2,1,amppouch_g4,1
+x_amprig_tarzan = 2, recipe_advanced_2,amppouch_y5,2,amppouch_y1,1,amppouch_g2,1,amppouch_g4,1
+
+; Reinforced carriers for pressurized Toxic Air cylinders.
+x_amplayer_canister_carrier_t1 = 1, recipe_advanced_1,prt_o_fabrics_2,5,sewing_thread,5,prt_i_fasteners,3,prt_i_plastic,1
+x_amplayer_canister_carrier_t2 = 2, recipe_advanced_2,amplayer_canister_carrier_t1,1,prt_o_fabrics_3,6,prt_i_fasteners,3,prt_i_plastic,2

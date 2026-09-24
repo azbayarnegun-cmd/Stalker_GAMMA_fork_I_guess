@@ -1,0 +1,106 @@
+; Missing specialist tiers. Full-size/T2 items retain the original Layered
+; section IDs so existing saves remain valid.
+
+[amplayer_grenade_pouch_t1]:amplayer_grenade_pouch
+amp_box_w = 2
+amp_box_h = 1
+amp_box_kg = 3
+amp_box_stack = 1
+amp_layer_pouch = grenade
+inv_name = st_sa_grenade_t1_name
+inv_name_short = st_sa_grenade_t1_name
+description = st_sa_grenade_t1_descr
+$spawn = "equipment\layered\grenade pouch small"
+
+![amplayer_grenade_pouch]
+inv_name = st_sa_grenade_t2_name
+inv_name_short = st_sa_grenade_t2_name
+description = st_sa_grenade_t2_descr
+
+[amplayer_medical_pouch_t1]:amplayer_medical_pouch
+amp_box_w = 2
+amp_box_h = 1
+amp_box_kg = 2
+amp_box_stack = 1
+amp_layer_pouch = medical
+inv_name = st_sa_medical_t1_name
+inv_name_short = st_sa_medical_t1_name
+description = st_sa_medical_t1_descr
+$spawn = "equipment\layered\medical pouch small"
+
+![amplayer_medical_pouch]
+inv_name = st_sa_medical_t2_name
+inv_name_short = st_sa_medical_t2_name
+description = st_sa_medical_t2_descr
+
+[amplayer_admin_pouch_t1]:amplayer_admin_pouch
+amp_box_w = 2
+amp_box_h = 1
+amp_box_kg = 2
+amp_box_stack = 1
+amp_layer_pouch = admin
+inv_name = st_sa_admin_t1_name
+inv_name_short = st_sa_admin_t1_name
+description = st_sa_admin_t1_descr
+$spawn = "equipment\layered\administrative pouch small"
+
+![amplayer_admin_pouch]
+inv_name = st_sa_admin_t2_name
+inv_name_short = st_sa_admin_t2_name
+description = st_sa_admin_t2_descr
+
+[amplayer_hunter_pouch_t1]:amplayer_sustainment_pouch
+; Keep the inherited AMP box family valid; the merged Layered profile below
+; performs the stricter raw-meat/parts acceptance check.
+amp_box_takes = food
+amp_box_w = 4
+amp_box_h = 2
+amp_box_kg = 10
+amp_box_stack = 1
+amp_layer_pouch = sustainment
+inv_name = st_sa_hunter_t1_name
+inv_name_short = st_sa_hunter_t1_name
+description = st_sa_hunter_t1_descr
+$spawn = "equipment\layered\hunters kit small"
+
+![amplayer_sustainment_pouch]
+inv_name = st_sa_hunter_t2_name
+inv_name_short = st_sa_hunter_t2_name
+description = st_sa_hunter_t2_descr
+
+; Re-align the existing three test tiers to the four-tier spreadsheet.
+![amplayer_sustainment_pouch_t1]
+amp_box_w = 2
+amp_box_h = 1
+amp_box_kg = 3
+inv_name = st_sa_sustainment_t1_name_v2
+inv_name_short = st_sa_sustainment_t1_name_v2
+description = st_sa_sustainment_t1_descr_v2
+
+![amplayer_sustainment_pouch_t2]
+amp_box_w = 2
+amp_box_h = 2
+amp_box_kg = 5
+inv_name = st_sa_sustainment_t2_name_v2
+inv_name_short = st_sa_sustainment_t2_name_v2
+description = st_sa_sustainment_t2_descr_v2
+
+![amplayer_sustainment_pouch_t3]
+amp_box_w = 3
+amp_box_h = 2
+amp_box_kg = 8
+inv_name = st_sa_sustainment_t3_name_v2
+inv_name_short = st_sa_sustainment_t3_name_v2
+description = st_sa_sustainment_t3_descr_v2
+
+[amplayer_sustainment_pouch_t4]:amplayer_sustainment_pouch_t3
+amp_box_takes = food
+amp_box_w = 4
+amp_box_h = 2
+amp_box_stack = 1
+amp_box_kg = 10
+amp_layer_pouch = provisions
+inv_name = st_sa_sustainment_t4_name_v2
+inv_name_short = st_sa_sustainment_t4_name_v2
+description = st_sa_sustainment_t4_descr_v2
+$spawn = "equipment\layered\sustainment pouch extended"

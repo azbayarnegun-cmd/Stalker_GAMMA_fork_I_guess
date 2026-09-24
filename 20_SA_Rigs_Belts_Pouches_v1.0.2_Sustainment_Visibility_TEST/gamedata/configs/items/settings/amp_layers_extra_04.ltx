@@ -1,0 +1,36 @@
+; ============================================================
+;  BELT FITTINGS - EXTRAS SLOT 04
+;
+;  What a belt will take, widened by two.
+;
+;  TWO THINGS HAVE TO AGREE for a pouch to reach a belt: the LAYER must
+;  accept the pouch's profile, and the POUCH must be allowed to use
+;  that layer. Stock says no on both counts for magazines and grenades
+;  - they are rig-only - so both are stated below.
+;
+;  accepts_add rather than accepts: the medical pouch mod adds
+;  medical_small to this same list, and a plain key would delete it.
+; ============================================================
+
+[amp_layer_belt]
+accepts_add = magazine,grenade
+
+; ============================================================
+;  AND ONLY THESE TWO POUCHES USE THE OPENING
+;
+;  The layer now accepts the magazine profile, which every magazine
+;  pouch shares - so without these lines the 3x4 stock pouch and the
+;  bigger tiers would go on a belt as well. An override is the whole
+;  of the gate: a pouch listed here may use these layers and no other.
+;
+;  t1 is two cells, one magazine lying down: a spare, on your hip. The
+;  taller tiers and the stock pouch stay on the rig, which is where a
+;  combat load belongs.
+;
+;  A SPARE IS ALL IT IS. A magazine in a Layered pouch is storage, not
+;  loadout - the moment Mags Redux marks it carried, the pouch lets it
+;  go and it takes a rig pocket. You cannot reload off the belt.
+; ============================================================
+[amp_pouch_layer_overrides]
+amplayer_magazine_pouch_t1 = rig,belt
+amplayer_grenade_pouch     = rig,belt

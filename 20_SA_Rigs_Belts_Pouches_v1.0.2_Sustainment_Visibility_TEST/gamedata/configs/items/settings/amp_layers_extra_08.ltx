@@ -1,0 +1,49 @@
+; Extra-slot 08 registration for the Layered Pouches merged provider.
+
+[amp_pouch_profiles]
+names_add = canister,utility_tools
+
+[amp_pouch_canister]
+kinds =
+also_sections = af_oxygen_tank_1,af_oxygen_tank_1soviet,af_oxygen_tank_2,af_oxygen_tank_3,af_oxygen_tank_3military
+also_flags =
+cells = 6
+stack = 1
+priority = 12
+
+; Dedicated utility pouch. Exact section whitelist: no general tools,
+; ammunition, medicine, food or miscellaneous cargo may enter it.
+[amp_pouch_utility_tools]
+kinds =
+also_sections = wpn_knife,wpn_knife2,wpn_knife3,wpn_knife4,wpn_knife5,wpn_knife6,wpn_knife7,wpn_knife8,multitool,itm_multitool,swiss_knife,bolt,bolt_bullet,bolts_pack,matches,box_matches
+also_flags =
+cells = 6
+stack = 1
+priority = 11
+
+[amp_pouch_sections]
+amplayer_canister_carrier_t1 = canister
+amplayer_canister_carrier_t2 = canister
+amplayer_canister_pouch_t1 = canister
+amplayer_canister_pouch_t2 = canister
+amplayer_utility_pouch_t1 = utility_tools
+amplayer_utility_pouch_t2 = utility_tools
+
+[amp_pouch_layer_overrides]
+amplayer_canister_carrier_t1 = backpack
+amplayer_canister_carrier_t2 = backpack
+amplayer_canister_pouch_t1 = backpack
+amplayer_canister_pouch_t2 = backpack
+
+[amp_layer_backpack]
+accepts_add = canister,utility_tools
+
+; Universal-pouch mounting compatibility: all four carrier layers.
+[amp_layer_outfit]
+accepts_add = utility_tools
+
+[amp_layer_rig]
+accepts_add = utility_tools
+
+[amp_layer_belt]
+accepts_add = utility_tools

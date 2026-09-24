@@ -1,0 +1,40 @@
+; ============================================================
+;  GRENADE POUCH - MINES AND IEDS - EXTRAS SLOT 05
+;
+;  The stock pouch takes hand grenades and nothing else, and the note
+;  on it says why: GAMMA files launcher rounds, mines and IEDs under
+;  one kind, w_explosive, so accepting that kind would have put 40mm
+;  VOG rounds in a grenade pouch.
+;
+;  So take the kind, and refuse the launcher rounds by name instead.
+;  Every one of them is an ammunition section - ammo_vog-25, ammo_m209,
+;  ammo_og-7v - and mines and IEDs are not, so one substring separates
+;  them cleanly.
+;
+;  REFUSALS ARE TESTED FIRST, before any accept, so the second line
+;  cannot be routed around by the first.
+;
+;  Hand grenades still pass by CLASS and need none of this - the four
+;  stock sections below are the addon's own and are restated only
+;  because a plain key would replace them.
+; ============================================================
+
+[amp_pouch_grenade]
+kinds_add      = w_explosive
+never_like_add = ammo_
+
+; ============================================================
+;  IF SOMETHING IS STILL REFUSED
+;
+;  Turn on Debug in Squared Away's MCM and hover the item: the log
+;  names its section and its kind. If your mines are not w_explosive,
+;  name them outright - this list is added to the stock four, not
+;  instead of them:
+;
+;      also_sections_add = my_mine_section, my_ied_section
+;
+;  And if a launcher round gets in because your install does not call
+;  it ammo_something, add its exact name:
+;
+;      never_sections_add = that_section
+; ============================================================

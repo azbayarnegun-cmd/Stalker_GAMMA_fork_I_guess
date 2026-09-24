@@ -1,0 +1,31 @@
+; ============================================================
+;  WHAT THE QUICK KEYS GOVERN
+;
+;  Squared Away's gate asks one question - is this thing in the rig? -
+;  and it only ever asks it about MEDICINE, because kinds = i_medical
+;  was the whole of the family. So a cigarette, a flask and a tin of
+;  stew were quick from anywhere at all, including the bottom of a
+;  backpack, while a bandage in the same backpack was refused.
+;
+;  This adds the other three consumable kinds, so the rule is one rule:
+;  IF YOU WANT IT FAST, IT GOES ON THE RIG.
+;
+;  WHICH POCKET still decides the rest. With 60 SA Pocket Tags a green
+;  square is quick for food, drink, devices and bandages, a red one for
+;  those and all medicine, and a yellow one for nothing. That is what
+;  the green squares on the rig ladder are FOR, and until this file
+;  existed they did not really do anything - food was already fast
+;  from everywhere.
+;
+;  THIS IS THE HARSHEST LINE IN THE SET. Eating out of your rucksack
+;  stops working: every meal wants a green square first. If that is a
+;  step too far, delete i_food and i_drink from `kinds` below and keep
+;  the devices - or disable this mod and nothing else changes.
+;
+;  ! IS THE OVERRIDE MARKER. This is Squared Away's section; a second
+;  plain declaration of it would be fatal at startup.
+; ============================================================
+
+![amp_box_medpocket]
+kinds = i_medical, i_food, i_drink, i_device
+no    = That goes in a pocket you can reach

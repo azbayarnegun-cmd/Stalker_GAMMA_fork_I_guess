@@ -1,0 +1,810 @@
+local is_backpack_open = false
+local current_opened_container = nil
+local current_pid = nil
+local is_force_close = false
+local is_mod_opening_ui = false
+local hud_motion_active = false
+local hud_motion_generation = 0
+local open_session = 0
+local session_was_equipped = false
+local weapon_hud_hidden = false
+
+local DEFAULT_OUTFIT_ANIM_DELAY = 1.5
+
+local function get_anim_duration_sec(hud_section, anm, speed)
+    speed = speed or 1.0
+    if not hud_section or not game.get_motion_length then
+        return DEFAULT_OUTFIT_ANIM_DELAY
+    end
+
+    local ok, len = pcall(game.get_motion_length, hud_section, anm, speed)
+    if ok and len and len > 0 then
+        return len / 1000
+    end
+
+    return DEFAULT_OUTFIT_ANIM_DELAY
+end
+
+-- stop_hud_motion() takes no args; the engine logs "invalid script_anim_part 255"
+-- when no script anim is active even inside pcall (see ammo_check_mcm).
+local function safe_stop_hud_motion()
+    if not hud_motion_active or not game.stop_hud_motion then
+        return
+    end
+
+    hud_motion_generation = hud_motion_generation + 1
+    pcall(game.stop_hud_motion)
+    hud_motion_active = false
+end
+
+local function release_hud_motion_claim()
+    hud_motion_generation = hud_motion_generation + 1
+    hud_motion_active = false
+end
+
+local function play_backpack_hud_motion(hud_section, anm, loop, speed)
+    hud_motion_generation = hud_motion_generation + 1
+    local generation = hud_motion_generation
+
+    game.play_hud_motion(2, hud_section, anm, loop, speed)
+    hud_motion_active = true
+
+    if not loop then
+        local dur = get_anim_duration_sec(hud_section, anm, speed)
+        CreateTimeEvent("ib_fdda_motion", "clear_" .. generation, dur, function()
+            if generation == hud_motion_generation then
+                hud_motion_active = false
+            end
+            return true
+        end)
+    end
+end
+
+-- Hide only the current first-person weapon model.  This deliberately does
+-- not change active_slot, move an item, or trigger an equip/unequip action.
+local function hide_weapon_hud()
+    if weapon_hud_hidden or not (db and db.actor) then
+        return
+    end
+
+    local ok, err = pcall(function() db.actor:hide_weapon() end)
+    if ok then
+        weapon_hud_hidden = true
+        printf("[SA-INV-ACCESS] C5: weapon HUD hidden")
+    else
+        printf("[SA-INV-ACCESS] C5: weapon HUD hide unavailable: %s", tostring(err))
+    end
+end
+
+local function restore_weapon_hud()
+    if not weapon_hud_hidden then
+        return
+    end
+
+    local ok, err = pcall(function() db.actor:restore_weapon() end)
+    weapon_hud_hidden = false
+    if ok then
+        printf("[SA-INV-ACCESS] C5: weapon HUD restored")
+    else
+        printf("[SA-INV-ACCESS] C5: weapon HUD restore failed: %s", tostring(err))
+    end
+end
+
+local HUNTING_BAG_SECTION = "kit_hunt"
+local HUNTING_BAG_OPEN_DELAY = 1.35
+local DEFAULT_OPEN_DELAY = 1.8
+local MIN_OPEN_SECONDS = 1.5
+
+local sound_paths = {
+    open = [[interface\item_usage\backpack_open]],
+    close = [[interface\item_usage\backpack_close]]
+}
+
+local hunting_bag_sound_paths = {
+    open = [[interface\hunting_bag\hunting_bag_in]],
+    close = [[interface\hunting_bag\hunting_bag_out]]
+}
+
+local function get_backpack_section_from_pid(pid)
+    if not pid then
+        return nil
+    end
+
+    local obj = level.object_by_id(pid)
+    return obj and obj:section()
+end
+
+local function is_hunting_bag_pid(pid)
+    return get_backpack_section_from_pid(pid) == HUNTING_BAG_SECTION
+end
+
+local function is_hunting_bag_container(container)
+    local manager = immersive_backpacks_manager
+    if not container or not manager or not manager.backpacks then
+        return false
+    end
+
+    local c_id = container.id
+    if type(c_id) == "function" then
+        c_id = c_id()
+    end
+
+    local backpack_id = manager.backpacks[c_id]
+    return is_hunting_bag_pid(backpack_id)
+end
+
+local function is_hunting_bag_session(pid, container)
+    return is_hunting_bag_pid(pid) or is_hunting_bag_container(container)
+end
+
+local function play_safe_sound(sound_type, pid, container)
+    local paths = sound_paths
+    if is_hunting_bag_session(pid, container) then
+        paths = hunting_bag_sound_paths
+    end
+
+    local path = paths[sound_type]
+    if path then
+        local snd = xr_sound.get_safe_sound_object(path)
+        if snd then
+            snd:play(db.actor, 0, sound_object.s2d)
+        end
+    end
+end
+
+function ib_fdda_create_outfit_lam2_action(sec, tag)
+    if not sec or not lam2 or not lam2.get_template_action_play_animation then
+        return nil
+    end
+
+    -- lam_fov_manager required by FDDAR template exit(); skip if missing
+    if not lam_fov_manager then
+        return nil
+    end
+
+    local a = lam2.get_template_action_play_animation()
+    a.tag = tag or "ib_backpack_outfit"
+    a.sec = sec
+    a.anm = "anm_use"
+    local mcm = immersive_backpacks_mcm
+    a.speed = (mcm and mcm.realistic_outfit_speed) or 1.0
+    local allow_movement = true
+    if liz_fdda_redone_mcm and liz_fdda_redone_mcm.get_config then
+        local val = liz_fdda_redone_mcm.get_config("outfit_anm/allow_movement")
+        if val ~= nil then allow_movement = val end
+    end
+    a.only_allow_movekeys = allow_movement
+    a.disable_input = not allow_movement
+    a.can_skip = true
+
+    local orig_enter = a.enter
+    a.enter = function(self)
+        hud_motion_active = true
+        if orig_enter then
+            orig_enter(self)
+        end
+    end
+
+    local orig_exit = a.exit
+    a.exit = function(self)
+        hud_motion_active = false
+        if orig_exit then
+            orig_exit(self)
+        end
+    end
+
+    return a
+end
+
+-- Visual-only outfit anim (FDDAR sections). Never unequips/moves the pack.
+local function play_outfit_visual_anim(hud_section)
+    if not hud_section then
+        return 0
+    end
+
+    local mcm = immersive_backpacks_mcm
+    local speed = (mcm and mcm.realistic_outfit_speed) or 1.0
+    play_backpack_hud_motion(hud_section, "anm_use", false, speed)
+    return get_anim_duration_sec(hud_section, "anm_use", speed)
+end
+
+local function clear_fdda_time_events(pid)
+    if not pid then
+        return
+    end
+
+    RemoveTimeEvent(pid, "anim_open_finish")
+    RemoveTimeEvent(pid, "anim_unequip_finish")
+    RemoveTimeEvent(pid, "anim_equip_after_close")
+    RemoveTimeEvent(pid, "weapon_hud_restore")
+end
+
+function is_equipped_backpack(pid)
+    if not pid or not db.actor then
+        return false
+    end
+
+    local worn = db.actor:item_in_slot(13)
+    return worn ~= nil and worn:id() == pid
+end
+
+-- Read-only section lookup against FDDAR / system.ini. No LTX writes.
+function get_outfit_anim_section(prefix)
+    if not db.actor or not ini_sys or not prefix then
+        return nil
+    end
+
+    local community = character_community(db.actor)
+    local faction = "stalker"
+    if community and string.len(community) >= 7 then
+        faction = community:sub(7) or "stalker"
+    end
+
+    local section = prefix .. faction .. "_hud"
+    if ini_sys:section_exist(section) then
+        return section
+    end
+
+    section = prefix .. "stalker_hud"
+    if ini_sys:section_exist(section) then
+        return section
+    end
+
+    return nil
+end
+
+local function open_close_anim_enabled()
+    local mcm = immersive_backpacks_mcm
+    if mcm and type(mcm.ib_fdda_open_close_anim_enabled) == "function" then
+        local ok, enabled = pcall(mcm.ib_fdda_open_close_anim_enabled)
+        if ok and enabled ~= nil then
+            return enabled == true
+        end
+    end
+
+    -- C5 standalone path: the user's runtime has no Immersive Backpacks MCM
+    -- namespace, so default to the animation this module exists to provide.
+    return true
+end
+
+local function use_container_or_full_inventory(container, pid)
+    local bind = immersive_backpacks_bind_container
+    if bind and type(bind.use_container) == "function" then
+        local ok, err = pcall(bind.use_container, container, pid)
+        if ok then
+            printf("[SA-INV-ACCESS] C5: full inventory opened through original binder")
+            return true
+        end
+        printf("[SA-INV-ACCESS] C5: original binder failed: %s", tostring(err))
+    end
+
+    local ok, err = pcall(function()
+        if ui_inventory and type(ui_inventory.start) == "function" then
+            ui_inventory.start("inventory")
+            return
+        end
+
+        local menu = GetActorMenu and GetActorMenu()
+        if menu and menu.ShowDialog then
+            menu:ShowDialog(true)
+            return
+        end
+
+        error("no inventory UI entry point")
+    end)
+
+    if ok then
+        printf("[SA-INV-ACCESS] C5: full inventory opened through internal bridge")
+        return true
+    end
+
+    printf("[SA-INV-ACCESS] C5: full inventory bridge failed: %s", tostring(err))
+    return false
+end
+
+local function play_equip_after_close(pid, close_session)
+    local equip_sec = get_outfit_anim_section("outfit_animation_backpack_equip_")
+    if not equip_sec then
+        return
+    end
+
+    local equip_action = ib_fdda_create_outfit_lam2_action(equip_sec, "ib_backpack_equip")
+    if equip_action and lam2 and lam2.add_action then
+        lam2.add_action(equip_action)
+    else
+        play_outfit_visual_anim(equip_sec)
+    end
+end
+
+function ib_fdda_should_use_equip_sequence(pid)
+    local mcm = immersive_backpacks_mcm
+    if not mcm or not mcm.realistic_backpack_opening then
+        return false
+    end
+
+    if not is_equipped_backpack(pid) then
+        return false
+    end
+
+    local obj = level.object_by_id(pid)
+    local manager = immersive_backpacks_manager
+    if obj and manager and manager.is_inventory_only_bag and manager.is_inventory_only_bag(obj) then
+        return false
+    end
+
+    if is_hunting_bag_pid(pid) then
+        return false
+    end
+
+    if not get_outfit_anim_section("outfit_animation_backpack_unequip_") then
+        return false
+    end
+
+    if not get_outfit_anim_section("outfit_animation_backpack_equip_") then
+        return false
+    end
+
+    return true
+end
+
+function get_container_weight(container)
+    local weight = 0
+    if container and container.id then
+        local inv_box = level.object_by_id(container.id)
+        if inv_box then
+            inv_box:iterate_inventory_box(function(box, item)
+                weight = weight + item:weight()
+            end, inv_box)
+        end
+    end
+    return weight
+end
+
+function get_backpack_speed(container)
+    local mcm = immersive_backpacks_mcm
+    if mcm and mcm.realistic_backpack_opening then
+        local mode = mcm.realistic_open_speed_mode or 2
+        if mode == 1 then
+            return mcm.realistic_open_fixed_speed or 1.2
+        end
+
+        local min_speed = mcm.realistic_open_min_speed or 0.95
+        local max_speed = mcm.realistic_open_max_speed or 1.2
+        local current_weight = get_container_weight(container)
+        local max_capacity = 50
+
+        if container then
+            local c_id = (type(container.id) == "function") and container:id() or container.id
+            local obj = level.object_by_id(c_id)
+            if obj then
+                local section = obj:section()
+                max_capacity = ini_sys:r_float_ex(section, "max_carry_weight") or ini_sys:r_float_ex(section, "capacity") or 50
+            end
+        end
+
+        local weight_factor = clamp(current_weight / (max_capacity * 0.8), 0, 1)
+        return max_speed - (weight_factor * (max_speed - min_speed))
+    end
+
+    if liz_fdda_redone_backpack and liz_fdda_redone_backpack.get_backpack_speed then
+        return liz_fdda_redone_backpack.get_backpack_speed()
+    end
+
+    local min_speed = 0.95
+    local max_speed = 1.2
+    local current_weight = get_container_weight(container)
+    local max_capacity = 50
+
+    if container then
+        local c_id = (type(container.id) == "function") and container:id() or container.id
+        local obj = level.object_by_id(c_id)
+        if obj then
+            local section = obj:section()
+            max_capacity = ini_sys:r_float_ex(section, "max_carry_weight") or ini_sys:r_float_ex(section, "capacity") or 50
+        end
+    end
+
+    local weight_factor = clamp(current_weight / (max_capacity * 0.8), 0, 1)
+    return max_speed - (weight_factor * (max_speed - min_speed))
+end
+
+function is_open()
+    return is_backpack_open
+end
+
+function is_backpack_session_active()
+    if is_backpack_open or hud_motion_active then
+        return true
+    end
+
+    if lam2 and lam2.get_current_action then
+        local cur = lam2.get_current_action()
+        if cur and cur.tag then
+            if cur.tag == "backpack_hold"
+                or cur.tag == "ib_backpack_unequip"
+                or cur.tag == "ib_backpack_equip" then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+function get_hud_section(action, pid, container)
+    if is_hunting_bag_session(pid, container) then
+        return "item_ea_hunting_bag_" .. action .. "_hud"
+    end
+
+    local faction = character_community(db.actor):sub(7) or "stalker"
+    return "item_ea_backpack_" .. action .. "_" .. faction .. "_hud"
+end
+
+local function get_open_delay(pid, container, anim_speed)
+    local delay = DEFAULT_OPEN_DELAY
+    if is_hunting_bag_session(pid, container) then
+        delay = HUNTING_BAG_OPEN_DELAY
+    end
+
+    return delay / anim_speed
+end
+
+-- Preserve slower weight/config-driven speeds, but cap faster speeds so the
+-- inventory window can never appear before 1.5 seconds of opening animation.
+local function get_session_animation_speed(pid, container)
+    local speed = tonumber(get_backpack_speed(container)) or 1.0
+    if speed <= 0 then speed = 1.0 end
+
+    local base_delay = is_hunting_bag_session(pid, container)
+        and HUNTING_BAG_OPEN_DELAY or DEFAULT_OPEN_DELAY
+    local fastest_allowed = base_delay / MIN_OPEN_SECONDS
+    return math.min(speed, fastest_allowed)
+end
+
+function immersive_backpacks_fdda_is_our_backpack_item(obj)
+    if not obj then
+        return false
+    end
+
+    local manager = immersive_backpacks_manager
+    if manager and manager.activeBackpack and obj:id() == manager.activeBackpack:id() then
+        return true
+    end
+
+    if current_opened_container and current_opened_container.id then
+        local c_id = current_opened_container.id
+        if type(c_id) == "function" then
+            c_id = c_id()
+        end
+        if obj:id() == c_id then
+            return true
+        end
+    end
+
+    return false
+end
+
+function interrupt_backpack(skip_close_anim)
+    if not is_backpack_session_active() then
+        return
+    end
+
+    open_session = open_session + 1
+    local close_session = open_session
+
+    local pid = current_pid
+    local container = current_opened_container
+    local was_open = is_backpack_open
+    local play_equip_after = session_was_equipped and was_open and not skip_close_anim
+
+    is_backpack_open = false
+    is_force_close = false
+    session_was_equipped = false
+
+    clear_fdda_time_events(pid)
+
+    if skip_close_anim then
+        -- External item use (eat/drink/heal): do not stop engine HUD motion or we cut FDDA anims.
+        release_hud_motion_claim()
+        restore_weapon_hud()
+    else
+        safe_stop_hud_motion()
+    end
+
+    if was_open and not is_mod_opening_ui then
+        local manager = immersive_backpacks_manager
+        if manager and manager.activeBackpack then
+            hide_hud_inventory()
+        end
+    end
+
+    if was_open and not skip_close_anim then
+        if open_close_anim_enabled() then
+            local close_hud = get_hud_section("close", pid, container)
+            local anim_speed = get_session_animation_speed(pid, container)
+
+            play_safe_sound("close", pid, container)
+            play_backpack_hud_motion(close_hud, "anm_ea_show", false, anim_speed)
+            printf("[SA-INV-ACCESS] C5: closing animation started")
+
+            local close_dur = get_anim_duration_sec(close_hud, "anm_ea_show", anim_speed)
+            local restore_event_id = pid or "ib_fdda"
+            CreateTimeEvent(restore_event_id, "weapon_hud_restore", close_dur, function()
+                restore_weapon_hud()
+                return true
+            end)
+
+            if play_equip_after then
+                local event_id = pid or "ib_fdda"
+
+                CreateTimeEvent(event_id, "anim_equip_after_close", close_dur, function()
+                    if close_session ~= open_session then
+                        return true
+                    end
+
+                    play_equip_after_close(pid, close_session)
+                    return true
+                end)
+            end
+        elseif play_equip_after then
+            play_equip_after_close(pid, close_session)
+            restore_weapon_hud()
+        else
+            restore_weapon_hud()
+        end
+    elseif not was_open then
+        restore_weapon_hud()
+    end
+
+    current_opened_container = nil
+    current_pid = nil
+
+    local bind = immersive_backpacks_bind_container
+    if bind and bind.ib_restore_crouch_on_backpack_close then
+        bind.ib_restore_crouch_on_backpack_close()
+    end
+end
+
+function open_backpack(container, pid)
+    open_session = open_session + 1
+    local session = open_session
+
+    clear_fdda_time_events(pid)
+
+    current_opened_container = container
+    current_pid = pid
+    is_force_close = false
+    session_was_equipped = ib_fdda_should_use_equip_sequence(pid)
+
+    local unequip_lam2_action = nil
+    if session_was_equipped then
+        local unequip_sec = get_outfit_anim_section("outfit_animation_backpack_unequip_")
+        if unequip_sec then
+            unequip_lam2_action = ib_fdda_create_outfit_lam2_action(unequip_sec, "ib_backpack_unequip")
+        end
+    end
+
+    local a = {}
+    a.tag = "backpack_hold"
+    a.hands = 2
+    a.disable_input = true
+    a.can_skip = true
+
+    local function open_container_ui()
+        if session ~= open_session then
+            return
+        end
+
+        local bind = immersive_backpacks_bind_container
+        if bind and bind.ib_apply_crouch_on_backpack_open then
+            bind.ib_apply_crouch_on_backpack_open(pid)
+        end
+
+        is_backpack_open = true
+
+        if db.actor and db.actor:is_talking() then
+            interrupt_backpack(true)
+            return
+        end
+
+        is_mod_opening_ui = true
+        local opened = use_container_or_full_inventory(container, pid)
+        is_mod_opening_ui = false
+
+        if not opened then
+            interrupt_backpack(true)
+            return
+        end
+
+        if open_close_anim_enabled() and session == open_session and is_backpack_open then
+            local open_hud = get_hud_section("open", pid, container)
+            play_backpack_hud_motion(open_hud, "anm_ea_idle", true, 1.0)
+        end
+    end
+
+    local function begin_open_anim()
+        if session ~= open_session then
+            return
+        end
+
+        if not open_close_anim_enabled() then
+            open_container_ui()
+            return
+        end
+
+        local bind = immersive_backpacks_bind_container
+        if bind and bind.ib_apply_crouch_on_backpack_open then
+            bind.ib_apply_crouch_on_backpack_open(pid)
+        end
+
+        is_backpack_open = true
+        local open_hud = get_hud_section("open", pid, container)
+        local anim_speed = get_session_animation_speed(pid, container)
+        local open_delay = get_open_delay(pid, container, anim_speed)
+
+        hide_weapon_hud()
+        play_safe_sound("open", pid, container)
+        play_backpack_hud_motion(open_hud, "anm_ea_show", false, anim_speed)
+        printf("[SA-INV-ACCESS] C5: opening animation started speed=%.2f window_delay=%.2fs",
+            anim_speed, open_delay)
+
+        CreateTimeEvent(pid, "anim_open_finish", open_delay, function()
+            if session ~= open_session or not is_backpack_open or is_force_close then
+                return true
+            end
+
+            if db.actor and db.actor:is_talking() then
+                interrupt_backpack(true)
+                return true
+            end
+
+            is_mod_opening_ui = true
+            local opened = use_container_or_full_inventory(container, pid)
+            if session == open_session and is_backpack_open then
+                play_backpack_hud_motion(open_hud, "anm_ea_idle", true, 1.0)
+            end
+            is_mod_opening_ui = false
+
+            if not opened then
+                interrupt_backpack(true)
+            end
+
+            return true
+        end)
+    end
+
+    a.enter = function(self)
+        if session ~= open_session then
+            return
+        end
+
+        -- Keep lam2 action alive during optional pre-open unequip.
+        is_backpack_open = true
+
+        if session_was_equipped and not unequip_lam2_action then
+            local unequip_sec = get_outfit_anim_section("outfit_animation_backpack_unequip_")
+            if unequip_sec then
+                local delay = play_outfit_visual_anim(unequip_sec)
+                CreateTimeEvent(pid, "anim_unequip_finish", delay, function()
+                    if session ~= open_session or not is_backpack_open or is_force_close then
+                        return true
+                    end
+
+                    if db.actor and db.actor:is_talking() then
+                        interrupt_backpack(true)
+                        return true
+                    end
+
+                    begin_open_anim()
+                    return true
+                end)
+                return
+            end
+        end
+
+        begin_open_anim()
+    end
+
+    a.execute = function(self, time)
+        if session ~= open_session then
+            return 1
+        end
+
+        if lam2 and lam2.has_queued_actions and lam2.has_queued_actions() then
+            interrupt_backpack(true)
+            return 1
+        end
+
+        if db.actor:is_talking() then
+            is_force_close = true
+        end
+
+        if is_force_close then
+            interrupt_backpack(false)
+            return 1
+        end
+
+        if not is_backpack_open then
+            return 1
+        end
+
+        if not open_close_anim_enabled() then
+            return 1
+        end
+
+        return 0
+    end
+
+    if not open_close_anim_enabled() and not session_was_equipped then
+        open_container_ui()
+        return
+    end
+
+    if lam2 and lam2.add_action then
+        if unequip_lam2_action and lam2.add_action_first then
+            lam2.add_action_first(unequip_lam2_action)
+        end
+        lam2.add_action(a)
+    elseif a.enter then
+        -- FDDA HUD/sounds enabled but lam2 (FDDA Redone) is not loaded.
+        a.enter(a)
+    else
+        begin_open_anim()
+    end
+end
+
+function close_backpack(pid)
+    if pid and not current_pid then
+        current_pid = pid
+    end
+
+    interrupt_backpack(false)
+end
+
+function interrupt_for_external_use()
+    if not is_backpack_session_active() then
+        return
+    end
+
+    interrupt_backpack(true)
+end
+
+function GUI_on_show(name)
+    if name == "UIInventory" and not is_mod_opening_ui and is_backpack_session_active() then
+        is_force_close = true
+    end
+end
+
+function GUI_on_hide(name)
+    if name == "UIInventory" and is_backpack_open then
+        close_backpack(current_pid)
+    end
+end
+
+function immersive_backpacks_fdda_actor_on_item_use(obj)
+    if is_mod_opening_ui then
+        return
+    end
+
+    if not is_backpack_open then
+        local cur = lam2 and lam2.get_current_action and lam2.get_current_action()
+        if not (cur and cur.tag and (
+            cur.tag == "backpack_hold"
+            or cur.tag == "ib_backpack_unequip"
+            or cur.tag == "ib_backpack_equip")) then
+            return
+        end
+    end
+
+    if immersive_backpacks_fdda_is_our_backpack_item(obj) then
+        return
+    end
+
+    interrupt_backpack(true)
+end
+
+function on_game_start()
+    RegisterScriptCallback("GUI_on_show", GUI_on_show)
+    RegisterScriptCallback("GUI_on_hide", GUI_on_hide)
+    RegisterScriptCallback("actor_on_item_use", immersive_backpacks_fdda_actor_on_item_use)
+end

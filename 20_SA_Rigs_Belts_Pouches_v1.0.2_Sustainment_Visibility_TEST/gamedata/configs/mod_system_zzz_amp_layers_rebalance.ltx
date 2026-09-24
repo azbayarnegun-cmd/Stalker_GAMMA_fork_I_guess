@@ -1,0 +1,168 @@
+; ============================================================
+;  LAYERED POUCHES - THE ORGANISER TIER
+;
+;  OVERRIDES the addon's own numbers with ! rather than shipping its
+;  file again.
+;
+;  WHAT THIS LAYER IS FOR. Nothing in a Layered pouch is fast and
+;  nothing in one reloads - that is the rig's job. What these buy is a
+;  bag that arrives SORTED: the routing priorities file a bandage into
+;  the medical pouch and a bolt into the admin pouch without you
+;  touching either.
+;
+;  SO SPECIALISED IS CHEAP AND ROOMY, AND UNIVERSAL IS DEAR AND SMALL.
+;  A medical pouch is four cells for 4,000; the universal pouch is
+;  four cells for 10,000. You pay for flexibility, not for
+;  restriction - which is the opposite of how these shipped, where the
+;  universal pouch was bigger AND cheaper than every pouch it
+;  competed with and there was no reason to own anything else.
+;
+;  NO DRUM FITS ANY OF THEM. Every pouch here is one row tall except
+;  the two six-cell ones, and a drum needs two rows of two. Drums live
+;  in rig pockets, which is a rule worth having.
+;
+;  WIDE, NOT TALL. A pocket one column across has no room to write in
+;  and the name under the icon is cut off. Same cells either way.
+;
+;  Written COLUMNS x ROWS.
+; ============================================================
+
+
+; Large magazine pouch - 3x2, 6 cells
+;
+; TWO ROWS, BECAUSE A MAGAZINE IS TWO ROWS TALL. In a one-row pouch a
+; magazine can only lie down, which means the grid has to turn it -
+; and it only turns things when Auto-rotate is on. With that off,
+; nothing taller than one row can enter a one-row pouch at all and the
+; router leaves the magazine in your rucksack, silently.
+;
+; That is the whole reason magazines were not reaching these pouches.
+; Wide was the right call for READING the labels and the wrong call
+; for the one thing these pouches are for.
+![amplayer_magazine_pouch]
+amp_box_w = 3
+amp_box_h = 2
+amp_box_kg = 6
+cost = 5000
+
+
+; Grenade pouch - 4x1, 4 cells
+![amplayer_grenade_pouch]
+amp_box_w = 4
+amp_box_h = 1
+amp_box_kg = 5
+cost = 4000
+
+
+; Medical pouch - 4x1, 4 cells
+![amplayer_medical_pouch]
+amp_box_w = 4
+amp_box_h = 1
+amp_box_kg = 4
+cost = 4000
+
+
+; Administrative pouch - 4x1, 4 cells
+![amplayer_admin_pouch]
+amp_box_w = 4
+amp_box_h = 1
+amp_box_kg = 4
+cost = 3600
+
+
+; Small universal pouch - 2x1, 2 cells
+![amplayer_universal_pouch_s]
+amp_box_w = 2
+amp_box_h = 1
+amp_box_kg = 3
+cost = 5600
+
+
+; Universal pouch - 4x1, 4 cells
+![amplayer_universal_pouch]
+amp_box_w = 4
+amp_box_h = 1
+amp_box_kg = 6
+cost = 10000
+
+
+; Dump pouch - 2x2, 4 cells
+;
+; Two rows for the same reason: it holds magazines and nothing else,
+; and a magazine standing up needs two. Two upright magazines, or one
+; drum - which is right for a dump pouch even though the magazine
+; pouches refuse drums.
+![amplayer_dump_pouch]
+amp_box_w = 2
+amp_box_h = 2
+amp_box_kg = 6
+cost = 5000
+
+
+; Hunter's kit - 6x2, 12 cells
+;
+; SIX BY TWO IS NOT AN ARBITRARY NUMBER. A hunting kit is two by two
+; and so is most of what you cut off a mutant, and three blocks of
+; that size fit a six-wide two-tall grid exactly with nothing left
+; over: the kit, and two trophies.
+;
+; Biggest and heaviest of the Layered set - 15 kg - because you come
+; home from a hunt with a lot, and because a bag of raw flesh should
+; be felt.
+![amplayer_sustainment_pouch]
+amp_box_w = 6
+amp_box_h = 2
+amp_box_kg = 15
+cost = 7000
+inv_name = st_sa_hunters_kit_name
+inv_name_short = st_sa_hunters_kit_name
+description = st_sa_hunters_kit_descr
+
+
+; Parts pouch - 3x2, 6 cells
+![amplayer_universal_pouch_l]
+amp_box_w = 3
+amp_box_h = 2
+amp_box_kg = 10
+cost = 7000
+
+
+
+; ============================================================
+;  ...AND SO THE DEBUG SPAWNER CAN FIND THEM
+;
+;  $spawn is the key the spawner builds its tree from, and Layered
+;  Pouches declares it nowhere - not once in its whole system file.
+;  Squared Away's rigs and boxes each have one, which is why those
+;  turn up and the pouches did not.
+; ============================================================
+
+![amplayer_belt]
+$spawn = "equipment\layered\belt"
+
+![amplayer_magazine_pouch]
+$spawn = "equipment\layered\magazine pouch large"
+
+![amplayer_grenade_pouch]
+$spawn = "equipment\layered\grenade pouch"
+
+![amplayer_medical_pouch]
+$spawn = "equipment\layered\medical pouch"
+
+![amplayer_admin_pouch]
+$spawn = "equipment\layered\admin pouch"
+
+![amplayer_universal_pouch]
+$spawn = "equipment\layered\universal pouch"
+
+![amplayer_universal_pouch_s]
+$spawn = "equipment\layered\universal pouch small"
+
+![amplayer_universal_pouch_l]
+$spawn = "equipment\layered\parts pouch"
+
+![amplayer_sustainment_pouch]
+$spawn = "equipment\layered\hunters kit"
+
+![amplayer_dump_pouch]
+$spawn = "equipment\layered\dump pouch"

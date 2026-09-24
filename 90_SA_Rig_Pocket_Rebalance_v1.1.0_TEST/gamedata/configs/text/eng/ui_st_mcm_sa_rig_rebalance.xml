@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+  <string id="ui_mcm_menu_sa_rig_rebalance"><text>Rig Rebalance</text></string>
+  <string id="ui_mcm_sa_rig_rebalance_price_preset"><text>Price preset</text></string>
+  <string id="ui_mcm_sa_rig_rebalance_price_preset_desc"><text>Full 100%, Balanced 75%, or Affordable 50%. Balanced is the static tooltip and trader baseline. Other presets correct completed rig transactions.</text></string>
+  <string id="ui_mcm_sa_rig_rebalance_apply_to_selling"><text>Apply preset when selling</text></string>
+  <string id="ui_mcm_sa_rig_rebalance_apply_to_selling_desc"><text>Adjust money received when selling rigs as well as money paid when buying them. Keep enabled to prevent price-preset arbitrage.</text></string>
+</string_table>
+

@@ -1,0 +1,35 @@
+; ============================================================
+;  ARMOR MAG POUCHES - WHAT A FITTED POUCH GRANTS
+;
+;  One line per pouch, WIDTH x HEIGHT, comma separated for a pouch
+;  granting more than one pocket, and each pocket may name its TAG:
+;
+;      amppouch_g2 = 1x1:soft, 1x1:soft
+;      amppouch_r1 = 1x1:med
+;
+;  THE TAG IS WHY THE GREEN AND RED LADDERS CAN BOTH EXIST. Both grant
+;  a single square and nothing about the rectangle tells them apart -
+;  only the tag does, and a pouch that names its own beats the shape
+;  table. Without it every 1x1 a pouch granted would be red, and the
+;  green ladder would be the red ladder at a quarter of the price.
+;
+;  THE THREE STOCK POUCHES ARE NOT HERE. af_magpouch_s/m/l keep their
+;  shapes in the script, because all sixteen rig recipes are priced in
+;  them - a rig costs what it would cost to reach that shape by
+;  bolting pouches onto a strap, and repricing those from a config
+;  line would drift the whole rig ladder silently.
+;
+;  A pouch with no line here is fitted and grants nothing.
+; ============================================================
+[amp_pouch_grant]
+amppouch_g1  = 1x1:soft                                ; 1 cell(s) - Utility pouch
+amppouch_g2  = 1x1:soft, 1x1:soft                      ; 2 cell(s) - Utility pouch (2)
+amppouch_g3  = 1x1:soft, 1x1:soft, 1x1:soft            ; 3 cell(s) - Utility pouch (3)
+amppouch_g4  = 1x1:soft, 1x1:soft, 1x1:soft, 1x1:soft  ; 4 cell(s) - Utility pouch (4)
+amppouch_y1  = 2x1:ammo                                ; 2 cell(s) - Magazine pouch
+amppouch_y2  = 3x1:ammo                                ; 3 cell(s) - Long magazine pouch
+amppouch_y3  = 2x1:ammo, 2x1:ammo                      ; 4 cell(s) - Twin magazine pouch
+amppouch_y4  = 3x1:ammo, 3x1:ammo                      ; 6 cell(s) - Twin long magazine pouch
+amppouch_y5  = 2x2:ammo                                ; 4 cell(s) - Drum pouch
+amppouch_r1  = 1x1:med                                 ; 1 cell(s) - Medic's pouch
+amppouch_r2  = 1x1:med, 1x1:med                        ; 2 cell(s) - Field medic's pouch

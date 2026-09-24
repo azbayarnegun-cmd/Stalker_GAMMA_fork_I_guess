@@ -1,0 +1,25 @@
+; The two live tiers in the debug spawner. t3 is retired and is
+; deliberately absent - a withdrawn item in the spawner is a withdrawn
+; item somebody will spawn.
+
+![amplayer_magazine_pouch_t1]
+$spawn = "equipment\layered\magazine pouch small"
+
+![amplayer_magazine_pouch_t2]
+$spawn = "equipment\layered\magazine pouch medium"
+
+; ============================================================
+;  AND THE RETIRED ONE, PUT WHERE IT CANNOT BE PICKED BY ACCIDENT
+;
+;  Saying a section is retired does not remove it from the spawner -
+;  it inherits $spawn from its parent and turns up under whatever
+;  branch that names, which is how these were still appearing after
+;  being withdrawn from trade and craft.
+;
+;  Removing the key is not possible from an override file, so the next
+;  best thing is to send them somewhere clearly marked. They are
+;  grouped under one leaf that says what they are.
+; ============================================================
+
+![amplayer_magazine_pouch_t3]
+$spawn = "equipment\layered\zz retired\magazine pouch t3"

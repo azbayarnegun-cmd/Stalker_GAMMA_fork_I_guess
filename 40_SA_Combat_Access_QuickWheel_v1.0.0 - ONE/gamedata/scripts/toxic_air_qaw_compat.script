@@ -1,0 +1,7 @@
+-- Compatibility is integrated directly into the fixed two-page SA wheel.
+-- Toxic Air v2's original file registers on_game_start while that callback is
+-- already being dispatched in this GAMMA build, producing the log traceback.
+
+function on_game_start()
+    printf("[SA-COMBAT-ACCESS-QAW] Toxic Air compatibility active")
+end

@@ -1,0 +1,787 @@
+-- This script was taken & Modified from One-Key Weapon Controls mod by ??? (uknown author, probably TedHo)
+-- Optional feature in AmmoCheck (disabled by default). Multiplexes a single key (default Reload) into several actions.
+-- tap, double-tap and hold are each independently configurable and pick from the SAME action set:
+--   none / reload / fast_reload / next_ammo_type / ammo_wheel / ammo_check / inspect / situational
+--   tap                 : configurable (default reload)
+--   tap + modifier      : unjam (needs Weapon Parts Overhaul / arti_jamming); takes priority over the tap action
+--   double-tap          : configurable (default situational)
+--   hold                : configurable (default ammo check)
+-- The MCM options live in ammo_check_mcm.script (the rax_ammo_check page); this script
+-- only reads them and runs the logic.
+--
+-- Magazine actions soft-depend on ATHI's Mags Reloaded (magazines / magazine_binder).
+-- When those are absent the code falls back to the engine reload / ammo switch, so the
+-- feature still works on a vanilla (no-mags) setup.
+
+local enabled                 = false
+local mcm_key_reload          = DIK_keys.DIK_R
+local mcm_modifier_unjam      = 2          -- 1 shift, 2 ctrl, 3 alt
+local mcm_force_wpo_inspect   = false      -- modifier-unjam forces a proper WPO inspect on a non-jammed weapon
+-- tap / double-tap / hold each pick from the SAME action set:
+-- none / reload / fast_reload / next_ammo_type / ammo_wheel / ammo_check / situational
+local mcm_tap_behavior        = "reload"       -- plain tap (modifier+tap still unjams, see okr_do_single_action)
+local mcm_doubletap_behavior  = "situational"
+local mcm_hold_behavior       = "ammo_check"
+local mcm_reload_key_unjams   = false      -- plain tap unjams a jammed weapon (no modifier)
+local mcm_focuses_pda         = false      -- tap raises/lowers the PDA when it is in hand
+local mcm_hold_ms             = 200        -- hold this long (ms) to trigger ammo check instead of reload
+local mcm_double_ms           = 200        -- second tap within this window (ms) counts as a double-tap, also the reload defer
+local mcm_busy_instant_tap    = false      -- legacy OKWC mode: a non-idle press skips the tap/hold/double machine and acts at key-down
+
+-- key_bind only resolves on MCM 1.6.0+; guard reads with the defaults above.
+local mcm_keybinds = ui_mcm and ui_mcm.key_hold
+
+local OKR_DEBUG = false  -- set true to print key/reload tracing to xray log, entries are "[AC-OKR]"
+
+local function ammo_now()
+    local w = db.actor and db.actor:active_item()
+    return (w and IsWeapon(w)) and w:get_ammo_in_magazine() or -1
+end
+
+-- debug only: log every real reload event so we can see if/when one fires
+function okr_dbg_on_reload(weapon, ammo_total)
+    if OKR_DEBUG then printf("[AC-OKR] *** actor_on_weapon_reload EVENT fired *** ammo_in_mag=%s", tostring(ammo_now())) end
+end
+
+-- ### Suppressing the magazines reload handler
+--
+-- Two things reload on the reload key:
+--   1. the engine's native reload - blocked by flags.ret_value=false in on_before_key_press;
+--   2. the magazines mod's own on_key_press handler (registered on on_before_key_press), which calls
+--      actor_on_weapon_reload directly and so ignores our ret_value.
+-- To own the key we do BOTH: set ret_value=false (in on_before_key_press) AND unregister the
+-- magazines handler while One-Key is enabled; our tap then reloads via try_reload_weapon (which
+-- calls magazines.actor_on_weapon_reload itself). Unregister must run AFTER magazines has registered
+-- (actor_on_first_update / on_option_change), never in on_game_start where load order can run us
+-- first and make it a no-op. Restored when disabled. The mag-load interrupt the magazines handler
+-- also did (Quit/Inventory/Alt while a mag is loading) is replicated in on_before_key_press.
+local mags_handler_suppressed = false
+local cancel_binds = {
+    [key_bindings.kQUIT] = true,
+    [key_bindings.kINVENTORY] = true,
+}
+
+local function set_mags_handler_suppressed(suppress)
+    if not (magazines and magazines.on_key_press) then
+        if OKR_DEBUG then printf("[AC-OKR] set_mags(%s): magazines.on_key_press not found", tostring(suppress)) end
+        return
+    end
+    if suppress then
+        -- re-assert EVERY time, not only on the flag edge: the callback registry is a set keyed
+        -- by function (unsetting an absent entry is a harmless no-op), and other code paths can
+        -- re-register the Mags handler behind our back (the main mod's reload block restore did
+        -- exactly that), which the flag alone would mask forever.
+        UnregisterScriptCallback("on_before_key_press", magazines.on_key_press)
+        if OKR_DEBUG and not mags_handler_suppressed then printf("[AC-OKR] unregistered magazines.on_key_press") end
+        mags_handler_suppressed = true
+    elseif mags_handler_suppressed then
+        RegisterScriptCallback("on_before_key_press", magazines.on_key_press)
+        mags_handler_suppressed = false
+        if OKR_DEBUG then printf("[AC-OKR] re-registered magazines.on_key_press") end
+    end
+end
+
+-- Public: consulted by the main mod's reload-block restore (ammo_check_mcm) before it re-registers
+-- the Mags handler. While One-Key keeps it suppressed the restore must leave it unregistered, or
+-- the next press fires a Mags reload on top of the One-Key action.
+function keeps_mags_suppressed()
+    return mags_handler_suppressed
+end
+
+-- One-Key auto-owns the vanilla Reload bind whenever the chosen One-Key key IS the key the Reload
+-- control is bound to (no separate MCM toggle: two owners cannot share one physical key, and the
+-- callback dispatch order is arbitrary, the registry is iterated with pairs, so "we run first and
+-- block it" can never be relied on). On any other key the Reload control is left alone entirely.
+-- dik_to_bind is resolved live, so rebinding Reload in the game settings is picked up.
+local function okr_owns_reload_bind()
+    return enabled and mcm_key_reload ~= DIK_keys.DIK_ESCAPE
+        and dik_to_bind(mcm_key_reload) == key_bindings.kWPN_RELOAD
+end
+
+-- ### Foreign reload net
+--
+-- Unregistering the Mags handler is bookkeeping and bookkeeping can be undone behind our back, so
+-- on top of it we wrap magazines.actor_on_weapon_reload once, permanently. Every reload-key handler
+-- (Mags' own on_key_press, Field Mag Loading, any future mod) reaches the reload through the module
+-- table at call time, so the wrapper intercepts no matter when the caller registered or in what
+-- order the callbacks ran. While One-Key owns the Reload bind, any reload we did not start ourselves
+-- is dropped; with One-Key off (or on a non-Reload key) the wrapper is transparent. The only
+-- internal caller in the Mags script itself is its key handler, so nothing legitimate is lost.
+local orig_actor_on_weapon_reload = nil
+local okr_internal_reload = false  -- true only around try_reload_weapon's own reload call
+
+local function install_reload_wrap()
+    if orig_actor_on_weapon_reload then return end
+    if not (magazines and magazines.actor_on_weapon_reload) then return end
+    orig_actor_on_weapon_reload = magazines.actor_on_weapon_reload
+    magazines.actor_on_weapon_reload = function(actor, wpn)
+        if okr_owns_reload_bind() and not okr_internal_reload then
+            if OKR_DEBUG then printf("[AC-OKR] foreign mags reload DROPPED (One-Key owns the Reload bind)") end
+            return
+        end
+        return orig_actor_on_weapon_reload(actor, wpn)
+    end
+    if OKR_DEBUG then printf("[AC-OKR] installed mags reload wrap") end
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("on_before_key_press", on_before_key_press)
+    RegisterScriptCallback("on_key_hold", on_key_hold)
+    RegisterScriptCallback("on_key_release", on_key_release)
+    if OKR_DEBUG then RegisterScriptCallback("actor_on_weapon_reload", okr_dbg_on_reload) end
+    -- Load settings NOW, not only at first update: on_before_key_press is dispatched from the
+    -- level_input chain, live as soon as db.actor exists, several frames before
+    -- actor_on_first_update. A press in that window (typically the key held through the
+    -- level-start screen) saw enabled=false, was not consumed, the reload wrap stayed
+    -- transparent, and the still-registered Mags handler reloaded at key-down: "first hold
+    -- after load reloads instead of checking". Reading the options here closes the flag gap;
+    -- the Mags unregister inside may still run before Mags registers (harmless no-op), the
+    -- first-update pass and its 1s reassert repeat it, and the reload wrap (installed here
+    -- once enabled resolves true) drops any Mags reload that slips in between.
+    on_option_change()
+end
+
+function actor_on_first_update()
+    on_option_change()
+    -- Re-assert once more a moment later: the game-start sequence runs callbacks in arbitrary
+    -- order, so a handler (re)registered after our first pass would otherwise survive until the
+    -- next option change.
+    CreateTimeEvent("ac_okr_mags", "reassert", 1.0, function()
+        set_mags_handler_suppressed(okr_owns_reload_bind())
+        install_reload_wrap()
+        return true
+    end)
+    if OKR_DEBUG then printf("[AC-OKR] first update: enabled=%s mags_suppressed=%s", tostring(enabled), tostring(mags_handler_suppressed)) end
+end
+
+function on_option_change()
+    if not ui_mcm then return end
+
+    local en = ui_mcm.get("rax_ammo_check/onekey/enable")
+    enabled = (en == true or en == 1)
+
+    if mcm_keybinds then
+        mcm_key_reload = ui_mcm.get("rax_ammo_check/onekey/key_reload") or DIK_keys.DIK_R
+    end
+    mcm_modifier_unjam = ui_mcm.get("rax_ammo_check/onekey/modifier_unjam") or 2
+    local fwi = ui_mcm.get("rax_ammo_check/onekey/force_wpo_inspect")
+    mcm_force_wpo_inspect = (fwi == true or fwi == 1)
+    mcm_tap_behavior = ui_mcm.get("rax_ammo_check/onekey/tap_behavior") or "reload"
+    mcm_doubletap_behavior = ui_mcm.get("rax_ammo_check/onekey/doubletap_behavior") or "situational"
+    mcm_hold_behavior = ui_mcm.get("rax_ammo_check/onekey/hold_behavior") or "ammo_check"
+    local unj = ui_mcm.get("rax_ammo_check/onekey/reload_key_unjams")
+    mcm_reload_key_unjams = (unj == true or unj == 1)
+    local pda = ui_mcm.get("rax_ammo_check/onekey/focuses_pda")
+    mcm_focuses_pda = (pda == true or pda == 1)
+    mcm_hold_ms = ui_mcm.get("rax_ammo_check/onekey/hold_ms") or 200
+    mcm_double_ms = ui_mcm.get("rax_ammo_check/onekey/doubletap_ms") or 200
+    local bit_ = ui_mcm.get("rax_ammo_check/onekey/busy_instant_tap")
+    mcm_busy_instant_tap = (bit_ == true or bit_ == 1)
+
+    -- only unregister the Mags reload handler when we actually own the vanilla Reload bind
+    -- (capture on, or the One-Key key IS the Reload-bind key); with the keys distinct and capture
+    -- off the player's Reload control must keep working through Mags as normal.
+    set_mags_handler_suppressed(okr_owns_reload_bind())
+    if enabled then
+        install_reload_wrap()
+    end
+end
+
+-- ### Weapon helpers
+
+local function is_valid_weapon(wpn)
+    return wpn and IsWeapon(wpn) and (not IsItem("fake_ammo_wpn", nil, wpn))
+end
+
+local function mags_supported(wpn)
+    return magazines and magazine_binder and magazine_binder.is_supported_weapon(wpn)
+end
+
+-- SA v1.1.0: consult the exported bridge, not SquaredAway's private A table.
+local function sa_reload_allowed(weapon, desired)
+    local amp = zzz_armor_mag_pouches
+    if not (amp and type(amp.sa_loose_reload_allowed) == "function") then
+        printf("[SA-RELOAD-FIX] v1.1.0 BLOCKED: matching Tiers Core bridge missing; check MO2 conflicts")
+        return false
+    end
+    return amp.sa_loose_reload_allowed(weapon, desired)
+end
+
+-- ### Input
+--
+-- Deterministic tap / double-tap / hold state machine. We do NOT use ui_mcm.simple_press /
+-- double_tap / key_hold here: those rely on on_key_release timing inside MCM and proved
+-- unreliable on on_before_key_press, firing the single-tap reload even on a hold. Instead we
+-- track the key ourselves:
+--   key down  : consume the press, record the time, detect a double-tap vs the previous press
+--   key hold  : once held past mcm_hold_ms, run the hold action and cancel any pending tap
+--   key up    : if it was a short tap, defer the tap action by mcm_double_ms so a quick second
+--               tap can cancel it and run the double-tap action instead
+-- Both timings are MCM sliders (read in on_option_change), defaulting to 200 ms.
+
+local okr_down_t          = 0      -- time_global of the current press, 0 when idle
+local okr_hold_fired      = false  -- ammo check already fired for this hold
+local okr_last_press_t    = 0      -- time_global of the previous press, for double-tap detection
+local okr_pending_reload  = false  -- a single-tap reload/unjam is scheduled
+local okr_pending_unjam   = false  -- the pending single action is unjam (modifier was held)
+local okr_mod_at_down     = false  -- unjam modifier state captured at key-down (latched for the release read)
+
+-- The configured One-Key key, which may be the very key the vanilla Reload control is bound to:
+-- in that case okr_owns_reload_bind() is true, Mags' handler is suppressed (plus the reload wrap
+-- as the net) and we consume the press with ret_value=false, so the engine reload is blocked and
+-- single tap reloads via our own code. Note the callback dispatch order is arbitrary, so the
+-- consume works only because nothing else sets ret_value back to true.
+-- mcm_key_reload set to DIK_ESCAPE means the key is unbound.
+local function is_reload_key(key, bind)
+    return mcm_key_reload ~= DIK_keys.DIK_ESCAPE and key == mcm_key_reload
+end
+
+local function okr_clear_pending()
+    RemoveTimeEvent("ac_okr_single", "reload")
+    okr_pending_reload = false
+end
+
+-- Shared dispatcher for the tap / double-tap / hold actions: all three pick from the SAME option set,
+-- so a single function runs whichever behavior is configured. "none" (and any unknown) does nothing.
+-- weapon is fetched if not supplied (the hold path has none on hand).
+-- The weapon-draw window has item_in_slot already set but active_item still nil, and the
+-- actions resolve the weapon via active_item (check_Ammo, magazines.actor_on_weapon_reload),
+-- so running them in that window silently no-ops. Defer until the weapon is actually in
+-- hands: reload fires as soon as active_item resolves (it may interrupt the tail of the
+-- draw, mirroring the Mags handler), ammo check additionally waits for idle so the proper
+-- inspect animation can play instead of the busy-state message fallback.
+local function okr_defer_action(name, need_idle, fn)
+    RemoveTimeEvent("ac_okr_defer", name)
+    local deadline = time_global() + 3000
+    CreateTimeEvent("ac_okr_defer", name, 0, function()
+        if time_global() > deadline then return true end
+        local wpn = db.actor and db.actor:active_item()
+        if not (wpn and IsWeapon(wpn)) then return false end
+        if need_idle and wpn:get_state() ~= 0 then return false end
+        fn()
+        return true
+    end)
+end
+
+local function do_okr_action(behavior, weapon)
+    if not behavior or behavior == "none" then return end
+    weapon = weapon or (db.actor and db.actor:active_item())
+    if OKR_DEBUG then printf("[AC-OKR] action=%s", tostring(behavior)) end
+
+    if behavior == "reload" then
+        try_reload_weapon()
+    elseif behavior == "fast_reload" then
+        -- arm the fast-reload speed-up + old-mag drop (if this is a mag weapon with a mag), then
+        -- perform the reload ourselves (One-Key owns the Reload bind). Falls back to a normal reload
+        -- when not applicable (no mags mod / no mag / unsupported), since the arm is a no-op there.
+        if ammo_check_fastreload_mcm and ammo_check_fastreload_mcm.do_fast_reload then
+            ammo_check_fastreload_mcm.do_fast_reload(weapon)
+        end
+        try_reload_weapon()
+    elseif behavior == "next_ammo_type" then
+        switch_ammo_next()
+    elseif behavior == "ammo_wheel" then
+        switch_ammo_wheel()
+    elseif behavior == "ammo_check" then
+        if db.actor and db.actor:active_item() then
+            ammo_check_mcm.check_Ammo()
+        else
+            -- mid-draw: run the check right after the weapon settles in hands
+            okr_defer_action("check", true, function() ammo_check_mcm.check_Ammo() end)
+        end
+    elseif behavior == "inspect" then
+        -- look-over animation only, no ammo readout
+        local w = db.actor and db.actor:active_item()
+        if w and IsWeapon(w) and w:get_state() == 0 then
+            play_inspect_anim(w)
+        else
+            okr_defer_action("inspect", true, function()
+                play_inspect_anim(db.actor and db.actor:active_item())
+            end)
+        end
+    elseif behavior == "situational" then
+        -- ammo wheel when 3+ types are available, swap to next when exactly 2, reload when fewer
+        if not weapon then try_reload_weapon() return end
+        local _, _, num_avail = get_ammo_data(weapon, true)
+        if num_avail > 2 then
+            switch_ammo_wheel()
+        elseif num_avail == 2 then
+            switch_ammo_next()
+        else
+            try_reload_weapon()
+        end
+    end
+end
+
+-- deferred single-tap action: runs mcm_double_ms after release unless a double-tap cancelled it
+local function weapon_is_jammed(wpn)
+    return wpn and arti_jamming and arti_jamming.get_jammed and arti_jamming.get_jammed(wpn:id()) and true or false
+end
+
+function okr_do_single_action()
+    if okr_pending_reload then
+        okr_pending_reload = false
+        okr_last_press_t = 0
+        -- unjam takes priority over the configured tap action: when the modifier is held, OR when
+        -- "Reload Key Unjams" is on and the weapon is currently jammed. Otherwise run the tap action.
+        local do_unjam = okr_pending_unjam
+        local by_modifier = okr_pending_unjam  -- true only when the unjam modifier was held
+        if not do_unjam and mcm_reload_key_unjams then
+            local wpn = db.actor and db.actor:item_in_slot(db.actor:active_slot())
+            do_unjam = weapon_is_jammed(wpn)
+        end
+        if OKR_DEBUG then printf("[AC-OKR] single action: %s", do_unjam and "unjam" or tostring(mcm_tap_behavior)) end
+        if do_unjam then
+            -- Modifier-driven unjam with "Force WPO weapon inspect" on
+            if by_modifier and mcm_force_wpo_inspect and ammo_check_no_inspect_mcm
+               and ammo_check_no_inspect_mcm.force_wpo_inspect
+               and ammo_check_no_inspect_mcm.force_wpo_inspect() then
+                -- handled: forced inspect ran on a non-jammed weapon
+            else
+                try_unjam_weapon()
+            end
+        else
+            do_okr_action(mcm_tap_behavior, db.actor and db.actor:active_item())
+        end
+    end
+    return true
+end
+
+function on_before_key_press(key, bind, dis, flags)
+    if not (enabled and ui_mcm) then return end -- check if onekey enabled
+
+    -- we unregistered the magazines handler
+    -- delegate its mag-load cancel back so its field-loading rules (keep loading after the inventory closes)
+    -- are honored instead of replicating a stale Quit/Inventory/Alt cancel here
+    if mags_handler_suppressed and magazines and magazines.action_in_progress() then
+        if mag_field_load and mag_field_load.handle_load_cancel_key then
+            if mag_field_load.handle_load_cancel_key(key, bind, flags) then return end
+        elseif magazines.handle_load_cancel_key then
+            if magazines.handle_load_cancel_key(key, bind, flags) then return end
+        elseif cancel_binds[bind] or key == DIK_keys.DIK_LMENU then
+            magazines.do_interrupt_magload()
+        end
+    end
+
+    if not is_reload_key(key, bind) then return end -- check if proper key pressed
+
+    if OKR_DEBUG then printf("[AC-OKR] on_before_key_press: key=%s bind=%s", tostring(key), tostring(bind)) end
+
+    -- raise/lower the PDA when it is the active item (slot 8). The reload key is still bound, so let
+    -- the engine handle it - it raises/lowers the PDA on the reload action. We just pass the key
+    -- through instead of consuming it.
+    if mcm_focuses_pda and db.actor:active_slot() == 8 and key == mcm_key_reload then
+        flags.ret_value = true
+        return
+    end
+
+    -- Resolve the weapon. During the draw animation active_item() is still nil while the
+    -- weapon is already in the active slot; passing the key through in that window fires the
+    -- ENGINE native reload (a ghost reload on mags weapons) and the press never reaches the
+    -- tap/hold machine, so a held key reloaded instead of ammo-checking. Fall back to the
+    -- slot item and only pass through when the slot truly holds no usable weapon.
+    local weapon = db.actor and db.actor:active_item()
+    if (weapon == nil or not IsWeapon(weapon) or IsItem("fake_ammo_wpn", nil, weapon)) then
+        weapon = db.actor and db.actor:item_in_slot(db.actor:active_slot())
+        if (weapon == nil or not IsWeapon(weapon) or IsItem("fake_ammo_wpn", nil, weapon)) then
+            flags.ret_value = true
+            return
+        end
+    end
+
+    -- ammo wheel UI is open: let it have the key
+    if is_ammo_wheel_open() then
+        flags.ret_value = true
+        return
+    end
+
+    -- we own this press from here on. The key is ALWAYS consumed, busy or not: passing it through
+    -- would fire the ENGINE native reload, and on a mags-supported weapon that is a ghost reload
+    -- (phantom rounds straight from loose inventory ammo, even with no magazine available).
+    -- A busy weapon (firing / ADS shoulder / draw animation) still feeds the tap/hold state machine:
+    -- Mags' own reload handler runs through those animations (its only guard is the reload state
+    -- itself), so dropping busy presses here forced a re-press after every such animation. The
+    -- actions self-guard instead (reload skips state 7, ammo check handles busy on its own).
+    -- NOTE on busy presses: they feed the same tap/hold/double-tap machine as idle ones, by
+    -- design. The tap action then lands ~hold-window late even mid-ADS-transition; that wait is
+    -- the cost of telling a tap from a hold or double-tap, and it is kept UNIFORM across weapon
+    -- states. (The original OKWC instead passed busy presses through, which only reloaded because
+    -- the still-registered Mags handler fired at key-down - a side effect, not a design.)
+    local wpn_state = weapon:get_state()
+    local weapon_busy = (wpn_state ~= 0)
+    flags.ret_value = false
+
+    -- Legacy busy-press mode (MCM, default off): replicate the original OKWC feel, where any
+    -- non-idle press (ADS shoulder/unshoulder, firing tail, draw, bore...) skips the machine and
+    -- acts at key-down. In the original this "worked" by falling through to the still-registered
+    -- Mags handler; here the configured tap action (or unjam) runs through our own code, so there
+    -- is no handler-order coincidence and no engine ghost reload. The actions keep their own
+    -- guards (reload skips state 7 and defers through the draw, check defers to idle). Tradeoff:
+    -- hold and double-tap are unavailable while the weapon is animating.
+    -- Mode-switch states are excluded: 9 is the grenade-launcher mode switch, 10 is the
+    -- fire-mode switch. A key held during those transitions means "check ammo when ready",
+    -- but the instant tap turns it into a reload at key-down: right after leaving launcher
+    -- mode that plays a full rifle reload, and while entering it the press is swallowed by
+    -- try_reload_weapon's grenade-mode guard, so neither a check nor a reload happens. Feed
+    -- those presses to the normal machine instead; its hold action runs the check, which
+    -- defers itself until the weapon is idle.
+    if mcm_busy_instant_tap and weapon_busy and wpn_state ~= 9 and wpn_state ~= 10 then
+        if OKR_DEBUG then printf("[AC-OKR] legacy busy press: instant single action (state=%s)", tostring(wpn_state)) end
+        okr_clear_pending()
+        okr_last_press_t = 0
+        okr_down_t = 0
+        okr_hold_fired = false
+        okr_pending_unjam = ui_mcm.get_mod_key(mcm_modifier_unjam) and true or false
+        okr_pending_reload = true
+        okr_do_single_action()
+        return
+    end
+
+    -- Fast Reload via modifier: immediate, bypassing the tap/double-tap/hold state machine. When the
+    -- Fast Reload feature is enabled and its modifier is held, claim this press for a fast reload
+    -- right now (no double-tap defer). One-Key owns the bind here, so we run the reload ourselves.
+    -- Skipped when the double-tap action IS fast reload: that makes double-tap the chosen trigger, so
+    -- the modifier + reload-key behaviour is ignored to avoid two ways firing the same thing.
+    -- Idle-only: a fast reload mid-animation (mag throw + sped-up anim) is not worth the edge cases.
+    if not weapon_busy
+       and mcm_doubletap_behavior ~= "fast_reload"
+       and ammo_check_fastreload_mcm and ammo_check_fastreload_mcm.try_modifier_fast_reload
+       and ammo_check_fastreload_mcm.try_modifier_fast_reload(weapon) then
+        okr_clear_pending()
+        okr_last_press_t = 0
+        okr_down_t = 0
+        okr_hold_fired = false
+        try_reload_weapon()
+        return
+    end
+
+    local now = time_global()
+
+    -- second press inside the window: double-tap. Cancel the pending single, run the switch.
+    -- skipped entirely when the double-tap action is "none"
+    if mcm_doubletap_behavior ~= "none" and okr_last_press_t > 0 and (now - okr_last_press_t) <= mcm_double_ms then
+        okr_clear_pending()
+        okr_last_press_t = 0
+        okr_down_t = 0
+        if OKR_DEBUG then printf("[AC-OKR] double-tap detected") end
+        do_okr_action(mcm_doubletap_behavior, weapon)
+        return
+    end
+
+    okr_last_press_t = now
+    okr_down_t = now
+    okr_hold_fired = false
+    -- Capture the unjam modifier NOW, while the key is down and the modifier is reliably held
+    okr_mod_at_down = ui_mcm.get_mod_key(mcm_modifier_unjam) and true or false
+
+    if OKR_DEBUG then printf("[AC-OKR] key down: ammo=%s mod=%s", tostring(ammo_now()), tostring(okr_mod_at_down)) end
+end
+
+function on_key_hold(key)
+    if not (enabled and ui_mcm) then return end
+    if not is_reload_key(key) then return end
+    if mcm_hold_behavior == "none" then return end  -- no dedicated hold action; the release handles the tap
+    if okr_down_t > 0 and (not okr_hold_fired) and (time_global() - okr_down_t) >= mcm_hold_ms then
+        okr_hold_fired = true
+        okr_clear_pending()
+        okr_last_press_t = 0
+        okr_down_t = 0
+        if OKR_DEBUG then printf("[AC-OKR] hold, action %s (ammo=%s)", tostring(mcm_hold_behavior), tostring(ammo_now())) end
+        do_okr_action(mcm_hold_behavior)
+    end
+end
+
+function on_key_release(key)
+    if not (enabled and ui_mcm) then return end
+    if not is_reload_key(key) then return end
+
+    -- hold already handled this press: nothing to do
+    if okr_hold_fired then
+        okr_hold_fired = false
+        okr_down_t = 0
+        return
+    end
+
+    -- press was consumed by a double-tap (or never registered): nothing pending
+    if okr_down_t == 0 then return end
+    okr_down_t = 0
+
+    -- short tap: resolve the single action. When double-tap is disabled there is no window to
+    -- wait for, so act immediately; otherwise defer so a quick second tap can convert to a switch.
+    -- The double-tap window is measured press-to-press, so the time the key was held already
+    -- counts against it: only wait out the REMAINDER, not a full window on top of the release.
+    -- A ~120 ms tap then resolves ~80 ms later instead of 200 ms later.
+    okr_pending_unjam = okr_mod_at_down or (ui_mcm.get_mod_key(mcm_modifier_unjam) and true or false)
+    okr_pending_reload = true
+    if OKR_DEBUG then printf("[AC-OKR] tap release: single (%s)", okr_pending_unjam and "unjam" or "reload") end
+    if mcm_doubletap_behavior == "none" then
+        okr_do_single_action()
+    else
+        local remaining = mcm_double_ms - (time_global() - okr_last_press_t)
+        if remaining <= 0 then
+            okr_do_single_action()
+        else
+            CreateTimeEvent("ac_okr_single", "reload", remaining / 1000, okr_do_single_action)
+        end
+    end
+end
+
+-- ### Actions
+
+-- Play a weapon-inspection animation only (no ammo readout), the same approach the fire-mode
+-- feature uses
+local INSPECT_ANIMS = { "anm_bore", "anm_inspect", "anm_ammo_check" }
+
+function play_inspect_anim(weapon)
+    if not (weapon and weapon.play_hud_motion) then return false end
+    if not (animation_common and animation_common.has_animation) then return false end
+    local sec = weapon:section()
+    for i = 1, #INSPECT_ANIMS do
+        local anm = INSPECT_ANIMS[i]
+        if animation_common.has_animation(sec, anm) then
+            weapon:play_hud_motion(anm, true, 7, 1, 0)
+            -- report the window so the "DoF on inspect" feature can blur for its duration
+            if ammo_check_mcm and ammo_check_mcm.note_inspect_anim then
+                ammo_check_mcm.note_inspect_anim(weapon, anm)
+            end
+            return true
+        end
+    end
+    return false
+end
+
+function try_unjam_weapon()
+    local weapon = db.actor:item_in_slot(db.actor:active_slot())
+    if weapon and arti_jamming and arti_jamming.unjam then
+        arti_jamming.unjam(weapon)
+    end
+end
+
+function try_reload_weapon()
+    local weapon = db.actor:item_in_slot(db.actor:active_slot())
+    local state = weapon and weapon:get_state()
+    if OKR_DEBUG then printf("[AC-OKR] try_reload_weapon FIRED: state=%s", tostring(state)) end
+    -- only state 7 (already reloading) blocks, mirroring Mags' own key handler: a reload pressed
+    -- during the ADS shoulder or weapon-draw animation interrupts it and reloads immediately,
+    -- the same as with One-Key disabled. Other busy states resolve inside the reload call.
+    if not weapon or state == 7 then
+        return
+    end
+    local grenade_mode = weapon:weapon_in_grenade_mode()
+
+    -- yield to the main mod's reload-block window: while a check animation is playing (and the
+    -- Block Reload During Check option armed the window), a reload must not cut it short. The
+    -- engine-key gate cannot stop this script-side reload, so ask the main mod directly.
+    if ammo_check_mcm and ammo_check_mcm.ac_reload_blocked and ammo_check_mcm.ac_reload_blocked() then
+        if OKR_DEBUG then printf("[AC-OKR] reload blocked: check animation window active") end
+        return
+    end
+
+    -- mid-draw active_item is still nil and both reload paths resolve the weapon through it
+    -- (magazines.actor_on_weapon_reload and actor:reload_weapon()); defer until it settles
+    if not (db.actor and db.actor:active_item()) then
+        okr_defer_action("reload", false, try_reload_weapon)
+        return
+    end
+
+    -- never reload a jammed weapon (it must be unjammed first)
+    if weapon_is_jammed(weapon) then
+        return
+    end
+
+    -- WPO "Inspect Non-Jammed Weapon on Reload" mode
+    if ammo_check_no_inspect_mcm and ammo_check_no_inspect_mcm.try_reload_inspect
+       and ammo_check_no_inspect_mcm.try_reload_inspect(weapon) then
+        return
+    end
+
+    -- mark this reload as ours so the foreign-reload wrap lets it through. pcall so a throw inside
+    -- the reload cannot leave the flag stuck true (which would let foreign reloads slip through
+    -- for the rest of the session).
+    okr_internal_reload = true
+    local ok, err = pcall(function()
+        -- One-Key consumes the native Reload bind. Underbarrel mode therefore
+        -- has to run its reload here, after consulting the same public rig
+        -- permission bridge that already protects shotguns.
+        if grenade_mode then
+            if not sa_reload_allowed(weapon) then return end
+            db.actor:reload_weapon()
+        elseif mags_supported(weapon) then
+            magazines.actor_on_weapon_reload(db.actor, weapon)
+        else
+            if not sa_reload_allowed(weapon) then return end
+            db.actor:reload_weapon()
+        end
+    end)
+    okr_internal_reload = false
+    if not ok and OKR_DEBUG then printf("[AC-OKR] try_reload_weapon error: %s", tostring(err)) end
+    -- Post-reload ammo check is handled globally by the main mod's "Auto-Check After Reload"
+    -- (Behaviour) option, which fires on the reload animation end for any reload, including this one.
+end
+
+-- ### Ammo type switching
+
+function switch_ammo_wheel()
+    item_weapon.start_ammo_wheel()
+end
+
+function is_ammo_wheel_open()
+    return (item_weapon.GUI and item_weapon.GUI:IsShown()) and true or false
+end
+
+function switch_ammo_next()
+    if not try_switch_next_ammo() then
+        try_reload_weapon()
+    end
+end
+
+function try_switch_next_ammo()
+    local weapon = db.actor:active_item()
+    if not is_valid_weapon(weapon) then return false end
+
+    local ammo_types, has_ammo_types = get_ammo_data(weapon, false)
+    local current = get_current_ammo_type(weapon, ammo_types)  -- one-based index
+    local next_type
+
+    -- look forward from the current type
+    for i = current + 1, #ammo_types do
+        if has_ammo_types[i] then next_type = i break end
+    end
+    -- wrap around
+    if not next_type then
+        for i = 1, current - 1 do
+            if has_ammo_types[i] then next_type = i break end
+        end
+    end
+
+    if next_type then
+        return try_switch_to_ammo_type(weapon, next_type)
+    end
+    return false
+end
+
+function try_switch_to_ammo_type(weapon, ammo_type)  -- ammo_type is one-based
+    if mags_supported(weapon) then
+        local id = weapon:id()
+        local ammo_map = utils_item.get_ammo(nil, id)  -- index to section
+        local desired_section = ammo_map[ammo_type]
+        local magazine = magazines.find_magazine(weapon, desired_section)
+        if not magazine then
+            return false
+        end
+
+        -- mirror the magazine system's own reload sequence, loading the chosen magazine.
+        -- delay_load_weapon ejects the current magazine and handles round retention itself.
+        local pre_table = magazines.count_ammo(weapon)
+        weapon:switch_state(7)
+        disable_info("sleep_active")
+        magazines.action_start_reload()
+        CreateTimeEvent("ac_okr_switch", "delay_weapon"..id, 0.1, magazines.delay_load_weapon, id, magazine, pre_table)
+    else
+        local ammo_map = utils_item.get_ammo(nil, weapon:id())
+        local desired = ammo_map and ammo_map[ammo_type]
+        if not desired or not sa_reload_allowed(weapon, desired) then return false end
+        weapon:unload_magazine(true)
+        weapon:set_ammo_type(ammo_type - 1)  -- engine ammo type is zero-based
+        db.actor:reload_weapon()
+    end
+    return true
+end
+
+-- ### Ammo data
+
+function get_ammo_data(weapon, include_loaded)
+    local id = weapon:id()
+    local section = weapon:section()
+
+    -- available ammo in inventory: magazines (mags mode) or loose rounds (fallback)
+    local inventory_ammo = {}
+    if mags_supported(weapon) then
+        inventory_ammo = magazines.count_magazines(weapon)
+    else
+        local function itr(temp, itm)
+            local s = itm:section()
+            if IsItem("ammo", s) or IsItem("grenade_ammo", s) then
+                inventory_ammo[s] = (inventory_ammo[s] or 0) + itm:ammo_get_count()
+            end
+        end
+        db.actor:iterate_inventory(itr, nil)
+    end
+
+    if include_loaded then
+        local loaded_section = get_loaded_ammo_section(weapon)
+        if loaded_section then
+            inventory_ammo[loaded_section] = (inventory_ammo[loaded_section] or 0) + 1
+        end
+    end
+
+    -- no per-id caching here: with an id the lookup walks the engine's live ammo list, which
+    -- is upgrade-aware (a caliber-conversion upgrade changes it mid-session)
+    --One engine call per ammo-switch press is negligible; a cached copy would go stale after such an upgrade.
+    local ammo_types = utils_item.get_ammo(section, id)
+
+    local num_avail = 0
+    local has_ammo_types = {}
+    for i = 1, #ammo_types do
+        local s = ammo_types[i]
+        local is_bad = s and string.find(s, "verybad") and true or false
+        has_ammo_types[i] = (not is_bad) and (inventory_ammo[s] and inventory_ammo[s] > 0) and true or false
+        if has_ammo_types[i] then
+            num_avail = num_avail + 1
+        end
+    end
+
+    return ammo_types, has_ammo_types, num_avail
+end
+
+-- top round type in the magazine as a one-based index (ignores the chambered round)
+function get_current_ammo_type(weapon, ammo_types)
+    if not mags_supported(weapon) then
+        return weapon:get_ammo_type() + 1
+    end
+
+    local mag_data = magazine_binder.get_mag_loaded(weapon:id())
+    if not mag_data or weapon:get_ammo_in_magazine() <= 1 then
+        return weapon:get_ammo_type() + 1
+    end
+
+    local top_round
+    if magazines.retain_round(weapon) then
+        top_round = mag_data.loaded[#mag_data.loaded - 1]
+    else
+        top_round = stack.peek(mag_data.loaded)
+    end
+
+    local current = weapon:get_ammo_type() + 1  -- fallback
+    for i, sec in ipairs(ammo_types) do
+        if top_round == sec then
+            current = i
+            break
+        end
+    end
+    return current
+end
+
+-- top round section (string), or nil when there is nothing relevant on top
+function get_loaded_ammo_section(weapon)
+    if weapon:get_ammo_in_magazine() == 0 then
+        return nil
+    end
+
+    if not mags_supported(weapon) then
+        local ammo_list = utils_item.get_ammo(weapon:section(), weapon:id())  -- index to section
+        return ammo_list[weapon:get_ammo_type() + 1]
+    end
+
+    local mag_data = magazine_binder.get_mag_loaded(weapon:id())
+    if not mag_data or (weapon:get_ammo_in_magazine() <= 1 and magazines.retain_round(weapon)) then
+        return nil
+    end
+
+    if magazines.retain_round(weapon) then
+        return mag_data.loaded[#mag_data.loaded - 1]
+    end
+    return stack.peek(mag_data.loaded)
+end

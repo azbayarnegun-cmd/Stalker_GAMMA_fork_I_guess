@@ -1,0 +1,28 @@
+function on_mcm_load()
+    local op = {
+        id = "sa_rig_rebalance",
+        sh = true,
+        gr = {
+            {
+                id = "price_preset",
+                type = "list",
+                val = 2,
+                def = 0.75,
+                no_str = true,
+                content = {
+                    {1.00, "Full price (100%)"},
+                    {0.75, "Balanced (75%)"},
+                    {0.50, "Affordable (50%)"},
+                },
+            },
+            {
+                id = "apply_to_selling",
+                type = "check",
+                val = 1,
+                def = true,
+            },
+        },
+    }
+    return op
+end
+

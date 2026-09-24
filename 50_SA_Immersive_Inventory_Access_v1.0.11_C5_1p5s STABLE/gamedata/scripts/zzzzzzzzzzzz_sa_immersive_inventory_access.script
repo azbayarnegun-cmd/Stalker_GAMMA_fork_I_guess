@@ -1,0 +1,446 @@
+-- Consolidated SA Immersive Inventory Access v1.0.0
+-- Tap inventory: equipment, rig and fitted-pouch views only.
+-- Hold inventory: visual backpack animation, then the complete inventory.
+
+local VERSION = "1.0.11-C5-1.5s"
+local HOLD_MS = 600
+local EVENT_GROUP = "sa_immersive_inventory_access"
+local EVENT_OPEN = "open_full_inventory"
+local EVENT_CLOSE = "finish_close_animation"
+local DEFAULT_OPEN_SECONDS = 1.8
+
+local mode = "full"
+local open_mode = nil
+local press_pending = false
+local hold_fired = false
+local pressed_at = 0
+local animation_active = false
+local input_locked = false
+local opening_own_menu = false
+local parse_base = nil
+local parse_installed = false
+local update_base = nil
+local visibility_installed = false
+local visual_owner = nil
+local visual_hidden = false
+local stowed_active_slot = nil
+
+local function log(fmt, ...)
+    printf("[SA-INV-ACCESS] " .. fmt, ...)
+end
+
+local function actor_ready()
+    if not (db and db.actor) then return false end
+    local ok, alive = pcall(function() return db.actor:alive() end)
+    return not ok or alive == true
+end
+
+local function inventory_open()
+    if actor_menu and actor_menu.inventory_opened then
+        local ok, shown = pcall(actor_menu.inventory_opened)
+        if ok and shown then return true end
+    end
+    if GetActorMenu then
+        local ok, menu = pcall(GetActorMenu)
+        if ok and menu and menu.IsShown then
+            local shown_ok, shown = pcall(function() return menu:IsShown() end)
+            if shown_ok and shown then return true end
+        end
+    end
+    return false
+end
+
+local function inventory_key(key)
+    return dik_to_bind and dik_to_bind(key) == key_bindings.kINVENTORY
+end
+
+local function actor_is_talking()
+    if not actor_ready() then return false end
+    local ok, talking = pcall(function() return db.actor:is_talking() end)
+    return ok and talking or false
+end
+
+local function worn_backpack()
+    if not actor_ready() then return nil end
+    local ok, obj = pcall(function() return db.actor:item_in_slot(13) end)
+    return ok and obj or nil
+end
+
+local function original_ib_open_backpack(obj)
+    if not obj then
+        log("C5: no worn backpack object")
+        return false
+    end
+
+    local fdda = immersive_backpacks_fdda
+    if not (fdda and type(fdda.open_backpack) == "function") then
+        log("C5: immersive_backpacks_fdda.open_backpack unavailable")
+        return false
+    end
+
+    local pid = obj:id()
+    log("C5: calling immersive_backpacks_fdda.open_backpack obj=%s id=%s",
+        tostring(obj:section()), tostring(pid))
+    local ok, err = pcall(fdda.open_backpack, obj, pid)
+    if not ok then
+        log("C5: open_backpack failed: %s", tostring(err))
+        return false
+    end
+
+    log("C5: original FDDA backpack session started")
+    return true
+end
+
+-- V1.0.1: backpack HUD motions can visually drag the current active item
+-- into the backpack model.  Put the actor's active slot away for the
+-- animation/menu lifetime, then restore it after the closing motion.
+local function stow_active_item(reason)
+    -- C5: wrapper never changes active slots. The repaired standalone FDDA
+    -- flow owns the session and hides only the weapon HUD.
+    return false
+end
+
+local function restore_active_item()
+    stowed_active_slot = nil
+    return false
+end
+
+
+local function clear_table(t)
+    if type(t) ~= "table" then return t end
+    for key in pairs(t) do t[key] = nil end
+    return t
+end
+
+-- ParseInventory is the established SquaredAway choke point for the ordinary
+-- actor-bag list. The rig and Layered Pouches are independent drawn/synthetic
+-- views, so clearing this returned UI list conceals backpack contents without
+-- moving objects, shrinking capacity, changing ownership, or touching saves.
+local function install_inventory_filter()
+    if parse_installed then return true end
+    local cls = ui_inventory and ui_inventory.UIInventory
+    if not cls or type(cls.ParseInventory) ~= "function" then return false end
+
+    parse_base = cls.ParseInventory
+    cls.ParseInventory = function(self, npc, all, id_list, ignore_kind)
+        local inv = parse_base(self, npc, all, id_list, ignore_kind)
+        if mode ~= "access" or not self or self.mode ~= "inventory" then return inv end
+        if not (npc and db and db.actor) then return inv end
+        local ok, same = pcall(function() return npc:id() == db.actor:id() end)
+        if not (ok and same) then return inv end
+        return clear_table(inv)
+    end
+    parse_installed = true
+    log("SquaredAway personal-inventory filter installed")
+    return true
+end
+
+-- SquaredAway's player grid has two independent visual layers: the cell
+-- container and the backing static created from `player:grid`. Filtering
+-- ParseInventory removes the item cells but deliberately leaves both layers
+-- alive. Access mode hides only those windows; the container object, its
+-- occupancy map and every saved zone remain untouched.
+local function show_window(window, yes)
+    if not window then return false end
+    return pcall(function() window:Show(yes and true or false) end)
+end
+
+local function set_access_visuals(gui, hide)
+    if not (gui and gui.mode == "inventory") then return false end
+
+    local cc = gui.CC and gui.CC.actor_bag
+    if cc then
+        -- Keep the UICellContainer itself shown. Armor Mag Pouches uses that
+        -- fact to find its anchor, while its rig furniture is a sibling under
+        -- equ_dialog and therefore survives hiding the scroll/content panes.
+        pcall(function() cc:Show(true) end)
+        show_window(cc.scroll, not hide)
+        show_window(cc.st, not hide)
+    end
+
+    -- UI Rework/Sota stores the XML `player:grid` static under player_grid.
+    -- The aliases make this harmless with nearby UI pack revisions.
+    for _, field in ipairs({ "player_grid", "actor_grid", "grid_player" }) do
+        show_window(gui[field], not hide)
+    end
+
+    if hide then
+        -- SquaredAway draws the equipped backpack as a synthetic slot on
+        -- equ_dialog. Its real slot 13 is already parked off-screen.
+        local amp = rawget(_G, "zzz_armor_mag_pouches")
+        if amp and type(amp.hide_pack) == "function" then
+            pcall(amp.hide_pack)
+        end
+    end
+
+    visual_owner = gui
+    if visual_hidden ~= hide then
+        visual_hidden = hide
+        log("backpack UI %s for tap inventory", hide and "hidden" or "restored")
+    end
+    return true
+end
+
+local function restore_access_visuals()
+    if visual_owner then pcall(set_access_visuals, visual_owner, false) end
+    visual_owner = nil
+    visual_hidden = false
+end
+
+-- Layered Pouches and Armor Mag Pouches draw from UIInventory.Update. Install
+-- outside their wrappers and apply access visibility after they return, so a
+-- refresh cannot re-show the backpack on the following frame.
+local function install_visibility_hook()
+    if visibility_installed then return true end
+    local cls = ui_inventory and ui_inventory.UIInventory
+    if not cls or type(cls.Update) ~= "function" then return false end
+
+    update_base = cls.Update
+    cls.Update = function(self, ...)
+        local result = update_base(self, ...)
+        if self and self.mode == "inventory" then
+            pcall(set_access_visuals, self, mode == "access")
+        end
+        return result
+    end
+    visibility_installed = true
+    log("tap-inventory backpack visibility hook installed")
+    return true
+end
+
+local function lock_input()
+    if input_locked then return end
+    if level and level.disable_input then pcall(level.disable_input) end
+    input_locked = true
+end
+
+local function unlock_input()
+    if not input_locked then return end
+    if level and level.enable_input then pcall(level.enable_input) end
+    input_locked = false
+end
+
+local function remove_open_event()
+    if RemoveTimeEvent then pcall(RemoveTimeEvent, EVENT_GROUP, EVENT_OPEN) end
+end
+
+local function remove_close_event()
+    if RemoveTimeEvent then pcall(RemoveTimeEvent, EVENT_GROUP, EVENT_CLOSE) end
+end
+
+local function stop_motion()
+    if animation_active and game and game.stop_hud_motion then
+        pcall(game.stop_hud_motion)
+    end
+    animation_active = false
+end
+
+local function backpack_faction()
+    if not actor_ready() or not character_community then return "stalker" end
+    local ok, community = pcall(character_community, db.actor)
+    if not ok or type(community) ~= "string" then return "stalker" end
+    if string.sub(community, 1, 6) == "actor_" then
+        return string.sub(community, 7)
+    end
+    return community ~= "" and community or "stalker"
+end
+
+local function hud_section(action)
+    local section = "item_ea_backpack_" .. action .. "_" .. backpack_faction() .. "_hud"
+    if ini_sys and ini_sys.section_exist then
+        local ok, exists = pcall(ini_sys.section_exist, ini_sys, section)
+        if ok and exists then return section end
+    end
+    -- Self-contained fallback copied from Immersive Backpacks. GAMMA with
+    -- FDDA backpack sections uses the faction-specific section above.
+    return "item_ea_hunting_bag_" .. action .. "_hud"
+end
+
+local function motion_seconds(section, animation, fallback)
+    if game and game.get_motion_length then
+        local ok, milliseconds = pcall(game.get_motion_length, section, animation, 1.0)
+        milliseconds = ok and tonumber(milliseconds) or nil
+        if milliseconds and milliseconds > 0 then
+            return math.max(0.1, math.min(6, milliseconds / 1000))
+        end
+    end
+    return fallback
+end
+
+local function play_sound(path)
+    if not (xr_sound and xr_sound.get_safe_sound_object and actor_ready()) then return end
+    local ok, sound = pcall(xr_sound.get_safe_sound_object, path)
+    if ok and sound then pcall(function() sound:play(db.actor, 0, sound_object.s2d) end) end
+end
+
+local function play_motion(action, loop)
+    if not (game and game.play_hud_motion) then return false, 0 end
+    local section = hud_section(action)
+    local animation = (action == "open" and loop) and "anm_ea_idle" or "anm_ea_show"
+    local ok = pcall(game.play_hud_motion, 2, section, animation, loop == true, 1.0)
+    if ok then animation_active = true end
+    return ok, motion_seconds(section, animation, DEFAULT_OPEN_SECONDS)
+end
+
+local function open_inventory(selected_mode)
+    install_inventory_filter()
+    install_visibility_hook()
+    mode = selected_mode
+    open_mode = selected_mode
+    opening_own_menu = true
+    local ok, err = pcall(function()
+        if ui_inventory and ui_inventory.start then
+            ui_inventory.start("inventory")
+            return
+        end
+        local menu = GetActorMenu and GetActorMenu()
+        if menu and menu.ShowDialog then menu:ShowDialog(true) end
+    end)
+    opening_own_menu = false
+    if not ok then
+        open_mode = nil
+        mode = "full"
+        log("!inventory open failed: %s", tostring(err))
+    end
+    return ok
+end
+
+local function finish_full_open()
+    remove_open_event()
+    unlock_input()
+    animation_active = false
+    if not actor_ready() or actor_is_talking() then
+        mode = "full"
+        restore_active_item()
+        return true
+    end
+    open_inventory("full")
+    -- Hold the pack visually while the menu is open where the selected FDDA
+    -- section supplies an idle; failure is harmless and leaves the UI open.
+    play_motion("open", true)
+    return true
+end
+
+local function begin_full_open()
+    mode = "full"
+    local bp = worn_backpack()
+    if bp and original_ib_open_backpack(bp) then
+        -- Option B: let the original Immersive Backpacks session own the
+        -- animation, busy-hands state, active slot restore, and close path.
+        -- Our wrapper only chooses tap vs hold; it does not play or stop HUD
+        -- motions during hold.
+        open_mode = "ib"
+        return true
+    end
+    log("C5: FDDA call unavailable; Hold-Tab open aborted")
+    open_mode = nil
+    return false
+end
+
+local function play_full_close()
+    stop_motion()
+    if not worn_backpack() then
+        restore_active_item()
+        return
+    end
+    -- C1b fallback: no wrapper backpack HUD close animation. This avoids
+    -- reintroducing the weapon-attached visual path.
+    play_sound([[interface\inv_close]])
+    animation_active = false
+end
+
+local function cancel_runtime()
+    remove_open_event()
+    remove_close_event()
+    stop_motion()
+    restore_active_item()
+    unlock_input()
+    press_pending = false
+    hold_fired = false
+    open_mode = nil
+    mode = "full"
+    restore_access_visuals()
+end
+
+local function should_intercept(bind)
+    return bind == key_bindings.kINVENTORY
+        and not inventory_open()
+        and not animation_active
+        and actor_ready()
+        and not actor_is_talking()
+end
+
+local function on_before_key_press(key, bind, dis, flags)
+    if not flags or not should_intercept(bind) then return end
+    flags.ret_value = false
+    press_pending = true
+    hold_fired = false
+    pressed_at = time_global and time_global() or 0
+end
+
+local function on_key_hold(key)
+    if not press_pending or hold_fired or not inventory_key(key) then return end
+    local now = time_global and time_global() or pressed_at
+    if now - pressed_at < HOLD_MS then return end
+    hold_fired = true
+    press_pending = false
+    begin_full_open()
+end
+
+local function on_key_release(key)
+    if not inventory_key(key) then return end
+    if press_pending and not hold_fired then open_inventory("access") end
+    press_pending = false
+    hold_fired = false
+end
+
+local function on_gui_show(name)
+    if name ~= "UIInventory" then return end
+    if not opening_own_menu and not open_mode then
+        -- Corpse, stash, trader and repair openings always retain the complete
+        -- player inventory. Their mode will not equal personal `inventory`, but
+        -- resetting here also protects other external menu launchers.
+        mode = "full"
+        open_mode = nil
+    end
+end
+
+local function on_gui_hide(name)
+    if name ~= "UIInventory" then return end
+    local was_full = open_mode == "full"
+    local was_ib = open_mode == "ib"
+    restore_access_visuals()
+    open_mode = nil
+    mode = "full"
+    if was_ib then
+        -- Original Immersive Backpacks owns close animation/state.
+        -- Do not stop/replay HUD motion here.
+        animation_active = false
+    elseif was_full then
+        play_full_close()
+    else
+        stop_motion()
+    end
+end
+
+function is_access_mode()
+    return mode == "access"
+end
+
+function get_version()
+    return VERSION
+end
+
+function on_game_start()
+    install_inventory_filter()
+    install_visibility_hook()
+    RegisterScriptCallback("on_before_key_press", on_before_key_press)
+    RegisterScriptCallback("on_key_hold", on_key_hold)
+    RegisterScriptCallback("on_key_release", on_key_release)
+    RegisterScriptCallback("GUI_on_show", on_gui_show)
+    RegisterScriptCallback("GUI_on_hide", on_gui_hide)
+    RegisterScriptCallback("on_before_level_changing", cancel_runtime)
+    RegisterScriptCallback("actor_on_death", cancel_runtime)
+    RegisterScriptCallback("on_game_load", cancel_runtime)
+    log("v%s loaded; tap=%s, hold=%dms", VERSION, "access", HOLD_MS)
+end

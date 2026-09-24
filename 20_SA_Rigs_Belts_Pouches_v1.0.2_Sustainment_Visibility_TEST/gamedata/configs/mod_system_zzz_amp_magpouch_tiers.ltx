@@ -1,0 +1,62 @@
+; ============================================================
+;  LAYERED MAGAZINE POUCHES - SMALL AND MEDIUM
+;
+;  The bottom two rungs of a three-rung ladder whose top is the
+;  addon's own pouch:
+;
+;      small   2x1   one magazine            1600
+;      medium  3x1   one long magazine       2400
+;      large   4x1   two lying down          3600   (the stock pouch,
+;                                                    resized by mod 24)
+;
+;  NO DRUM FITS ANY OF THEM, and that is deliberate: every one is a
+;  single row, and a drum needs two. Drums live in rig pockets.
+;
+;  Sizes are the grid the pouch draws AND the capacity the script
+;  enforces - pouch_capacity takes the smaller of the profile's cells
+;  and the rectangle - so these need no profile of their own and no
+;  Lua.
+;
+;  Written COLUMNS x ROWS.
+; ============================================================
+
+[amplayer_magazine_pouch_t1]:amplayer_magazine_pouch
+amp_box_w = 2
+amp_box_h = 1
+amp_box_kg = 3
+inv_name = st_amp_pouch_mag_t1_name
+inv_name_short = st_amp_pouch_mag_t1_name
+description = st_amp_pouch_mag_t1_descr
+cost = 1600
+
+[amplayer_magazine_pouch_t2]:amplayer_magazine_pouch
+amp_box_w = 3
+amp_box_h = 1
+amp_box_kg = 4
+inv_name = st_amp_pouch_mag_t2_name
+inv_name_short = st_amp_pouch_mag_t2_name
+description = st_amp_pouch_mag_t2_descr
+cost = 2400
+
+; ============================================================
+;  AND THE THIRD ONE, RETIRED
+;
+;  t3 was 2x2 - the only Layered pouch a drum would fit. Drums are a
+;  rig pocket's job now, and with the stock pouch at 4x1 there was
+;  nothing left for a four-cell square to be.
+;
+;  IT IS KEPT DEFINED AND NOT DELETED. A section that exists in
+;  somebody's save must go on existing; deleting one is the single
+;  edit in this whole set that can stop a save loading. It is sold
+;  nowhere, crafted nowhere and absent from the spawner, so a new game
+;  never sees it and an old one keeps whatever it had.
+; ============================================================
+
+[amplayer_magazine_pouch_t3]:amplayer_magazine_pouch
+amp_box_w = 2
+amp_box_h = 2
+amp_box_kg = 4
+inv_name = st_amp_pouch_mag_t3_name
+inv_name_short = st_amp_pouch_mag_t3_name
+description = st_amp_pouch_mag_t3_descr
+cost = 3600

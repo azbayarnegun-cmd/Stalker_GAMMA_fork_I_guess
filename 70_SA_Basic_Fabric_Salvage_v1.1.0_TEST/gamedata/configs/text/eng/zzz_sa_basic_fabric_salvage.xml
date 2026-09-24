@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<string_table>
+  <string id="st_sa_sew_basic_fabric">
+    <text>Sew Basic Fabric (2 patches + 2 thread)</text>
+  </string>
+  <string id="st_sa_sew_basic_fabric_missing">
+    <text>Need any 2 faction patches and 2 sewing thread.</text>
+  </string>
+  <string id="st_sa_sew_basic_fabric_success">
+    <text>Sewn 1 Basic Fabric from 2 faction patches and 2 sewing thread.</text>
+  </string>
+</string_table>

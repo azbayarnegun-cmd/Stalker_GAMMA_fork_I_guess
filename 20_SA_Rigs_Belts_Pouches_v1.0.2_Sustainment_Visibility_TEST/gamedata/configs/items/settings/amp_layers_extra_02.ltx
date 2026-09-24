@@ -1,0 +1,21 @@
+; ============================================================
+;  LAYERED MAGAZINE POUCH TIERS - EXTRAS SLOT 02
+;
+;  Read over the addon's own items\amp_layers.ltx by the Core script.
+;
+;  No new profile: all three are the stock `magazine` profile with a
+;  different rectangle. pouch_capacity() takes the smaller of the
+;  profile's cells and amp_box_w x amp_box_h, so the rectangle alone
+;  decides the size and no Lua is involved.
+; ============================================================
+
+[amp_pouch_sections]
+amplayer_magazine_pouch_t1 = magazine
+amplayer_magazine_pouch_t2 = magazine
+amplayer_magazine_pouch_t3 = magazine
+
+; Same as the stock magazine pouch: a rig and nowhere else.
+[amp_pouch_layer_overrides]
+amplayer_magazine_pouch_t1 = rig
+amplayer_magazine_pouch_t2 = rig
+amplayer_magazine_pouch_t3 = rig
