@@ -1,0 +1,196 @@
+-- Passive, input-free full-screen vignette renderer for Visuals v1.2.1.
+
+local LOG = "[composure_visuals:v1.2.1:overlay]"
+local WINDOW = nil
+local current_opacity = 0
+local current_spread = 0
+local target_opacity = 0
+local target_spread = 0
+local add_successes = 0
+local render_updates = 0
+local last_error = nil
+local pulse_peak_opacity = 0
+local pulse_peak_spread = 0
+local pulse_started_ms = 0
+local pulse_expires_at = 0
+local pulse_duration_ms = 0
+local immediate_renders = 0
+local ensure_window
+
+local function clamp(v, lo, hi)
+    if v < lo then return lo end
+    if v > hi then return hi end
+    return v
+end
+
+local function approach(value, target, amount)
+    if value < target then return math.min(value + amount, target) end
+    return math.max(value - amount, target)
+end
+
+local function now_ms()
+    if time_global then return time_global() end
+    return 0
+end
+
+local function pulse_values()
+    local now = now_ms()
+    if pulse_expires_at <= now or pulse_duration_ms <= 0 then
+        pulse_peak_opacity, pulse_peak_spread = 0, 0
+        pulse_started_ms, pulse_expires_at, pulse_duration_ms = 0, 0, 0
+        return 0, 0
+    end
+    local remaining = clamp((pulse_expires_at - now) / pulse_duration_ms, 0, 1)
+    local eased = remaining * remaining * (3 - 2 * remaining)
+    return pulse_peak_opacity * eased, pulse_peak_spread
+end
+
+function trigger_pulse(opacity, spread, duration)
+    local now = now_ms()
+    local event_opacity = clamp(tonumber(opacity) or 0, 0, 0.75)
+    local event_spread = clamp(tonumber(spread) or 0, 0, 1)
+    local existing_opacity, existing_spread = pulse_values()
+    pulse_peak_opacity = math.max(existing_opacity, event_opacity)
+    pulse_peak_spread = math.max(existing_spread, event_spread)
+    pulse_duration_ms = clamp(tonumber(duration) or 0.2, 0.10, 1.40) * 1000
+    pulse_started_ms = now
+    pulse_expires_at = now + pulse_duration_ms
+
+    -- Immediate attack: combat events should be visible on the event frame, not
+    -- one scheduled Visuals tick later. The normal sync() path still owns fade.
+    current_opacity = math.max(current_opacity, pulse_peak_opacity)
+    current_spread = math.max(current_spread, pulse_peak_spread)
+    target_opacity = math.max(target_opacity, pulse_peak_opacity)
+    target_spread = math.max(target_spread, pulse_peak_spread)
+    if current_opacity > 0.001 and ensure_window and ensure_window() and WINDOW then
+        local ok, err = pcall(function() WINDOW:SetBlend(current_opacity, current_spread) end)
+        if ok then
+            immediate_renders = immediate_renders + 1
+        else
+            last_error = tostring(err)
+        end
+    end
+    return true
+end
+
+local function alpha(value)
+    return math.floor(clamp(value, 0, 1) * 255 + 0.5)
+end
+
+class "ComposureVisualOverlayWindow" (CUIScriptWnd)
+
+function ComposureVisualOverlayWindow:__init() super()
+    self:SetWndRect(Frect():set(0, 0, 1024, 768))
+    self:SetAutoDelete(true)
+    self.xml = CScriptXmlInit()
+    self.xml:ParseFile("ui_composure_visuals_overlay.xml")
+    self.layers = {
+        self.xml:InitStatic("soft", self),
+        self.xml:InitStatic("medium", self),
+        self.xml:InitStatic("strong", self),
+        self.xml:InitStatic("severe", self),
+    }
+end
+
+function ComposureVisualOverlayWindow:__finalize()
+end
+
+function ComposureVisualOverlayWindow:SetBlend(opacity, spread)
+    local position = clamp(spread, 0, 1) * 3
+    local lower = math.floor(position) + 1
+    local upper = math.min(4, lower + 1)
+    local blend = position - math.floor(position)
+    if lower >= 4 then lower, upper, blend = 4, 4, 0 end
+    for index, layer in ipairs(self.layers) do
+        local weight = 0
+        if index == lower then weight = 1 - blend end
+        if index == upper then weight = weight + blend end
+        local layer_alpha = alpha(opacity * weight)
+        layer:SetTextureColor(GetARGB(layer_alpha, 255, 255, 255))
+        layer:Show(layer_alpha > 0)
+    end
+    render_updates = render_updates + 1
+end
+
+local function close_window()
+    if WINDOW and get_hud and get_hud() then
+        pcall(function() get_hud():RemoveDialogToRender(WINDOW) end)
+    end
+    WINDOW = nil
+end
+
+ensure_window = function()
+    if WINDOW then return true end
+    if not db or not db.actor or not get_hud or not get_hud() then
+        last_error = "HUD renderer unavailable"
+        return false
+    end
+    local ok, window = pcall(function() return ComposureVisualOverlayWindow() end)
+    if not ok or not window then
+        last_error = "constructor failed: " .. tostring(window)
+        return false
+    end
+    local added, err = pcall(function()
+        -- Render-only: never registers as an input UI or blocks the F7 menu.
+        get_hud():AddDialogToRender(window)
+    end)
+    if not added then
+        last_error = "AddDialogToRender failed: " .. tostring(err)
+        WINDOW = nil
+        return false
+    end
+    WINDOW = window
+    add_successes = add_successes + 1
+    last_error = nil
+    return true
+end
+
+function sync(state, requested)
+    local base_opacity = requested and state.vignette.enabled and state.vignette.opacity or 0
+    local base_spread = requested and state.vignette.enabled and state.vignette.spread or 0
+    local event_opacity, event_spread = pulse_values()
+    target_opacity = math.max(base_opacity, event_opacity)
+    target_spread = math.max(base_spread, event_spread)
+    local dt = clamp(state.dt or 0.1, 0, 0.5)
+    current_opacity = approach(current_opacity, target_opacity, 0.70 * dt)
+    current_spread = approach(current_spread, target_spread, 0.90 * dt)
+    if current_opacity <= 0.001 and target_opacity <= 0.001 then
+        current_opacity = 0
+        if WINDOW then WINDOW:SetBlend(0, current_spread) end
+        return true
+    end
+    if not ensure_window() then return false, last_error end
+    local ok, err = pcall(function() WINDOW:SetBlend(current_opacity, current_spread) end)
+    if not ok then
+        last_error = tostring(err)
+        close_window()
+        return false, last_error
+    end
+    return true
+end
+
+function cleanup()
+    current_opacity, current_spread = 0, 0
+    target_opacity, target_spread = 0, 0
+    pulse_peak_opacity, pulse_peak_spread = 0, 0
+    pulse_started_ms, pulse_expires_at, pulse_duration_ms = 0, 0, 0
+    close_window()
+    return true
+end
+
+function get_status()
+    return {
+        available = get_hud ~= nil,
+        active = WINDOW ~= nil and current_opacity > 0.001,
+        opacity = current_opacity,
+        spread = current_spread,
+        target_opacity = target_opacity,
+        target_spread = target_spread,
+        add_successes = add_successes,
+        render_updates = render_updates,
+        immediate_renders = immediate_renders,
+        pulse_remaining_ms = math.max(0, pulse_expires_at - now_ms()),
+        pulse_peak_opacity = pulse_peak_opacity,
+        error = last_error,
+    }
+end

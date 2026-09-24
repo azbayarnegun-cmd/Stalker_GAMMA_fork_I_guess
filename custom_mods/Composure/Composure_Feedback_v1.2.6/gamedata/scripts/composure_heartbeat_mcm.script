@@ -1,0 +1,89 @@
+-- Composure Heartbeat v1.0.2 settings.
+
+local KEY_F4 = (DIK_keys and DIK_keys.DIK_F4) or 62
+local KEY_F3 = (DIK_keys and DIK_keys.DIK_F3) or 61
+
+local defaults = {
+    enabled = true,
+    start_composure = 70,
+    minimum_bpm = 65,
+    maximum_bpm = 135,
+    maximum_volume = 1.00,
+    audio_backend = 0,
+    mute_on_legacy_audio = false,
+    event_spikes = true,
+    spike_threshold = 5,
+    spike_strength = 0.20,
+    spike_duration = 4.0,
+    passout_beat = true,
+    preview_enabled = false,
+    preview_composure = 30,
+    update_ms = 50,
+    diagnostic_logging = false,
+    diagnostic_interval = 2,
+    diagnostic_key = KEY_F4,
+    test_key = KEY_F3,
+}
+
+function get_config(key)
+    if ui_mcm and ui_mcm.get then
+        local ok, value = pcall(ui_mcm.get, "composure_heartbeat/" .. key)
+        if ok and value ~= nil then return value end
+    end
+    return defaults[key]
+end
+
+function get_defaults()
+    local result = {}
+    for key, value in pairs(defaults) do result[key] = value end
+    return result
+end
+
+function on_mcm_load()
+    return {
+        id = "composure_heartbeat",
+        sh = true,
+        gr = {
+            { id = "enabled", type = "check", val = 1, def = true },
+            { id = "start_composure", type = "track", val = 2,
+              min = 40, max = 85, step = 1, def = 70 },
+            { id = "minimum_bpm", type = "track", val = 2,
+              min = 50, max = 90, step = 1, def = 65 },
+            { id = "maximum_bpm", type = "track", val = 2,
+              min = 100, max = 150, step = 1, def = 135 },
+            { id = "maximum_volume", type = "track", val = 2,
+              min = 0, max = 2, step = 0.05, prec = 2, def = 1.00 },
+            { id = "audio_backend", type = "list", val = 2, def = 0,
+              content = {
+                  { 0, "ui_mcm_composure_heartbeat_backend_reliable" },
+                  { 1, "ui_mcm_composure_heartbeat_backend_standard" },
+                  { 2, "ui_mcm_composure_heartbeat_backend_native" },
+              } },
+            { id = "mute_on_legacy_audio", type = "check", val = 1, def = false },
+
+            { id = "line1", type = "line" },
+            { id = "event_spikes", type = "check", val = 1, def = true },
+            { id = "spike_threshold", type = "track", val = 2,
+              min = 1, max = 20, step = 1, def = 5 },
+            { id = "spike_strength", type = "track", val = 2,
+              min = 0, max = 0.50, step = 0.05, prec = 2, def = 0.20 },
+            { id = "spike_duration", type = "track", val = 2,
+              min = 1, max = 10, step = 0.5, prec = 1, def = 4.0 },
+            { id = "passout_beat", type = "check", val = 1, def = true },
+
+            { id = "line2", type = "line" },
+            { id = "preview_enabled", type = "check", val = 1, def = false },
+            { id = "preview_composure", type = "track", val = 2,
+              min = 0, max = 100, step = 1, def = 30 },
+
+            { id = "line3", type = "line" },
+            { id = "update_ms", type = "track", val = 2,
+              min = 25, max = 250, step = 25, def = 50 },
+            { id = "diagnostic_logging", type = "check", val = 1, def = false },
+            { id = "diagnostic_interval", type = "track", val = 2,
+              min = 1, max = 10, step = 1, def = 2 },
+            { id = "diagnostic_key", type = "key_bind", val = 2, def = KEY_F4 },
+            { id = "test_key", type = "key_bind", val = 2, def = KEY_F3 },
+        },
+    }
+end

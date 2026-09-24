@@ -1,0 +1,307 @@
+--[[
+    Composure Heartbeat v1.0.2
+    Read-only consumer of Composure Framework v2.
+--]]
+
+local VERSION = "1.0.2"
+local REQUIRED_FRAMEWORK_API = 2
+local LOG = "[composure_heartbeat:v1]"
+
+local callbacks_registered = false
+local last_update_ms = nil
+local next_beat_ms = nil
+local last_actual_value = nil
+local last_state = nil
+local last_diag_ms = nil
+local passout_sent = false
+local spike_started_ms = nil
+local spike_expires_ms = nil
+local suppressions = {}
+local module_errors = 0
+local legacy_warning_logged = false
+
+local function now_ms()
+    if time_global then
+        local ok, value = pcall(time_global)
+        if ok and value then return value end
+    end
+    return 0
+end
+
+local function log(fmt, ...)
+    local ok, message = pcall(string.format, fmt, ...)
+    printf(LOG .. " " .. (ok and message or tostring(fmt)))
+end
+
+local function clamp(value, low, high)
+    value = tonumber(value) or 0
+    if value < low then return low end
+    if value > high then return high end
+    return value
+end
+
+local function smoothstep(value)
+    value = clamp(value, 0, 1)
+    return value * value * (3 - 2 * value)
+end
+
+local function cfg(key, fallback)
+    if composure_heartbeat_mcm and composure_heartbeat_mcm.get_config then
+        local ok, value = pcall(composure_heartbeat_mcm.get_config, key)
+        if ok and value ~= nil then return value end
+    end
+    return fallback
+end
+
+local function effective_snapshot(snapshot)
+    if composure_feedback_test and composure_feedback_test.apply_snapshot then
+        local ok, result = pcall(composure_feedback_test.apply_snapshot, snapshot)
+        if ok and type(result) == "table" then return result end
+    end
+    return snapshot
+end
+
+local function framework_ready()
+    if not composure_framework or not composure_framework.supports or not composure_framework.get_snapshot then return false end
+    local ok, supported = pcall(composure_framework.supports, REQUIRED_FRAMEWORK_API)
+    return ok and supported == true
+end
+
+local function audio_call(method, ...)
+    if not composure_heartbeat_audio or type(composure_heartbeat_audio[method]) ~= "function" then return false end
+    local ok, result, detail = pcall(composure_heartbeat_audio[method], ...)
+    if not ok or result == false then
+        module_errors = module_errors + 1
+        if module_errors == 1 or module_errors % 50 == 0 then
+            log("audio.%s failed (%d): %s", method, module_errors, tostring(ok and detail or result))
+        end
+        return false
+    end
+    return true, result
+end
+
+local function prune_suppressions()
+    local now = now_ms()
+    for id, entry in pairs(suppressions) do
+        if entry.expires_at and now >= entry.expires_at then suppressions[id] = nil end
+    end
+end
+
+local function suppression_state()
+    prune_suppressions()
+    local active = {}
+    for id in pairs(suppressions) do active[#active + 1] = id end
+    table.sort(active)
+    return active
+end
+
+function set_suppressed(id, active, opts)
+    if type(id) ~= "string" or id == "" then return false end
+    if active == false then suppressions[id] = nil; return true end
+    opts = opts or {}
+    local ttl = tonumber(opts.ttl)
+    suppressions[id] = {
+        owner = tostring(opts.owner or "external"),
+        expires_at = ttl and ttl > 0 and (now_ms() + ttl * 1000) or nil,
+    }
+    return true
+end
+
+function clear_suppression_owner(owner)
+    local count = 0
+    for id, entry in pairs(suppressions) do
+        if entry.owner == owner then suppressions[id] = nil; count = count + 1 end
+    end
+    return count
+end
+
+local function spike_amount(now)
+    if not spike_expires_ms or not spike_started_ms or now >= spike_expires_ms then
+        spike_started_ms, spike_expires_ms = nil, nil
+        return 0
+    end
+    local duration = math.max(1, spike_expires_ms - spike_started_ms)
+    local remaining = clamp((spike_expires_ms - now) / duration, 0, 1)
+    return clamp(tonumber(cfg("spike_strength", 0.20)) or 0.20, 0, 0.50) * remaining
+end
+
+local function update_drop_spike(actual_value, preview, now)
+    if preview or not cfg("event_spikes", true) or last_actual_value == nil then return end
+    local drop = last_actual_value - actual_value
+    local threshold = clamp(cfg("spike_threshold", 5), 1, 20)
+    if drop >= threshold and actual_value > 0 then
+        local duration = clamp(cfg("spike_duration", 4), 1, 10) * 1000
+        spike_started_ms = now
+        spike_expires_ms = now + duration
+    end
+end
+
+local function make_state(snapshot, now)
+    local actual = clamp(snapshot.value, 0, 100)
+    local preview = cfg("preview_enabled", false) == true
+    local value = preview and clamp(cfg("preview_composure", 30), 1, 100) or actual
+    update_drop_spike(actual, preview, now)
+
+    local start = clamp(cfg("start_composure", 70), 40, 85)
+    local base_curve = smoothstep((start + 1 - value) / math.max(1, start))
+    local spike = spike_amount(now)
+    local intensity = clamp(base_curve + spike, 0, 1)
+    local minimum_bpm = clamp(cfg("minimum_bpm", 65), 50, 90)
+    local maximum_bpm = clamp(cfg("maximum_bpm", 135), 100, 150)
+    if maximum_bpm < minimum_bpm then maximum_bpm = minimum_bpm end
+    local maximum_volume = clamp(cfg("maximum_volume", 1.00), 0, 2)
+    local suppressed = suppression_state()
+    local legacy_audio_present = composure_tier_audio ~= nil
+    if legacy_audio_present and cfg("mute_on_legacy_audio", true) then
+        suppressed[#suppressed + 1] = "legacy_tier_audio"
+        table.sort(suppressed)
+        if not legacy_warning_logged then
+            legacy_warning_logged = true
+            log("legacy composure_tier_audio detected; muted to prevent doubled heartbeat (override in MCM)")
+        end
+    end
+    local active = cfg("enabled", true) ~= false and value <= start and value > 0 and #suppressed == 0
+
+    return {
+        actual_value = actual,
+        value = value,
+        tier = snapshot.tier,
+        preview = preview,
+        start = start,
+        active = active,
+        intensity = intensity,
+        base_intensity = base_curve,
+        spike = spike,
+        bpm = minimum_bpm + (maximum_bpm - minimum_bpm) * intensity,
+        volume = maximum_volume * math.sqrt(intensity),
+        frequency = 0.96 + 0.08 * intensity,
+        suppressed = suppressed,
+        legacy_audio_present = legacy_audio_present,
+    }
+end
+
+local function reset_timing()
+    next_beat_ms = now_ms() + 150
+end
+
+local function cleanup()
+    audio_call("cleanup")
+    last_update_ms, next_beat_ms, last_actual_value, last_state = nil, nil, nil, nil
+    spike_started_ms, spike_expires_ms = nil, nil
+    passout_sent = false
+end
+
+local function on_option_change()
+    cleanup()
+end
+
+local function audio_status()
+    if composure_heartbeat_audio and composure_heartbeat_audio.get_status then
+        local ok, status = pcall(composure_heartbeat_audio.get_status)
+        if ok then return status end
+    end
+    return nil
+end
+
+function get_diagnostics()
+    return {
+        version = VERSION,
+        framework_ready = framework_ready(),
+        state = last_state,
+        audio = audio_status(),
+        module_errors = module_errors,
+    }
+end
+
+function debug_dump(source)
+    local diagnostics = get_diagnostics()
+    local state = diagnostics.state
+    log("DIAG source=%s version=%s framework=%s", tostring(source or "manual"), VERSION, tostring(diagnostics.framework_ready))
+    if not state then log("DIAG no active state"); return diagnostics end
+    log("DIAG composure=%.1f effective=%.1f tier=%s preview=%s active=%s", state.actual_value, state.value, tostring(state.tier), tostring(state.preview), tostring(state.active))
+    log("DIAG intensity=%.3f base=%.3f spike=%.3f bpm=%.1f volume=%.3f next=%s", state.intensity, state.base_intensity, state.spike, state.bpm, state.volume, tostring(next_beat_ms))
+    log("DIAG suppressed=%s legacy_audio=%s errors=%d", table.concat(state.suppressed, ","), tostring(state.legacy_audio_present), module_errors)
+    if diagnostics.audio then
+        local audio = diagnostics.audio
+        log("DIAG audio backend=%s objects=%s plays=%s/%s creates=%s/%s error=%s", tostring(audio.backend), tostring(audio.objects), tostring(audio.play_successes), tostring(audio.play_attempts), tostring(audio.create_successes), tostring(audio.create_attempts), tostring(audio.error))
+    end
+    return diagnostics
+end
+
+local function on_key_press(key)
+    local configured = math.floor(tonumber(cfg("diagnostic_key", 62)) or 62)
+    if key == configured then debug_dump("key") end
+    local test_key = math.floor(tonumber(cfg("test_key", 61)) or 61)
+    if key == test_key then
+        audio_call("configure", cfg("audio_backend", 0), false)
+        audio_call("play", clamp(cfg("maximum_volume", 1.00), 0, 2), 1.0, "manual_test")
+        log("manual test backend=%s volume=%.2f", tostring(cfg("audio_backend", 0)), clamp(cfg("maximum_volume", 1.00), 0, 2))
+    end
+end
+
+local function on_actor_update()
+    local now = now_ms()
+    local interval = clamp(cfg("update_ms", 50), 25, 250)
+    if last_update_ms and now - last_update_ms < interval then return end
+    last_update_ms = now
+    if not framework_ready() or not db or not db.actor then return end
+
+    local ok, snapshot = pcall(composure_framework.get_snapshot)
+    if not ok or type(snapshot) ~= "table" then return end
+    snapshot = effective_snapshot(snapshot)
+    audio_call("configure", cfg("audio_backend", 0), false)
+    local state = make_state(snapshot, now)
+    last_state = state
+
+    if state.actual_value <= 0 and not state.preview and cfg("enabled", true) ~= false then
+        if not passout_sent and cfg("passout_beat", true) and #state.suppressed == 0 then
+            audio_call("play", clamp(cfg("maximum_volume", 1.00), 0, 2) * 0.55, 0.78, "passout")
+            passout_sent = true
+        end
+        next_beat_ms = now + 1000
+    elseif state.active then
+        passout_sent = false
+        if not next_beat_ms then reset_timing() end
+        if now >= next_beat_ms then
+            audio_call("play", state.volume, state.frequency, "heartbeat")
+            next_beat_ms = now + (60000 / math.max(1, state.bpm))
+        end
+    else
+        passout_sent = false
+        next_beat_ms = now + 150
+    end
+
+    last_actual_value = state.actual_value
+    if cfg("diagnostic_logging", false) then
+        local diagnostic_interval = clamp(cfg("diagnostic_interval", 2), 1, 10) * 1000
+        if not last_diag_ms or now - last_diag_ms >= diagnostic_interval then
+            last_diag_ms = now
+            debug_dump("periodic")
+        end
+    end
+end
+
+local function on_first_update()
+    cleanup()
+    audio_call("configure", cfg("audio_backend", 0), true)
+    reset_timing()
+end
+
+local function on_level_changing()
+    cleanup()
+    suppressions = {}
+end
+
+function get_version() return VERSION end
+
+function on_game_start()
+    if callbacks_registered then return end
+    callbacks_registered = true
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("actor_on_first_update", on_first_update)
+    RegisterScriptCallback("actor_on_update", on_actor_update)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("on_level_changing", on_level_changing)
+    RegisterScriptCallback("actor_on_net_destroy", on_level_changing)
+    log("v%s initialized; starts at 70 by default; Framework API %d required", VERSION, REQUIRED_FRAMEWORK_API)
+end

@@ -1,0 +1,44 @@
+-- Owns vignette_control. The center is always kept clear.
+
+local current_corner = 0
+local current_expand = 0
+local last_command = ""
+
+local function clamp(v, lo, hi)
+    if v < lo then return lo end
+    if v > hi then return hi end
+    return v
+end
+
+local function approach(value, target, amount)
+    if value < target then return math.min(value + amount, target) end
+    return math.max(value - amount, target)
+end
+
+local function apply(corner, expand)
+    local command = string.format("vignette_control (%.3f, 0.000, %.3f, 0.000)", corner, expand)
+    if command == last_command then return true end
+    local ok, err = pcall(exec_console_cmd, command)
+    if not ok then return false, err end
+    last_command = command
+    return true
+end
+
+function sync(state)
+    local target_corner = state.vignette.console_enabled and state.vignette.corner or 0
+    local target_expand = state.vignette.console_enabled and state.vignette.expand or 0
+    local speed = (target_corner > current_corner) and 1.25 or 1.75
+    local step = speed * clamp(state.dt or 0.1, 0, 0.5)
+    current_corner = approach(current_corner, target_corner, step)
+    current_expand = approach(current_expand, target_expand, step)
+    return apply(current_corner, current_expand)
+end
+
+function cleanup()
+    current_corner, current_expand, last_command = 0, 0, ""
+    return apply(0, 0)
+end
+
+function get_status()
+    return { corner = current_corner, center = 0, expand = current_expand, last_command = last_command }
+end

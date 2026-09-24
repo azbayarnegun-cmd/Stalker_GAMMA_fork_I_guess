@@ -1,0 +1,17 @@
+<w>
+    <thought_1 x="192" y="286" width="640" height="28" complex_mode="1">
+        <text font="letterica16" r="226" g="226" b="220" a="0" align="c" vert_align="c"/>
+    </thought_1>
+    <thought_2 x="232" y="318" width="560" height="30" complex_mode="1">
+        <text font="letterica18" r="224" g="214" b="200" a="0" align="c" vert_align="c"/>
+    </thought_2>
+    <thought_3 x="172" y="352" width="680" height="32" complex_mode="1">
+        <text font="graffiti19" r="232" g="205" b="185" a="0" align="c" vert_align="c"/>
+    </thought_3>
+    <thought_4 x="222" y="388" width="580" height="30" complex_mode="1">
+        <text font="letterica18" r="220" g="190" b="174" a="0" align="c" vert_align="c"/>
+    </thought_4>
+    <thought_5 x="182" y="422" width="660" height="32" complex_mode="1">
+        <text font="graffiti19" r="226" g="174" b="160" a="0" align="c" vert_align="c"/>
+    </thought_5>
+</w>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<string_table>
+    <string id="ui_mcm_menu_composure_heartbeat"><text>Composure Feedback - Heartbeat</text></string>
+    <string id="ui_mcm_composure_heartbeat_enabled"><text>Enable Composure Heartbeat</text></string>
+    <string id="ui_mcm_composure_heartbeat_enabled_desc"><text>Enables the optional heartbeat presentation addon. It reads Framework state and never changes composure or actor condition.</text></string>
+    <string id="ui_mcm_composure_heartbeat_start_composure"><text>Heartbeat start composure</text></string>
+    <string id="ui_mcm_composure_heartbeat_start_composure_desc"><text>Heartbeat begins faintly at this value and intensifies continuously as composure falls. Default: 70.</text></string>
+    <string id="ui_mcm_composure_heartbeat_minimum_bpm"><text>Minimum heart rate</text></string>
+    <string id="ui_mcm_composure_heartbeat_minimum_bpm_desc"><text>Approximate BPM when the heartbeat first becomes active.</text></string>
+    <string id="ui_mcm_composure_heartbeat_maximum_bpm"><text>Maximum heart rate</text></string>
+    <string id="ui_mcm_composure_heartbeat_maximum_bpm_desc"><text>Maximum scheduled BPM near one composure.</text></string>
+    <string id="ui_mcm_composure_heartbeat_maximum_volume"><text>Heartbeat volume</text></string>
+    <string id="ui_mcm_composure_heartbeat_maximum_volume_desc"><text>Maximum heartbeat volume near one Composure. Values above 1 amplify the sample for quiet audio setups.</text></string>
+    <string id="ui_mcm_composure_heartbeat_audio_backend"><text>Audio backend</text></string>
+    <string id="ui_mcm_composure_heartbeat_audio_backend_desc"><text>Reliable Scaled uses GAMMA's proven normal playback with volume control. Standard ignores scaling. Native No-Feedback is an optional alternative.</text></string>
+    <string id="ui_mcm_composure_heartbeat_backend_reliable"><text>Reliable Scaled</text></string>
+    <string id="ui_mcm_composure_heartbeat_backend_standard"><text>GAMMA Standard</text></string>
+    <string id="ui_mcm_composure_heartbeat_backend_native"><text>Native No-Feedback</text></string>
+    <string id="ui_mcm_composure_heartbeat_mute_on_legacy_audio"><text>Mute with legacy tier audio</text></string>
+    <string id="ui_mcm_composure_heartbeat_mute_on_legacy_audio_desc"><text>Prevents two heartbeats when the older composure_tier_audio script is installed. Disable only after its heartbeat has been disabled.</text></string>
+
+    <string id="ui_mcm_composure_heartbeat_event_spikes"><text>Composure-loss heartbeat spikes</text></string>
+    <string id="ui_mcm_composure_heartbeat_event_spikes_desc"><text>Temporarily raises heartbeat intensity after a sufficiently large sudden composure loss.</text></string>
+    <string id="ui_mcm_composure_heartbeat_spike_threshold"><text>Spike loss threshold</text></string>
+    <string id="ui_mcm_composure_heartbeat_spike_threshold_desc"><text>Minimum single composure decrease required to trigger a temporary heartbeat spike.</text></string>
+    <string id="ui_mcm_composure_heartbeat_spike_strength"><text>Spike strength</text></string>
+    <string id="ui_mcm_composure_heartbeat_spike_strength_desc"><text>Maximum temporary intensity added by a sudden composure loss.</text></string>
+    <string id="ui_mcm_composure_heartbeat_spike_duration"><text>Spike duration</text></string>
+    <string id="ui_mcm_composure_heartbeat_spike_duration_desc"><text>Seconds over which the temporary heartbeat increase fades away.</text></string>
+    <string id="ui_mcm_composure_heartbeat_passout_beat"><text>Pass-out heartbeat</text></string>
+    <string id="ui_mcm_composure_heartbeat_passout_beat_desc"><text>Plays one slower, muffled final beat on reaching zero, followed by silence.</text></string>
+
+    <string id="ui_mcm_composure_heartbeat_preview_enabled"><text>Preview heartbeat</text></string>
+    <string id="ui_mcm_composure_heartbeat_preview_enabled_desc"><text>Uses the preview value for heartbeat output without changing Framework composure. Disable after testing.</text></string>
+    <string id="ui_mcm_composure_heartbeat_preview_composure"><text>Preview composure</text></string>
+    <string id="ui_mcm_composure_heartbeat_preview_composure_desc"><text>Effective heartbeat composure while preview is enabled. Zero is treated as maximum intensity rather than triggering pass-out.</text></string>
+
+    <string id="ui_mcm_composure_heartbeat_update_ms"><text>Update interval (milliseconds)</text></string>
+    <string id="ui_mcm_composure_heartbeat_update_ms_desc"><text>How often the addon refreshes its state and checks the beat scheduler.</text></string>
+    <string id="ui_mcm_composure_heartbeat_diagnostic_logging"><text>Periodic diagnostic logging</text></string>
+    <string id="ui_mcm_composure_heartbeat_diagnostic_logging_desc"><text>Periodically reports composure, BPM, volume, audio-object state, suppressions, and errors.</text></string>
+    <string id="ui_mcm_composure_heartbeat_diagnostic_interval"><text>Diagnostic interval</text></string>
+    <string id="ui_mcm_composure_heartbeat_diagnostic_interval_desc"><text>Seconds between periodic diagnostic reports.</text></string>
+    <string id="ui_mcm_composure_heartbeat_diagnostic_key"><text>Diagnostic log key</text></string>
+    <string id="ui_mcm_composure_heartbeat_diagnostic_key_desc"><text>Writes one diagnostic report to the X-Ray log. Default: F4.</text></string>
+    <string id="ui_mcm_composure_heartbeat_test_key"><text>Test heartbeat key</text></string>
+    <string id="ui_mcm_composure_heartbeat_test_key_desc"><text>Plays one heartbeat immediately at the configured maximum volume, regardless of Composure. Default: F3.</text></string>
+</string_table>

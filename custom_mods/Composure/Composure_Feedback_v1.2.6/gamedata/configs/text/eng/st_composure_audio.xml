@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+    <string id="ui_mcm_menu_composure_audio"><text>Composure Feedback - Breathing</text></string>
+    <string id="ui_mcm_composure_audio_enable"><text>Enable Composure Audio</text></string>
+    <string id="ui_mcm_composure_audio_enable_desc"><text>Lets Composure influence actor breathing. Disable to leave normal breathing behavior in control.</text></string>
+    <string id="ui_mcm_composure_audio_moderate_threshold"><text>Moderate Breathing Threshold</text></string>
+    <string id="ui_mcm_composure_audio_moderate_threshold_desc"><text>Below this Composure value, moderate distress breathing can play.</text></string>
+    <string id="ui_mcm_composure_audio_heavy_threshold"><text>Heavy Breathing Threshold</text></string>
+    <string id="ui_mcm_composure_audio_heavy_threshold_desc"><text>Below this Composure value, extreme distress breathing plays.</text></string>
+    <string id="ui_mcm_composure_audio_severe_threshold"><text>Severe Breathing Threshold</text></string>
+    <string id="ui_mcm_composure_audio_severe_threshold_desc"><text>Below this value, severe breathing can add shiver sweeteners and use the severe breathing pace.</text></string>
+    <string id="ui_mcm_composure_audio_severe_shiver"><text>Severe Shiver Sweeteners</text></string>
+    <string id="ui_mcm_composure_audio_severe_shiver_desc"><text>Allows occasional shiver sounds while Composure is in the severe tier.</text></string>
+    <string id="ui_mcm_composure_audio_shiver_chance"><text>Severe Shiver Chance (%)</text></string>
+    <string id="ui_mcm_composure_audio_shiver_chance_desc"><text>Chance that a severe Composure breathing cycle uses a shiver sweetener instead of a normal breath.</text></string>
+    <string id="ui_mcm_composure_audio_severe_pause_multiplier"><text>Severe Breathing Interval Multiplier</text></string>
+    <string id="ui_mcm_composure_audio_severe_pause_multiplier_desc"><text>Lower values shorten the pause between severe Composure breaths.</text></string>
+    <string id="ui_mcm_composure_audio_breathing_volume"><text>Breathing volume</text></string>
+    <string id="ui_mcm_composure_audio_breathing_volume_desc"><text>Controls actor breathing volume from silent to amplified. Applies to Composure and retained physical breathing.</text></string>
+    <string id="ui_mcm_composure_audio_breathing_volume_jitter"><text>Breathing volume variation</text></string>
+    <string id="ui_mcm_composure_audio_breathing_volume_jitter_desc"><text>Adds small random volume differences so repeated breath samples sound less mechanical.</text></string>
+    <string id="ui_mcm_composure_audio_masked_volume_multiplier"><text>Masked breathing volume multiplier</text></string>
+    <string id="ui_mcm_composure_audio_masked_volume_multiplier_desc"><text>Adjusts breathing loudness while a respirator or closed mask is detected.</text></string>
+    <string id="ui_mcm_composure_audio_debug"><text>Debug Logging</text></string>
+    <string id="ui_mcm_composure_audio_debug_desc"><text>Writes COMPOSURE AUDIO state messages to the xray log when a Composure breathing state is selected.</text></string>
+</string_table>

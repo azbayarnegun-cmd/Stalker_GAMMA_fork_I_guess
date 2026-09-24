@@ -1,0 +1,44 @@
+local defaults = {
+    enable = true,
+    moderate_threshold = 55,
+    heavy_threshold = 40,
+    severe_threshold = 16,
+    severe_shiver = false,
+    shiver_chance = 20,
+    severe_pause_multiplier = 0.85,
+    breathing_volume = 0.45,
+    breathing_volume_jitter = 0.10,
+    masked_volume_multiplier = 1.20,
+    debug = false
+}
+
+function get_config(key)
+    if ui_mcm then
+        local value = ui_mcm.get("composure_audio/" .. key)
+        if value ~= nil then
+            return value
+        end
+    end
+    return defaults[key]
+end
+
+function on_mcm_load()
+    local op = {
+        id = "composure_audio",
+        sh = true,
+        gr = {
+            { id = "enable", type = "check", val = 1, def = true },
+            { id = "moderate_threshold", type = "track", val = 2, min = 0, max = 100, step = 1, def = 55 },
+            { id = "heavy_threshold", type = "track", val = 2, min = 0, max = 100, step = 1, def = 40 },
+            { id = "severe_threshold", type = "track", val = 2, min = 0, max = 100, step = 1, def = 16 },
+            { id = "severe_shiver", type = "check", val = 1, def = false },
+            { id = "shiver_chance", type = "track", val = 2, min = 0, max = 100, step = 1, def = 20 },
+            { id = "severe_pause_multiplier", type = "track", val = 2, min = 0.50, max = 1.50, step = 0.05, prec = 2, def = 0.85 },
+            { id = "breathing_volume", type = "track", val = 2, min = 0, max = 1.50, step = 0.05, prec = 2, def = 0.45 },
+            { id = "breathing_volume_jitter", type = "track", val = 2, min = 0, max = 0.40, step = 0.05, prec = 2, def = 0.10 },
+            { id = "masked_volume_multiplier", type = "track", val = 2, min = 0.50, max = 2.00, step = 0.05, prec = 2, def = 1.20 },
+            { id = "debug", type = "check", val = 1, def = false }
+        }
+    }
+    return op
+end

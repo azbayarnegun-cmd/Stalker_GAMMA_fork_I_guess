@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<string_table>
+    <string id="ui_mcm_menu_composure_thoughts"><text>Composure Feedback - Status Thoughts</text></string>
+    <string id="ui_mcm_composure_thoughts_enabled"><text>Enable Status Thoughts</text></string>
+    <string id="ui_mcm_composure_thoughts_enabled_desc"><text>Shows short first-person thoughts around the screen center. The module only reads Composure.</text></string>
+    <string id="ui_mcm_composure_thoughts_automatic"><text>Automatic thoughts</text></string>
+    <string id="ui_mcm_composure_thoughts_automatic_desc"><text>Periodically rolls for thoughts. Lower Composure produces more frequent and denser thought groups.</text></string>
+    <string id="ui_mcm_composure_thoughts_maximum_visible"><text>Maximum simultaneous thoughts</text></string>
+    <string id="ui_mcm_composure_thoughts_maximum_visible_desc"><text>Limits each group to one through five independently fading thoughts.</text></string>
+    <string id="ui_mcm_composure_thoughts_random_positions"><text>Random ellipse anchors</text></string>
+    <string id="ui_mcm_composure_thoughts_random_positions_desc"><text>Anchors each thought midpoint to a random point on the invisible center-screen ellipse outline. Thoughts never spawn inside it.</text></string>
+    <string id="ui_mcm_composure_thoughts_horizontal_spread"><text>Anchor ellipse horizontal radius</text></string>
+    <string id="ui_mcm_composure_thoughts_horizontal_spread_desc"><text>Horizontal radius of the invisible red-line-style anchor path. Each centered thought's midpoint sits on this path.</text></string>
+    <string id="ui_mcm_composure_thoughts_vertical_spread"><text>Anchor ellipse vertical radius</text></string>
+    <string id="ui_mcm_composure_thoughts_vertical_spread_desc"><text>Vertical radius of the invisible anchor path around the center of the screen.</text></string>
+    <string id="ui_mcm_composure_thoughts_duration"><text>Thought duration</text></string>
+    <string id="ui_mcm_composure_thoughts_duration_desc"><text>Base fade-in, hold, and fade-out duration in seconds.</text></string>
+    <string id="ui_mcm_composure_thoughts_minimum_cooldown"><text>Minimum cooldown</text></string>
+    <string id="ui_mcm_composure_thoughts_minimum_cooldown_desc"><text>Shortest automatic cooldown reached near Breaking Point.</text></string>
+    <string id="ui_mcm_composure_thoughts_maximum_cooldown"><text>Maximum cooldown</text></string>
+    <string id="ui_mcm_composure_thoughts_maximum_cooldown_desc"><text>Longest automatic cooldown used at healthy Composure.</text></string>
+    <string id="ui_mcm_composure_thoughts_event_thoughts"><text>Event-triggered thoughts</text></string>
+    <string id="ui_mcm_composure_thoughts_event_thoughts_desc"><text>Allows meaningful instant Composure changes to trigger a thought group.</text></string>
+    <string id="ui_mcm_composure_thoughts_event_threshold"><text>Event trigger threshold</text></string>
+    <string id="ui_mcm_composure_thoughts_event_threshold_desc"><text>Minimum absolute instant Composure change required to trigger thoughts.</text></string>
+    <string id="ui_mcm_composure_thoughts_low_caps"><text>Short all-caps panic thoughts</text></string>
+    <string id="ui_mcm_composure_thoughts_low_caps_desc"><text>Permits occasional brief all-caps words at Low and Breaking Point.</text></string>
+    <string id="ui_mcm_composure_thoughts_show_above_medium"><text>Thoughts above Medium</text></string>
+    <string id="ui_mcm_composure_thoughts_show_above_medium_desc"><text>Allows rare calm thoughts above 69 Composure.</text></string>
+    <string id="ui_mcm_composure_thoughts_test_key"><text>Test thought group key</text></string>
+    <string id="ui_mcm_composure_thoughts_test_key_desc"><text>Displays a group for the current tier without changing Composure. Default: F6.</text></string>
+    <string id="ui_mcm_composure_thoughts_debug_log"><text>Debug logging</text></string>
+    <string id="ui_mcm_composure_thoughts_debug_log_desc"><text>Writes trigger, tier, count, and cooldown information to the X-Ray log.</text></string>
+</string_table>

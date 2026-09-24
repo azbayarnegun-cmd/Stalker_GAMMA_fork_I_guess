@@ -1,0 +1,38 @@
+<w>
+    <!-- Compact Check view: roughly one tenth of v1.2.0's visible area. -->
+    <panel x="442" y="36" width="140" height="26">
+        <status x="0" y="0" width="140" height="16">
+            <text font="letterica16" r="230" g="230" b="230" a="255" align="c" vert_align="c"/>
+        </status>
+
+        <number x="111" y="0" width="27" height="16">
+            <text font="letterica16" r="230" g="230" b="230" a="255" align="r" vert_align="c"/>
+        </number>
+
+        <bar_bg x="35" y="19" width="70" height="3" stretch="1">
+            <texture>ui\composure_check\bar_segments</texture>
+        </bar_bg>
+        <bar x="35" y="19" width="70" height="3" horz="1" min="0" max="100" pos="65" inertion="0">
+            <progress stretch="1"><texture>ui\composure_check\bar_segments</texture></progress>
+        </bar>
+
+        <loss_1 x="28" y="18" width="5" height="5" stretch="1"><texture>ui\composure_check\arrow_left</texture></loss_1>
+        <loss_2 x="22" y="18" width="5" height="5" stretch="1"><texture>ui\composure_check\arrow_left</texture></loss_2>
+        <loss_3 x="16" y="18" width="5" height="5" stretch="1"><texture>ui\composure_check\arrow_left</texture></loss_3>
+        <loss_4 x="10" y="18" width="5" height="5" stretch="1"><texture>ui\composure_check\arrow_left</texture></loss_4>
+        <loss_5 x="4" y="18" width="5" height="5" stretch="1"><texture>ui\composure_check\arrow_left</texture></loss_5>
+
+        <gain_1 x="107" y="18" width="5" height="5" stretch="1"><texture>ui\composure_check\arrow_right</texture></gain_1>
+        <gain_2 x="113" y="18" width="5" height="5" stretch="1"><texture>ui\composure_check\arrow_right</texture></gain_2>
+        <gain_3 x="119" y="18" width="5" height="5" stretch="1"><texture>ui\composure_check\arrow_right</texture></gain_3>
+        <gain_4 x="125" y="18" width="5" height="5" stretch="1"><texture>ui\composure_check\arrow_right</texture></gain_4>
+        <gain_5 x="131" y="18" width="5" height="5" stretch="1"><texture>ui\composure_check\arrow_right</texture></gain_5>
+    </panel>
+
+    <!-- Detailed diagnostics remains separate and only appears in that mode. -->
+    <detail_panel x="358" y="64" width="308" height="264">
+        <detail x="7" y="0" width="294" height="258" complex_mode="1">
+            <text font="letterica16" r="220" g="220" b="220" a="255" align="l" vert_align="t"/>
+        </detail>
+    </detail_panel>
+</w>
