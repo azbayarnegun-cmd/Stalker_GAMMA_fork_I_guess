@@ -1,0 +1,357 @@
+--[[
+	MCM registration for Armor Mag Pouches.
+
+	This file's name MUST end in _mcm.script - that is how MCM finds and
+	loads option providers, it does not scan for anything else.
+
+	SHAPE
+	Root -> subgroup -> options, with `sh` on the SUBGROUP and never on
+	the root. Options placed directly in the root table make
+	init_opt_coder read #entry.gr for a plain option and throw, and `sh`
+	on the root renders the whole menu blank. Either way it looks exactly
+	like the mod not being installed.
+
+	NO ENGINE CALLS AT CHUNK SCOPE
+	GetARGB, CScriptXmlInit and vector2 are not bound while scripts load.
+	One at file scope means this chunk throws and on_mcm_load is never
+	registered - the second way an MCM page vanishes silently.
+
+	min, max AND def ARE ALL MANDATORY ON A val = 2 INPUT
+	MCM's Callback_Input runs clamp(value, v.min, v.max) for val = 2 and
+	clamp compares unguarded, so a missing bound is "attempt to compare
+	number with nil". Register_Input also SetText()s def unguarded at
+	build time. That is the third way. `step` is track-only; MCM never
+	reads it on an input.
+--]]
+
+local DEFAULTS = {
+	amp_enable    = true,
+
+	-- The order of the three columns: "default" is the game's own -
+	-- other party left, equipment middle, your bag right - and "tarkov"
+	-- is the order this mod's own ui_inventory_16.xml is written in.
+	-- The xml cannot be swapped at runtime, so the windows are moved
+	-- after the menu is built; see A.cols_apply.
+	-- Loot goes into a container that already holds the same thing, and
+	-- can be dragged into an open one straight off a body.
+	amp_loot_box  = true,
+
+	amp_layout    = "default",
+
+	-- THE GRID BUILD. The rig slot and its pockets go in the corner of
+	-- the bag column, with Zone Grid's sections underneath them - and
+	-- the three-column layout that used to hold them is off, because
+	-- the column it made is the thing being replaced.
+	amp_anchor_bag = true,
+
+	-- A magazine in the rig is not listed in the inventory grid, so it
+	-- lives in exactly one place. Trade is exempt in the script itself -
+	-- hiding there would mean un-rigging every mag one at a time before
+	-- you could sell any of them.
+	amp_hide_grid = true,
+
+	-- Which side of the equipment panel the rig opens on. The anchor is
+	-- the panel's own measured rect, not a typed coordinate, so it stays
+	-- beside the equipment on every resolution and under every UI
+	-- overhaul; these two only nudge it from there.
+	amp_left      = true,
+	amp_dx        = 0,
+	amp_dy        = 0,
+
+	-- The three column personal inventory: equipment against the left
+	-- edge of the screen, the rig in the middle, the bag untouched on
+	-- the right. Only the personal inventory - looting, trading and the
+	-- mechanic's window keep the stock layout, because the panel this
+	-- moves is where the other party's inventory goes in those.
+
+	-- Magazines and ammo shown in the middle column instead of in the
+	-- bag's own list. A VIEW, not a container: the items stay in the
+	-- inventory and weigh the same, so turning this off puts them back
+	-- and can lose nothing.
+
+	-- A pocket's size in GRID UNITS. A magazine's footprint belongs to
+	-- whichever magazine mod is installed, not to the armour, so it
+	-- lives here and not in amp_rigs.ltx. small and medium pockets share
+	-- one size; large pockets (drums) have their own.
+
+	-- How many pockets an armour gives is NOT here: it is in
+	-- configs/items/amp_rigs.ltx, keyed by outfit kind with per-armour
+	-- overrides, because that is a table to be authored rather than a
+	-- number to be nudged.
+	--
+	-- This decides whether the rig is the WHOLE loadout. On, backpacks
+	-- and belt artefacts stop granting magazine slots, so the rig is
+	-- exactly what you can carry and expansion pouches are the only way
+	-- to grow it. Off is vanilla behaviour, but then the panel shows
+	-- fewer pockets than your real loadout has.
+	amp_rig_is_all = true,
+	amp_rig_wear   = true,
+
+	-- ============================================================
+	-- THE FOUR CAPACITY KNOBS ARE GONE, AND SO IS THE POUCH SCALE
+	--
+	-- amp_scale, amp_cap_small, amp_cap_med, amp_cap_large and
+	-- amp_pouch_scale all tuned ONE thing: how many pockets of each
+	-- size class an ARMOUR was worth, read out of the magazine mod's
+	-- outfit table and scaled down.
+	--
+	-- There are no size classes in 3.0 and an armour grants nothing: a
+	-- rig's slots are stamped on the rig, out of l_amp_rigs.ltx, and
+	-- what a fitted pouch grants is fixed by which pouch it is. There
+	-- is no number here left for these to scale.
+	-- ============================================================
+
+	-- A rig you pull off a corpse arrives torn, at a condition rolled
+	-- from its tier. This is the whole of the progression lever - wear
+	-- from your own fighting is deliberately slight - so it is the one
+	-- worth being able to switch off.
+	amp_wear_loot = true,
+
+	-- Whether the rig is the only place the quick-use keys may reach
+	-- with the inventory shut, and whether medicine is governed at all.
+	amp_med      = true,
+	amp_med_only = true,
+
+	-- A gun with no magazine - a pump, a self-loader, a revolver, a
+	-- bolt rifle - reloads out of the rig or not at all.
+	amp_ammo_gate = true,
+
+	-- Seconds a dragged item rests on a willing box before its window
+	-- opens itself. 0 switches it off.
+	amp_boxhover = 2,
+
+	-- The pocket foley, borrowed from sounds GAMMA already ships.
+	amp_sounds   = true,
+	amp_sndvol   = 1,
+
+	-- Writes what the rig, the carried set and the grid filter each
+	-- decided, every time they decide it, to the game log. Off unless
+	-- something is being chased.
+	amp_debug     = false,
+}
+
+-- ui_options_slider_player is the ONLY slide link used anywhere in the
+-- magazine mod pack, and a slide whose texture does not resolve is
+-- another way a page comes up blank - one that looks exactly like the
+-- mod not being installed. Use the link that is known to exist.
+local ROOT = "squared_away"
+
+-- ============================================================
+-- THE SECTIONS THIS PAGE IS MADE OF
+--
+-- Named rather than rawget'd, because Anomaly's loader is lazy and
+-- naming a module is what makes it load - and inside pcall, because
+-- the wearable-devices file is an optional FOMOD tick and somebody
+-- will not have it.
+-- ============================================================
+local function section(mod)
+	local t
+	local ok = pcall(function()
+		local m = _G[mod]
+		if m and m.sqa_options then t = m.sqa_options() end
+	end)
+	if ok and type(t) == "table" and #t > 0 then return t end
+	return nil
+end
+
+
+-- ============================================================
+-- WHAT EVERY SAVED SETTING USED TO BE CALLED
+--
+-- An MCM option lives in axr_options.ltx's [mcm] section under its
+-- full path. Three pages became one, so every path a player has saved
+-- points at nothing and every setting would silently revert.
+--
+-- The GROUP ids did not move, so this is a rename of the first
+-- component and nothing else.
+-- ============================================================
+local WAS = {
+	amp_general  = "ArmorMagPouches",
+	grid_general = "AmpGrid",
+	wd_general   = "amp_weardev",
+}
+
+-- Walks the tree THIS FILE JUST BUILT rather than a list of option
+-- names typed out here, so it cannot fall out of step with the options
+-- that actually exist - which is the mistake t64 made and paid for.
+--
+-- Read straight out of the ini, NOT through ui_mcm.get: MCM does not
+-- know the old paths any more, and being told so once per option is
+-- the entire reason this function exists.
+function sqa_migrate()
+	local cfg = axr_main and axr_main.config
+	if not cfg then return 0 end
+
+	local DONE = ROOT .. "/migrated"
+	if cfg:r_value("mcm", DONE, 1) then return 0 end
+
+	local moved = 0
+	for _, sub in ipairs(on_mcm_load().gr) do
+		local old = WAS[sub.id]
+		if old then
+			for _, o in ipairs(sub.gr) do
+				-- `val` is the option's type, and it is what MCM itself
+				-- hands r_value: 1 a switch, 2 a number, 0 a string. An
+				-- entry with no val is a slide or a line - decoration,
+				-- with nothing saved under it.
+				if o.id and o.val then
+					local from = old .. "/" .. sub.id .. "/" .. o.id
+					local to = ROOT .. "/" .. sub.id .. "/" .. o.id
+					local v = cfg:r_value("mcm", from, o.val)
+					if v ~= nil and cfg:r_value("mcm", to, o.val) == nil then
+						cfg:w_value("mcm", to, v)
+						moved = moved + 1
+					end
+				end
+			end
+		end
+	end
+
+	cfg:w_value("mcm", DONE, true)
+	cfg:save()
+	return moved
+end
+
+
+local function title(id)
+	return { id = id, type = "slide", link = "ui_options_slider_player",
+	         text = "ui_mcm_menu_amp_" .. id, size = { 512, 50 }, spacing = 20 }
+end
+
+function on_mcm_load()
+	local general = {
+		title("general"),
+		{ id = "amp_enable", type = "check", val = 1, def = DEFAULTS.amp_enable },
+
+		-- ============================================================
+		-- A DROPDOWN, WHICH IS MCM'S "list"
+		--
+		-- content is { value, string key } per row. MCM looks for the
+		-- label at <path with slashes as underscores>_lst_<key> first
+		-- and falls back to ui_mcm_lst_<key>, so BOTH are shipped: the
+		-- second form is what older MCM builds read, and a dropdown
+		-- showing raw ids is the bug that was fixed two releases ago.
+		--
+		-- val = 0 because these are strings. A number would read as 0
+		-- and 1 in axr_options.ltx, where "default" and "tarkov" say
+		-- what they are to anyone who opens that file.
+		-- ============================================================
+		{ id = "amp_loot_box", type = "check", val = 1, def = DEFAULTS.amp_loot_box },
+
+		{ id = "amp_layout", type = "list", val = 0, def = DEFAULTS.amp_layout,
+		  content = { { "default", "amp_layout_default" },
+		              { "tarkov",  "amp_layout_tarkov" } } },
+		{ id = "amp_anchor_bag", type = "check", val = 1, def = DEFAULTS.amp_anchor_bag },
+		{ id = "amp_hide_grid", type = "check", val = 1, def = DEFAULTS.amp_hide_grid },
+		{ id = "line_a1", type = "line" },
+		{ id = "amp_rig_is_all", type = "check", val = 1, def = DEFAULTS.amp_rig_is_all },
+		{ id = "amp_rig_wear", type = "check", val = 1, def = DEFAULTS.amp_rig_wear },
+		{ id = "amp_wear_loot", type = "check", val = 1, def = DEFAULTS.amp_wear_loot },
+		{ id = "amp_med", type = "check", val = 1, def = DEFAULTS.amp_med },
+		{ id = "amp_med_only", type = "check", val = 1, def = DEFAULTS.amp_med_only },
+		{ id = "amp_ammo_gate", type = "check", val = 1, def = DEFAULTS.amp_ammo_gate },
+		{ id = "amp_boxhover", type = "input", val = 2, min = 0, max = 30, def = DEFAULTS.amp_boxhover },
+		{ id = "amp_sounds", type = "check", val = 1, def = DEFAULTS.amp_sounds },
+		{ id = "amp_sndvol", type = "input", val = 2, min = 0.1, max = 3, def = DEFAULTS.amp_sndvol },
+		-- The rotate key for items held over a box. DIK_keys is safe
+		-- HERE because on_mcm_load runs long after chunk load - the
+		-- header's warning is about file scope, and this is not it.
+		{ id = "amp_rot_key", type = "key_bind", val = 2, def = DIK_keys.DIK_R },
+		{ id = "line_a4", type = "line" },
+		{ id = "amp_debug", type = "check", val = 1, def = DEFAULTS.amp_debug },
+		{ id = "line_a2", type = "line" },
+		{ id = "line_a3", type = "line" },
+		{ id = "amp_left", type = "check", val = 1, def = DEFAULTS.amp_left },
+		{ id = "amp_dx", type = "input", val = 2, min = -900, max = 900, def = DEFAULTS.amp_dx },
+		{ id = "amp_dy", type = "input", val = 2, min = -900, max = 900, def = DEFAULTS.amp_dy },
+	}
+
+	-- ============================================================
+	-- ONE PAGE, A SECTION FOR EACH PART OF THE MOD
+	--
+	-- NO `sh` ON THE ROOT - the header comment above says so and this
+	-- file did it anyway once, and a second MCM file written from
+	-- scratch beside it did it again. The audit checks it now.
+	--
+	-- SEVERAL SUBGROUPS UNDER ONE ROOT is how a page grows sections:
+	-- Mags Redux has shipped { id = "magazines", gr = { mgmt, hud,
+	-- gameplay } } for years. The parts that are not installed do not
+	-- appear, because a section is only added when its file answers.
+	-- ============================================================
+	-- ============================================================
+	-- RIG AND POUCH DROPS - sixty-four sliders, built from one list
+	--
+	--   "add mcm subcategory 'rig and pouch drop' and add sliders for
+	--    rig and mag pouches drops ... per npc rank so you got trainee
+	--    rank with rig sliders for every tier of the rig and same for
+	--    pouches"
+	--
+	-- Eight ranks by eight sliders. Written as a LOOP over the same
+	-- table the script rolls from - A.drop_opts - rather than as
+	-- sixty-four literal lines, because a page and a roll that keep two
+	-- copies of the same list are a page whose sliders quietly stop
+	-- reaching anything.
+	--
+	-- REACHING INTO THE MAIN SCRIPT IS SAFE HERE for the reason the
+	-- rotate key's comment gives above: on_mcm_load runs long after
+	-- chunk load, so the module is there. It is guarded anyway, because
+	-- a page that raises takes the whole MCM down with it.
+	--
+	-- AND IT REACHES FOR TOP-LEVEL FUNCTIONS ONLY.
+	--
+	--   the sliders were built and the subcategory never appeared
+	--
+	-- A .script is a table of ITS OWN FILE'S GLOBALS. The main file
+	-- keeps all of its state in a local called A, so
+	-- `zzz_armor_mag_pouches.drop_opts` is nil and always was - and
+	-- this pcall swallowed the error, so the whole subcategory simply
+	-- was not on the page. No error line, no empty section, nothing.
+	--
+	-- amp_drop_opts and amp_drop_id are the door, which is the shape
+	-- every other cross-file call in this mod already had:
+	-- amp_wd_seam, grid_keep, grid_files, pouch_no_install. The audit
+	-- now checks that every name reached on that module below is one.
+	--
+	-- A LINE BEFORE EACH RANK. Sixty-four unbroken sliders is a wall;
+	-- eight blocks of eight is a table you can read.
+	-- ============================================================
+	local drops
+	local okd, err = pcall(function()
+		local A = zzz_armor_mag_pouches
+		local opts = A.amp_drop_opts()
+		local out = { title("drops") }
+		local seen = nil
+		for i = 1, #opts do
+			local rank, key, def = opts[i][1], opts[i][2], opts[i][3]
+			if rank ~= seen then
+				seen = rank
+				out[#out + 1] = { id = "line_drop_" .. rank, type = "line" }
+			end
+			out[#out + 1] = { id = A.amp_drop_id(rank, key), type = "input",
+			                  val = 2, min = 0, max = 100, def = def }
+		end
+		drops = out
+	end)
+	-- AND IT SAYS SO WHEN IT FAILS. A guard that hides its own reason
+	-- is how sixty-four sliders went missing without one line in the
+	-- log; the page still survives, but the log knows why.
+	if not okd then
+		drops = nil
+		local f = _G.printf
+		if f then f("!amp mcm: the drop sliders did not build - %s",
+		            tostring(err)) end
+	end
+
+	local gr = { { id = "amp_general", sh = true, gr = general } }
+	if drops then
+		gr[#gr + 1] = { id = "amp_drops", sh = true, gr = drops }
+	end
+
+	local g = section("zzz_amp_grid_mcm")
+	if g then gr[#gr + 1] = { id = "grid_general", sh = true, gr = g } end
+
+	local w = section("zzz_amp_weardev_mcm")
+	if w then gr[#gr + 1] = { id = "wd_general", sh = true, gr = w } end
+
+	return { id = ROOT, gr = gr }
+end

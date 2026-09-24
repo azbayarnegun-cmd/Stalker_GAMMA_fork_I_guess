@@ -1,0 +1,165 @@
+--[[
+	QAW MEDS POCKET ONLY
+	====================
+
+	  "compatibility for quick action wheel mod and using meds only from
+	   mag pouch"
+
+	The Quick Action Wheel's meds tab lists every med anywhere in your
+	inventory. This narrows it to the ones actually IN a pocket - the
+	rig's med pocket, or a med pouch in a mag pocket - which is the same
+	rule the quick-use keys already follow, so the wheel and the keys
+	stop disagreeing about what you can reach.
+
+	Written by Blako. Adapted here for shipping to everybody.
+
+	WHY THIS SHIPS EVEN THOUGH MOST PEOPLE DO NOT RUN THE WHEEL
+	-----------------------------------------------------------
+	Because it does nothing when the wheel is absent, and it can say so.
+	A file that patches something not installed has exactly two honest
+	behaviours: patch it, or leave. This one leaves, quietly, on the
+	first line of on_game_start - it does not raise, it does not warn,
+	and it does not write a "FAILED" line for a mod you never installed.
+
+	Not having the wheel is not a failure. Having it and not being able
+	to patch it IS one, and those two say different things in the log.
+
+	THE NAME IS NOT DECORATION
+	--------------------------
+	`zzz_zzz_` puts this after both haru_quick_action_wheel_mcm and
+	zzz_armor_mag_pouches in the engine's alphabetical script order,
+	which is the only reason TAB_MANAGER and amp_pocket_has are there to
+	be found when this runs. Renaming it is the whole change; see
+	SquaredAway 2.25.3, where a craft override sorted one letter too
+	early and was silently undone every load.
+
+	EVERYTHING IS GUARDED
+	---------------------
+	on_game_start is called by the engine and nothing catches what it
+	throws. A patch for another mod raising in there would take out
+	whatever loads after it, so every reach into somebody else's table
+	is inside a pcall - including the replacement handler, which runs
+	while a wheel is being drawn.
+]]
+
+-- Quiet unless there is something worth saying. `log` is the parent
+-- mod's; printf is the engine's and is always there.
+local function say(fmt, ...)
+	local f = _G.printf
+	if f then pcall(f, "[QAW-POCKET] " .. fmt, ...) end
+end
+
+-- ------------------------------------------------------------
+-- IS THIS SECTION IN A POCKET RIGHT NOW?
+--
+-- The door is zzz_armor_mag_pouches.amp_pocket_has, which is a
+-- top-level function in that file - a .script is a table of its own
+-- file's globals, so anything living on its local A is not reachable
+-- from here and never was.
+--
+-- Two spellings are tried because both are real: the module table is
+-- how the engine's loader serves it, and the bare global is what you
+-- get in a setup where scripts share one table.
+-- ------------------------------------------------------------
+local function find_pocket_check()
+	local ok, f = pcall(function()
+		local amp = zzz_armor_mag_pouches
+		if amp and type(amp.amp_pocket_has) == "function" then
+			return amp.amp_pocket_has
+		end
+		return nil
+	end)
+	if ok and f then return f end
+
+	if type(_G.amp_pocket_has) == "function" then return _G.amp_pocket_has end
+	return nil
+end
+
+local function find_tab_manager()
+	local ok, t = pcall(function()
+		local qaw = haru_quick_action_wheel_mcm
+		if qaw and qaw.TAB_MANAGER then return qaw.TAB_MANAGER end
+		return nil
+	end)
+	if ok and t then return t end
+
+	if type(_G.TAB_MANAGER) == "table" then return _G.TAB_MANAGER end
+	return nil
+end
+
+function on_game_start()
+	-- ------------------------------------------------------------
+	-- THE WHEEL FIRST, AND ITS ABSENCE IS NOT AN ERROR
+	--
+	-- Asked before anything else precisely so that a player without the
+	-- wheel - which is most of them - reads no line about a mod they do
+	-- not have. Nothing below this point can run, and nothing below
+	-- this point needs to.
+	-- ------------------------------------------------------------
+	local tab_manager = find_tab_manager()
+	if not tab_manager then return end
+
+	-- From here on the wheel IS installed, so anything that does not
+	-- line up is worth a line in the log.
+	local pocket_has = find_pocket_check()
+	if not pocket_has then
+		say("!Squared Away's amp_pocket_has is not reachable - the meds "
+		    .. "tab is left as the wheel built it. Is zzz_armor_mag_pouches"
+		    .. ".script installed and at least 2.25.6?")
+		return
+	end
+
+	local ok, err = pcall(function()
+		local handlers = tab_manager.dynamic_tab_handlers
+		local meds = handlers and handlers.meds
+		if not meds then
+			say("!the wheel has no meds tab to narrow - nothing changed")
+			return
+		end
+
+		-- ------------------------------------------------------------
+		-- THE REPLACEMENT
+		--
+		-- The wheel's own valid_sections is still what decides WHICH
+		-- kinds may appear - this only removes the ones you are not
+		-- carrying in a pocket, so a med the wheel never listed is not
+		-- listed now either. Narrowing only, the same rule the stack
+		-- ceilings follow.
+		--
+		-- db.actor:object(sec) resolves the section to a thing you are
+		-- carrying. It answers the copy in your bag rather than
+		-- specifically the pocketed one, and that is fine: the two are
+		-- the same section and the wheel uses the object to name and
+		-- draw a row, not to decide which one gets eaten. What gets
+		-- eaten is the parent mod's decision, and it takes from the
+		-- pocket - see A.med_gate.
+		-- ------------------------------------------------------------
+		meds.GetItemTable = function(self)
+			local t = {}
+
+			local oki = pcall(function()
+				for sec in pairs(self.valid_sections or {}) do
+					if pocket_has(sec) then
+						local obj
+						pcall(function() obj = db.actor:object(sec) end)
+						if obj then t[#t + 1] = { sec = sec, obj = obj } end
+					end
+				end
+			end)
+
+			-- A WHEEL THAT THREW IS AN EMPTY WHEEL, and an empty wheel
+			-- in the middle of a fight is worse than a wide one. On any
+			-- trouble at all, hand back what the pocket rule found so
+			-- far rather than nothing.
+			if not oki then say("!the meds tab could not be filtered") end
+			return t
+		end
+	end)
+
+	if not ok then
+		say("!could not narrow the meds tab: %s", tostring(err))
+		return
+	end
+
+	say("the meds tab now lists only what is in a pocket")
+end

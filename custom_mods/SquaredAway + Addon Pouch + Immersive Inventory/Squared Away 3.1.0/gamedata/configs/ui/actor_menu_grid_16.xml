@@ -1,0 +1,29 @@
+<w>
+	<!-- Right side -->
+	<player> <!-- (x="642.5" y="0") real parent with the same name in "ui_inventory_16.xml" -->
+		<!-- inventory grid -->
+		<grid x="10" y="121.5" width="361.25" height="572.5" stretch="1"/>
+		
+		<!-- item containers -->
+		<cont_bag x="9.5" y="121" width="356.25" height="573" stretch="1"/>
+		<cont_trade x="9.5" y="121" width="356.25" height="185" stretch="1"/>
+		<cont_trade_bag x="9.5" y="379.75" width="356.25" height="314.25" stretch="1"/>
+		
+		<!-- trade info -->
+		<trade_delimiter x="6" y="314.5" width="370" height="59" stretch="1"/>
+	</player>
+	
+	<!-- Left Side -->
+	<npc> <!-- (x="0" y="0") real parent with the same name in "ui_inventory_16.xml" -->
+		<!-- inventory grid -->
+		<grid x="10" y="121.5" width="361.25" height="572.5" stretch="1"/>
+		
+		<!-- item containers -->
+		<cont_bag x="9.5" y="121" width="356.25" height="573" stretch="1"/>
+		<cont_trade x="9.5" y="121" width="356.25" height="185" stretch="1"/>
+		<cont_trade_bag x="9.5" y="379.75" width="356.25" height="314.25" stretch="1"/>
+		
+		<!-- trade info -->
+		<trade_delimiter x="6" y="314.5" width="370" height="59" stretch="1"/>
+	</npc>
+</w>

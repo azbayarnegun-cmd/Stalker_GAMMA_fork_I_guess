@@ -1,0 +1,735 @@
+--[[
+	ARMOR MAG POUCHES - WEARABLE DEVICES PATCH
+	==========================================
+
+	Optional. Install this only if you run the Wearable Devices pack.
+
+	WHAT IT DOES
+	The bracer, the watch, the tablet and the glowstick are worn by
+	ATTACHMENT - the model goes on your forearm - while the items stay
+	ordinary items in your inventory. Armor Mag Pouches counts squares,
+	so every worn device costs a square for nothing. This hides them
+	from the bag, gives them four slots of their own in the gutter under
+	the backpack, and puts the game's own right-click menu on those
+	slots.
+
+	WHY IT IS A SEPARATE FILE
+	Because most people do not run that pack, and a mod should not carry
+	four hundred lines about somebody else's items for them.
+
+	W AND A
+	Everything this file owns lives on W, which exists from the first
+	line. Everything the MOD owns is read off A, which is nil until the
+	mod hands it over in install() - and is therefore only ever touched
+	from inside a function body. That is the whole reason for the two
+	tables: a `function A.wd_lay()` at chunk scope would index nil the
+	moment somebody unzips this patch without the mod under it, and take
+	the entire chunk down with it.
+
+	amp_wd_seam() is the door. It hands over the mod's state table and
+	the file-local helpers this needs, and install() wires eight of W's
+	functions onto A - the eight the main script already calls on every
+	draw, click and drop, and which answer no until this runs.
+
+	WHAT IT NEEDS OF THE OTHER PACK
+	d_bracer.is_worn, d_bracer.toggle_attach, wd_slots.get_mounted_object,
+	wd_slots.get_slot_of, wd_slots.mount, wd_slots.unmount - every one
+	read as a BARE GLOBAL inside pcall, because Anomaly's loader is lazy
+	and rawget answers nil for a mod that is installed. With the pack
+	absent every answer is no and this file draws nothing.
+--]]
+
+-- The page the patch adds a section to, rather than a page of its
+-- own - everything about this mod is in one place now.
+local MOD   = "squared_away"
+local GROUP = "wd_general"
+
+-- Everything this patch owns. A table of its own so that not one line
+-- of this file needs the mod to exist at load time.
+local W = {}
+
+-- ...and the mod, plus the file-local helpers of its that this needs.
+-- All nil until install(), all upvalues rather than table lookups
+-- because they are named on every draw.
+local A, GAP, EQU, BAG, hit, scratch_rect, gui_now, editing_allowed
+local log, dbg, notify
+
+-- ============================================================
+-- WEARABLE DEVICES: WHAT IS ON YOUR ARM IS NOT IN YOUR BAG
+--
+--   "those item attatch to bracer item but all just sit in inventory
+--    ... for our mod it just take space."
+--
+-- The bracer, the watch, the tablet and the glowstick are worn by
+-- ATTACHMENT - the model goes on your forearm - while the items stay
+-- ordinary items in the inventory. This pack counts squares, so every
+-- worn device costs a square for nothing.
+--
+-- THEY MUST STAY IN THE INVENTORY. That is the other mod's rule:
+-- wd_slots.can_mount needs db.actor:object(section) to find them, and
+-- wd_slots.unmount_dropped - polled every 200ms - unmounts anything
+-- whose object has gone. So the pouch trick (read it, release it)
+-- would take the device off your arm a fifth of a second later.
+--
+-- So they are hidden instead, exactly as the worn rig is: the object
+-- stays where the engine and the other mod expect it, and only the bag
+-- list stops drawing it.
+--
+-- ASKED, NOT REMEMBERED. Nothing here records which device is worn -
+-- it asks the other mod every time and believes the answer, so mounting
+-- from that mod's own screen needs no telling and there is no second
+-- truth to drift out of step.
+-- ============================================================
+W.wd_worn = W.wd_worn or {}
+
+-- The slots the pack mounts INTO, by its own names, and the bracer's
+-- section - it is worn by attachment rather than mounted, so it is not
+-- one of them.
+--
+-- ALL THREE OF THEM, and that is checkable rather than remembered: the
+-- pack calls wd_slots.register_device four times - promin on the
+-- forearm, the watch and the vektor both on the wrist, the glowstick
+-- on the side. wd_slots keeps its device table private and offers no
+-- way to ask it for a list, which is the only reason this list exists.
+local WD_MOUNTS = { "wrist", "forearm", "side" }
+local WD_BRACER = "wd_bracer"
+
+local WD_MS = 200
+local wd_at = 0
+
+-- ...and the doors. Each is a BARE GLOBAL read inside a pcall: the
+-- script loader is lazy, so rawget answers nil for a mod that is
+-- installed and working, and the pcall is what makes all of this
+-- inert when the pack is not installed at all.
+function W.wd_bracer_worn()
+	local ok, r = pcall(function() return d_bracer.is_worn() end)
+	return (ok and r) and true or false
+end
+
+function W.wd_mounted(slot)
+	local o
+	pcall(function() o = wd_slots.get_mounted_object(slot) end)
+	return o
+end
+
+function W.wd_sync()
+	local worn = W.wd_worn
+	for k in pairs(worn) do worn[k] = nil end
+
+	if W.wd_on and db and db.actor then W.wd_gather(worn) end
+
+	-- ============================================================
+	-- NOTICING IS NOT REDRAWING
+	--
+	--   "when the item is clicked to be wear, it does not dissapear
+	--    from inventory on instant but on inventory reopen."
+	--
+	-- The bag list is built by ParseInventory and rebuilt only when the
+	-- menu is told to. The sync sees the device go on within a fifth of
+	-- a second, but nothing asks for a rebuild - so it vanished on the
+	-- NEXT opening instead of this one.
+	--
+	-- So the answer is watched, not just taken: a signature of what is
+	-- worn, and a rebuild asked for on the frame it changes. Sorted,
+	-- because pairs has no order and an unordered join would "change"
+	-- every frame and rebuild the list forever.
+	-- ============================================================
+	local ids = {}
+	for id in pairs(worn) do ids[#ids + 1] = id end
+	table.sort(ids)
+	local sig = table.concat(ids, ",")
+
+	if sig ~= (W.wd_sig or "") then
+		W.wd_sig = sig
+		local g = ui_inventory and ui_inventory.GUI
+		if g and g.On_Item_Update then
+			pcall(function() g:On_Item_Update() end)
+		end
+	end
+end
+
+-- What is on the arm, written into the table it is given. Split out of
+-- the sync so the sync itself is only about NOTICING a change.
+function W.wd_gather(worn)
+
+	-- THE BRACER, by section. wd_worn keeps its id privately and
+	-- d_bracer does not hand it out, so it is asked for the way the
+	-- other mod asks itself - db.actor:object(section), which is what
+	-- its own get_device_object falls back to.
+	if W.wd_bracer_worn() then
+		pcall(function()
+			local o = db.actor:object(WD_BRACER)
+			if o then worn[o:id()] = true end
+		end)
+	end
+
+	-- ...and whatever is mounted on it. These DO hand their object
+	-- out, so they are asked for exactly.
+	for i = 1, #WD_MOUNTS do
+		local o = W.wd_mounted(WD_MOUNTS[i])
+		if o then
+			local ok, id = pcall(function() return o:id() end)
+			if ok and id then worn[id] = true end
+		end
+	end
+end
+
+function W.wd_tick()
+	if not W.wd_on then
+		if next(W.wd_worn) then W.wd_sync() end
+		return
+	end
+	local now = time_global()
+	if now - wd_at < WD_MS then return end
+	wd_at = now
+	W.wd_sync()
+end
+
+
+-- ============================================================
+-- AND FOUR SLOTS TO PUT THEM IN
+--
+--   "blue would be where the bracer is and those light yellowish are
+--    for tablet and watch respectfully."
+--   "the mod also allows glowsticks to be attached to the bracer so i
+--    need a slot for that next to 'watch slot'."
+--
+-- In the GUTTER - the two columns of the bag no section is ever given -
+-- directly under the backpack slot and measured from it, so they scroll
+-- with the list exactly as it and the rig block do. At the sizes the
+-- items themselves are: bracer 2x1, tablet 2x1, watch 1x1, glowstick
+-- 1x1.
+--
+--     bracer     [ 2 wide             ]
+--     tablet     [ 2 wide             ]
+--     watch      [ 1 ]  glowstick [ 1 ]
+--
+-- ROWS, NOT A COLUMN. The gutter is two columns wide and the watch is
+-- one, so the square beside it was empty from the day this was drawn.
+-- A row holding two is what the layout always was with one slot in
+-- each; WD_ROWS is the only place that knows it, and WD_ORDER is still
+-- the flat list of names that wd_at, draw_wd, hide_wd and the three
+-- mouse handlers walk.
+--
+-- THE LOWER THREE ONLY EXIST WHILE THE BRACER IS ON. They mount onto
+-- it; the pack's own can_mount refuses them without one, so drawing
+-- empty slots that cannot be filled would be drawing a lie.
+-- ============================================================
+local WD_ROWS  = { { "bracer" }, { "forearm" }, { "wrist", "side" } }
+local WD_ORDER = { "bracer", "forearm", "wrist", "side" }
+local WD_WIDE  = { bracer = 2, forearm = 2, wrist = 1, side = 1 }
+
+-- Which slot a section belongs in, asked of the pack rather than
+-- listed here - so every skin and variant of a watch or tablet it ever
+-- ships is answered for without this file knowing their names.
+function W.wd_slot_for(sec)
+	if type(sec) ~= "string" then return nil end
+	if sec == WD_BRACER then return "bracer" end
+
+	local slot
+	pcall(function() slot = wd_slots.get_slot_of(sec) end)
+	-- ONE OF OURS, by name. The pack could hand back a slot this file
+	-- has never drawn - a future device, or another mod registering
+	-- with it - and a slot with no square to sit in must be nobody's
+	-- rather than a section that vanishes from the bag into nowhere.
+	for i = 1, #WD_MOUNTS do
+		if slot == WD_MOUNTS[i] then return slot end
+	end
+	return nil
+end
+
+-- The object in a slot, or nil. The bracer is worn by attachment and
+-- keeps its id to itself, so it is found the way the pack finds it.
+function W.wd_obj(slot)
+	if slot == "bracer" then
+		if not W.wd_bracer_worn() then return nil end
+		local o
+		pcall(function() o = db.actor:object(WD_BRACER) end)
+		return o
+	end
+	return W.wd_mounted(slot)
+end
+
+-- Is this slot drawn at all? The bracer always, while the pack is
+-- there; the other two only once it is on.
+function W.wd_slot_live(slot)
+	if not W.wd_on then return false end
+	if slot == "bracer" then
+		-- "the pack is installed" is exactly "the door answers", and
+		-- wd_bracer_worn is the door that never needs a bracer first.
+		local ok = pcall(function() return d_bracer.is_worn() end)
+		return ok and true or false
+	end
+	return W.wd_bracer_worn()
+end
+
+-- ...and where they are. Measured DOWN from the backpack slot, which is
+-- itself measured from the list's content corner - so one anchor moves
+-- everything and scrolling is free.
+function W.wd_lay()
+	-- NOT just the switch. With the pack uninstalled nothing is drawn -
+	-- draw_wd asks slot by slot - but wd_at reads the LAYOUT, so the
+	-- invisible squares stayed live to the cursor and swallowed drops
+	-- meant for the bag. The gate belongs here, where both of them read.
+	--
+	-- AND THE OLD LAYOUT IS THROWN AWAY on the way out. Returning nil
+	-- while leaving W.wdlay holding last frame's rectangles is how a
+	-- slot goes on being clickable after the reason to draw it is gone.
+	if not W.wd_slot_live("bracer") then W.wdlay = nil return nil end
+
+	local p = A.pack_where()
+	if not p then W.wdlay = nil return nil end
+
+	local ratio = utils_xml.screen_ratio()
+	if not (ratio and ratio > 0) then ratio = 1 end
+
+	-- THE LINE BETWEEN TWO CELLS, which is what separates the watch
+	-- from the glowstick beside it - not GAP, which is the space
+	-- between two ROWS of this block. One cell plus that line plus one
+	-- cell is exactly A.px(2, 1), so the pair ends where the two-wide
+	-- slots above it end.
+	local _, gl = A.metrics()
+
+	local out = {}
+	local y = p[2] + p[4] + GAP
+
+	for i = 1, #WD_ROWS do
+		local row = WD_ROWS[i]
+		local x, h = p[1], nil
+
+		for j = 1, #row do
+			local slot = row[j]
+			local w, hh = A.px(WD_WIDE[slot], 1)
+			w = w * ratio
+			out[slot] = { x, y, w, hh }
+			x = x + w + gl * ratio
+			h = hh
+		end
+
+		y = y + h + GAP
+	end
+
+	W.wdlay = out
+	return out
+end
+
+-- Which slot the cursor is over, clipped so a slot scrolled off the
+-- top of the list cannot be clicked where it is no longer drawn.
+function W.wd_at()
+	if not W.wdlay then return nil end
+	for i = 1, #WD_ORDER do
+		local slot = WD_ORDER[i]
+		local r = W.wdlay[slot]
+		if r and W.wd_slot_live(slot) and hit(A.clip_abs(r)) then
+			return slot
+		end
+	end
+	return nil
+end
+
+-- Put one on. Every one of these is the pack's own door: it decides,
+-- and a refusal leaves the slot exactly as it was.
+function W.wd_put(slot, obj)
+	if not obj then return false end
+
+	if slot == "bracer" then
+		pcall(function() d_bracer.toggle_attach(obj) end)
+		return W.wd_bracer_worn()
+	end
+
+	local ok, r = pcall(function() return wd_slots.mount(obj) end)
+	return (ok and r) and true or false
+end
+
+-- ...and take one off.
+function W.wd_take(slot)
+	if slot == "bracer" then
+		local o = W.wd_obj("bracer")
+		if not o then return false end
+		pcall(function() d_bracer.toggle_attach(o) end)
+		return not W.wd_bracer_worn()
+	end
+
+	local ok, r = pcall(function() return wd_slots.unmount(slot) end)
+	return (ok and r) and true or false
+end
+
+W.wd_out = W.wd_out or {}
+W.wd_in  = W.wd_in  or {}
+W.wd_ico = W.wd_ico or {}
+
+function W.hide_wd()
+	W.wdlay = nil
+	for i = 1, #WD_ORDER do
+		local s = WD_ORDER[i]
+		if W.wd_out[s] then A.wshow(W.wd_out[s], false) end
+		if W.wd_in[s]  then A.wshow(W.wd_in[s],  false) end
+		if W.wd_ico[s] then A.wshow(W.wd_ico[s], false) end
+	end
+end
+
+function W.draw_wd(gui)
+	local xml = A.get_xml()
+	if not (xml and gui and gui.equ_dialog) then return W.hide_wd() end
+
+	local lay = W.wd_lay()
+	if not lay then return W.hide_wd() end
+
+	local fr = scratch_rect()
+	gui.equ_dialog:GetAbsoluteRect(fr)
+	A.org[1], A.org[2] = fr.x1, fr.y1
+
+	for i = 1, #WD_ORDER do
+		local slot = WD_ORDER[i]
+		local r = lay[slot]
+
+		if not (r and W.wd_slot_live(slot)) then
+			if W.wd_out[slot] then A.wshow(W.wd_out[slot], false) end
+			if W.wd_in[slot]  then A.wshow(W.wd_in[slot],  false) end
+			if W.wd_ico[slot] then A.wshow(W.wd_ico[slot], false) end
+		else
+			if not W.wd_out[slot] then
+				W.wd_out[slot] = A.mkstatic(xml, "amp:rig", gui.equ_dialog)
+				W.wd_in[slot]  = A.mkstatic(xml, "amp:rig", gui.equ_dialog)
+				W.wd_ico[slot] = A.mkstatic(xml, "amp:rig", gui.equ_dialog)
+			end
+
+			local x, y, w, h = r[1], r[2], r[3], r[4]
+			local ox, oy = x - A.org[1], y - A.org[2]
+			local obj = W.wd_obj(slot)
+			local sec
+			if obj then pcall(function() sec = obj:section() end) end
+
+			local scut = A.wclip(W.wd_out[slot], ox, oy, w, h)
+			if scut then
+				if W.wd_at() == slot then
+					A.wtint(W.wd_out[slot], 255, 170, 170, 180)
+				elseif sec then
+					A.wtint(W.wd_out[slot], 255, 96, 92, 70)
+				else
+					A.wtint(W.wd_out[slot], 255, 44, 46, 54)
+				end
+				A.wshow(W.wd_out[slot], true)
+			end
+
+			if A.wclip(W.wd_in[slot], ox + 1, oy + 1, w - 2, h - 2) then
+				A.wtint(W.wd_in[slot], 255, 14, 15, 19)
+				A.wshow(W.wd_in[slot], true)
+			end
+
+			local drew = false
+			if sec and scut then
+				local ok = pcall(A.set_icon, W.wd_ico[slot], sec)
+				if ok then
+					local iy, ih = oy + 2, h - 4
+					local icut, ibot = A.clip_ends(iy, ih)
+					if icut then
+						A.icon_clip(W.wd_ico[slot], sec, icut, ibot, ih)
+						A.wpos(W.wd_ico[slot], ox + 2, iy + icut)
+						A.wsize(W.wd_ico[slot], w - 4, ih - icut - ibot)
+						A.wtint(W.wd_ico[slot], 255, 255, 255, 255)
+						A.wshow(W.wd_ico[slot], true)
+						drew = true
+					end
+				end
+			end
+			if not drew then A.wshow(W.wd_ico[slot], false) end
+		end
+	end
+
+end
+
+
+-- ============================================================
+-- WHAT A WORN DEVICE MAY NOT BE ASKED TO DO
+--
+-- Every one of these MOVES the object out of where it is. The pack
+-- needs it exactly where it is - its can_mount looks for it in the
+-- inventory and its unmount_dropped takes the device off within 200ms
+-- of the object going anywhere - so these are entries that at best do
+-- nothing and at worst undo the wearing, and the player has no way to
+-- tell which by looking.
+--
+-- BY ACTION, NOT BY LABEL. The label is a localisation key that a
+-- translation or another mod can change; the action is the function
+-- the menu will call, which is the thing being judged.
+-- ============================================================
+local WD_NO_ENTRY = {
+	Action_UnEquip = true,   -- "move to backpack": the game's take-off
+	Action_Ruck    = true,
+	Action_Bag     = true,
+	Action_Slot    = true,
+	Action_Belt    = true,
+}
+
+-- The menu, sifted. Everything not in the list above goes through
+-- untouched, including entries added by mods this file has never heard
+-- of - which is the whole reason the menu is still the game's to build.
+function W.wd_menu(gui, obj)
+	local props = gui.item_props
+	if not (props and props.Reset) then return false end
+
+	local base, shown = props.Reset, false
+
+	props.Reset = function(self, pos, act, str, prm)
+		local a, s, p = {}, {}, {}
+		for i = 1, #act do
+			if not WD_NO_ENTRY[act[i]] then
+				a[#a + 1] = act[i]
+				s[#s + 1] = str[i]
+				p[#p + 1] = prm[i]
+			end
+		end
+
+		-- NOTHING LEFT IS NOT AN EMPTY MENU. A box with no rows in it
+		-- is a thing the player has to click away for no reason.
+		if #a == 0 then return end
+
+		shown = true
+		return base(self, pos, a, s, p)
+	end
+
+	local ok, err = pcall(function() gui:InitProperties(obj, EQU) end)
+	props.Reset = base
+
+	if not ok then log("!device menu: %s", tostring(err)) end
+	return shown
+end
+
+
+-- ============================================================
+-- THE THREE THINGS A MOUSE CAN DO TO A SLOT
+--
+-- These lived in the main script's release_m1, release_m2 and
+-- On_CC_DragDrop. They are here now, whole, and the main script calls
+-- them through the seam - which is why it no longer has to know that
+-- devices exist.
+-- ============================================================
+
+-- A LEFT CLICK ON A FILLED SLOT TAKES THE DEVICE OFF. An empty slot is
+-- not a refusal - it is a slot waiting for a drop - so it answers no
+-- and the click goes on to whatever is under it.
+function W.wd_click()
+	local slot = W.wd_at()
+	if not (slot and W.wd_obj(slot)) then return false end
+
+	W.wd_take(slot)
+	W.wd_sync()
+
+	local g = gui_now()
+	if g then pcall(function() g:On_Item_Update() end) end
+	return true
+end
+
+-- A RIGHT CLICK OPENS THE MENU THE INVENTORY WOULD HAVE BUILT, sifted.
+-- Any slot swallows the click, filled or not: the square is ours, and
+-- a right-click that fell through to the bag underneath would open the
+-- menu of whatever item happens to be painted there.
+function W.wd_rclick()
+	local slot = W.wd_at()
+	if not slot then return false end
+
+	local obj = W.wd_obj(slot)
+	if not obj then return true end
+
+	local gui = gui_now()
+	if not gui then return true end
+
+	W.wd_menu(gui, obj)
+	return true
+end
+
+-- ============================================================
+-- AND A DROP ON ONE PUTS THE DEVICE ON
+--
+-- ONLY FROM YOUR OWN LISTS. A bracer on a trader's shelf is not yours
+-- to wear.
+--
+-- ANSWERING TRUE MEANS THE STOCK HANDLER NEVER RUNS, so the item is
+-- not moved or dropped - it stays in the inventory, which is exactly
+-- where the pack needs it: its own can_mount looks for it there, and
+-- its unmount_dropped would take the device off again the moment it
+-- left.
+-- ============================================================
+function W.wd_drop(gui, bag_from, idx_from)
+	if not editing_allowed() then return false end
+	if not (bag_from == BAG or A.ours(bag_from)) then return false end
+
+	local slot = W.wd_at()
+	if not slot then return false end
+
+	local cc = gui.CC[bag_from]
+	local obj = cc and cc:GetObj(idx_from)
+	local sec
+	if obj then pcall(function() sec = obj:section() end) end
+
+	local want = W.wd_slot_for(sec)
+	if not want then
+		notify("That does not go on the bracer")
+	elseif want ~= slot then
+		notify("That goes in the other slot")
+	elseif not W.wd_put(slot, obj) then
+		-- The pack said no and said why itself; nothing here.
+		dbg("wd: %s refused into %s", tostring(sec), tostring(slot))
+	else
+		W.wd_sync()
+	end
+
+	gui:On_Item_Update()
+	return true
+end
+
+-- ============================================================
+-- THE TABLET'S PAGES, ON A KEY OF YOUR OWN
+--
+--   "i want so i dont need to doubletap when the divice is in my face
+--    but a seperate keybind to do it whenever i want."
+--
+-- The pack switches the tablet between its stats page and whatever a
+-- module adds - the minimap module's page among them - and the switch
+-- is d_promin.toggle_page(). What that is WIRED to is a double tap of
+-- the lower key: wd_inspect reads the on_double_tap field inside
+-- `if pipboy_toggled`, which is the pack's word for "the device is up
+-- in front of your face". So the GESTURE needs the tablet raised.
+--
+-- The FUNCTION does not. toggle_page asks that the tablet is attached
+-- to the bracer and nothing else. So this is a key press calling the
+-- pack's own function - the same one the gesture calls - and the
+-- gesture is left exactly where it was. Two routes to one function
+-- cannot disagree; two copies of the logic would.
+-- ============================================================
+local PAGE_KEY = "wd_page_key"
+local page_key = nil
+
+-- 0 and -1 are both "nothing bound" as far as MCM's key binder is
+-- concerned, and a key press is a number - so a key of 0 would fire on
+-- a keyboard event this mod has no business hearing.
+function W.read_page_key()
+	local v
+	if ui_mcm then
+		local ok, got = pcall(ui_mcm.get, MOD .. "/" .. GROUP .. "/" .. PAGE_KEY)
+		if ok then v = tonumber(got) end
+	end
+	if not (v and v > 0) then return nil end
+	return v
+end
+
+-- HOW MANY PAGES THERE ARE TO TURN TO. With no module fitted the
+-- tablet has one page, and the pack's own toggle would step from it
+-- back to it, play its click and change nothing - which reads as a key
+-- that is broken rather than a tablet that has nowhere to go.
+--
+-- Asked of the pack, never counted here: which modules add which pages
+-- is the pack's business and it ships more of them than this file will
+-- ever hear about.
+function W.page_count()
+	local n
+	pcall(function()
+		local p = d_promin.get_available_pages()
+		if type(p) == "table" then n = #p end
+	end)
+	return n or 0
+end
+
+function W.turn_page()
+	if not (db and db.actor) then return false end
+	if W.page_count() < 2 then return false end
+
+	-- toggle_page checks the tablet is attached and returns quietly if
+	-- it is not, so there is nothing to ask first. Wrapped because it
+	-- is another mod's function and this is a key press, not a frame
+	-- this file controls.
+	local ok, err = pcall(function() d_promin.toggle_page() end)
+	if not ok then
+		-- `log` comes from the mod, and this key works whether or not
+		-- the mod is there - so it is asked for rather than assumed.
+		if log then log("!wd page: %s", tostring(err)) end
+		return false
+	end
+	return true
+end
+
+function W.on_key(key)
+	if not (page_key and key == page_key) then return end
+
+	-- A DIALOG HAS THE KEYBOARD - the inventory, the PDA, the pack's
+	-- own window. A key pressed under one of those was aimed at it,
+	-- not here, and turning the tablet's page from inside a text box
+	-- is the kind of thing nobody reports and everybody notices.
+	local ui
+	pcall(function() ui = level.main_input_receiver() end)
+	if ui then return end
+
+	W.turn_page()
+end
+
+-- ============================================================
+-- THE SETTING
+--
+-- Its own MCM page rather than a line on the mod's, because the mod
+-- does not ship this file and a page that offers a switch for
+-- something that is not installed is a page that lies.
+-- ============================================================
+function W.refresh()
+	local v = true
+	if ui_mcm then
+		local ok, got = pcall(ui_mcm.get, MOD .. "/" .. GROUP .. "/wd_hide")
+		if ok and got ~= nil then v = got end
+	end
+	W.wd_on = v and true or false
+
+	page_key = W.read_page_key()
+end
+
+-- ============================================================
+-- THE SEAM, FILLED IN
+--
+-- Eight names, assigned in one place, so that "what this patch
+-- replaces in the mod" is a list you can read rather than eight
+-- assignments scattered through four hundred lines.
+--
+-- A.wd_worn is the same TABLE as W's, not a copy: the mod's bag filter
+-- reads it per item per refresh, and two tables to keep in step is one
+-- more than there needs to be.
+-- ============================================================
+local function install()
+	local seam
+	A, seam = zzz_armor_mag_pouches.amp_wd_seam()
+
+	GAP, EQU, BAG = seam.GAP, seam.EQU, seam.BAG
+	hit, scratch_rect = seam.hit, seam.scratch_rect
+	gui_now, editing_allowed = seam.gui_now, seam.editing_allowed
+	log, dbg, notify = seam.log, seam.dbg, seam.notify
+
+	A.wd_worn   = W.wd_worn
+	A.wd_at     = W.wd_at
+	A.wd_tick   = W.wd_tick
+	A.wd_draw   = W.draw_wd
+	A.wd_hide   = W.hide_wd
+	A.wd_click  = W.wd_click
+	A.wd_rclick = W.wd_rclick
+	A.wd_drop   = W.wd_drop
+end
+
+function on_game_start()
+	-- THE KEY FIRST, AND OUTSIDE THE HANDSHAKE BELOW. Turning the
+	-- tablet's page is between the player and the other pack; it needs
+	-- nothing from Armor Mag Pouches, so it is not lost if the mod is
+	-- missing or its door has changed.
+	W.refresh()
+	RegisterScriptCallback("on_option_change", W.refresh)
+	RegisterScriptCallback("on_key_press", W.on_key)
+
+	-- THE MOD MIGHT NOT BE THERE. This is an optional patch and somebody
+	-- will unzip it on its own, or disable the mod and forget this. So
+	-- the door is opened inside a pcall: naming the module is what makes
+	-- the lazy loader fetch it, and the pcall is what makes its absence a
+	-- quiet nothing rather than a broken inventory.
+	local ok = pcall(install)
+	if not ok then
+		A = nil
+		return
+	end
+
+	log("wearable devices: four slots and a filter")
+end

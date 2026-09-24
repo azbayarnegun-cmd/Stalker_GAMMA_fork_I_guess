@@ -1,0 +1,688 @@
+; ============================================================
+;  ARMOR MAG POUCHES - the carry boxes
+;
+;  A box is a container you carry, and it only takes one sort of thing.
+;
+;  IT HAS TWO SIZES AND THEY ARE NOT THE SAME NUMBER:
+;
+;    inv_grid_width / height   how much room it takes up in your bag
+;    amp_box_w / amp_box_h     how much room there is inside it
+;
+;  They were both "two by two out, five by five in" while there were
+;  three boxes. There are eight now, from a 2x1 food container to a 2x3
+;  armour case, so both are written out per section.
+;
+;  THE ICON RECTS ARE PRINTED BY art/mkboxdds.py and copied from its
+;  output. A slot on that sheet is permanent - inv_grid_x/y is in every
+;  save that holds the box - so a new box takes the next free slot
+;  rather than the one it looks like it belongs in.
+;
+;  WHY THESE SECTIONS LOOK LIKE THE RIGS
+;  -------------------------------------
+;  Because they ARE the rig sections with three fields changed. The rig
+;  template is af_magpouch_s from the installed magazine mod, and it is
+;  copied field for field - including class = II_ATTCH, which is what
+;  the items that DO appear in the debug spawner carry. Everything that
+;  is not identity is the template's own number. See the note at the top
+;  of mod_system_amp_rigs.ltx; it applies here word for word.
+;
+;  WHAT MAKES A BOX A BOX
+;  ----------------------
+;    amp_box       = true      the marker, read the same way amp_rig is
+;    amp_box_takes = <family>  which rules in items\amp_boxes.ltx apply
+;    amp_box_w / h             the grid inside it
+;    amp_box_kg                how much it will carry, in kilograms
+;    amp_box_stack             how many of one thing share one square
+;
+;  THE SQUARES SAY WHAT FITS; THE KILOGRAMS SAY WHAT YOU CAN LIFT. A
+;  box that is five by five inside and free to carry is a bag of
+;  holding - twenty-five squares of ammunition is most of a rucksack,
+;  in something you can also put in your rucksack. Ten is generous and
+;  still means something.
+;
+;  The stack ceiling is separate because it is about SPACE, not weight:
+;  twenty-five squares is not many if every bandage takes one. Only
+;  identical things stack - same wear, same uses, same rounds.
+;
+;  NO use_condition. A rig wears out and is mended; a box is a box. It
+;  has no bar on its icon and nothing can tear.
+;
+;  dont_stack stops the inventory merging two of them into one cell.
+;  Boxes are not interchangeable once they have something in them - each
+;  one's contents are filed against ITS object id - so two boxes must
+;  stay two objects.
+;
+;  THEY ARE NOT ON THE RIG SHEET ANY MORE:
+;
+;    "make that so rigs and boxes dont use the same file for the
+;     textures"
+;
+;  ui\ui_amp_boxes is theirs, on a 7 x 7 unit pitch, so slot (col,row)
+;  is inv_grid_x = col*7, inv_grid_y = row*7 and the rect inside it is
+;  whatever that box's shape is.
+;
+;  TWO KEYS THAT ONLY SOME OF THEM CARRY:
+;
+;    amp_box_snd = metal       what the box sounds like when its
+;                = plastic    window opens and closes. Unmarked means
+;                = cloth      plastic; the wallet says cloth, and the
+;                = chest      ammo cases say chest - a latched lid,
+;                             shipped with the mod as sounds\amp\.
+;
+;    amp_box_noweight = true   room is the only limit. The armour case.
+;    amp_box_pick = fill       the pile is ORDERED, and which one comes
+;               = cond         out depends on how you take it: letting
+;                              go hands you the best, the split key
+;                              hands you the worst. `fill` is rounds in
+;                              a magazine, `cond` is how worn a part is.
+; ============================================================
+
+[ampbox_meds]:af_base
+$spawn				                               = "artefacts\af_kevlar"
+kind			                               = i_attach
+class				                               = II_ATTCH
+amp_box                                            = true
+amp_box_takes                                      = meds
+amp_box_snd                                        = plastic
+amp_box_w                                          = 5
+amp_box_h                                          = 5
+amp_box_kg                                         = 10
+amp_box_stack                                      = 99
+visual                                             = dynamics\equipments\aa\kevlar
+description			                               = st_ampbox_meds_descr
+inv_name			                               = st_ampbox_meds_name
+inv_name_short			                           = st_ampbox_meds_name
+inv_weight			                               = 1.6
+dont_stack                                         = true
+icons_texture									   = ui\ui_amp_boxes
+inv_grid_x			                               = 0
+inv_grid_y			                               = 0
+inv_grid_width			                           = 4
+inv_grid_height			                           = 4
+inv_grid_scale			                           = 2
+cost				                               = 9500
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+attach_angle_offset		                           = 1.922,1.551,-0.740
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+health_restore_speed		                       = 0
+radiation_restore_speed		                       = 0
+satiety_restore_speed		                       = 0
+bleeding_restore_speed		                       = 0
+artefact_activation_seq		                       = af_activation_bold
+power_restore_speed		                           = -0.001
+use1_functor                                       = zzz_armor_mag_pouches.rig_no_install
+use1_action_functor                                = zzz_armor_mag_pouches.rig_no_install
+belt                                               = false
+
+[ampbox_ammo]:af_base
+$spawn				                               = "artefacts\af_kevlar"
+kind			                               = i_attach
+class				                               = II_ATTCH
+amp_box                                            = true
+amp_box_takes                                      = ammo
+amp_box_snd                                        = chest
+amp_box_w                                          = 4
+amp_box_h                                          = 2
+amp_box_kg                                         = 10
+amp_box_stack                                      = 99
+visual                                             = dynamics\equipments\aa\kevlar
+description			                               = st_ampbox_ammo_descr
+inv_name			                               = st_ampbox_ammo_name
+inv_name_short			                           = st_ampbox_ammo_name
+inv_weight			                               = 2.4
+dont_stack                                         = true
+icons_texture									   = ui\ui_amp_boxes
+inv_grid_x			                               = 7
+inv_grid_y			                               = 0
+inv_grid_width			                           = 4
+inv_grid_height			                           = 4
+inv_grid_scale			                           = 2
+cost				                               = 5500
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+attach_angle_offset		                           = 1.922,1.551,-0.740
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+health_restore_speed		                       = 0
+radiation_restore_speed		                       = 0
+satiety_restore_speed		                       = 0
+bleeding_restore_speed		                       = 0
+artefact_activation_seq		                       = af_activation_bold
+power_restore_speed		                           = -0.001
+use1_functor                                       = zzz_armor_mag_pouches.rig_no_install
+use1_action_functor                                = zzz_armor_mag_pouches.rig_no_install
+belt                                               = false
+
+[ampbox_food]:af_base
+$spawn				                               = "artefacts\af_kevlar"
+kind			                               = i_attach
+class				                               = II_ATTCH
+amp_box                                            = true
+amp_box_takes                                      = food
+amp_box_snd                                        = plastic
+amp_box_w                                          = 5
+amp_box_h                                          = 5
+amp_box_kg                                         = 10
+amp_box_stack                                      = 99
+visual                                             = dynamics\equipments\aa\kevlar
+description			                               = st_ampbox_food_descr
+inv_name			                               = st_ampbox_food_name
+inv_name_short			                           = st_ampbox_food_name
+inv_weight			                               = 2.0
+dont_stack                                         = true
+icons_texture									   = ui\ui_amp_boxes
+inv_grid_x			                               = 14
+inv_grid_y			                               = 0
+inv_grid_width			                           = 4
+inv_grid_height			                           = 4
+inv_grid_scale			                           = 2
+cost				                               = 9500
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+attach_angle_offset		                           = 1.922,1.551,-0.740
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+health_restore_speed		                       = 0
+radiation_restore_speed		                       = 0
+satiety_restore_speed		                       = 0
+bleeding_restore_speed		                       = 0
+artefact_activation_seq		                       = af_activation_bold
+power_restore_speed		                           = -0.001
+use1_functor                                       = zzz_armor_mag_pouches.rig_no_install
+use1_action_functor                                = zzz_armor_mag_pouches.rig_no_install
+belt                                               = false
+
+[ampbox_armor]:af_base
+$spawn				                               = "artefacts\af_kevlar"
+kind			                               = i_attach
+class				                               = II_ATTCH
+amp_box                                            = true
+amp_box_takes                                      = armor
+amp_box_snd                                        = metal
+amp_box_w                                          = 4
+amp_box_h                                          = 6
+amp_box_stack                                      = 1
+amp_box_noweight                                   = true
+visual                                             = dynamics\equipments\aa\kevlar
+description                                        = st_ampbox_armor_descr
+inv_name                                           = st_ampbox_armor_name
+inv_name_short                                     = st_ampbox_armor_name
+inv_weight                                         = 3.0
+dont_stack                                         = true
+icons_texture									   = ui\ui_amp_boxes
+inv_grid_x                                         = 0
+inv_grid_y                                         = 7
+inv_grid_width                                     = 4
+inv_grid_height                                    = 6
+inv_grid_scale			                           = 2
+cost                                               = 18000
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+attach_angle_offset		                           = 1.922,1.551,-0.740
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+health_restore_speed		                       = 0
+radiation_restore_speed		                       = 0
+satiety_restore_speed		                       = 0
+bleeding_restore_speed		                       = 0
+artefact_activation_seq		                       = af_activation_bold
+power_restore_speed		                           = -0.001
+use1_functor                                       = zzz_armor_mag_pouches.rig_no_install
+use1_action_functor                                = zzz_armor_mag_pouches.rig_no_install
+belt                                               = false
+
+
+[ampbox_food_small]:af_base
+$spawn				                               = "artefacts\af_kevlar"
+kind			                               = i_attach
+class				                               = II_ATTCH
+amp_box                                            = true
+amp_box_takes                                      = food
+amp_box_snd                                        = plastic
+amp_box_w                                          = 4
+amp_box_h                                          = 2
+amp_box_kg                                         = 10
+amp_box_stack                                      = 99
+visual                                             = dynamics\equipments\aa\kevlar
+description                                        = st_ampbox_food_small_descr
+inv_name                                           = st_ampbox_food_small_name
+inv_name_short                                     = st_ampbox_food_small_name
+inv_weight                                         = 0.8
+dont_stack                                         = true
+icons_texture									   = ui\ui_amp_boxes
+inv_grid_x                                         = 7
+inv_grid_y                                         = 7
+inv_grid_width                                     = 4
+inv_grid_height                                    = 2
+inv_grid_scale			                           = 2
+cost                                               = 5000
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+attach_angle_offset		                           = 1.922,1.551,-0.740
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+health_restore_speed		                       = 0
+radiation_restore_speed		                       = 0
+satiety_restore_speed		                       = 0
+bleeding_restore_speed		                       = 0
+artefact_activation_seq		                       = af_activation_bold
+power_restore_speed		                           = -0.001
+use1_functor                                       = zzz_armor_mag_pouches.rig_no_install
+use1_action_functor                                = zzz_armor_mag_pouches.rig_no_install
+belt                                               = false
+
+
+[ampbox_mags]:af_base
+$spawn				                               = "artefacts\af_kevlar"
+kind			                               = i_attach
+class				                               = II_ATTCH
+amp_box                                            = true
+amp_box_takes                                      = mags
+amp_box_snd                                        = metal
+amp_box_w                                          = 4
+amp_box_h                                          = 3
+amp_box_kg                                         = 15
+amp_box_stack                                      = 10
+amp_box_pick                                       = fill
+visual                                             = dynamics\equipments\aa\kevlar
+description                                        = st_ampbox_mags_descr
+inv_name                                           = st_ampbox_mags_name
+inv_name_short                                     = st_ampbox_mags_name
+inv_weight                                         = 2.2
+dont_stack                                         = true
+icons_texture									   = ui\ui_amp_boxes
+inv_grid_x                                         = 0
+inv_grid_y                                         = 14
+inv_grid_width                                     = 6
+inv_grid_height                                    = 4
+inv_grid_scale			                           = 2
+cost                                               = 8000
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+attach_angle_offset		                           = 1.922,1.551,-0.740
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+health_restore_speed		                       = 0
+radiation_restore_speed		                       = 0
+satiety_restore_speed		                       = 0
+bleeding_restore_speed		                       = 0
+artefact_activation_seq		                       = af_activation_bold
+power_restore_speed		                           = -0.001
+use1_functor                                       = zzz_armor_mag_pouches.rig_no_install
+use1_action_functor                                = zzz_armor_mag_pouches.rig_no_install
+belt                                               = false
+
+
+[ampbox_ammo_big]:af_base
+$spawn				                               = "artefacts\af_kevlar"
+kind			                               = i_attach
+class				                               = II_ATTCH
+amp_box                                            = true
+amp_box_takes                                      = ammo
+amp_box_snd                                        = chest
+amp_box_w                                          = 6
+amp_box_h                                          = 4
+amp_box_kg                                         = 15
+amp_box_stack                                      = 99
+visual                                             = dynamics\equipments\aa\kevlar
+description                                        = st_ampbox_ammo_big_descr
+inv_name                                           = st_ampbox_ammo_big_name
+inv_name_short                                     = st_ampbox_ammo_big_name
+inv_weight                                         = 3.8
+dont_stack                                         = true
+icons_texture									   = ui\ui_amp_boxes
+inv_grid_x                                         = 7
+inv_grid_y                                         = 14
+inv_grid_width                                     = 6
+inv_grid_height                                    = 4
+inv_grid_scale			                           = 2
+cost                                               = 10000
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+attach_angle_offset		                           = 1.922,1.551,-0.740
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+health_restore_speed		                       = 0
+radiation_restore_speed		                       = 0
+satiety_restore_speed		                       = 0
+bleeding_restore_speed		                       = 0
+artefact_activation_seq		                       = af_activation_bold
+power_restore_speed		                           = -0.001
+use1_functor                                       = zzz_armor_mag_pouches.rig_no_install
+use1_action_functor                                = zzz_armor_mag_pouches.rig_no_install
+belt                                               = false
+
+
+[ampbox_parts]:af_base
+$spawn				                               = "artefacts\af_kevlar"
+kind			                               = i_attach
+class				                               = II_ATTCH
+amp_box                                            = true
+amp_box_takes                                      = parts
+amp_box_snd                                        = metal
+amp_box_w                                          = 4
+amp_box_h                                          = 5
+amp_box_kg                                         = 15
+amp_box_stack                                      = 999
+amp_box_pick                                       = cond
+visual                                             = dynamics\equipments\aa\kevlar
+description                                        = st_ampbox_parts_descr
+inv_name                                           = st_ampbox_parts_name
+inv_name_short                                     = st_ampbox_parts_name
+inv_weight                                         = 2.4
+dont_stack                                         = true
+icons_texture									   = ui\ui_amp_boxes
+inv_grid_x                                         = 14
+inv_grid_y                                         = 14
+inv_grid_width                                     = 6
+inv_grid_height                                    = 4
+inv_grid_scale			                           = 2
+cost                                               = 12000
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+attach_angle_offset		                           = 1.922,1.551,-0.740
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+health_restore_speed		                       = 0
+radiation_restore_speed		                       = 0
+satiety_restore_speed		                       = 0
+bleeding_restore_speed		                       = 0
+artefact_activation_seq		                       = af_activation_bold
+power_restore_speed		                           = -0.001
+use1_functor                                       = zzz_armor_mag_pouches.rig_no_install
+use1_action_functor                                = zzz_armor_mag_pouches.rig_no_install
+belt                                               = false
+
+
+; ============================================================
+;  THE WALLET, WHICH IS NOT ONE OF OURS
+;
+;    "an user added so the faction patches can be stored in the wallet
+;     (this item cannot be removed from inventory so its good idea)"
+;
+;  Every section above is this mod's own. This one is the game's, and
+;  that difference is the whole of how it is written.
+;
+;  `![cash]` WITH NO PARENT. The `!` is the override marker and it
+;  merges the keys below into the section that is already there.
+;  Writing `![cash]:af_base` instead - as the file that was sent did -
+;  also RE-PARENTS the wallet onto the artefact base, and then goes on
+;  to give it $spawn, class = II_ATTCH, kind = i_attach, a visual, a
+;  mesh, activation particles and a negative power_restore_speed. That
+;  is not a wallet with a pocket added; it is an artefact container
+;  called Wallet, and everything in the game that asks what a wallet IS
+;  - the money handling, the trade rules, and the "cannot be dropped"
+;  that makes this a good idea in the first place - would be asking
+;  about something else.
+;
+;  So: the box keys, and not one field more. No $spawn, no class, no
+;  kind, no visual, no icon, no weight, no name.
+;
+;  AND NOTHING MORE IS NEEDED. A.is_box_sec reads one key -
+;  SYS_GetParam(1, sec, "amp_box") - and the window opens on anything
+;  that answers yes and is in your inventory. The class, the kind and
+;  the artefact fields on the boxes above are the rig template's own
+;  numbers, not requirements.
+;
+;  THE SQUARES AND THE WEIGHT. Twelve squares for twelve patches with
+;  room to spare, and a tenth of a kilogram so it stays a wallet: WHAT
+;  goes in is [amp_box_patches]'s business, and this is only how much
+;  of it fits.
+;
+;  amp_box_stack = 99 because in this install patches ARE a thing
+;  carried by the fistful - corpse loot, sold by weight of reputation -
+;  so one square per faction holds the whole haul and the count plate
+;  says how deep it is. It was 1 once, from before the looting habit
+;  was thought about.
+; ============================================================
+![cash]
+amp_box                                            = true
+amp_box_takes                                      = patches
+amp_box_snd                                        = cloth
+amp_box_w                                          = 3
+amp_box_h                                          = 4
+amp_box_kg                                         = 0.1
+amp_box_stack                                      = 99
+;  AND NO WEIGHT WRITTEN ON THE ICON. Every other box says how much is
+;  in it in the corner where the game would write a condition; a wallet
+;  holds patches, patches weigh nothing, and a plate that says 0.0
+;  whatever you put in it is the thing that plate replaced.
+amp_box_wt                                         = false
+
+[ampbox_docs]:af_base
+; ------------------------------------------------------------
+;  THE DOCUMENT CASE, and the only box whose window is not a grid.
+;
+;  amp_box_fan = true says its contents are drawn as fanned paper
+;  edges with a name along each, because a paper's icon tells you
+;  nothing that another paper's does not. See A.fan_lay.
+;
+;  ONE COLUMN, twenty-four rows. A fan IS a box that is one square
+;  wide - every rule about what fits and where it goes is the boxes'
+;  own, and only the size of a row and the paint on it differ.
+;
+;  NO WEIGHT LIMIT. A hundred sheets of paper weigh nothing worth
+;  counting, and a case that refused the twenty-fifth letter on the
+;  grounds of mass would be arithmetic for its own sake. Room is the
+;  limit, as it is for the armour case.
+;
+;  ONE CELL BY TWO in the bag. A flat case of paper is not a crate;
+;  it is the shape of the papers in it.
+; ------------------------------------------------------------
+$spawn				                               = "artefacts\af_kevlar"
+kind			                               = i_attach
+class				                               = II_ATTCH
+amp_box                                            = true
+amp_box_fan                                        = true
+amp_box_takes                                      = docs
+amp_box_snd                                        = cloth
+amp_box_w                                          = 1
+amp_box_h                                          = 24
+amp_box_noweight                                   = true
+amp_box_stack                                      = 20
+visual                                             = dynamics\equipments\aa\kevlar
+description			                               = st_ampbox_docs_descr
+inv_name			                               = st_ampbox_docs_name
+inv_name_short			                           = st_ampbox_docs_name
+inv_weight			                               = 0.6
+dont_stack                                         = true
+icons_texture									   = ui\ui_amp_boxes
+inv_grid_x			                               = 0
+inv_grid_y			                               = 21
+inv_grid_width			                           = 2
+inv_grid_height			                           = 4
+inv_grid_scale			                           = 2
+cost				                               = 7000
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+attach_angle_offset		                           = 1.922,1.551,-0.740
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+health_restore_speed		                       = 0
+radiation_restore_speed		                       = 0
+satiety_restore_speed		                       = 0
+bleeding_restore_speed		                       = 0
+artefact_activation_seq		                       = af_activation_bold
+power_restore_speed		                           = -0.001
+use1_functor                                       = zzz_armor_mag_pouches.rig_no_install
+use1_action_functor                                = zzz_armor_mag_pouches.rig_no_install
+belt                                               = false
+
+; ============================================================
+;  THE WEAPON CASE.
+;
+;  Three cells by two in your bag, six squares by three inside - which
+;  is one rifle laid flat with a column beside it, or a shelf of
+;  pistols and shorter things. Like the armour case: nothing stacks in
+;  it, and room is the only limit.
+; ============================================================
+[ampbox_weapon]:af_base
+$spawn				                               = "artefacts\af_kevlar"
+kind			                               = i_attach
+class				                               = II_ATTCH
+amp_box                                            = true
+amp_box_takes                                      = weapon
+amp_box_snd                                        = metal
+amp_box_w                                          = 6
+amp_box_h                                          = 3
+amp_box_stack                                      = 1
+amp_box_noweight                                   = true
+visual                                             = dynamics\equipments\aa\kevlar
+description                                        = st_ampbox_weapon_descr
+inv_name                                           = st_ampbox_weapon_name
+inv_name_short                                     = st_ampbox_weapon_name
+inv_weight                                         = 3.2
+dont_stack                                         = true
+icons_texture									   = ui\ui_amp_boxes
+inv_grid_x                                         = 7
+inv_grid_y                                         = 21
+inv_grid_width                                     = 6
+inv_grid_height                                    = 4
+inv_grid_scale			                           = 2
+cost                                               = 16000
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+attach_angle_offset		                           = 1.922,1.551,-0.740
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+health_restore_speed		                       = 0
+radiation_restore_speed		                       = 0
+satiety_restore_speed		                       = 0
+bleeding_restore_speed		                       = 0
+artefact_activation_seq		                       = af_activation_bold
+power_restore_speed		                           = -0.001
+use1_functor                                       = zzz_armor_mag_pouches.rig_no_install
+use1_action_functor                                = zzz_armor_mag_pouches.rig_no_install
+belt                                               = false
+
+; ============================================================
+;  THE BIG WEAPON CASE.
+;
+;  Five cells by two in your bag - the largest footprint of any box
+;  here - and eight by four inside, which is two rifles laid one above
+;  the other with room left over. Like the armour case: nothing stacks
+;  in it, and room is the only limit.
+;
+;  ITS ICON IS THE ONE THING ON THAT SHEET THAT DOES NOT FIT A SLOT.
+;  Five cells is 500 px of texture and the sheet's pitch is 350, so it
+;  runs into the slot to its right and that slot is reserved for it.
+;  See art/mkboxdds.py, where the collision check counts rectangles
+;  rather than slots for exactly this.
+; ============================================================
+[ampbox_weapon_big]:af_base
+$spawn				                               = "artefacts\af_kevlar"
+kind			                               = i_attach
+class				                               = II_ATTCH
+amp_box                                            = true
+amp_box_takes                                      = weapon
+amp_box_snd                                        = metal
+amp_box_w                                          = 8
+amp_box_h                                          = 4
+amp_box_stack                                      = 1
+amp_box_noweight                                   = true
+visual                                             = dynamics\equipments\aa\kevlar
+description                                        = st_ampbox_weapon_big_descr
+inv_name                                           = st_ampbox_weapon_big_name
+inv_name_short                                     = st_ampbox_weapon_big_name
+inv_weight                                         = 5.5
+dont_stack                                         = true
+icons_texture									   = ui\ui_amp_boxes
+inv_grid_x                                         = 14
+inv_grid_y                                         = 21
+inv_grid_width                                     = 10
+inv_grid_height                                    = 4
+inv_grid_scale			                           = 2
+cost                                               = 26000
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+attach_angle_offset		                           = 1.922,1.551,-0.740
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+health_restore_speed		                       = 0
+radiation_restore_speed		                       = 0
+satiety_restore_speed		                       = 0
+bleeding_restore_speed		                       = 0
+artefact_activation_seq		                       = af_activation_bold
+power_restore_speed		                           = -0.001
+use1_functor                                       = zzz_armor_mag_pouches.rig_no_install
+use1_action_functor                                = zzz_armor_mag_pouches.rig_no_install
+belt                                               = false

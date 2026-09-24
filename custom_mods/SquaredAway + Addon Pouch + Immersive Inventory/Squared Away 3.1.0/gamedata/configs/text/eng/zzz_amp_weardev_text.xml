@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="ui_mcm_menu_ampwd_general">
+		<text>AMP: Wearable Devices</text>
+	</string>
+
+	<string id="ui_mcm_amp_weardev">
+		<text>AMP: Wearable Devices</text>
+	</string>
+
+	<string id="ui_mcm_amp_weardev_wd_general">
+		<text>Wearable Devices</text>
+	</string>
+
+	<string id="ui_mcm_amp_weardev_wd_hide">
+		<text>Worn arm devices take no bag space</text>
+	</string>
+
+	<string id="ui_mcm_amp_weardev_wd_general_wd_hide">
+		<text>Worn arm devices take no bag space</text>
+	</string>
+
+	<string id="ui_mcm_wd_general_wd_hide">
+		<text>Worn arm devices take no bag space</text>
+	</string>
+
+	<string id="ui_mcm_amp_weardev_wd_page_key">
+		<text>Switch tablet page (stats / minimap) at any time</text>
+	</string>
+	<string id="ui_mcm_amp_weardev_wd_general_wd_page_key">
+		<text>Switch tablet page (stats / minimap) at any time</text>
+	</string>
+	<string id="ui_mcm_wd_general_wd_page_key">
+		<text>Switch tablet page (stats / minimap) at any time</text>
+	</string>
+	<string id="ui_mcm_squared_away_wd_general">
+		<text>Wearable Devices patch</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_wd_general_wd_general">
+		<text>Wearable Devices</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_wd_general_wd_hide">
+		<text>Worn arm devices take no bag space</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_wd_general_wd_page_key">
+		<text>Switch tablet page (stats / minimap) at any time</text>
+	</string>
+
+	<string id="ui_mcm_menu_squared_away">
+		<text>Squared Away</text>
+	</string>
+
+	<string id="ui_mcm_menu_wd_general">
+		<text>Wearable Devices patch</text>
+	</string>
+
+</string_table>

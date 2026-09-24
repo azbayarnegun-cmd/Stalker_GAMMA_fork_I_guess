@@ -1,10 +1,10 @@
 # Inventory set: Squared Away, Layered Pouches, HD Icons, FIUT, Seamless Sort
 
-**Status:** partially uploaded 2026-09-24 (MO2 `meta.ini` files removed). The web upload had **exactly 100 files**, GitHub's per-upload limit, and Squared Away and Layered Pouches arrived with configs only. Their scripts, UI XML and textures are most likely missing and need a second upload.
+**Status:** Squared Away now complete (chat zip); rest partially uploaded 2026-09-24 (MO2 `meta.ini` files removed). The web upload had **exactly 100 files**, GitHub's per-upload limit, and Squared Away and Layered Pouches arrived with configs only. Their scripts, UI XML and textures are most likely missing and need a second upload.
 
 | Folder | Version | What it is | Uploaded so far |
 |---|---|---|---|
-| `Squared Away 3.1.0/` | 3.1.0 | Rigs, pouches, boxes (`amp_*`): item defs, crafting/parts, trader stock (`items/trade/mod_trade_*_amp.ltx`), death loot, GAMMA tier/treasure hooks (`mod_grok_items_tier_amp.ltx`, `mod_grok_treasure_manager_amp.ltx`), start loadouts, Mags Redux outfit loadouts, grid packs/stacks, SortingPlus config | 41 config files; **no scripts / UI / textures (incomplete?)** |
+| `Squared Away 3.1.0/` | 3.1.0 | Rigs, pouches, boxes (`amp_*`): item defs (`mod_system_amp_boxes/amp_rigs/zz_amp_pouches.ltx`), scripts (`zzz_armor_mag_pouches`, `zzz_amp_grid`, `zzz_amp_weardev`, `zzz_amp_compat`, MCMs, `zzz_zzz_qaw_meds_pocket_only`), UI (`zzz_amp*.xml`, `actor_menu_grid_16.xml`, `ui_inventory_16.xml`), textures (`ui_actor_menu.dds` 62 MB, `ui_amp_boxes.dds`, `ui_amp_rigs.dds`), sounds, trader stock, crafting, loadouts | **Complete** (71 files; full zip via chat 2026-09-24) |
 | `SA_Layered_Pouches_1.5.3_SA310_PouchGrid_r11/` | 1.5.3 (for SA 3.1.0, PouchGrid r11) | Layered pouches addon for Squared Away (`amp_layers`) | 31 config/text files; **no scripts (incomplete?)** |
 | `HD_Inventory_Icons_Framework/` | MO2 d2026.9.4 | HD icon framework and icon layering/overrides | 14 scripts |
 | `FIUT_StashOnly_v1.0.0/` | 1.0.0 | Category headers in stash inventory | 7 files |
@@ -25,7 +25,16 @@ All in `HD_Inventory_Icons_Framework/gamedata/scripts/`:
 
 The HD Icons framework is built to replace these, so it must load **after (higher priority than)** all of them. Any GAMMA change in these scripts (e.g. `utils_ui.script` from `G.A.M.M.A. UI`) is lost while it wins. That's the first place to look if tooltips, condition bars or icons misbehave.
 
-No path conflicts for Squared Away, Layered Pouches, FIUT or Seamless Sort (they use DLTX `mod_*` / `zzz_*` files). Squared Away's trade DLTX stacks on top of GAMMA's trader configs (`G.A.M.M.A. Economy`).
+**Squared Away 3.1.0 conflicts with GAMMA:**
+- `configs/ui/ui_inventory_16.xml`: also in `G.A.M.M.A. Accurate Defense Values`.
+- `textures/ui/ui_actor_menu.dds`: also in `G.A.M.M.A. Accurate Defense Values` and `G.A.M.M.A. Guns Have No Condition`.
+Squared Away needs its versions for the grid/rig UI, so it must load after those. GAMMA's inventory layout/texture changes from them are replaced.
+
+**Squared Away files replaced by your own addons (intended):** `zzz_amp_grid.script` (10, then 55), `zzz_armor_mag_pouches.script` (62), and `mod_grok_items_tier_amp.ltx`, `mod_grok_treasure_manager_amp.ltx`, `zzz_grid_stacks.ltx` (30).
+
+**Still undefined:** `amp_pouch_provisions`, `amplayer_sustainment_pouch_t1`–`t3` are modified by your addons but not defined in any uploaded file. They're probably in the full Layered Pouches.
+
+No path conflicts for FIUT or Seamless Sort (they use DLTX `mod_*` / `zzz_*` files). Squared Away's trade DLTX stacks on top of GAMMA's trader configs (`G.A.M.M.A. Economy`).
 
 - **"Immersive Inventory"** = addon `50_SA_Immersive_Inventory_Access` in `SA addons (own)/` (see below).
 - **Source links:** _(fill in)_

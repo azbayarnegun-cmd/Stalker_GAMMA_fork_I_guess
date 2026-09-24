@@ -1,0 +1,51 @@
+--[[
+	MCM registration for the Armor Mag Pouches wearable-devices patch.
+
+	Its own page rather than a line on the mod's, because the mod does
+	not ship this file - and a page that offers a switch for something
+	that is not installed is a page that lies.
+
+	The rules the main mod's MCM file learned the hard way apply here
+	too and are not repeated: root -> subgroup -> options, `sh` on the
+	SUBGROUP and never on the root, and no engine calls at chunk scope.
+--]]
+
+-- ============================================================
+-- A DEFAULT THAT IS UNLIKELY TO BE SOMEBODY ELSE'S
+--
+-- ' is about the only key in this game nothing is bound to. The chain
+-- is here because DIK_keys is an ENGINE EXPORT and a `def` that came
+-- out nil takes MCM's key binder down with it - the third of the three
+-- ways a page comes up blank, listed at the top of the mod's own MCM
+-- file. 40 is the DirectInput code for the apostrophe, and is what
+-- answers if the table has neither name.
+--
+-- on_mcm_load is a safe place to read it. Chunk scope is not.
+-- ============================================================
+local function page_key_default()
+	local d = rawget(_G, "DIK_keys")
+	if not d then return 40 end
+	return d.DIK_APOSTROPHE or d.DIK_GRAVE or 40
+end
+
+local function title(id)
+	return { id = id, type = "slide", link = "ui_options_slider_player",
+	         text = "ui_mcm_menu_ampwd_" .. id, size = { 512, 50 }, spacing = 20 }
+end
+
+-- A SECTION, NOT A PAGE. See the note in the grid's MCM file: the
+-- mod is one entry in the list now, and this is the part of it
+-- that only exists when the patch is installed.
+function sqa_options()
+	local general = {
+		title("general"),
+		{ id = "wd_hide", type = "check", val = 1, def = true },
+
+		-- Switch the tablet between its stats page and a module's -
+		-- the minimap's, say - without raising it to your face first.
+		{ id = "wd_page_key", type = "key_bind", val = 2,
+		  def = page_key_default() },
+	}
+
+	return general
+end

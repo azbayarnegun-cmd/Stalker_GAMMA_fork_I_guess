@@ -1,0 +1,1132 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+
+	<string id="ui_mcm_menu_ArmorMagPouches">
+		<text>Armor Mag Pouches 1.79.1-grid</text>
+	</string>
+
+	<string id="ui_mcm_title_ArmorMagPouches">
+		<text>Armor Mag Pouches 1.79.1-grid</text>
+	</string>
+
+	<string id="ui_mcm_menu_amp_general">
+		<text>Armor Mag Pouches - build 3.1.0-test</text>
+	</string>
+
+	<string id="ui_mcm_menu_ArmorMagPouches_amp_general">
+		<text>Общие - сборка 1.79.1-grid</text>
+	</string>
+
+	<string id="ui_mcm_title_amp_general">
+		<text>Общие - сборка 1.79.1-grid</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_enable">
+		<text>Включить подсумки для магазинов</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_enable">
+		<text>Включить подсумки для магазинов</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_enable">
+		<text>Включить подсумки для магазинов</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_hide_grid">
+		<text>Скрывать магазины в подсумках из сетки инвентаря</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_hide_grid">
+		<text>Скрывать магазины в подсумках из сетки инвентаря</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_hide_grid">
+		<text>Скрывать магазины в подсумках из сетки инвентаря</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_rig_wear">
+		<text>Разгрузки изнашиваются от получаемого вами урона</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_rig_wear">
+		<text>Разгрузки изнашиваются от получаемого вами урона</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_rig_wear">
+		<text>Разгрузки изнашиваются от получаемого вами урона</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_rig_is_all">
+		<text>Разгрузка является всей вашей экипировкой (рюкзаки и артефакты не дают места)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_rig_is_all">
+		<text>Разгрузка является всей вашей экипировкой (рюкзаки и артефакты не дают места)</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_rig_is_all">
+		<text>Разгрузка является всей вашей экипировкой (рюкзаки и артефакты не дают места)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_debug">
+		<text>Записывать диагностические данные в игровой журнал</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_debug">
+		<text>Записывать диагностические данные в игровой журнал</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_debug">
+		<text>Записывать диагностические данные в игровой журнал</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_wear_loot">
+		<text>Разгрузки, найденные в мире, появляются повреждёнными</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_wear_loot">
+		<text>Разгрузки, найденные в мире, появляются повреждёнными</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_wear_loot">
+		<text>Разгрузки, найденные в мире, появляются повреждёнными</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_left">
+		<text>Открывать СПРАВА от панели экипировки</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_left">
+		<text>Открывать СПРАВА от панели экипировки</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_left">
+		<text>Открывать СПРАВА от панели экипировки</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_dx">
+		<text>Сдвиг по горизонтали</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_dx">
+		<text>Сдвиг по горизонтали</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_dx">
+		<text>Сдвиг по горизонтали</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_dy">
+		<text>Сдвиг по вертикали</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_dy">
+		<text>Сдвиг по вертикали</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_dy">
+		<text>Сдвиг по вертикали</text>
+	</string>
+
+	<string id="st_amp_open">
+		<text>Подсумки для магазинов</text>
+	</string>
+
+	<string id="st_amp_close">
+		<text>Закрыть подсумки для магазинов</text>
+	</string>
+
+	<string id="st_amp_strip">
+		<text>Снять разгрузку</text>
+	</string>
+
+	<string id="st_amp_openrig">
+		<text>Открыть разгрузку</text>
+	</string>
+
+	<string id="st_amp_shutrig">
+		<text>Закрыть разгрузку</text>
+	</string>
+
+	<string id="st_amp_openbox">
+		<text>Открыть контейнер</text>
+	</string>
+
+	<string id="st_amp_shutbox">
+		<text>Закрыть контейнер</text>
+	</string>
+
+	<string id="st_amp_wear">
+		<text>Надеть разгрузку</text>
+	</string>
+
+	<string id="st_amp_detach">
+		<text>Снять подсумок</text>
+	</string>
+
+	<string id="st_amp_unrig">
+		<text>Извлечь из подсумка</text>
+	</string>
+
+
+	<string id="st_amp_spawn_rig">
+		<text>Создать тестовую разгрузку (отладка)</text>
+	</string>
+
+	<string id="st_amp_spawn_box">
+		<text>Создать тестовый контейнер (отладка)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_anchor_bag">
+		<text>Слот разгрузки и подсумки в колонке рюкзака (сборка с сеткой)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_anchor_bag">
+		<text>Слот разгрузки и подсумки в колонке рюкзака (сборка с сеткой)</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_anchor_bag">
+		<text>Слот разгрузки и подсумки в колонке рюкзака (сборка с сеткой)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_med">
+		<text>Medicine is governed by the rig</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_med">
+		<text>Medicine is governed by the rig</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_med">
+		<text>Medicine is governed by the rig</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_med_only">
+		<text>With the inventory shut, only medicine in the rig can be used</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_med_only">
+		<text>With the inventory shut, only medicine in the rig can be used</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_med_only">
+		<text>With the inventory shut, only medicine in the rig can be used</text>
+	</string>
+	<string id="ui_mcm_ArmorMagPouches_amp_sounds">
+		<text>Звуки инвентаря (подсумки, контейнеры, окна)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_sounds">
+		<text>Звуки инвентаря (подсумки, контейнеры, окна)</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_sounds">
+		<text>Звуки инвентаря (подсумки, контейнеры, окна)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_sndvol">
+		<text>Громкость звуков инвентаря (0.1–3)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_sndvol">
+		<text>Громкость звуков инвентаря (0.1–3)</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_sndvol">
+		<text>Громкость звуков инвентаря (0.1–3)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_boxhover">
+		<text>Окно контейнера открывается после наведения на него перетаскиваемого предмета (секунды, 0 = выкл.)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_boxhover">
+		<text>Окно контейнера открывается после наведения на него перетаскиваемого предмета (секунды, 0 = выкл.)</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_boxhover">
+		<text>Окно контейнера открывается после наведения на него перетаскиваемого предмета (секунды, 0 = выкл.)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_rot_key">
+		<text>Поворачивать удерживаемый предмет над контейнером</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_rot_key">
+		<text>Поворачивать удерживаемый предмет над контейнером</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_rot_key">
+		<text>Поворачивать удерживаемый предмет над контейнером</text>
+	</string>
+
+	<string id="ui_mcm_squared_away">
+		<text>Squared Away 3.1.0-test</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general">
+		<text>Armor Mag Pouches</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_enable">
+		<text>Включить подсумки для магазинов</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_hide_grid">
+		<text>Скрывать магазины в подсумках из сетки инвентаря</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_rig_wear">
+		<text>Разгрузки изнашиваются от получаемого вами урона</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_rig_is_all">
+		<text>Разгрузка является всей вашей экипировкой (рюкзаки и артефакты не дают места)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_debug">
+		<text>Записывать диагностические данные в игровой журнал</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_wear_loot">
+		<text>Разгрузки, найденные в мире, появляются повреждёнными</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_left">
+		<text>Открывать СПРАВА от панели экипировки</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_dx">
+		<text>Сдвиг по горизонтали</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_dy">
+		<text>Сдвиг по вертикали</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_anchor_bag">
+		<text>Слот разгрузки и подсумки в колонке рюкзака (сборка с сеткой)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_med">
+		<text>Medicine is governed by the rig</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_med_only">
+		<text>With the inventory shut, only medicine in the rig can be used</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_sounds">
+		<text>Звуки инвентаря (подсумки, контейнеры, окна)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_sndvol">
+		<text>Громкость звуков инвентаря (0.1–3)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_boxhover">
+		<text>Окно контейнера открывается после наведения на него перетаскиваемого предмета (секунды, 0 = выкл.)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_rot_key">
+		<text>Поворачивать удерживаемый предмет над контейнером</text>
+	</string>
+
+	<string id="ui_mcm_menu_squared_away">
+		<text>Squared Away</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_layout">
+		<text>Расположение инвентаря</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_layout_desc">
+		<text>Порядок расположения трёх колонок. «По умолчанию Anomaly» использует стандартный порядок игры: другая сторона слева, надетая экипировка посередине, ваш рюкзак справа. «Как в Tarkov» размещает экипировку у левого края, а рюкзак рядом с ней. Всё остальное остаётся одинаковым, меняется только положение колонок.</text>
+	</string>
+
+	<string id="squared_away_amp_general_amp_layout_lst_amp_layout_default">
+		<text>По умолчанию Anomaly</text>
+	</string>
+
+	<string id="squared_away_amp_general_amp_layout_lst_amp_layout_tarkov">
+		<text>Как в Tarkov</text>
+	</string>
+
+	<string id="ui_mcm_lst_amp_layout_default">
+		<text>По умолчанию Anomaly</text>
+	</string>
+
+	<string id="ui_mcm_lst_amp_layout_tarkov">
+		<text>Как в Tarkov</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_loot_box">
+		<text>Складывать добычу в контейнеры</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_loot_box_desc">
+		<text>Любой подобранный или добытый предмет помещается в переносимый вами контейнер, в котором уже есть такой же предмет. Контейнер также можно перетащить прямо из списка предметов тела. Предмет помещается только в контейнер, где уже есть такой же тип предмета: наличие предмета внутри означает, что вы уже указали, где ему следует находиться.</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_ammo_gate">
+		<text>Guns with no magazine reload out of the rig only</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_ammo_gate">
+		<text>Guns with no magazine reload out of the rig only</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_ammo_gate">
+		<text>Guns with no magazine reload out of the rig only</text>
+	</string>
+
+	<!-- BEGIN GENERATED RIGS - art/mkstrings.py, do not hand-edit -->
+	<string id="st_amprig_bandolier_name">
+		<text>Патронташ</text>
+	</string>
+
+	<string id="st_amprig_bandolier_descr">
+		<text>Простая оливковая стропа крест-накрест на спине, три подсумка с открытым верхом и небольшой административный карман. То, что выдают новичку и с чем новичку приходится обходиться. Щёлкните по нему правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<string id="st_amprig_barakholka_name">
+		<text>Разгрузка «Барахолка»</text>
+	</string>
+
+	<string id="st_amprig_barakholka_descr">
+		<text>Лоскутное изделие с барахолки: три разных подсумка, пришитых к ремню кем-то, кому явно мало заплатили. Бандитская экипировка, и выглядит соответственно. Щёлкните по ней правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<string id="st_amprig_bastion_name">
+		<text>Патрульная разгрузка «Бастион»</text>
+	</string>
+
+	<string id="st_amprig_bastion_descr">
+		<text>Штатная экипировка. Простая, квадратная, организованная, и каждый подсумок на ней нормально закрывается. Большие подсумки квадратные, для барабанных магазинов: в них помещаются барабаны и коробки с лентами, но длинные магазины не помещаются. Щёлкните по ней правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<string id="st_amprig_carrier_name">
+		<text>Разгрузка «Штурм»</text>
+	</string>
+
+	<string id="st_amprig_carrier_descr">
+		<text>Разгрузка, сведённая практически к одной стропе: петли для патронов по груди и подсумок на каждой панели. Штурмовая экипировка от груди до спины. Большие подсумки квадратные, для барабанных магазинов: в них помещаются барабаны и коробки с лентами, но длинные магазины не помещаются. Щёлкните по ней правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<string id="st_amprig_chicom_name">
+		<text>Лифчик</text>
+	</string>
+
+	<string id="st_amprig_chicom_descr">
+		<text>Рабочая разгрузка: магазины торчат наружу, нож в ножнах, ножницы и медицинский подсумок, обмотанный лентой. Половина Зоны носит такую. Большие подсумки квадратные, для барабанных магазинов: в них помещаются барабаны и коробки с лентами, но длинные магазины не помещаются. Щёлкните по нему правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<string id="st_amprig_harness_name">
+		<text>Кордонная разгрузка</text>
+	</string>
+
+	<string id="st_amprig_harness_descr">
+		<text>Песочные ремни поверх плоской панели с аккуратно пришитыми подсумками. Работа одиночки, продаётся на Кордоне, первая разгрузка, которую действительно стоит носить. Щёлкните по ней правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<string id="st_amprig_karkas_name">
+		<text>Полевой каркас «Каркас»</text>
+	</string>
+
+	<string id="st_amprig_karkas_descr">
+		<text>Каркас эколога: глубокие карманы для образцов, провод рации через плечо и ни одной детали, которая гремит. Большие подсумки длинные и узкие: в них помещаются удлинённые магазины и магазины РПК, но не барабаны. Щёлкните по нему правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<string id="st_amprig_leshy_name">
+		<text>Леший</text>
+	</string>
+
+	<string id="st_amprig_leshy_descr">
+		<text>Рация с антенной с одной стороны, ряд подсумков спереди и эластичный шнур поверх всего этого. Разведывательная разгрузка, и при этом тихая. Большие подсумки длинные и узкие: в них помещаются удлинённые магазины и магазины РПК, но не барабаны. Щёлкните по нему правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<string id="st_amprig_nylon_name">
+		<text>Нейлоновая разгрузка «Вепрь»</text>
+	</string>
+
+	<string id="st_amprig_nylon_descr">
+		<text>Чёрный нейлон наёмника: четыре магазина вертикально спереди, плоский административный подсумок между двумя большими карманами с клапанами. Сделана под стальные магазины НАТО. Щёлкните по ней правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<string id="st_amprig_rubezh_name">
+		<text>Разгрузка «Рубеж»</text>
+	</string>
+
+	<string id="st_amprig_rubezh_descr">
+		<text>Чёрная наёмничья разгрузка удлинённого типа. Самые глубокие подсумки из всех продаваемых, и ничто на ней не извиняется за вес. Большие подсумки длинные и узкие: в них помещаются удлинённые магазины и магазины РПК, но не барабаны. Щёлкните по ней правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<string id="st_amprig_scout_name">
+		<text>Разведывательная лямка</text>
+	</string>
+
+	<string id="st_amprig_scout_descr">
+		<text>Тонкая разгрузочная система тёмного камуфляжного цвета: подсумок для гранат, пара карманов и места ровно столько, сколько уже есть у вас. Щёлкните по ней правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<string id="st_amprig_smersh_name">
+		<text>Смерш-АК</text>
+	</string>
+
+	<string id="st_amprig_smersh_descr">
+		<text>Армейская разведывательная экипировка: пояс и нагрудная панель, работающие вместе, с подсумками, достаточно глубокими для длинного магазина. Большие подсумки длинные и узкие: в них помещаются удлинённые магазины и магазины РПК, но не барабаны. Щёлкните по нему правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<string id="st_amprig_tarzan_name">
+		<text>Тарзан-М22</text>
+	</string>
+
+	<string id="st_amprig_tarzan_descr">
+		<text>Тяжёлая армейская разгрузка: широкая нагрудная панель с подсумками для сброса, предназначенная для переноски большего количества вещей, чем вам вообще следует таскать. Большие подсумки квадратные, для барабанных магазинов: в них помещаются барабаны и коробки с лентами, но длинные магазины не помещаются. Щёлкните по нему правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<string id="st_amprig_volya_name">
+		<text>Рейдерская разгрузка «Воля»</text>
+	</string>
+
+	<string id="st_amprig_volya_descr">
+		<text>Собственная экипировка «Свободы», выцветшая зелень, заметные нашивки, тихие пряжки и ряд подсумков спереди. Большие подсумки длинные и узкие: в них помещаются удлинённые магазины и магазины РПК, но не барабаны. Щёлкните по ней правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<string id="st_amprig_vydra_name">
+		<text>Болотная разгрузка «Выдра»</text>
+	</string>
+
+	<string id="st_amprig_vydra_descr">
+		<text>Брезент «Чистого неба», посеревший от болотной воды, фляга на бедре, каждый шов покрыт воском. Большие подсумки квадратные, для барабанных магазинов: в них помещаются барабаны и коробки с лентами, но длинные магазины не помещаются. Щёлкните по ней правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<string id="st_amprig_warsaw_name">
+		<text>Избыточная разгрузка 6Ш92</text>
+	</string>
+
+	<string id="st_amprig_warsaw_descr">
+		<text>Оливковый брезент с клапанами на крестообразной строчке и карманом на молнии снизу. Старый армейский образец и всё ещё надёжный выбор. Щёлкните по ней правой кнопкой и поместите в слот разгрузки в верхней части средней колонки. В ячейку помещается всё, что в неё влезает — магазины, медикаменты, россыпные патроны, — и именно то, что лежит в разгрузке, доступно в бою; два соседних слота принимают дополнительные подсумки.</text>
+	</string>
+
+	<!-- END GENERATED RIGS -->
+	<!-- BEGIN GENERATED BOXES - art/mkstrings.py, do not hand-edit -->
+	<string id="st_ampbox_ammo_name">
+		<text>Контейнер для хранения боеприпасов</text>
+	</string>
+
+	<string id="st_ampbox_ammo_descr">
+		<text>Оливковая сталь армейского излишка с ручкой из стропы и трафаретом крылатого патрона сбоку. Тяжёлый пустым. Ещё тяжелее полным. Внутри 4 на 2 клетки, вместимость 10 кг. Принимает боеприпасы и ничего больше. Одинаковые предметы складываются в одну клетку, до 99 штук. Щёлкните правой кнопкой, чтобы открыть его, затем перетаскивайте предметы внутрь и наружу. Не складывается с другим таким контейнером, содержимое принадлежит именно этому контейнеру.</text>
+	</string>
+
+	<string id="st_ampbox_ammo_big_name">
+		<text>Большой контейнер для хранения боеприпасов</text>
+	</string>
+
+	<string id="st_ampbox_ammo_big_descr">
+		<text>Та же сталь, но в ящике, который приходится держать обеими руками: четыре защёлки, трафаретный круг на крышке и целая стальная стена внутри. Внутри 6 на 4 клетки, вместимость 15 кг. Принимает боеприпасы и ничего больше. Одинаковые предметы складываются в одну клетку, до 99 штук. Щёлкните правой кнопкой, чтобы открыть его, затем перетаскивайте предметы внутрь и наружу. Не складывается с другим таким контейнером, содержимое принадлежит именно этому контейнеру.</text>
+	</string>
+
+	<string id="st_ampbox_armor_name">
+		<text>Контейнер для брони</text>
+	</string>
+
+	<string id="st_ampbox_armor_descr">
+		<text>Чёрный композитный контейнер на массивных защёлках, с трафаретным изображением человека в защитном костюме на крышке. Достаточно глубокий для плитоноски и достаточно жёсткий, чтобы ничего внутри не погнулось. Внутри 4 на 6 клеток, ограничений по весу нет: если помещается, значит помещается. Принимает броню, шлемы и маски, и разгрузки и ничего больше. Предметы не складываются: один предмет на клетку. Щёлкните правой кнопкой, чтобы открыть его, затем перетаскивайте предметы внутрь и наружу. Не складывается с другим таким контейнером, содержимое принадлежит именно этому контейнеру.</text>
+	</string>
+
+	<string id="st_ampbox_docs_name">
+		<text>Папка для документов</text>
+	</string>
+
+	<string id="st_ampbox_docs_descr">
+		<text>Потёртая кожаная наплечная папка с одной застёжкой, клапан размягчился на сгибе. Документы стоят внутри на ребре, поэтому названия читаются по корешкам, а не приходится вытряхивать карман, полный одинаковых сложенных листов. Внутри 1 на 24 клетки, ограничений по весу нет: если помещается, значит помещается. Принимает документы и ничего больше. Одинаковые предметы складываются в одну клетку, до 20 штук. Щёлкните правой кнопкой, чтобы открыть её, затем перетаскивайте предметы внутрь и наружу. Не складывается с другой такой папкой, содержимое принадлежит именно этой папке.</text>
+	</string>
+
+	<string id="st_ampbox_food_name">
+		<text>Большой контейнер для еды</text>
+	</string>
+
+	<string id="st_ampbox_food_descr">
+		<text>Серый полевой холодильник на плечевом ремне, чёрные защёлки, трафареты ножа и вилки спереди и достаточная теплоизоляция, чтобы холодное внутри оставалось холодным. Внутри 5 на 5 клеток, вместимость 10 кг. Принимает еду, напитки, приготовленное мясо мутантов и сырое мясо мутантов и ничего больше. Одинаковые предметы складываются в одну клетку, до 99 штук. Щёлкните правой кнопкой, чтобы открыть его, затем перетаскивайте предметы внутрь и наружу. Не складывается с другим таким контейнером, содержимое принадлежит именно этому контейнеру.</text>
+	</string>
+
+	<string id="st_ampbox_food_small_name">
+		<text>Маленький контейнер для еды</text>
+	</string>
+
+	<string id="st_ampbox_food_small_descr">
+		<text>Небольшой холодильник на колёсиках с синей крышкой, ножом и вилкой сбоку. Скорее для однодневной вылазки, чем для недели. Внутри 4 на 2 клетки, вместимость 10 кг. Принимает еду, напитки, приготовленное мясо мутантов и сырое мясо мутантов и ничего больше. Одинаковые предметы складываются в одну клетку, до 99 штук. Щёлкните правой кнопкой, чтобы открыть его, затем перетаскивайте предметы внутрь и наружу. Не складывается с другим таким контейнером, содержимое принадлежит именно этому контейнеру.</text>
+	</string>
+
+	<string id="st_ampbox_mags_name">
+		<text>Коробка для магазинов</text>
+	</string>
+
+	<string id="st_ampbox_mags_descr">
+		<text>Оливковый ящик с тремя магазинами, закреплёнными под крышкой стропами. Всё стоит вертикально и ничего не гремит. Внутри 4 на 3 клетки, вместимость 15 кг. Принимает магазины и ничего больше. Одинаковые предметы складываются в одну клетку, до 10 штук. Извлечение стопки выдаёт самый полный магазин; если удерживать клавишу разделения, выдаётся самый пустой. Щёлкните правой кнопкой, чтобы открыть её, затем перетаскивайте предметы внутрь и наружу. Не складывается с другой такой коробкой, содержимое принадлежит именно этой коробке.</text>
+	</string>
+
+	<string id="st_ampbox_meds_name">
+		<text>Полевой медицинский контейнер</text>
+	</string>
+
+	<string id="st_ampbox_meds_descr">
+		<text>Матовый пластиковый контейнер с тёмно-красными защёлками и трафаретом крылатого щита на крышке. Водонепроницаемый, ему безразлично, что происходит с погодой снаружи. Внутри 5 на 5 клеток, вместимость 10 кг. Принимает медицинские принадлежности и ничего больше. Одинаковые предметы складываются в одну клетку, до 99 штук. Щёлкните правой кнопкой, чтобы открыть его, затем перетаскивайте предметы внутрь и наружу. Не складывается с другим таким контейнером, содержимое принадлежит именно этому контейнеру.</text>
+	</string>
+
+	<string id="st_ampbox_parts_name">
+		<text>Контейнер для деталей</text>
+	</string>
+
+	<string id="st_ampbox_parts_descr">
+		<text>Плоский оливковый жёсткий контейнер с трафаретом крылатого ящика. Внутри поролон, и ему безразлично, снята ли деталь с винтовки или с костюма. Внутри 4 на 5 клеток, вместимость 15 кг. Принимает детали оружия и брони и ничего больше. Одинаковые предметы складываются в одну клетку в количестве, ограниченном весом. Извлечение стопки выдаёт наименее изношенную деталь; если удерживать клавишу разделения, выдаётся наиболее изношенная. Щёлкните правой кнопкой, чтобы открыть его, затем перетаскивайте предметы внутрь и наружу. Не складывается с другим таким контейнером, содержимое принадлежит именно этому контейнеру.</text>
+	</string>
+
+	<string id="st_ampbox_weapon_name">
+		<text>Кейс для оружия</text>
+	</string>
+
+	<string id="st_ampbox_weapon_descr">
+		<text>Жёсткий оливковый кейс на двух защёлках, с трафаретом винтовки и крыльев на крышке. Внутри вырезанный по форме поролон, поэтому оружие выходит оттуда ровно таким, каким его туда положили. Прицелы, глушители и подствольники — это обвесы, им место не здесь. Внутри 6 на 3 клетки, ограничений по весу нет: если помещается, значит помещается. Принимает оружие и ничего больше. Предметы не складываются: один предмет на клетку. Щёлкните правой кнопкой, чтобы открыть его, затем перетаскивайте предметы внутрь и наружу. Не складывается с другим таким кейсом, содержимое принадлежит именно этому кейсу.</text>
+	</string>
+
+	<string id="st_ampbox_weapon_big_name">
+		<text>Большой кейс для оружия</text>
+	</string>
+
+	<string id="st_ampbox_weapon_big_descr">
+		<text>Длинный оливковый оружейный кейс: чёрные накладки на всех четырёх углах, ряд защёлок спереди и крылатый герб, отпечатанный на крышке дважды. Сделан так, чтобы его можно было сбросить с грузовика вместе с чем-то дорогим внутри. Прицелы, глушители и подствольники — это обвесы, им место не здесь. Внутри 8 на 4 клетки, ограничений по весу нет: если помещается, значит помещается. Принимает оружие и ничего больше. Предметы не складываются: один предмет на клетку. Щёлкните правой кнопкой, чтобы открыть его, затем перетаскивайте предметы внутрь и наружу. Не складывается с другим таким кейсом, содержимое принадлежит именно этому кейсу.</text>
+	</string>
+
+	<!-- END GENERATED BOXES -->
+	<!-- BEGIN GENERATED POUCHES - art/mkstrings.py, do not hand-edit -->
+	<!-- END GENERATED POUCHES -->
+	<!-- BEGIN GENERATED DROP SLIDERS - art/mkstrings.py, do not hand-edit -->
+	<string id="ui_mcm_squared_away_amp_drops">
+		<text>Выпадение разгрузок и подсумков</text>
+	</string>
+
+	<string id="ui_mcm_menu_amp_drops">
+		<text>Выпадение: шанс в процентах, что тело этого ранга несёт это</text>
+	</string>
+
+	<string id="ui_mcm_title_amp_drops">
+		<text>Выпадение разгрузок и подсумков</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_t1">
+		<text>Новичок: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_t1">
+		<text>Новичок: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_t2">
+		<text>Новичок: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_t2">
+		<text>Новичок: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_t3">
+		<text>Новичок: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_t3">
+		<text>Новичок: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_t4">
+		<text>Новичок: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_t4">
+		<text>Новичок: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_t5">
+		<text>Новичок: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_t5">
+		<text>Новичок: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_ps">
+		<text>Новичок: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_ps">
+		<text>Новичок: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_pm">
+		<text>Новичок: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_pm">
+		<text>Новичок: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_pl">
+		<text>Новичок: большой подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_pl">
+		<text>Новичок: большой подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_t1">
+		<text>Стажёр: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_t1">
+		<text>Стажёр: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_t2">
+		<text>Стажёр: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_t2">
+		<text>Стажёр: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_t3">
+		<text>Стажёр: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_t3">
+		<text>Стажёр: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_t4">
+		<text>Стажёр: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_t4">
+		<text>Стажёр: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_t5">
+		<text>Стажёр: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_t5">
+		<text>Стажёр: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_ps">
+		<text>Стажёр: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_ps">
+		<text>Стажёр: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_pm">
+		<text>Стажёр: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_pm">
+		<text>Стажёр: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_pl">
+		<text>Стажёр: большой подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_pl">
+		<text>Стажёр: большой подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_t1">
+		<text>Опытный: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_t1">
+		<text>Опытный: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_t2">
+		<text>Опытный: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_t2">
+		<text>Опытный: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_t3">
+		<text>Опытный: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_t3">
+		<text>Опытный: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_t4">
+		<text>Опытный: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_t4">
+		<text>Опытный: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_t5">
+		<text>Опытный: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_t5">
+		<text>Опытный: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_ps">
+		<text>Опытный: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_ps">
+		<text>Опытный: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_pm">
+		<text>Опытный: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_pm">
+		<text>Опытный: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_pl">
+		<text>Опытный: большой подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_pl">
+		<text>Опытный: большой подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_t1">
+		<text>Профессионал: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_t1">
+		<text>Профессионал: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_t2">
+		<text>Профессионал: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_t2">
+		<text>Профессионал: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_t3">
+		<text>Профессионал: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_t3">
+		<text>Профессионал: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_t4">
+		<text>Профессионал: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_t4">
+		<text>Профессионал: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_t5">
+		<text>Профессионал: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_t5">
+		<text>Профессионал: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_ps">
+		<text>Профессионал: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_ps">
+		<text>Профессионал: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_pm">
+		<text>Профессионал: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_pm">
+		<text>Профессионал: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_pl">
+		<text>Профессионал: большой подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_pl">
+		<text>Профессионал: большой подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_t1">
+		<text>Ветеран: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_t1">
+		<text>Ветеран: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_t2">
+		<text>Ветеран: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_t2">
+		<text>Ветеран: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_t3">
+		<text>Ветеран: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_t3">
+		<text>Ветеран: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_t4">
+		<text>Ветеран: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_t4">
+		<text>Ветеран: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_t5">
+		<text>Ветеран: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_t5">
+		<text>Ветеран: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_ps">
+		<text>Ветеран: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_ps">
+		<text>Ветеран: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_pm">
+		<text>Ветеран: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_pm">
+		<text>Ветеран: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_pl">
+		<text>Ветеран: большой подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_pl">
+		<text>Ветеран: большой подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_t1">
+		<text>Эксперт: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_t1">
+		<text>Эксперт: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_t2">
+		<text>Эксперт: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_t2">
+		<text>Эксперт: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_t3">
+		<text>Эксперт: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_t3">
+		<text>Эксперт: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_t4">
+		<text>Эксперт: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_t4">
+		<text>Эксперт: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_t5">
+		<text>Эксперт: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_t5">
+		<text>Эксперт: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_ps">
+		<text>Эксперт: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_ps">
+		<text>Эксперт: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_pm">
+		<text>Эксперт: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_pm">
+		<text>Эксперт: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_pl">
+		<text>Эксперт: большой подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_pl">
+		<text>Эксперт: большой подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_t1">
+		<text>Мастер: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_t1">
+		<text>Мастер: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_t2">
+		<text>Мастер: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_t2">
+		<text>Мастер: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_t3">
+		<text>Мастер: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_t3">
+		<text>Мастер: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_t4">
+		<text>Мастер: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_t4">
+		<text>Мастер: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_t5">
+		<text>Мастер: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_t5">
+		<text>Мастер: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_ps">
+		<text>Мастер: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_ps">
+		<text>Мастер: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_pm">
+		<text>Мастер: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_pm">
+		<text>Мастер: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_pl">
+		<text>Мастер: большой подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_pl">
+		<text>Мастер: большой подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_t1">
+		<text>Легенда: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_t1">
+		<text>Легенда: разгрузка 1 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_t2">
+		<text>Легенда: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_t2">
+		<text>Легенда: разгрузка 2 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_t3">
+		<text>Легенда: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_t3">
+		<text>Легенда: разгрузка 3 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_t4">
+		<text>Легенда: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_t4">
+		<text>Легенда: разгрузка 4 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_t5">
+		<text>Легенда: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_t5">
+		<text>Легенда: разгрузка 5 уровня (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_ps">
+		<text>Легенда: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_ps">
+		<text>Легенда: малый подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_pm">
+		<text>Легенда: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_pm">
+		<text>Легенда: средний подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_pl">
+		<text>Легенда: большой подсумок (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_pl">
+		<text>Легенда: большой подсумок (%)</text>
+	</string>
+
+	<!-- END GENERATED DROP SLIDERS -->
+</string_table>

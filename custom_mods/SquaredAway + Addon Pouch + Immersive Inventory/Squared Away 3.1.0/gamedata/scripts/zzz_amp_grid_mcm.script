@@ -1,0 +1,115 @@
+--[[
+	MCM registration for the Zone Grid prototype.
+
+	The three rules the parent mod learned the hard way, repeated here
+	because getting any of them wrong looks exactly like the mod not
+	being installed:
+
+	  * the file name MUST end in _mcm.script - that is how MCM finds it
+	  * `sh` goes on the SUBGROUP, never on the root, and options never
+	    sit directly in the root table
+	  * an input (val = 2) MUST have min, max AND def, because MCM
+	    clamps unguarded and SetText()s def at build time
+	  * no engine calls at chunk scope
+--]]
+
+local DEFAULTS = {
+	grid_enable = true,
+	grid_pack   = 70,
+	grid_bare   = 8,
+	grid_w_bare = 4,
+	grid_w_pack = 7,
+	grid_drop   = true,
+	grid_border = true,
+	grid_stack  = true,
+	grid_stack_fresh = false,
+	grid_new_glow = true,
+	-- An arriving item may lie on its side when that is the only way it
+	-- fits. Last resort only; see find_bounded in the grid script.
+	grid_autorot = true,
+	-- A red ground under what will not fit, in the other side's list.
+	grid_mark_full = true,
+	-- What happens when something does not fit: "drop" is the old
+	-- behaviour, "block" refuses it at the door.
+	grid_full   = "drop",
+	grid_stack_mult = 100,
+	grid_split_key = DIK_keys and DIK_keys.DIK_LSHIFT or 42,
+	-- Debug Balancing: names what the cursor is over, and puts a block
+	-- of stack-size entries on every item's right-click menu.
+	grid_balance = false,
+	grid_debug  = false,
+}
+
+local function title(id)
+	return { id = id, type = "slide", link = "ui_options_slider_player",
+	         text = "ui_mcm_menu_grid_" .. id, size = { 512, 50 }, spacing = 20 }
+end
+
+-- NOT on_mcm_load ANY MORE. MCM builds one root per script that
+-- defines it, and Zone Grid is a SECTION of Squared Away's page
+-- rather than a page beside it. So this hands its options over and
+-- zzz_armor_mag_pouches_mcm does the assembling.
+function sqa_options()
+	local general = {
+		title("general"),
+		{ id = "grid_enable", type = "check", val = 1, def = DEFAULTS.grid_enable },
+		{ id = "grid_drop",   type = "check", val = 1, def = DEFAULTS.grid_drop },
+		{ id = "grid_border", type = "check", val = 1, def = DEFAULTS.grid_border },
+		{ id = "grid_stack",  type = "check", val = 1, def = DEFAULTS.grid_stack },
+		{ id = "grid_stack_fresh", type = "check", val = 1, def = DEFAULTS.grid_stack_fresh },
+		{ id = "grid_new_glow", type = "check", val = 1, def = DEFAULTS.grid_new_glow },
+		{ id = "grid_autorot", type = "check", val = 1, def = DEFAULTS.grid_autorot },
+		{ id = "grid_mark_full", type = "check", val = 1, def = DEFAULTS.grid_mark_full },
+
+		-- A dropdown: MCM's "list". content is { value, string key }
+		-- per row, and both label forms are shipped - see the layout
+		-- dropdown in the main mod's MCM file for why.
+		{ id = "grid_full", type = "list", val = 0, def = DEFAULTS.grid_full,
+		  content = { { "drop",  "grid_full_drop" },
+		              { "block", "grid_full_block" } } },
+
+		-- Every ceiling in zzz_grid_stacks.ltx, scaled. 100 is the file
+		-- as written; 50 halves every stack, 200 doubles it. Never less
+		-- than one of anything, whatever this says.
+		{ id = "grid_stack_mult", type = "input", val = 2, min = 25, max = 400,
+		  def = DEFAULTS.grid_stack_mult },
+
+		-- Tap this while dragging a stack and one of them is put down
+		-- where you are pointing. Tap it again in the same place and
+		-- another joins it.
+		{ id = "grid_split_key", type = "key_bind", val = 2,
+		  def = DEFAULTS.grid_split_key },
+		{ id = "line_g1", type = "line" },
+
+		-- The numbers under test. Change them here, in game, without
+		-- waiting for a build - which is the whole point of a
+		-- prototype.
+		{ id = "grid_pack",   type = "input", val = 2, min = 0, max = 400, def = DEFAULTS.grid_pack },
+		{ id = "grid_bare",   type = "input", val = 2, min = 1, max = 400, def = DEFAULTS.grid_bare },
+		{ id = "line_g2", type = "line" },
+
+		-- The width is the rule, not the decoration. Five here and a
+		-- rifle fits in your armour.
+		{ id = "grid_w_bare", type = "input", val = 2, min = 2, max = 20, def = DEFAULTS.grid_w_bare },
+		{ id = "grid_w_pack", type = "input", val = 2, min = 2, max = 20, def = DEFAULTS.grid_w_pack },
+		{ id = "line_g3", type = "line" },
+
+		{ id = "grid_debug", type = "check", val = 1, def = DEFAULTS.grid_debug },
+
+		-- ============================================================
+		-- DEBUG BALANCING
+		--
+		-- With it on, whatever is under the cursor says its section,
+		-- its kind, its ceiling and which line of the stacks file gave
+		-- it that ceiling - and every item's right-click menu grows a
+		-- block of entries that CHANGE that ceiling, there and then.
+		--
+		-- The numbers you set are kept in the save, above anything the
+		-- file says, and one entry in that menu writes them all to the
+		-- log as a paste-ready block for when you want them permanent.
+		-- ============================================================
+		{ id = "grid_balance", type = "check", val = 1, def = DEFAULTS.grid_balance },
+	}
+
+	return general
+end
