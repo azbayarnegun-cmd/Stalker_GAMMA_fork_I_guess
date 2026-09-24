@@ -1,0 +1,105 @@
+; ============================================================
+;  LAYERED POUCH REBALANCE - EXTRAS SLOT 06
+;
+;  A belt that can only hold first aid is a strap. With the pouches
+;  this small, a five-slot belt holding grenades and a magazine is a
+;  combat belt and still only ten cells - which is the whole point of
+;  making them small.
+;
+;  TWO THINGS HAVE TO AGREE: the layer must accept the profile, and
+;  the pouch must be allowed the layer. accepts_add rather than
+;  accepts, because the medical tiers contribute to this same list.
+; ============================================================
+
+[amp_layer_belt]
+accepts_add = magazine,grenade,admin
+
+[amp_pouch_layer_overrides]
+amplayer_magazine_pouch = rig,belt
+amplayer_grenade_pouch  = rig,belt
+
+
+; ============================================================
+;  THE SUSTAINMENT POUCH BECOMES A HUNTER'S KIT
+;
+;  It took food, drink and mutant meat, which is three jobs it shares
+;  with pouches that do them better: food and drink route to a green
+;  square or a universal pouch long before they reach a backpack-only
+;  pouch at priority 60. So it caught meat, occasionally, and was
+;  otherwise a bag you forgot you had.
+;
+;  Meat is the half worth keeping. A hunt fills your bag with parts,
+;  hides and raw flesh - bulky, numerous, worth money, and nothing
+;  else wants them. So this takes the mutant families and drops the
+;  food:
+;
+;    i_mutant_raw     flesh, boar, dog, the rest
+;    i_mutant_cooked  what you did with it at a fire
+;    i_mutant_part    tails, eyes, claws, the trophy bits
+;    i_mutant_belt    artefact-bearing organs
+;
+;  PRIORITY 25, up from 60, so parts reach it BEFORE a universal pouch
+;  shrugs and takes them. It is the only pouch that wants them, and a
+;  pouch nothing routes to is a pouch nobody fits.
+;
+;  IT STAYS BACKPACK-ONLY. A hunter's kit is something you carry, not
+;  something you wear - and mutant parts have no business on a chest
+;  rig.
+; ============================================================
+
+[amp_pouch_sustainment]
+kinds = i_mutant_raw, i_mutant_part, i_mutant_belt
+also_sections =
+cells = 12
+stack = 5
+priority = 25
+
+; ============================================================
+;  ...AND THE HUNTING KIT ITSELF LIVES IN IT
+;
+;  also_sections = kit_hunt, by name rather than by kind, because the
+;  kit is a tool and this pouch has no business taking tools in
+;  general - only this one.
+;
+;  WHY IT IS WORTH DOING. GAMMA's hunting kit earns its keep when you
+;  skin something and is dead weight the rest of the time, sitting in
+;  your rucksack taking four squares. Put it in the bag it belongs to
+;  and the kit and what the kit produces travel together: one pouch,
+;  fitted to a backpack, holding the tool and the trophies.
+;
+;  THE POUCH IS SIZED FOR EXACTLY THAT. Six by two - the kit at two by
+;  two, and two more two-by-two blocks for what you cut off. Three
+;  squares of that size fit a six-wide, two-tall grid exactly, with
+;  nothing wasted.
+; ============================================================
+
+; ============================================================
+;  ROUTING - AND WHY IT WAS NEVER HAPPENING
+;
+;  The addon's own code set autoloot = false outright: not read from
+;  anywhere, not in MCM, just off. route() checks it first, so every
+;  priority in every profile was dead config. Nothing was routed to
+;  any pouch, ever, and everything landed in the rucksack.
+;
+;  Core 1.16 makes it a setting. Both are OFF unless asked for here.
+;
+;  dump_catch is the narrow one: EMPTY MAGAZINES and nothing else, on
+;  their way to a dump pouch. That is the one case where doing nothing
+;  means picking your own brass up by hand, and it is on by default in
+;  this file because a dump pouch that catches nothing is furniture.
+;
+;  IT ALSO OVERRIDES the magazine mod's "empties to the rucksack"
+;  setting, which the addon otherwise defers to. Deferring is right
+;  when nobody has said otherwise; asking for dump_catch IS saying
+;  otherwise.
+;
+;  autoloot is the whole thing: bandages to the medical pouch, hides
+;  to the hunter's kit, everything to wherever its priority sends it.
+;  It is off because moving items on pickup is where an inventory mod
+;  loses things and this is a port of somebody else's work - turn it
+;  on, play a while, and watch whether anything goes astray.
+; ============================================================
+
+[amp_layers_options]
+dump_catch = true
+autoloot   = true

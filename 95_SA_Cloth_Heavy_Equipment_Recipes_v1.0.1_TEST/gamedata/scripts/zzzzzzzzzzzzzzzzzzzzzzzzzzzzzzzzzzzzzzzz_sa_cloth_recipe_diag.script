@@ -1,0 +1,47 @@
+-- SA Cloth-Heavy Equipment Recipes v1.0.1 TEST
+-- Reports the final resolved recipes after all DLTX craft files are merged.
+
+local VERSION = "1.0.1"
+
+local expected = {
+    x_amplayer_sustainment_pouch_t1 = "prt_o_fabrics_1,5",
+    x_amplayer_sustainment_pouch_t2 = "prt_o_fabrics_1,3",
+    x_amplayer_magazine_pouch_t1 = "prt_o_fabrics_1,5",
+    x_amplayer_canister_carrier_t1 = "prt_o_fabrics_2,10",
+    x_amplayer_belt_t1 = "prt_o_fabrics_1,8"
+}
+
+local function report()
+    local ok, craft = pcall(ini_file, "items\\settings\\craft.ltx")
+    if not ok or not craft or not craft:section_exist("2") then
+        printf(string.format("[SA-CLOTH-RECIPES] v%s ERROR craft.ltx unavailable", VERSION))
+        return
+    end
+
+    local passed = 0
+    local failed = 0
+    for key, needle in pairs(expected) do
+        if craft:line_exist("2", key) then
+            local value = craft:r_string("2", key)
+            if string.find(value, needle, 1, true) then
+                passed = passed + 1
+            else
+                failed = failed + 1
+                printf(string.format("[SA-CLOTH-RECIPES] OVERRIDDEN %s expected=%s actual=%s", key, needle, value))
+            end
+        else
+            failed = failed + 1
+            printf(string.format("[SA-CLOTH-RECIPES] MISSING %s", key))
+        end
+    end
+
+    if failed == 0 then
+        printf(string.format("[SA-CLOTH-RECIPES] v%s ACTIVE checks=%d", VERSION, passed))
+    else
+        printf(string.format("[SA-CLOTH-RECIPES] v%s FAILED passed=%d failed=%d", VERSION, passed, failed))
+    end
+end
+
+function on_game_start()
+    report()
+end

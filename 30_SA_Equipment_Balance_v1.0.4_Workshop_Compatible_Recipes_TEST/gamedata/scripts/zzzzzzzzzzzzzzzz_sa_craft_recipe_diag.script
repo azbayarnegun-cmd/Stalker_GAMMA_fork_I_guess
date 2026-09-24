@@ -1,0 +1,109 @@
+-- SA Equipment Balance v1.0.4
+-- One-time diagnostic for the resolved crafting table after DLTX merging.
+
+local VERSION = "1.0.4"
+
+local recipe_keys = {
+    "x_amppouch_g1",
+    "x_amppouch_g2",
+    "x_amppouch_g3",
+    "x_amppouch_g4",
+    "x_amppouch_y1",
+    "x_amppouch_y2",
+    "x_amppouch_y3",
+    "x_amppouch_y4",
+    "x_amppouch_y5",
+    "x_amppouch_r1",
+    "x_amppouch_r2",
+    "x_amplayer_magazine_pouch_t1",
+    "x_amplayer_magazine_pouch_t2",
+    "x_amplayer_magazine_pouch",
+    "x_amplayer_grenade_pouch_t1",
+    "x_amplayer_grenade_pouch",
+    "x_amplayer_medical_pouch_t1",
+    "x_amplayer_medical_pouch",
+    "x_amplayer_admin_pouch_t1",
+    "x_amplayer_admin_pouch",
+    "x_amplayer_universal_pouch_s",
+    "x_amplayer_universal_pouch",
+    "x_amplayer_dump_pouch",
+    "x_amplayer_universal_pouch_l",
+    "x_amplayer_utility_pouch_t1",
+    "x_amplayer_utility_pouch_t2",
+    "x_amplayer_hunter_pouch_t1",
+    "x_amplayer_sustainment_pouch",
+    "x_amplayer_sustainment_pouch_t1",
+    "x_amplayer_sustainment_pouch_t2",
+    "x_amplayer_sustainment_pouch_t3",
+    "x_amplayer_sustainment_pouch_t4",
+    "x_amplayer_belt_t1",
+    "x_amplayer_belt_t2",
+    "x_amplayer_belt_t3",
+    "x_amplayer_belt_t4",
+    "x_amplayer_belt_t5",
+    "x_amprig_bandolier",
+    "x_amprig_scout",
+    "x_amprig_harness",
+    "x_amprig_barakholka",
+    "x_amprig_nylon",
+    "x_amprig_vydra",
+    "x_amprig_warsaw",
+    "x_amprig_karkas",
+    "x_amprig_smersh",
+    "x_amprig_bastion",
+    "x_amprig_volya",
+    "x_amprig_chicom",
+    "x_amprig_leshy",
+    "x_amprig_rubezh",
+    "x_amprig_carrier",
+    "x_amprig_tarzan",
+    "x_amplayer_canister_carrier_t1",
+    "x_amplayer_canister_carrier_t2"
+}
+
+local function report()
+    local ok, craft = pcall(ini_file, "items\\settings\\craft.ltx")
+    if not ok or not craft then
+        printf(string.format("[SA-CRAFT-DIAG] v%s ERROR unable to open items\\settings\\craft.ltx", VERSION))
+        return
+    end
+
+    if not craft:section_exist("2") then
+        printf(string.format("[SA-CRAFT-DIAG] v%s ERROR craft section [2] is missing", VERSION))
+        return
+    end
+
+    local found = 0
+    local missing = 0
+    local ui_compatible = 0
+    local ui_invalid = 0
+    for _, key in ipairs(recipe_keys) do
+        if craft:line_exist("2", key) then
+            found = found + 1
+            local parts = str_explode(craft:r_string("2", key), ",")
+            if #parts == 6 or #parts == 8 or #parts == 10 then
+                ui_compatible = ui_compatible + 1
+            else
+                ui_invalid = ui_invalid + 1
+                printf(string.format("[SA-CRAFT-DIAG] UI_INVALID %s tokens=%d", key, #parts))
+            end
+        else
+            missing = missing + 1
+            printf(string.format("[SA-CRAFT-DIAG] MISSING %s", key))
+        end
+    end
+
+    printf(string.format("[SA-CRAFT-DIAG] v%s SUMMARY found=%d missing=%d", VERSION, found, missing))
+    printf(string.format("[SA-CRAFT-DIAG] UI_COMPATIBLE=%d UI_INVALID=%d", ui_compatible, ui_invalid))
+
+    if craft:line_exist("2", "x_amplayer_sustainment_pouch_t1") then
+        printf(string.format("[SA-CRAFT-DIAG] SUSTAINMENT_T1 READY %s", craft:r_string("2", "x_amplayer_sustainment_pouch_t1")))
+    end
+    if craft:line_exist("2", "x_amplayer_sustainment_pouch_t2") then
+        printf(string.format("[SA-CRAFT-DIAG] SUSTAINMENT_T2 READY %s", craft:r_string("2", "x_amplayer_sustainment_pouch_t2")))
+    end
+end
+
+function on_game_start()
+    report()
+end

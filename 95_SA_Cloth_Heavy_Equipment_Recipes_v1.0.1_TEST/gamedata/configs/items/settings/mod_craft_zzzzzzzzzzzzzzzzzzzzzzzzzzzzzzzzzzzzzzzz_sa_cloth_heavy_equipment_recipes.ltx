@@ -1,0 +1,79 @@
+; SA Cloth-Heavy Equipment Recipes v1.0.1 TEST
+; Load after Modules 30 and 90.
+; Filename intentionally sorts after Module 30's 32-z recipe file.
+; Workshop limit: 2-4 ingredient types per recipe.
+
+![2]
+
+; ============================================================
+; RIG ADDON POUCHES
+; ============================================================
+x_amppouch_g1 = 1, recipe_basic_1,prt_o_fabrics_1,4,sewing_thread,2,prt_i_fasteners,1,duct_tape,1
+x_amppouch_g2 = 1, recipe_basic_2,amppouch_g1,1,prt_o_fabrics_1,4,sewing_thread,2,prt_i_fasteners,1
+x_amppouch_g3 = 1, recipe_advanced_1,amppouch_g2,1,prt_o_fabrics_2,3,prt_i_fasteners,2,duct_tape,1
+x_amppouch_g4 = 1, recipe_advanced_2,amppouch_g3,1,prt_o_fabrics_3,3,prt_i_fasteners,2,prt_i_plastic,2
+
+x_amppouch_y1 = 1, recipe_basic_1,prt_o_fabrics_2,2,sewing_thread,2,prt_i_fasteners,2,prt_i_scrap,1
+x_amppouch_y2 = 1, recipe_basic_1,prt_o_fabrics_1,5,sewing_thread,3,prt_i_fasteners,2,prt_i_scrap,1
+x_amppouch_y3 = 2, recipe_advanced_1,amppouch_y2,1,prt_o_fabrics_2,3,prt_i_fasteners,2,prt_i_scrap,2
+x_amppouch_y4 = 2, recipe_advanced_2,amppouch_y3,1,prt_o_fabrics_3,3,prt_i_fasteners,3,prt_i_scrap,2
+x_amppouch_y5 = 2, recipe_advanced_2,amppouch_y4,1,prt_o_fabrics_3,4,prt_i_scrap,3,prt_i_plastic,2
+
+x_amppouch_r1 = 1, recipe_basic_2,prt_o_fabrics_2,4,sewing_thread,3,prt_i_fasteners,2,prt_i_plastic,2
+x_amppouch_r2 = 2, recipe_advanced_2,amppouch_r1,1,prt_o_fabrics_4,3,prt_i_fasteners,3,prt_i_plastic,3
+
+; ============================================================
+; MAGAZINE, GRENADE AND DUMP POUCHES
+; ============================================================
+x_amplayer_magazine_pouch_t1 = 1, recipe_basic_1,prt_o_fabrics_1,5,sewing_thread,3,prt_i_fasteners,2,prt_i_scrap,1
+x_amplayer_magazine_pouch_t2 = 1, recipe_basic_2,amplayer_magazine_pouch_t1,1,prt_o_fabrics_2,3,prt_i_fasteners,2,prt_o_fabrics_1,5
+x_amplayer_magazine_pouch = 2, recipe_advanced_1,amplayer_magazine_pouch_t2,1,prt_o_fabrics_3,4,prt_i_scrap,2,prt_o_fabrics_1,5
+
+x_amplayer_grenade_pouch_t1 = 1, recipe_basic_1,prt_o_fabrics_2,3,prt_i_fasteners,2,prt_i_scrap,1,prt_o_fabrics_1,5
+x_amplayer_grenade_pouch = 2, recipe_basic_2,amplayer_grenade_pouch_t1,1,prt_o_fabrics_3,4,prt_i_fasteners,3,prt_o_fabrics_1,5
+x_amplayer_dump_pouch = 1, recipe_basic_2,amplayer_magazine_pouch_t1,1,prt_o_fabrics_2,3,prt_i_fasteners,2,prt_o_fabrics_1,5
+
+; ============================================================
+; MEDICAL AND ADMINISTRATIVE POUCHES
+; ============================================================
+x_amplayer_medical_pouch_t1 = 1, recipe_basic_1,prt_o_fabrics_2,3,prt_i_fasteners,1,prt_i_plastic,2,prt_o_fabrics_1,2
+x_amplayer_medical_pouch = 2, recipe_basic_2,amplayer_medical_pouch_t1,1,prt_o_fabrics_3,4,prt_i_plastic,2,prt_o_fabrics_1,5
+
+x_amplayer_admin_pouch_t1 = 1, recipe_basic_1,prt_o_fabrics_1,5,sewing_thread,3,prt_i_fasteners,1,prt_i_plastic,1
+x_amplayer_admin_pouch = 1, recipe_basic_2,amplayer_admin_pouch_t1,1,prt_o_fabrics_2,4,prt_i_fasteners,2,prt_o_fabrics_1,5
+
+; ============================================================
+; UNIVERSAL AND UTILITY POUCHES
+; ============================================================
+x_amplayer_universal_pouch_s = 1, recipe_basic_1,prt_o_fabrics_2,4,prt_i_fasteners,2,prt_i_plastic,1,prt_o_fabrics_1,2
+x_amplayer_universal_pouch = 2, recipe_basic_2,amplayer_universal_pouch_s,1,prt_o_fabrics_3,5,prt_i_fasteners,3,prt_o_fabrics_1,5
+x_amplayer_universal_pouch_l = 2, recipe_advanced_2,amplayer_universal_pouch,1,prt_o_fabrics_3,6,prt_i_fasteners,4,prt_o_fabrics_1,10
+
+x_amplayer_utility_pouch_t1 = 1, recipe_basic_1,prt_o_fabrics_1,5,sewing_thread,3,prt_i_fasteners,1,prt_i_plastic,1
+x_amplayer_utility_pouch_t2 = 1, recipe_basic_2,amplayer_utility_pouch_t1,1,prt_o_fabrics_2,3,prt_i_fasteners,2,prt_o_fabrics_1,5
+
+; ============================================================
+; SUSTAINMENT AND HUNTER KIT
+; ============================================================
+x_amplayer_sustainment_pouch_t1 = 1, recipe_basic_1,prt_o_fabrics_1,5,sewing_thread,3,prt_i_plastic,1,duct_tape,1
+x_amplayer_sustainment_pouch_t2 = 1, recipe_basic_2,amplayer_sustainment_pouch_t1,1,prt_o_fabrics_2,3,prt_i_plastic,1,prt_o_fabrics_1,3
+x_amplayer_sustainment_pouch_t3 = 2, recipe_advanced_1,amplayer_sustainment_pouch_t2,1,prt_o_fabrics_3,4,prt_i_fasteners,2,prt_o_fabrics_1,4
+x_amplayer_sustainment_pouch_t4 = 2, recipe_advanced_2,amplayer_sustainment_pouch_t3,1,prt_o_fabrics_4,4,prt_i_plastic,3,prt_o_fabrics_1,5
+
+x_amplayer_hunter_pouch_t1 = 1, recipe_advanced_1,prt_o_fabrics_2,5,prt_o_fabrics_3,2,prt_i_fasteners,2,prt_o_fabrics_1,5
+x_amplayer_sustainment_pouch = 2, recipe_advanced_2,amplayer_hunter_pouch_t1,1,prt_o_fabrics_3,7,prt_o_fabrics_4,2,prt_o_fabrics_1,10
+
+; ============================================================
+; CANISTER POUCHES
+; ============================================================
+x_amplayer_canister_carrier_t1 = 1, recipe_advanced_1,prt_o_fabrics_2,10,sewing_thread,5,prt_i_fasteners,3,prt_i_plastic,1
+x_amplayer_canister_carrier_t2 = 2, recipe_advanced_2,amplayer_canister_carrier_t1,1,prt_o_fabrics_3,6,prt_i_fasteners,3,prt_i_plastic,2
+
+; ============================================================
+; BELTS
+; ============================================================
+x_amplayer_belt_t1 = 1, recipe_basic_1,prt_o_fabrics_1,8,sewing_thread,5,prt_i_fasteners,2
+x_amplayer_belt_t2 = 1, recipe_basic_2,amplayer_belt_t1,1,prt_o_fabrics_2,6,prt_i_fasteners,3,prt_o_fabrics_1,5
+x_amplayer_belt_t3 = 2, recipe_advanced_1,amplayer_belt_t2,1,prt_o_fabrics_3,8,prt_i_fasteners,4,prt_o_fabrics_1,5
+x_amplayer_belt_t4 = 2, recipe_advanced_2,amplayer_belt_t3,1,prt_o_fabrics_4,8,prt_i_fasteners,5,prt_o_fabrics_1,10
+x_amplayer_belt_t5 = 2, recipe_advanced_2,amplayer_belt_t4,1,prt_o_fabrics_4,10,prt_i_fasteners,6,prt_o_fabrics_1,10

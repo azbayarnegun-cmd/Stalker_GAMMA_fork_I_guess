@@ -1,0 +1,47 @@
+; Clean Sustainment Pouch clones for Toxic Air oxygen tanks.
+; Only identity, internal grid, accepted profile and square icon region differ.
+; Oxygen tank sections are never overridden, preserving toxic_air.bind.
+
+[amplayer_canister_carrier_t1]:amplayer_sustainment_pouch
+amp_box_takes = canister
+amp_box_w = 3
+amp_box_h = 1
+amp_box_stack = 1
+amp_box_kg = 22
+amp_layer_pouch = canister
+inv_name = st_sa_canister_t1_name
+inv_name_short = st_sa_canister_t1_name
+description = st_sa_canister_t1_descr
+cost = 3500
+icons_texture = ui\ui_sa_canister_pouches
+inv_grid_x = 0
+inv_grid_y = 0
+inv_grid_width = 2
+inv_grid_height = 2
+inv_grid_scale = 2
+$spawn = "equipment\layered\single canister carrier"
+
+[amplayer_canister_carrier_t2]:amplayer_sustainment_pouch
+amp_box_takes = canister
+amp_box_w = 3
+amp_box_h = 2
+amp_box_stack = 1
+amp_box_kg = 44
+amp_layer_pouch = canister
+inv_name = st_sa_canister_t2_name
+inv_name_short = st_sa_canister_t2_name
+description = st_sa_canister_t2_descr
+cost = 6000
+icons_texture = ui\ui_sa_canister_pouches
+inv_grid_x = 2
+inv_grid_y = 0
+inv_grid_width = 2
+inv_grid_height = 2
+inv_grid_scale = 2
+$spawn = "equipment\layered\double canister carrier"
+
+; Save compatibility for objects created by v1.x. They inherit the same safe
+; square presentation but are not used by crafting or new spawns.
+[amplayer_canister_pouch_t1]:amplayer_canister_carrier_t1
+
+[amplayer_canister_pouch_t2]:amplayer_canister_carrier_t2

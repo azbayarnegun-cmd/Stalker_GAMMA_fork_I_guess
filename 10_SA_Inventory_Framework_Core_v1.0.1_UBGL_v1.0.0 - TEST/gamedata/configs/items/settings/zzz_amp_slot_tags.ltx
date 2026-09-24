@@ -1,0 +1,92 @@
+; ============================================================
+;  POCKET TAGS - WHAT A POCKET TAKES, WHAT IS QUICK FROM IT, AND
+;  WHAT COLOUR IT IS
+;
+;  SHIPPED EMPTY OF RULES ON PURPOSE. Core alone changes nothing you
+;  can see: with no shape mapped below, every pocket is untagged, takes
+;  whatever fits, quick-uses as it always did, and is the one grey.
+;  A feature mod fills this in - 30 SA Rig Pouch Ladder does.
+;
+;  HOW A POCKET FINDS ITS TAG
+;
+;    1. the pouch that granted it may name one   "2x1:med"
+;    2. otherwise the shape table below
+;    3. otherwise no tag at all
+;
+;  SHAPE NAMES are written the way the rig writes its own slots -
+;  2x2, 3x1, 2x1, 1x1 are TALL x WIDE - except the wide pockets, which
+;  are w2 to w6 for one row of that many columns.
+;
+;  TAKES IS STORAGE. QUICK IS THE WHEEL. RELOADING IS NEITHER.
+;  Reloading draws from your inventory through the magazine mod and
+;  never asks this file, so the only way to stop a pocket feeding a
+;  reload is to keep the ammunition out of it with `takes`.
+;
+;  Both lists are KINDS - the game's own word for what a thing is -
+;  and an exact section name also works. * means anything.
+;
+;  AND TWO REFUSALS, tested first so they beat takes = *:
+;
+;      never_takes = i_food          ; kinds or sections
+;      never_flags = is_mag          ; SECTION FLAGS
+;
+;      reload      = true           ; a reload may draw from here
+;
+;  reload is the one key that changes something outside this file: the
+;  moment any tag claims it, Squared Away's ammunition gate counts only
+;  the pockets that claim it, and starts asking guns the magazine mod
+;  supports as well. Nothing claims it by default.
+;
+;  never_flags exists because a magazine's kind is w_ammo, the same as
+;  a box of cartridges - "no magazines but shells are fine" cannot be
+;  said in kinds at all, and is_mag is the flag the magazine mod puts
+;  on a magazine.
+; ============================================================
+
+[amp_slot_tag_by_shape]
+; 2x2 = ammo
+; 3x1 = ammo
+; 2x1 = ammo
+; 1x1 = med
+; g1  = soft
+; w2  = soft
+; w3  = soft
+; w4  = soft
+; w5  = soft
+; w6  = soft
+
+; ============================================================
+;  THE THREE TAGS
+;
+;  Uncomment the shape lines above to use them. Colours are r,g,b at
+;  full strength; the empty and hover states are derived from them, and
+;  the interior is the same hue taken most of the way to black.
+; ============================================================
+
+; AMMUNITION - yellow. Magazines and cartridges, and nothing in here is
+; ever quick: a magazine was never wheel-usable anyway, and this stops
+; a bandage being fast because it was stuffed in a magazine row.
+[amp_slot_tag_ammo]
+takes  = w_ammo
+quick  =
+colour = 200,170,60
+
+; MEDICAL - red, and the only pocket a medkit is fast from. Bright and
+; clean against a torn pocket's dark, desaturated red; a torn pocket
+; also blacks out its interior, which is the second cue.
+[amp_slot_tag_med]
+takes  = i_medical
+quick  = i_medical
+colour = 190,60,60
+
+; SUPPLIES - green. Food, drink, devices and medicine, but a medkit
+; goes in without being quick: never_quick is a SUBSTRING, so the one
+; word covers medkit_army, medkit_scientic and any medkit a mod adds.
+; No ammunition, which is what stops a wide pocket feeding a reload -
+; a magazine lying on its side fits one perfectly, so geometry alone
+; would not have kept it out.
+[amp_slot_tag_soft]
+takes       = i_food, i_drink, i_device, i_medical
+quick       = i_food, i_drink, i_device, i_medical
+never_quick = medkit
+colour      = 70,150,95

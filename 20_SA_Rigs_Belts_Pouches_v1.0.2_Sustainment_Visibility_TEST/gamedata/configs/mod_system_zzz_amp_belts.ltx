@@ -1,0 +1,75 @@
+; ============================================================
+;  BELT LADDER - five belts, one to five pouch slots
+;
+;  Each is a copy of [amplayer_belt] with a new section, name, weight and
+;  price. HOW MANY SLOTS EACH GIVES IS NOT HERE: it is one line per belt
+;  in [amp_carrier_slots] in items/amp_layers.ltx, because that is the
+;  table the script reads. Changing a number there is the whole edit.
+;
+;  What a belt ACCEPTS is still the layer's business - dump, medical and
+;  universal pouches, the same for all five. Per-belt accept lists are a
+;  second version.
+;
+;  The icon is the existing belt art on ui_amp_layers for every tier.
+; ============================================================
+[amplayer_belt_t1]:amplayer_belt
+inv_name = st_amp_belt_t1_name
+inv_name_short = st_amp_belt_t1_name
+description = st_amp_belt_t1_descr
+inv_weight = 0.50
+cost = 8000
+
+[amplayer_belt_t2]:amplayer_belt
+inv_name = st_amp_belt_t2_name
+inv_name_short = st_amp_belt_t2_name
+description = st_amp_belt_t2_descr
+inv_weight = 0.62
+cost = 15000
+
+[amplayer_belt_t3]:amplayer_belt
+inv_name = st_amp_belt_t3_name
+inv_name_short = st_amp_belt_t3_name
+description = st_amp_belt_t3_descr
+inv_weight = 0.75
+cost = 24000
+
+[amplayer_belt_t4]:amplayer_belt
+inv_name = st_amp_belt_t4_name
+inv_name_short = st_amp_belt_t4_name
+description = st_amp_belt_t4_descr
+inv_weight = 0.88
+cost = 32000
+
+[amplayer_belt_t5]:amplayer_belt
+inv_name = st_amp_belt_t5_name
+inv_name_short = st_amp_belt_t5_name
+description = st_amp_belt_t5_descr
+inv_weight = 1.00
+cost = 40000
+
+
+; ============================================================
+;  IN THE SPAWNER, AND OUT OF IT
+;
+;  The five tiers get their own leaves. The LEGACY belt does not: it
+;  is withdrawn - see the trade files - and stays defined only so that
+;  a save holding one goes on loading.
+; ============================================================
+
+![amplayer_belt_t1]
+$spawn = "equipment\layered\belt basic"
+
+![amplayer_belt_t2]
+$spawn = "equipment\layered\belt reinforced"
+
+![amplayer_belt_t3]
+$spawn = "equipment\layered\belt field"
+
+![amplayer_belt_t4]
+$spawn = "equipment\layered\belt assault"
+
+![amplayer_belt_t5]
+$spawn = "equipment\layered\belt combat"
+
+![amplayer_belt]
+$spawn = "equipment\zz retired\belt legacy"

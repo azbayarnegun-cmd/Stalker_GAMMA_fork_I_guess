@@ -1,0 +1,360 @@
+-- AmmoCheck: Fast Reload (optional feature, Magazines Redux only, disabled by default)
+-- Reload bind + a modifier: speeds up the reload animation and drops the OLD magazine to the ground
+-- instead of keeping it (a tactical "speed reload"). MCM options live in ammo_check_mcm.script (the
+-- rax_ammo_check page, "Fast Reload" group); this script reads them and runs the logic.
+--
+-- We do NOT own the Reload bind. Magazines Redux reloads on Reload regardless of modifier, so we just
+-- observe the press, flag it, and let Mags do the reload. Dynamic Reload Speeds then scales the
+-- anm_reload animation while flagged, and a short follow-up drops whichever magazine Mags ejected
+-- (inventory OR pouch).
+--
+-- HARD REQUIREMENT: Dynamic Reload Speeds (ver_dynamic_reload_speeds). Instead of running our own
+-- animation mutator we register a speed functor with that mod
+
+local enabled        = false
+local mcm_modifier   = 1          -- 1 shift, 2 ctrl, 3 alt
+local mcm_speed_mult = 1.25       -- reload animation speed multiplier (1.25 = 25% faster)
+local mcm_throw_dir  = "forward"  -- direction the dropped mag is tossed (relative to player facing)
+local mcm_throw_force = 40        -- throw strength 0..100 (0 = plain drop, no impulse)
+local mcm_keep_last_mag = true    -- forbid fast reload when no spare mag is available (don't toss the last one)
+local onekey_enabled = false      -- One-Key owns the Reload bind when on, so Fast Reload stands down
+local slow_enabled    = false     -- optional, opposite of fast reload: slow down NORMAL (non-fast) reloads
+local slow_mult       = 1.0       -- normal-reload speed multiplier (<1 slows; 0.75 = 25% slower)
+local mcm_max_combined = 1.5      -- ceiling on the COMBINED reload speed (fast mag's own mult times our fast-reload mult) when a Mags Madness fast mag is incoming
+
+-- throw tuning via physics_shell:set_linear_vel(vec) (modded-exes erquired; directly sets
+-- velocity, which also wakes the body. Velocity is m/s: slider 100 maps to
+-- THROW_MAX_SPEED horizontal, THROW_UP_SPEED is a constant upward arc
+local THROW_MAX_SPEED = 7.0
+local THROW_UP_SPEED  = 1.5
+
+-- Hard requirement: Dynamic Reload Speeds drives the sped-up animation and the synced sound
+local dynamic_reload_available = false
+
+local fast_reload_active = false
+local fast_mag_mult = 1.0   -- reload_speed_mult of the mag Mags will load next (1 = a normal mag)
+local FR_FLAG_MS = 1500   -- safety window (ms) to keep the speed flag armed for the reload anim
+
+-- Latch holding the most recent fast reload's effective speed multiplier for the post-reload auto-check
+-- to consume. Kept SEPARATE from fast_reload_active: that flag clears after FR_FLAG_MS (decided at anim
+-- start, which is all the speed functor needs), but a real reload anim runs longer than that, so by the
+-- time the auto-check reads the speedup at anim END the flag is already gone. This latch survives the
+-- whole reload (FR_PENDING_MS) and is consumed once, so the delay scaling actually takes effect.
+local fr_pending_mult  = 1.0
+local fr_pending_until = 0     -- time_global() ms; the latch is stale past this
+local FR_PENDING_MS    = 4000  -- generous window: covers any reload anim, then ages out so a later normal reload does not read a stale value
+
+-- "Fast mags" from ex. ATHI (now GAMMA MAGS RELOADED) compatibility (mags that carry their own reload_speed_mult on the mag section, e.g.
+-- 1.35 = 35% faster). We read the exact value and fold it into our own boost (capped) when arming a
+-- fast reload, since Dynamic Reload Speeds applies a single functor and will not also apply the mag's
+-- speed separately. Returns 1 for a normal mag (key absent)
+local function mag_reload_mult(section)
+    if not section then return 1 end
+    local m = ini_sys and ini_sys:r_float_ex(section, "reload_speed_mult")
+    if not m or m <= 0 then return 1 end
+    return m
+end
+local FR_DROP_S  = 0.6    -- delay (s) before dropping the ejected mag (eject happens ~0.1-0.3s in)
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_first_update", on_option_change)
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("on_before_key_press", on_before_key_press)
+    -- Hand the speed-up (and the optional slowdown) to Dynamic Reload Speeds
+    if ver_dynamic_reload_speeds and ver_dynamic_reload_speeds.add_reload_speed_increase then
+        dynamic_reload_available = true
+        ver_dynamic_reload_speeds.add_reload_speed_increase(ac_reload_speed_functor, 5)
+        ver_dynamic_reload_speeds.add_sound_disabler_functor(ac_sound_disabler_functor, 5)
+    else
+        printf("![AmmoCheck] Fast Reload requires Dynamic Reload Speeds (ver_dynamic_reload_speeds); it was not found, Fast Reload is inactive")
+    end
+end
+
+function on_option_change()
+    if not ui_mcm then return end
+    local en = ui_mcm.get("rax_ammo_check/fastreload/enable")
+    enabled = (en == true or en == 1)
+    mcm_modifier = ui_mcm.get("rax_ammo_check/fastreload/modifier") or 1
+    mcm_speed_mult = ui_mcm.get("rax_ammo_check/fastreload/speed_mult") or 1.25
+    mcm_max_combined = ui_mcm.get("rax_ammo_check/fastreload/max_combined_speed") or 1.5
+    mcm_throw_dir = ui_mcm.get("rax_ammo_check/fastreload/throw_direction") or "forward"
+    mcm_throw_force = ui_mcm.get("rax_ammo_check/fastreload/throw_force") or 40
+    local klm = ui_mcm.get("rax_ammo_check/fastreload/keep_last_mag")
+    mcm_keep_last_mag = (klm == true or klm == 1 or klm == nil)  -- default true
+    local ok = ui_mcm.get("rax_ammo_check/onekey/enable")
+    onekey_enabled = (ok == true or ok == 1)
+
+    local se = ui_mcm.get("rax_ammo_check/fastreload/slowdown_enable")
+    slow_enabled = (se == true or se == 1)
+    local pct = ui_mcm.get("rax_ammo_check/fastreload/slowdown_pct") or 0
+    if pct < 0 then pct = 0 elseif pct > 25 then pct = 25 end  -- cap at 25% slowdown
+    slow_mult = 1 - (pct / 100)
+end
+
+-- ### Drop helpers (catch the ejected mag wherever Mags routes it: main inventory or a pouch)
+
+local function valid_mag_section(section)
+    return section and section ~= "" and section ~= "no_mag"
+end
+
+-- ids of every magazine the actor holds of a given section, across inventory + carried pouches
+local function snapshot_mags(section)
+    local set = {}
+    if not valid_mag_section(section) then return set end
+    db.actor:iterate_inventory(function(_, item)
+        if item:section() == section then set[item:id()] = true end
+    end, nil)
+    if magazine_binder and magazine_binder.get_carried_mags then
+        local carried = {}
+        magazine_binder.get_carried_mags(carried)
+        for id, data in pairs(carried) do
+            if data and data.section == section then set[id] = true end
+        end
+    end
+    return set
+end
+
+-- the id of a magazine of `section` that appeared since `pre` (the just-ejected mag), or nil
+local function find_new_mag(section, pre)
+    if not valid_mag_section(section) then return nil end
+    local found = nil
+    db.actor:iterate_inventory(function(_, item)
+        if not found and item:section() == section and not pre[item:id()] then
+            found = item:id()
+        end
+    end, nil)
+    if not found and magazine_binder and magazine_binder.get_carried_mags then
+        local carried = {}
+        magazine_binder.get_carried_mags(carried)
+        for id, data in pairs(carried) do
+            if data and data.section == section and not pre[id] then
+                found = id
+                break
+            end
+        end
+    end
+    return found
+end
+
+-- ### Throw direction
+--
+-- Set the dropped mag's velocity directly toward the chosen direction.
+-- device().cam_dir / cam_right
+-- Returns true once applied (the shell must exist), false to keep retrying
+local function do_throw(obj)
+    local shell = obj:get_physics_shell()
+    if not shell then return false end
+
+    local d = device()
+    local fwd, rgt = d.cam_dir, d.cam_right
+    local hx, hz, uy = 0, 0, THROW_UP_SPEED
+    if mcm_throw_dir == "forward" then
+        hx, hz = fwd.x, fwd.z
+    elseif mcm_throw_dir == "backward" then
+        hx, hz = -fwd.x, -fwd.z
+    elseif mcm_throw_dir == "right" then
+        hx, hz = rgt.x, rgt.z
+    elseif mcm_throw_dir == "left" then
+        hx, hz = -rgt.x, -rgt.z
+    elseif mcm_throw_dir == "down" then
+        uy = -2.0
+    end
+    local len = math.sqrt(hx * hx + hz * hz)
+    if len > 0.0001 then hx, hz = hx / len, hz / len end
+
+    local speed = (mcm_throw_force / 100) * THROW_MAX_SPEED
+    local vel = vector():set(hx * speed, uy, hz * speed)
+    if shell.unfreeze then shell:unfreeze() end  -- make sure the body is not fixed/asleep
+    shell:set_linear_vel(vel)
+    return true
+end
+
+-- Apply the throw to a just-dropped mag. drop_item spawns the world object but its physics shell is not
+-- ready for a frame or two, so retry until do_throw can grab the shell (then bail after a short budget)
+local function schedule_throw(id)
+    if mcm_throw_dir == "drop" or mcm_throw_force <= 0 then return end
+    local tries = 0
+    RemoveTimeEvent("ac_fastreload_throw", "v" .. id)
+    CreateTimeEvent("ac_fastreload_throw", "v" .. id, 0, function()
+        tries = tries + 1
+        local obj = level.object_by_id(id)
+        if obj and do_throw(obj) then
+            return true
+        end
+        return tries > 15  -- ~15 frames; give up if the shell never appears
+    end)
+end
+
+-- Keep a dropped mag OUT of the carried/pouch registry. Mags routes the ejected mag into a pouch
+-- (toggle_carried_mag) only when there is pouch room, and that toggle can land AFTER our drop - a
+-- single untoggle at drop time then misses it, leaving a grounded mag still "carried" so find_magazine
+-- reloads from it. So we untoggle repeatedly for a couple seconds, covering whenever Mags toggles it.
+local function keep_unbound(id)
+    if not (magazine_binder and magazine_binder.is_carried_mag and magazine_binder.toggle_carried_mag) then
+        return
+    end
+    local start = time_global()
+    RemoveTimeEvent("ac_fastreload_unbind", "u" .. id)
+    CreateTimeEvent("ac_fastreload_unbind", "u" .. id, 0, function()
+        if magazine_binder.is_carried_mag(id) then
+            magazine_binder.toggle_carried_mag(id)  -- removes it from carried_mags
+        end
+        return time_global() - start > 2000  -- guard ~2s, by then the eject has settled
+    end)
+end
+
+-- ### Core arm logic
+--
+-- Arms the speed flag (read by the speed functor) and schedules the old-mag drop. Snapshot of the
+-- actor's mags is taken NOW, before the eject, so the drop callback can tell which mag Mags ejected.
+-- The COMBINED reload speed our functor returns. Dynamic Reload Speeds applies only ONE winning functor
+-- (speeds do not stack across functors), so ours must return the whole intended speed: our boost folded
+-- with the incoming fast mag's own reload_speed_mult, capped at mcm_max_combined so the two together
+-- cannot run away. A normal mag has fast_mag_mult == 1, so this is just our boost.
+local function capped_boost_mult()
+    local mult = mcm_speed_mult
+    if fast_mag_mult > 1 then
+        mult = mult * fast_mag_mult
+    end
+    if mult > mcm_max_combined then mult = mcm_max_combined end
+    if mult < 1 then mult = 1 end
+    return mult
+end
+
+local function arm_fast_reload(old_sec, next_sec)
+    fast_reload_active = true
+    fast_mag_mult = mag_reload_mult(next_sec)  -- the incoming mag's own reload speedup (1 if normal)
+    fr_pending_mult  = capped_boost_mult()     -- latched for the post-reload auto-check to consume
+    fr_pending_until = time_global() + FR_PENDING_MS
+    RemoveTimeEvent("ac_fastreload", "clear")
+    CreateTimeEvent("ac_fastreload", "clear", FR_FLAG_MS / 1000, function()
+        fast_reload_active = false
+        fast_mag_mult = 1.0
+        return true
+    end)
+
+    local pre = snapshot_mags(old_sec)
+    RemoveTimeEvent("ac_fastreload", "drop")
+    CreateTimeEvent("ac_fastreload", "drop", FR_DROP_S, function()
+        local new_id = find_new_mag(old_sec, pre)
+        if new_id then
+            -- If Mags routed the ejected mag into a pouch it is registered in carried_mags. A plain
+            -- drop_item leaves that registration intact, so Mags keeps treating the dropped mag as
+            -- available and can reload from it later (pulling a far-away thrown mag back). Un-register
+            -- it from the carried set first, then drop the physical object.
+            if magazine_binder.is_carried_mag and magazine_binder.is_carried_mag(new_id) then
+                magazine_binder.toggle_carried_mag(new_id)
+            end
+            local obj = level.object_by_id(new_id)
+            if obj then
+                -- Only this fast-reload drop path may use the dump pouch.
+                local layers = zzz_amp_layers
+                if layers and type(layers.fast_reload_dump_catch) == "function"
+                    and layers.fast_reload_dump_catch(obj) then
+                    -- v1.1: binder ownership guard lasts while in dump pouch.
+                    -- No timed untoggle: it could remove a deliberate move back to rig.
+                    return true          -- do not drop or apply throw physics
+                end
+                printf("[SA-DUMP-CATCH] no fitting dump space; dropping %s", tostring(new_id))
+                db.actor:drop_item(obj)
+                schedule_throw(new_id)  -- fling it in the configured direction
+                keep_unbound(new_id)    -- and keep it out of carried_mags past any late eject-toggle
+            end
+        end
+        return true
+    end)
+end
+
+-- Public: arm a fast reload for `weapon` if it is a magazine weapon with a mag to drop. Returns true
+-- when armed (the caller must then trigger the actual reload, which Dynamic Reload Speeds speeds up).
+-- Used by One-Key's double-tap "fast reload" action: One-Key owns the Reload bind there, so it calls
+-- this directly and then performs the reload itself. Does NOT require the Fast Reload feature's own
+-- "enable" toggle - selecting it as the double-tap action is the opt-in; only the speed multiplier
+-- (mcm_speed_mult) is shared.
+function do_fast_reload(weapon)
+    if not dynamic_reload_available then return false end  -- hard requirement absent: stay fully inactive
+    if not (magazines and magazine_binder) then return false end
+    if not (weapon and IsWeapon(weapon)) then return false end
+    if not magazine_binder.is_supported_weapon(weapon) then return false end
+    if weapon:weapon_in_grenade_mode() then return false end
+    if weapon:get_state() ~= 0 then return false end
+    -- a jammed weapon cannot reload (Mags blocks it): bail so callers can fall through to unjam
+    if arti_jamming and arti_jamming.get_jammed and arti_jamming.get_jammed(weapon:id()) then return false end
+
+    local mag_data = magazine_binder.get_mag_loaded(weapon:id())
+    local old_sec = mag_data and mag_data.section
+    if not old_sec or old_sec == "no_mag" then return false end
+
+    -- The spare mag Mags will actually load next (largest compatible / largest of type). Used both
+    -- for the "keep last magazine" guard and to detect an incoming "fast mag" so we can cap our boost
+    local spare = magazines.find_magazine and magazines.find_magazine(weapon)
+
+    -- "Keep last magazine": with no spare to swap in, a fast reload would just toss the only mag and
+    -- leave the weapon empty-handed. nil means no spare, so block. Caller then falls back to a normal
+    -- reload (a no-op).
+    if mcm_keep_last_mag and magazines.find_magazine and not spare then
+        return false
+    end
+
+    arm_fast_reload(old_sec, spare and spare:section())
+    return true
+end
+
+-- Public: when One-Key owns the Reload bind, One-Key calls this on a reload-key press so Fast Reload
+-- can claim it. Returns true (and arms the fast reload) only if the feature is enabled, its modifier
+-- is held, and the weapon can actually fast-reload. The caller then performs the reload itself.
+function try_modifier_fast_reload(weapon)
+    if not (enabled and ui_mcm) then return false end
+    if not ui_mcm.get_mod_key(mcm_modifier) then return false end  -- modifier not held
+    return do_fast_reload(weapon)
+end
+
+-- ### Input
+
+function on_before_key_press(key, bind, dis, flags)
+    if not (enabled and ui_mcm) then return end
+    if onekey_enabled then return end  -- One-Key owns the Reload bind; it calls try_modifier_fast_reload
+    bind = bind or dik_to_bind(key)
+    if bind ~= key_bindings.kWPN_RELOAD then return end
+    if not ui_mcm.get_mod_key(mcm_modifier) then return end  -- modifier not held: normal reload
+
+    local weapon = db.actor and db.actor:active_item()
+    if not do_fast_reload(weapon) then return end
+
+    -- do NOT set flags.ret_value: let Magazines Redux perform the reload normally
+end
+
+-- ### Reload speed via Dynamic Reload Speeds
+--
+-- Speed functor handed to ver_dynamic_reload_speeds: returns the multiplier (and whether to keep the
+-- weapon camera anim) for the reload animation it is about to play
+function ac_reload_speed_functor(anim_table, wpn)
+    if fast_reload_active then
+        return capped_boost_mult(), false   -- faster: drop the camera anim so the sped-up reload reads clean
+    end
+    if slow_enabled and slow_mult < 1 then
+        return slow_mult, true              -- slower: keep the camera anim
+    end
+    return false
+end
+
+-- Sound-disabler functor: while we are scaling a reload, tell Dynamic Reload Speeds to mute the engine's
+-- native reload sound so it can replay that sound at the matching pitch (its sound-desync fix). Mirrors
+-- the speed functor's active window so a plain reload keeps its normal engine sound
+function ac_sound_disabler_functor()
+    return fast_reload_active or (slow_enabled and slow_mult < 1)
+end
+
+-- Public: the speed multiplier of the most recent fast reload, consumed ONCE by the post-reload
+-- auto-check (which divides its message delay by this so the "Loaded" message appears proportionally
+-- sooner, matching the faster animation). Returns 1 when nothing is pending or the latch has aged out.
+-- Consume-on-read so a following normal reload's auto-check does not reuse a fast reload's multiplier.
+function consume_fast_reload_speedup()
+    if fr_pending_mult > 1 and time_global() < fr_pending_until then
+        local m = fr_pending_mult
+        fr_pending_mult  = 1.0
+        fr_pending_until = 0
+        return m
+    end
+    return 1.0
+end

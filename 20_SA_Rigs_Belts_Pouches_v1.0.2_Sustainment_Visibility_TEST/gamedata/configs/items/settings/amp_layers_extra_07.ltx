@@ -1,0 +1,40 @@
+; Documentation/future DLTX compatibility. Smart Loot Routing v1.0.1 performs
+; authoritative registration because Layered reads a private ini_file table.
+
+![amp_pouch_provisions]
+kinds = i_food,i_drink
+also_sections =
+also_flags =
+cells = 8
+stack = 1
+priority = 15
+
+![amp_pouch_sections]
+amplayer_sustainment_pouch_t1 = provisions
+amplayer_sustainment_pouch_t2 = provisions
+amplayer_sustainment_pouch_t3 = provisions
+
+![amp_pouch_layer_overrides]
+amplayer_sustainment_pouch_t1 = backpack
+amplayer_sustainment_pouch_t2 = backpack
+amplayer_sustainment_pouch_t3 = backpack
+
+; Every chest rig has the same two external Layered pouch fittings. Built-in
+; pocket capacity remains the progression differentiator between rig tiers.
+[amp_rig_attachment_slots]
+amprig_bandolier  = 2
+amprig_scout      = 2
+amprig_harness    = 2
+amprig_barakholka = 2
+amprig_nylon      = 2
+amprig_vydra      = 2
+amprig_warsaw     = 2
+amprig_karkas     = 2
+amprig_smersh     = 2
+amprig_bastion    = 2
+amprig_volya      = 2
+amprig_leshy      = 2
+amprig_chicom     = 2
+amprig_rubezh     = 2
+amprig_carrier    = 2
+amprig_tarzan     = 2

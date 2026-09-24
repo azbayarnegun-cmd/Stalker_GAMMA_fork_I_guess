@@ -1,0 +1,29 @@
+; ============================================================
+;  BELT LADDER - EXTRAS SLOT 01
+;
+;  Read over the addon's own items\amp_layers.ltx by the Core script.
+;  This mod ships nothing else that another mod could want.
+; ============================================================
+
+; The belt layer's slot_count is now the CEILING for the ladder, not
+; the number any one belt gives. Each belt states its own below.
+[amp_layer_belt]
+slot_count = 5
+
+; ============================================================
+;  HOW MANY POUCHES ONE BELT CARRIES
+;
+;  Keyed by the belt's own section, clamped to the ceiling above.
+;
+;  THE LEGACY BELT IS LISTED ON PURPOSE. A carrier with no entry here
+;  falls back to the layer's slot_count - so without this line, every
+;  amplayer_belt in an existing save would quietly become a six-slot
+;  belt.
+; ============================================================
+[amp_carrier_slots]
+amplayer_belt          = 2
+amplayer_belt_t1       = 1
+amplayer_belt_t2       = 2
+amplayer_belt_t3       = 3
+amplayer_belt_t4       = 4
+amplayer_belt_t5       = 5

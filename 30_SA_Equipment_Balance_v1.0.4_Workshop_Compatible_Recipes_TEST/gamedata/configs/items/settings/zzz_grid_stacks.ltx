@@ -1,0 +1,133 @@
+; ============================================================
+;  ZONE GRID - HOW MANY OF A THING SHARE ONE SQUARE
+;
+;  REPLACES Squared Away's own zzz_grid_stacks.ltx.
+;
+;  THE DEFAULT HERE IS ONE. Anything this file does not name gets a
+;  ceiling of one - its own square - so what follows is the complete
+;  list of things that pile, and everything else in the game does not.
+;  Squared Away's original stacked medicine, food, drink, parts, tools,
+;  ammunition and more; all of that is at the bottom of this file,
+;  commented out, so any line can be put back by deleting one semicolon.
+;
+;  WHAT CAN stack is still decided in the script and not here. A section
+;  marked dont_stack never piles, and neither does anything carrying
+;  upgrades. Food and drink only share a square when their freshness is
+;  within ten per cent.
+;
+;  THIS FILE GOVERNS FITTED POUCHES TOO. zzz_amp_grid.layer_stack_limit,
+;  which Layered Pouches asks about every item entering a pouch, calls
+;  the same G.stack_limit these tables feed. The `stack` numbers in
+;  items/amp_layers.ltx are only a fallback for when the grid is not
+;  loaded.
+;
+;  THE MCM SLIDER SCALES EVERY NUMBER BELOW. "Stack multiplier" at 100
+;  is this file as written; 200 would make bolts fifty deep. Leave it at
+;  100 unless that is what you want.
+;
+;  FOUR WAYS TO NAME SOMETHING, most specific first. The first rung that
+;  answers wins:
+;
+;    [grid_stack_section]   this exact section
+;    [grid_stack_like]      any section whose name contains this
+;    [grid_stack_flag]      anything whose section carries this key
+;    [grid_stack_kind]      anything the game gives this `kind`
+;
+;  IF SOMETHING DOES NOT BEHAVE, turn on Debug Balancing in MCM. Hover
+;  an item and it names its section, its kind, its ceiling and which
+;  line of this file produced it - which is the only reliable way to
+;  check the two substring rules below against your own install.
+; ============================================================
+
+
+; ------------------------------------------------------------
+;  BY SECTION - the last word, and an exact name.
+; ------------------------------------------------------------
+[grid_stack_section]
+; A bolt weighs nothing and you throw them by the handful.
+bolt                = 25
+
+
+; ------------------------------------------------------------
+;  BY NAME - a SUBSTRING of the section name.
+;
+;  Substrings are guesses about what your install calls things. These
+;  three are written the way the original file wrote its patch rule, and
+;  Debug Balancing will tell you whether they are matching. If your
+;  syringes are called something without "syringe" or "inject" in the
+;  name, add the exact section to [grid_stack_section] above instead.
+; ------------------------------------------------------------
+[grid_stack_like]
+_patch              = 10
+syringe             = 4
+inject              = 4
+cigar               = 4
+
+
+; ------------------------------------------------------------
+;  BY FLAG - a key the section carries.
+;
+;  WEAPON magazines - the flag comes from the magazine mod and means a
+;  detachable firearm magazine. Paper magazines and newspapers are
+;  i_letter and are nothing to do with this rung.
+;
+;  This rung sits ABOVE the kind on purpose: a magazine's kind is
+;  w_ammo, the same as a box of cartridges, so without the flag the
+;  kind would answer first and magazines would stack like ammunition.
+;
+;  ONE, which is Squared Away's own value and the point of the flag. A
+;  magazine is not interchangeable with the next one - each carries its
+;  own rounds - so a pile of them would be one icon and one number over
+;  several different round counts.
+; ------------------------------------------------------------
+[grid_stack_flag]
+is_mag              = 1
+
+
+; ------------------------------------------------------------
+;  BY KIND - the game's own word for what a thing is, and the same one
+;  the sorting tabs read.
+; ------------------------------------------------------------
+[grid_stack_kind]
+; Notes, documents and the paper a stash is written on.
+i_letter            = 10
+
+; Cartridge boxes. Two deep - a box is one square whether it holds five
+; rounds or fifty, and this is the entry that decides how much room a
+; run through a firefight costs you. It was 20 in the original file.
+;
+; MAGAZINES ARE NOT THIS. A magazine's kind is w_ammo too, but the flag
+; rung above answers first, so is_mag decides them and this does not.
+w_ammo              = 2
+
+
+; ============================================================
+;  EVERYTHING SQUARED AWAY USED TO STACK
+;
+;  The original file's own numbers, kept verbatim. Delete a semicolon to
+;  put any line back. They belong under the [grid_stack_kind] heading
+;  above, so move them there rather than uncommenting them here.
+;
+;  i_medical           = 5     medkits, bandages, antirads, pills
+;  i_food              = 5
+;  i_drink             = 5
+;  i_mutant_cooked     = 4
+;  i_mutant_raw        = 4
+;  i_part              = 10    weapon parts - the kind that eats a grid
+;  i_upgrade           = 5
+;  i_mutant_part       = 5
+;  i_mutant_belt       = 5
+;  w_ammo              = 20    cartridge boxes
+;  i_misc              = 10    bolts, wire, tins, workbench oddments
+;  i_arty_junk         = 10
+;  i_letter            = 20    kept above, at 10
+;  i_tool              = 4
+;  i_kit               = 4
+;  i_repair            = 4
+;
+;  ...and from the other tables:
+;
+;  [grid_stack_like]    _patch = 20      kept above, at 10
+;  [grid_stack_flag]    is_mag = 1       kept above, unchanged
+;  [grid_stack_section] bolt   = 40      kept above, at 25
+; ============================================================

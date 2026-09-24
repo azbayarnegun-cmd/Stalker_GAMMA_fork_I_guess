@@ -1,0 +1,292 @@
+-- SA Basic Fabric Salvage v1.1.0
+-- Broadens basic-fabric salvage and adds a mixed-faction-patch conversion.
+-- Wraps GAMMA functions; it does not replace item_parts.script.
+
+local VERSION = "1.1.0"
+local FABRIC_SECTION = "prt_o_fabrics_1"
+local THREAD_SECTION = "sewing_thread"
+local FUNCTOR_NAME = "sa_sew_basic_fabric"
+local OUTFIT_HEAVY_WEIGHT = 12
+
+local salvage_installed = false
+local recipe_registered = false
+
+local faction_patches = {
+    army_patch = true,
+    bandit_patch = true,
+    csky_patch = true,
+    dolg_patch = true,
+    ecolog_patch = true,
+    freedom_patch = true,
+    greh_patch = true,
+    isg_patch = true,
+    killer_patch = true,
+    monolith_patch = true,
+    renegade_patch = true,
+    stalker_patch = true,
+    zombied_patch = true,
+}
+
+local function is_faction_patch(obj)
+    return obj and faction_patches[obj:section()] == true
+end
+
+local function recovery_chance(obj)
+    local base = 40
+    if itms_manager and itms_manager.ini_parts then
+        base = itms_manager.ini_parts:r_float_ex("settings", "disassembly_chance") or base
+    end
+    return math.min(100, base + obj:condition() * 100)
+end
+
+local function create_fabric(npc_id, count, part_condition)
+    local npc = npc_id and get_object_by_id(npc_id)
+    if not npc then
+        printf("[SA-FABRIC-SALVAGE] salvage cancelled: owner unavailable")
+        return true
+    end
+
+    for _ = 1, count do
+        local se_result = alife_create(
+            FABRIC_SECTION,
+            npc:position(),
+            npc:level_vertex_id(),
+            npc:game_vertex_id(),
+            npc:id(),
+            false
+        )
+
+        if se_result then
+            if part_condition and utils_stpk and utils_stpk.get_item_data and utils_stpk.set_item_data then
+                local item_data = utils_stpk.get_item_data(se_result)
+                item_data.condition = clamp(part_condition / 100, 0.001, 0.999)
+                utils_stpk.set_item_data(item_data, se_result)
+            end
+            alife():register(se_result)
+        else
+            printf("[SA-FABRIC-SALVAGE] unable to create %s", FABRIC_SECTION)
+        end
+    end
+    return true
+end
+
+local function outfit_target_rolls(obj)
+    if IsHeadgear(obj) then
+        return 1
+    end
+
+    local weight = ini_sys:r_float_ex(obj:section(), "inv_weight") or 0
+    return weight >= OUTFIT_HEAVY_WEIGHT and 3 or 2
+end
+
+local function soft_item_target_rolls(sec)
+    -- GAMMA/Anomaly backpacks plus the user's layered pouch, belt and rig families.
+    if IsItem("backpack", sec) then
+        return 2
+    end
+    if string.sub(sec, 1, 7) == "amprig_" then
+        return 2
+    end
+    if string.sub(sec, 1, 9) == "amplayer_" or string.sub(sec, 1, 9) == "amppouch_" then
+        return 1
+    end
+
+    -- Other dismantlable soft equipment. The item must already have a GAMMA
+    -- nor_parts_list entry before disassembly_item can reach this wrapper.
+    if sec == "equ_small_pack" or sec == "equ_small_military_pack" or sec == "equ_tourist_pack" then
+        return 2
+    end
+    if string.find(sec, "backpack", 1, true) or string.find(sec, "chest_rig", 1, true) then
+        return 2
+    end
+    if string.find(sec, "pouch", 1, true) or string.find(sec, "belt", 1, true)
+    or string.find(sec, "sleepbag", 1, true) or string.find(sec, "sleeping_bag", 1, true) then
+        return 1
+    end
+    return 0
+end
+
+local function count_basic_fabric(parts_string)
+    local count = 0
+    if not parts_string then
+        return count
+    end
+    local parts = str_explode(parts_string, ",")
+    for i = 1, #parts do
+        local section = string.gsub(parts[i], "%s+", "")
+        if section == FABRIC_SECTION then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+local function roll_extra_fabric(obj, target_rolls, existing_rolls)
+    local won = 0
+    local extra_rolls = math.max(0, target_rolls - existing_rolls)
+    local chance = recovery_chance(obj)
+    for _ = 1, extra_rolls do
+        if math.random(100) <= chance then
+            won = won + 1
+        end
+    end
+    return won
+end
+
+local function install_salvage_patch()
+    if salvage_installed then
+        return
+    end
+    if not item_parts or type(item_parts.disassembly_outfit) ~= "function"
+    or type(item_parts.disassembly_item) ~= "function" then
+        printf("[SA-FABRIC-SALVAGE] v%s ERROR item_parts functions unavailable", VERSION)
+        return
+    end
+
+    local original_disassembly_outfit = item_parts.disassembly_outfit
+    local original_disassembly_item = item_parts.disassembly_item
+
+    item_parts.disassembly_outfit = function(obj, obj_d)
+        local owner_id
+        local result_count = 0
+        local result_condition
+        local delay = 0
+        local event_id
+
+        if obj and obj:parent() then
+            local parts = item_parts.get_parts_con(obj, nil, true)
+            local existing_condition = parts and parts[FABRIC_SECTION]
+            local existing_rolls = existing_condition and 1 or 0
+            result_count = roll_extra_fabric(obj, outfit_target_rolls(obj), existing_rolls)
+            if result_count > 0 then
+                owner_id = obj:parent():id()
+                result_condition = existing_condition or (obj:condition() * 100)
+                delay = actor_effects.is_animations_on() and 3 or 0
+                event_id = "sa_fabric_outfit_" .. obj:id()
+            end
+        end
+
+        original_disassembly_outfit(obj, obj_d)
+
+        if owner_id then
+            CreateTimeEvent(0, event_id, delay, create_fabric, owner_id, result_count, result_condition)
+        end
+    end
+
+    item_parts.disassembly_item = function(obj, obj_d)
+        local owner_id
+        local result_count = 0
+        local result_condition
+        local delay = 0
+        local event_id
+
+        if obj and obj:parent() then
+            local sec = obj:section()
+            local parts_string = itms_manager.ini_parts:r_string_ex("nor_parts_list", sec)
+            local target = soft_item_target_rolls(sec)
+            if parts_string and target > 0 then
+                result_count = roll_extra_fabric(obj, target, count_basic_fabric(parts_string))
+                if result_count > 0 then
+                    owner_id = obj:parent():id()
+                    result_condition = obj:condition() * 100
+                    delay = actor_effects.is_animations_on() and 3 or 0
+                    event_id = "sa_fabric_item_" .. obj:id()
+                end
+            end
+        end
+
+        original_disassembly_item(obj, obj_d)
+
+        if owner_id then
+            CreateTimeEvent(0, event_id, delay, create_fabric, owner_id, result_count, result_condition)
+        end
+    end
+
+    salvage_installed = true
+    printf("[SA-FABRIC-SALVAGE] v%s salvage patch installed", VERSION)
+end
+
+local function recipe_name_condition(obj, bag, mode)
+    return is_faction_patch(obj)
+end
+
+local function recipe_name(obj, bag, mode)
+    return "st_sa_sew_basic_fabric"
+end
+
+local function collect_recipe_items(clicked_obj)
+    local patch_ids = {}
+    local thread_ids = {}
+    local clicked_id = clicked_obj and clicked_obj:id()
+
+    if clicked_id and is_faction_patch(clicked_obj) then
+        patch_ids[1] = clicked_id
+    end
+
+    db.actor:iterate_inventory(function(_owner, item)
+        if item then
+            local id = item:id()
+            local sec = item:section()
+            if faction_patches[sec] and id ~= clicked_id and #patch_ids < 2 then
+                patch_ids[#patch_ids + 1] = id
+            elseif sec == THREAD_SECTION and #thread_ids < 2 then
+                thread_ids[#thread_ids + 1] = id
+            end
+        end
+    end, db.actor)
+
+    return patch_ids, thread_ids
+end
+
+local function release_inventory_ids(ids)
+    for i = 1, #ids do
+        local se_item = xobject.se(ids[i])
+        if se_item then
+            xobject.release(se_item)
+        end
+    end
+end
+
+local function recipe_action(obj, bag, mode)
+    if not db.actor then
+        return
+    end
+
+    local patch_ids, thread_ids = collect_recipe_items(obj)
+    if #patch_ids < 2 or #thread_ids < 2 then
+        news_manager.send_tip(db.actor, game.translate_string("st_sa_sew_basic_fabric_missing"), nil, nil, 5000)
+        return
+    end
+
+    release_inventory_ids(patch_ids)
+    release_inventory_ids(thread_ids)
+    alife_create_item(FABRIC_SECTION, db.actor)
+    news_manager.send_tip(db.actor, game.translate_string("st_sa_sew_basic_fabric_success"), nil, nil, 5000)
+    printf("[SA-FABRIC-SALVAGE] converted 2 faction patches + 2 sewing_thread into %s", FABRIC_SECTION)
+end
+
+local function register_patch_recipe()
+    if recipe_registered then
+        return
+    end
+    if not custom_functor_autoinject or type(custom_functor_autoinject.add_functor) ~= "function" then
+        printf("[SA-FABRIC-SALVAGE] v%s ERROR custom_functor_autoinject unavailable", VERSION)
+        return
+    end
+
+    custom_functor_autoinject.add_functor(
+        FUNCTOR_NAME,
+        recipe_name_condition,
+        recipe_name,
+        recipe_name_condition,
+        recipe_action,
+        false
+    )
+    recipe_registered = true
+    printf("[SA-FABRIC-SALVAGE] v%s patch recipe registered", VERSION)
+end
+
+function on_game_start()
+    install_salvage_patch()
+    register_patch_recipe()
+end

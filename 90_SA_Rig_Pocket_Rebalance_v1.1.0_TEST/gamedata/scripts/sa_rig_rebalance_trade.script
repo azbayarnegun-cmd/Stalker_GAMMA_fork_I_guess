@@ -1,0 +1,88 @@
+local VERSION = "v1.1.0 TEST"
+local BASE_MULTIPLIER = 0.75
+
+local rigs = {
+    amprig_bandolier = true,
+    amprig_scout = true,
+    amprig_harness = true,
+    amprig_barakholka = true,
+    amprig_nylon = true,
+    amprig_vydra = true,
+    amprig_warsaw = true,
+    amprig_karkas = true,
+    amprig_smersh = true,
+    amprig_bastion = true,
+    amprig_volya = true,
+    amprig_chicom = true,
+    amprig_leshy = true,
+    amprig_rubezh = true,
+    amprig_carrier = true,
+    amprig_tarzan = true,
+}
+
+local preset = BASE_MULTIPLIER
+local apply_to_selling = true
+
+local function refresh_settings()
+    if ui_mcm and ui_mcm.get then
+        preset = tonumber(ui_mcm.get("sa_rig_rebalance/price_preset")) or BASE_MULTIPLIER
+        apply_to_selling = ui_mcm.get("sa_rig_rebalance/apply_to_selling")
+        if apply_to_selling == nil then
+            apply_to_selling = true
+        end
+    end
+end
+
+local function section_of(obj)
+    if not obj then return nil end
+    local ok, section = pcall(function() return obj:section() end)
+    return ok and section or nil
+end
+
+local function actor_on_trade(obj, sell, cost)
+    local section = section_of(obj)
+    if not section or not rigs[section] then return end
+    if not db or not db.actor then return end
+
+    refresh_settings()
+    if sell and not apply_to_selling then return end
+
+    local paid = tonumber(cost) or 0
+    if paid <= 0 then return end
+
+    local ratio = preset / BASE_MULTIPLIER
+    local raw_correction = paid * (ratio - 1.0)
+    local correction = raw_correction >= 0
+        and math.floor(raw_correction + 0.5)
+        or math.ceil(raw_correction - 0.5)
+    if correction == 0 then
+        printf("[SA-RIG-RB] trade section=%s sell=%s cost=%s preset=%.2f correction=0", section, tostring(sell), tostring(cost), preset)
+        return
+    end
+
+    -- sell=true means the actor sold the item and received money.
+    -- sell=false means the actor bought the item and paid money.
+    local money_delta = sell and correction or -correction
+    db.actor:give_money(money_delta)
+
+    printf("[SA-RIG-RB] trade section=%s sell=%s cost=%s preset=%.2f correction=%d actor_delta=%d",
+        section, tostring(sell), tostring(cost), preset, correction, money_delta)
+end
+
+local function on_option_change()
+    refresh_settings()
+    printf("[SA-RIG-RB] price preset changed: %.2f apply_to_selling=%s", preset, tostring(apply_to_selling))
+end
+
+function on_game_start()
+    refresh_settings()
+    RegisterScriptCallback("actor_on_trade", actor_on_trade)
+    RegisterScriptCallback("on_option_change", on_option_change)
+    printf("[SA-RIG-RB] %s loaded; static price baseline=75%%", VERSION)
+    printf("[SA-RIG-RB] trade correction registered")
+end
+
+function on_game_end()
+    UnregisterScriptCallback("actor_on_trade", actor_on_trade)
+    UnregisterScriptCallback("on_option_change", on_option_change)
+end
