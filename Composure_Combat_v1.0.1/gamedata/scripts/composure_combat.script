@@ -1,0 +1,1013 @@
+--[[
+    Composure Combat v1.0.1
+
+    Human-firefight pressure module for Composure Core / Framework API 2.
+    It detects hostile stalkers, actor hits and hostile bullet near misses;
+    applies capped 30/70 event stress; owns combat recovery locks; and performs
+    a source-accounted post-encounter rebound.
+
+    Mutants are intentionally excluded from v1.
+    Target runtime: Anomaly/GAMMA LuaJIT (Lua 5.1 semantics).
+--]]
+
+local VERSION = "1.0.1"
+local REQUIRED_FRAMEWORK_API = 2
+local OWNER = "composure_combat"
+local SAVE_KEY = "composure_combat_v1"
+local LOCK_ID = "combat.recovery_lock"
+local LISTENER_ID = "combat.loss_accounting"
+local LOG = "[composure_combat:v1]"
+local EPS = 0.000001
+
+-- Configuration defaults are refreshed from MCM.
+local enabled = true
+local combat_distance = 150
+local grace_period_ms = 2000
+local end_inertia_ms = 10000
+
+local phase_rates = { alert = 0.10, engaged = 0.20, overwhelmed = 0.30 }
+local maximum_continuous_rate = 0.30
+
+local hit_enabled = true
+local hit_bands = { 1.0, 1.5, 2.5, 3.5, 5.0 }
+
+local near_miss_enabled = true
+local near_miss_radius = 3.0
+local extreme_near_miss_radius = 1.0
+local near_normal = { 0.45, 0.30, 0.15 }
+local near_extreme = { 0.75, 0.50, 0.25 }
+local near_deprogress_ms = 3000
+
+local instant_fraction = 0.30
+local deferred_duration = 30
+local instant_cap_1s = 5.0
+local instant_cap_3s = 7.5
+
+local recovery_lock_enabled = true
+local post_combat_delay_ms = 15000
+local rebound_enabled = true
+local rebound_delay_ms = 20000
+local rebound_percent = 1.0
+local rebound_max = 30
+
+local debug_key = nil
+local test_mode = false
+local test_action = 0
+local forced_phase_duration_ms = 15000
+local debug_enabled = false
+
+-- Runtime state contains only primitives/tables; engine userdata is never kept.
+local threats = {}                 -- [npc_id] = expiry_ms
+local threat_weapon_weight = {}    -- [npc_id] = number
+local threat_weapon_class = {}     -- [npc_id] = string
+local npc_next_refresh = {}        -- [npc_id] = next check ms
+local tracked_bullets = {}         -- [bullet_id] = { parent_id, min_dist }
+local finalized_bullets = {}       -- [bullet_id] = true during finalization
+
+local encounter_active = false
+local encounter_cooldown = false
+local encounter_started_ms = 0
+local encounter_ended_ms = 0
+local encounter_start_value = 0
+local encounter_combat_loss = 0
+local encounter_number = 0
+local last_danger_ms = -1000000
+local current_phase = "idle"
+local last_phase = "idle"
+
+local deferred_queue = {}          -- { id, remaining, rate, label }
+local deferred_sequence = 0
+local instant_history = {}         -- { at_ms, amount }
+local near_miss_stage = 1
+local near_decay_anchor_ms = 0
+
+local last_health = nil
+local last_update_ms = 0
+local last_pressure_ms = 0
+local last_lock_refresh_ms = 0
+local forced_phase = nil
+local forced_phase_until_ms = 0
+local callbacks_registered = false
+local dependency_error_logged = false
+
+local function now_ms()
+    if time_global then return time_global() end
+    return 0
+end
+
+local function log(fmt, ...)
+    local ok, message = pcall(string.format, fmt, ...)
+    printf(LOG .. " " .. (ok and message or tostring(fmt)))
+end
+
+local function debug_log(fmt, ...)
+    if debug_enabled then log(fmt, ...) end
+end
+
+local function clamp(value, lo, hi)
+    if value < lo then return lo end
+    if value > hi then return hi end
+    return value
+end
+
+local function count_pairs(tbl)
+    local count = 0
+    for _ in pairs(tbl or {}) do count = count + 1 end
+    return count
+end
+
+local function cfg(key, fallback)
+    if composure_combat_mcm and composure_combat_mcm.get_config then
+        local ok, value = pcall(composure_combat_mcm.get_config, key)
+        if ok and value ~= nil then return value end
+    end
+    return fallback
+end
+
+local function refresh_config()
+    enabled = cfg("enabled", true) == true
+    combat_distance = clamp(tonumber(cfg("combat_distance", 150)) or 150, 25, 300)
+    grace_period_ms = clamp(tonumber(cfg("grace_period", 2)) or 2, 0, 10) * 1000
+    end_inertia_ms = clamp(tonumber(cfg("end_inertia", 10)) or 10, 2, 30) * 1000
+
+    phase_rates.alert = clamp(tonumber(cfg("alert_rate", 0.10)) or 0.10, 0, 0.30)
+    phase_rates.engaged = clamp(tonumber(cfg("engaged_rate", 0.20)) or 0.20, 0, 0.30)
+    phase_rates.overwhelmed = clamp(tonumber(cfg("overwhelmed_rate", 0.30)) or 0.30, 0, 0.30)
+    maximum_continuous_rate = clamp(tonumber(cfg("maximum_continuous_rate", 0.30)) or 0.30, 0.05, 0.30)
+
+    hit_enabled = cfg("hit_enabled", true) == true
+    hit_bands[1] = clamp(tonumber(cfg("hit_band_1", 1.0)) or 1.0, 0, 10)
+    hit_bands[2] = clamp(tonumber(cfg("hit_band_2", 1.5)) or 1.5, 0, 10)
+    hit_bands[3] = clamp(tonumber(cfg("hit_band_3", 2.5)) or 2.5, 0, 10)
+    hit_bands[4] = clamp(tonumber(cfg("hit_band_4", 3.5)) or 3.5, 0, 10)
+    hit_bands[5] = clamp(tonumber(cfg("hit_band_5", 5.0)) or 5.0, 0, 10)
+
+    near_miss_enabled = cfg("near_miss_enabled", true) == true
+    near_miss_radius = clamp(tonumber(cfg("near_miss_radius", 3.0)) or 3.0, 1, 6)
+    extreme_near_miss_radius = clamp(tonumber(cfg("extreme_near_miss_radius", 1.0)) or 1.0, 0.25, near_miss_radius)
+    near_normal[1] = clamp(tonumber(cfg("near_normal_1", 0.45)) or 0.45, 0, 2)
+    near_normal[2] = clamp(tonumber(cfg("near_normal_2", 0.30)) or 0.30, 0, 2)
+    near_normal[3] = clamp(tonumber(cfg("near_normal_3", 0.15)) or 0.15, 0, 2)
+    near_extreme[1] = clamp(tonumber(cfg("near_extreme_1", 0.75)) or 0.75, 0, 2)
+    near_extreme[2] = clamp(tonumber(cfg("near_extreme_2", 0.50)) or 0.50, 0, 2)
+    near_extreme[3] = clamp(tonumber(cfg("near_extreme_3", 0.25)) or 0.25, 0, 2)
+    near_deprogress_ms = clamp(tonumber(cfg("near_miss_deprogress", 3.0)) or 3.0, 1, 15) * 1000
+
+    instant_fraction = clamp(tonumber(cfg("instant_fraction", 0.30)) or 0.30, 0, 1)
+    deferred_duration = clamp(tonumber(cfg("deferred_duration", 30)) or 30, 5, 120)
+    instant_cap_1s = clamp(tonumber(cfg("instant_cap_1s", 5.0)) or 5.0, 0.5, 10)
+    instant_cap_3s = clamp(tonumber(cfg("instant_cap_3s", 7.5)) or 7.5, 1, 20)
+
+    recovery_lock_enabled = cfg("recovery_lock", true) == true
+    post_combat_delay_ms = clamp(tonumber(cfg("post_combat_delay", 15)) or 15, 0, 60) * 1000
+    rebound_enabled = cfg("rebound_enabled", true) == true
+    rebound_delay_ms = clamp(tonumber(cfg("rebound_delay", 20)) or 20, 5, 60) * 1000
+    rebound_percent = clamp(tonumber(cfg("rebound_percent", 1.0)) or 1.0, 0, 1)
+    rebound_max = clamp(tonumber(cfg("rebound_max", 30)) or 30, 0, 50)
+
+    debug_key = cfg("debug_key", DIK_keys and DIK_keys.DIK_F6 or nil)
+    test_mode = cfg("test_mode", false) == true
+    test_action = math.floor(tonumber(cfg("test_action", 0)) or 0)
+    forced_phase_duration_ms = clamp(tonumber(cfg("forced_phase_duration", 15)) or 15, 5, 60) * 1000
+    debug_enabled = cfg("debug_log", false) == true
+end
+
+local function framework_ready()
+    return composure_framework
+        and type(composure_framework.supports) == "function"
+        and composure_framework.supports(REQUIRED_FRAMEWORK_API)
+        and type(composure_framework.get_value) == "function"
+        and type(composure_framework.apply_delta) == "function"
+        and type(composure_framework.set_recovery_lock) == "function"
+        and type(composure_framework.emit_event) == "function"
+end
+
+local function report_missing_framework_once()
+    if dependency_error_logged then return end
+    dependency_error_logged = true
+    log("Composure Core / Framework API %d not found; Combat is inactive", REQUIRED_FRAMEWORK_API)
+end
+
+local function emit(event_id, payload)
+    if not framework_ready() then return false end
+    return composure_framework.emit_event(event_id, payload or {}, {
+        owner = OWNER,
+        category = "combat",
+    })
+end
+
+local function safe_object_id(obj)
+    if not obj then return nil end
+    local ok, id = pcall(function() return obj:id() end)
+    return ok and id or nil
+end
+
+local function object_by_id_safe(id)
+    if id == nil then return nil end
+    if gameobjects_registry and gameobjects_registry[id] then return gameobjects_registry[id] end
+    if level and level.object_by_id then
+        local ok, obj = pcall(level.object_by_id, id)
+        if ok then return obj end
+    end
+    return nil
+end
+
+local function is_human_stalker(obj)
+    if not obj then return false end
+    local ok, result = pcall(function() return obj:is_stalker() end)
+    return ok and result == true
+end
+
+local function actor_health()
+    if not db or not db.actor then return nil end
+    local health = tonumber(db.actor.health)
+    if health == nil then return nil end
+    return clamp(health, 0, 1)
+end
+
+local function within_combat_distance(npc)
+    if not npc or not db or not db.actor then return false end
+    local ok, distance_sqr = pcall(function()
+        return npc:position():distance_to_sqr(db.actor:position())
+    end)
+    return ok and type(distance_sqr) == "number" and distance_sqr <= combat_distance * combat_distance
+end
+
+local function npc_targets_actor(npc)
+    if not npc or not db or not db.actor or not is_human_stalker(npc) then return false end
+    if not within_combat_distance(npc) then return false end
+    local actor_id = safe_object_id(db.actor)
+    if actor_id == nil then return false end
+    local ok, enemy = pcall(function() return npc:best_enemy() end)
+    return ok and enemy and safe_object_id(enemy) == actor_id
+end
+
+local function contains_any(text, needles)
+    for _, needle in ipairs(needles) do
+        if string.find(text, needle, 1, true) then return true end
+    end
+    return false
+end
+
+local function safe_weapon_section(npc)
+    if not npc then return nil end
+    local ok_item, item = pcall(function() return npc:active_item() end)
+    if not ok_item or not item then return nil end
+    local ok_section, section = pcall(function() return item:section() end)
+    if ok_section and type(section) == "string" then return string.lower(section) end
+    return nil
+end
+
+local function classify_weapon(section)
+    local s = string.lower(tostring(section or ""))
+    if s == "" or contains_any(s, { "knife", "binoc", "bolt" }) then return "unarmed", 0 end
+    if contains_any(s, { "rpg", "rg6", "m79", "grenade_launcher", "gl_" }) then return "launcher", 1.0 end
+    if contains_any(s, { "pkm", "pkp", "rpk", "m249", "m60", "rpd", "mg3", "negev", "lmg" }) then return "lmg", 0.8 end
+    if contains_any(s, { "svd", "svu", "vintorez", "gauss", "m24", "m82", "l96", "mosin", "sniper" }) then return "sniper", 0.8 end
+    if contains_any(s, { "fal", "g3", "scar_h", "m14", "hk417", "battle" }) then return "battle_rifle", 0.5 end
+    if contains_any(s, { "toz", "bm16", "spas", "saiga", "vepr", "mp153", "protecta", "shotgun" }) then return "shotgun", 0.3 end
+    if contains_any(s, { "mp5", "mp7", "ump", "p90", "pp2000", "ppsh", "bizon", "smg" }) then return "smg", 0.2 end
+    if contains_any(s, { "wpn_pm", "glock", "usp", "beretta", "fort", "tt33", "pistol" }) then return "pistol", 0 end
+    if string.find(s, "wpn_", 1, true) then return "rifle", 0.4 end
+    return "unknown", 0
+end
+
+local function refresh_weapon_threat(npc, id)
+    local class, weight = classify_weapon(safe_weapon_section(npc))
+    threat_weapon_class[id] = class
+    threat_weapon_weight[id] = weight
+end
+
+local function cleanup_threats(now)
+    local count = 0
+    for id, expiry in pairs(threats) do
+        if now <= (expiry or 0) then
+            count = count + 1
+        else
+            threats[id] = nil
+            threat_weapon_weight[id] = nil
+            threat_weapon_class[id] = nil
+            npc_next_refresh[id] = nil
+        end
+    end
+    return count
+end
+
+local function phase_profile(now)
+    now = now or now_ms()
+    if forced_phase and now < forced_phase_until_ms then
+        return forced_phase, phase_rates[forced_phase] or 0, forced_phase == "alert" and 1 or (forced_phase == "engaged" and 2 or 5), 0
+    end
+    if forced_phase and now >= forced_phase_until_ms then forced_phase = nil end
+
+    local count = cleanup_threats(now)
+    if count <= 0 then return "idle", 0, 0, 0 end
+    local weapon_total = 0
+    for id, expiry in pairs(threats) do
+        if now <= (expiry or 0) then weapon_total = weapon_total + (tonumber(threat_weapon_weight[id]) or 0) end
+    end
+    local score = count + weapon_total
+    if count >= 4 or score >= 4.5 then return "overwhelmed", phase_rates.overwhelmed, count, score end
+    if count >= 2 or score >= 2.0 then return "engaged", phase_rates.engaged, count, score end
+    return "alert", phase_rates.alert, count, score
+end
+
+local function refresh_phase(now)
+    local phase, rate, count, score = phase_profile(now)
+    current_phase = phase
+    if current_phase ~= last_phase then
+        emit("combat.intensity_changed", {
+            old_phase = last_phase,
+            phase = current_phase,
+            hostile_count = count,
+            threat_score = score,
+            rate = rate,
+        })
+        if current_phase == "overwhelmed" then
+            emit("combat.overwhelmed", { hostile_count = count, threat_score = score })
+        end
+        debug_log("phase %s -> %s hostiles=%d score=%.2f rate=-%.2f/s",
+            tostring(last_phase), tostring(current_phase), count, score, rate)
+        last_phase = current_phase
+    end
+    return phase, rate, count, score
+end
+
+local function start_encounter(reason)
+    local now = now_ms()
+    if encounter_active then return false end
+    if encounter_cooldown then
+        encounter_active = true
+        encounter_cooldown = false
+        encounter_ended_ms = 0
+        emit("combat.resumed", { reason = reason, encounter = encounter_number })
+        return true
+    end
+    if not framework_ready() then report_missing_framework_once(); return false end
+    encounter_number = encounter_number + 1
+    encounter_active = true
+    encounter_cooldown = false
+    encounter_started_ms = now
+    encounter_ended_ms = 0
+    encounter_start_value = composure_framework.get_value()
+    encounter_combat_loss = 0
+    deferred_queue = {}
+    instant_history = {}
+    emit("combat.started", {
+        reason = reason,
+        encounter = encounter_number,
+        starting_composure = encounter_start_value,
+    })
+    debug_log("encounter %d started at %.2f reason=%s", encounter_number, encounter_start_value, tostring(reason))
+    return true
+end
+
+local function mark_danger(reason)
+    last_danger_ms = now_ms()
+    start_encounter(reason or "danger")
+end
+
+local function note_hostile(npc, event_contact)
+    if not enabled or not npc or not is_human_stalker(npc) or not within_combat_distance(npc) then return end
+    local id = safe_object_id(npc)
+    if id == nil then return end
+    local now = now_ms()
+    local was_new = (threats[id] or 0) < now
+    threats[id] = now + 3000
+    refresh_weapon_threat(npc, id)
+    last_danger_ms = now
+    if event_contact or was_new or not encounter_active then start_encounter("hostile_contact") end
+end
+
+local function npc_on_fighting_actor(npc)
+    note_hostile(npc, true)
+end
+
+local function npc_on_update(npc)
+    if not enabled or not npc or not db or not db.actor or not is_human_stalker(npc) then return end
+    local id = safe_object_id(npc)
+    if id == nil then return end
+    local now = now_ms()
+    if now < (npc_next_refresh[id] or 0) then return end
+    npc_next_refresh[id] = now + 500
+    if npc_targets_actor(npc) then note_hostile(npc, false) end
+end
+
+local function hostile_bullet_parent(parent_id)
+    if parent_id == nil or not db or not db.actor then return false end
+    local now = now_ms()
+    if threats[parent_id] and threats[parent_id] >= now then return true end
+    local shooter = object_by_id_safe(parent_id)
+    if npc_targets_actor(shooter) then
+        note_hostile(shooter, true)
+        return true
+    end
+    return false
+end
+
+local function prune_instant_history(now)
+    local kept = {}
+    for _, entry in ipairs(instant_history) do
+        if now - entry.at_ms < 3000 then kept[#kept + 1] = entry end
+    end
+    instant_history = kept
+end
+
+local function instant_budget(now)
+    prune_instant_history(now)
+    local sum_1s, sum_3s = 0, 0
+    for _, entry in ipairs(instant_history) do
+        local age = now - entry.at_ms
+        if age < 1000 then sum_1s = sum_1s + entry.amount end
+        if age < 3000 then sum_3s = sum_3s + entry.amount end
+    end
+    return math.max(0, math.min(instant_cap_1s - sum_1s, instant_cap_3s - sum_3s))
+end
+
+local function add_deferred(amount, label)
+    amount = math.max(0, tonumber(amount) or 0)
+    if amount <= EPS then return end
+    deferred_sequence = deferred_sequence + 1
+    deferred_queue[#deferred_queue + 1] = {
+        id = deferred_sequence,
+        remaining = amount,
+        rate = amount / deferred_duration,
+        label = label,
+    }
+end
+
+local function apply_combat_delta(id, amount, kind, extra)
+    if not framework_ready() or type(amount) ~= "number" or math.abs(amount) <= EPS then return 0 end
+    return composure_framework.apply_delta(id, amount, {
+        owner = OWNER,
+        kind = kind or "combat",
+        category = "combat",
+        scope = "human_firefight",
+        bypass_recovery_lock = true,
+        metadata = {
+            source_type = "combat",
+            combat_event = extra and extra.combat_event or id,
+            encounter = encounter_number,
+            phase = current_phase,
+        },
+    })
+end
+
+local function apply_stress_event(event_name, raw_loss, payload)
+    if not enabled or not framework_ready() then return 0, 0 end
+    raw_loss = math.max(0, tonumber(raw_loss) or 0)
+    if raw_loss <= EPS then return 0, 0 end
+    mark_danger(event_name)
+
+    local now = now_ms()
+    local desired_instant = raw_loss * instant_fraction
+    local permitted_instant = math.min(desired_instant, instant_budget(now))
+    local deferred = raw_loss - permitted_instant
+    local actual_instant = 0
+    if permitted_instant > EPS then
+        instant_history[#instant_history + 1] = { at_ms = now, amount = permitted_instant }
+        actual_instant = -apply_combat_delta("combat.event." .. event_name, -permitted_instant, "combat_event", {
+            combat_event = event_name,
+        })
+    end
+    add_deferred(deferred, event_name)
+
+    payload = payload or {}
+    payload.raw_loss = raw_loss
+    payload.instant_requested = permitted_instant
+    payload.instant_actual = actual_instant
+    payload.deferred = deferred
+    payload.phase = current_phase
+    emit("combat." .. event_name, payload)
+    debug_log("%s raw=%.3f instant=%.3f actual=%.3f deferred=%.3f",
+        event_name, raw_loss, permitted_instant, actual_instant, deferred)
+    return actual_instant, deferred
+end
+
+local function hit_loss(health_loss_fraction)
+    local pct = math.max(0, (tonumber(health_loss_fraction) or 0) * 100)
+    if pct <= EPS then return 0 end
+    if pct <= 5 then return hit_bands[1] end
+    if pct <= 10 then return hit_bands[2] end
+    if pct <= 15 then return hit_bands[3] end
+    if pct <= 20 then return hit_bands[4] end
+    return hit_bands[5]
+end
+
+local function actor_on_hit_callback(actor_obj, amount, direction, who, bone_index)
+    local current = actor_health()
+    local previous = last_health
+    if current ~= nil then last_health = current end
+    if not enabled or not hit_enabled or not who or not is_human_stalker(who) then return end
+    local attacker_id = safe_object_id(who)
+    local actor_id = db and db.actor and safe_object_id(db.actor) or nil
+    if attacker_id == nil or actor_id == nil or attacker_id == actor_id then return end
+    local known_hostile = threats[attacker_id] and threats[attacker_id] >= now_ms()
+    if not known_hostile and not npc_targets_actor(who) then return end
+
+    note_hostile(who, true)
+    local health_loss = 0
+    if current ~= nil and previous ~= nil and previous > current then health_loss = previous - current end
+    local raw = hit_loss(health_loss)
+    if raw > EPS then
+        apply_stress_event("actor_hit", raw, {
+            health_loss_percent = health_loss * 100,
+            attacker_id = attacker_id,
+        })
+    else
+        debug_log("human hit detected without measurable health delta")
+    end
+end
+
+local function decay_near_stage(now)
+    if near_miss_stage <= 1 or near_decay_anchor_ms <= 0 then return end
+    while near_miss_stage > 1 and now - near_decay_anchor_ms >= near_deprogress_ms do
+        near_miss_stage = near_miss_stage - 1
+        near_decay_anchor_ms = near_decay_anchor_ms + near_deprogress_ms
+    end
+end
+
+local function apply_near_miss(distance)
+    local now = now_ms()
+    decay_near_stage(now)
+    local stage = near_miss_stage
+    local extreme = tonumber(distance) and distance <= extreme_near_miss_radius
+    local raw = extreme and near_extreme[stage] or near_normal[stage]
+    apply_stress_event("near_miss", raw, {
+        distance = distance,
+        extreme = extreme == true,
+        diminishing_stage = stage,
+    })
+    near_miss_stage = math.min(3, stage + 1)
+    near_decay_anchor_ms = now
+end
+
+local function finalize_near_miss(bullet)
+    if not enabled or not near_miss_enabled or not bullet or not db or not db.actor then return end
+    local bullet_id = tonumber(bullet.bullet_id)
+    if not bullet_id or finalized_bullets[bullet_id] then return end
+    finalized_bullets[bullet_id] = true
+    local state = tracked_bullets[bullet_id]
+    if not state then return end
+
+    local actor_id = safe_object_id(db.actor)
+    local target_id = tonumber(bullet.target_id)
+    if actor_id ~= nil and target_id == actor_id then return end
+    if not state.min_dist or state.min_dist > near_miss_radius then return end
+    if not hostile_bullet_parent(state.parent_id) then return end
+    apply_near_miss(state.min_dist)
+end
+
+local function bullet_on_update(bullet)
+    if not enabled or not near_miss_enabled or not bullet or not db or not db.actor then return end
+    local bullet_id = tonumber(bullet.bullet_id)
+    local parent_id = tonumber(bullet.parent_id)
+    if not bullet_id or not parent_id or finalized_bullets[bullet_id] then return end
+    local actor_id = safe_object_id(db.actor)
+    if actor_id ~= nil and parent_id == actor_id then return end
+    if not hostile_bullet_parent(parent_id) then return end
+    local position = bullet.position
+    if not position then return end
+    local ok, distance = pcall(function() return position:distance_to(db.actor:position()) end)
+    if not ok or type(distance) ~= "number" or distance > near_miss_radius + 1 then return end
+    local state = tracked_bullets[bullet_id]
+    if not state then
+        tracked_bullets[bullet_id] = { parent_id = parent_id, min_dist = distance }
+    elseif distance < (state.min_dist or 9999) then
+        state.min_dist = distance
+    end
+end
+
+local function bullet_on_impact(bullet)
+    finalize_near_miss(bullet)
+end
+
+local function bullet_on_remove(bullet)
+    finalize_near_miss(bullet)
+    local bullet_id = bullet and tonumber(bullet.bullet_id) or nil
+    if bullet_id then
+        tracked_bullets[bullet_id] = nil
+        finalized_bullets[bullet_id] = nil
+    end
+end
+
+local function requested_deferred_amount(dt)
+    local total = 0
+    for _, entry in ipairs(deferred_queue) do
+        if entry.remaining > EPS then total = total + math.min(entry.remaining, entry.rate * dt) end
+    end
+    return total
+end
+
+local function consume_deferred(amount, dt)
+    amount = math.max(0, tonumber(amount) or 0)
+    if amount <= EPS then return 0 end
+    local requested = requested_deferred_amount(dt)
+    if requested <= EPS then return 0 end
+    local factor = math.min(1, amount / requested)
+    local consumed = 0
+    local kept = {}
+    for _, entry in ipairs(deferred_queue) do
+        local request = math.min(entry.remaining, entry.rate * dt)
+        local take = request * factor
+        entry.remaining = math.max(0, entry.remaining - take)
+        consumed = consumed + take
+        if entry.remaining > EPS then kept[#kept + 1] = entry end
+    end
+    deferred_queue = kept
+    return consumed
+end
+
+local function deferred_total()
+    local total = 0
+    for _, entry in ipairs(deferred_queue) do total = total + math.max(0, entry.remaining or 0) end
+    return total
+end
+
+local function update_pressure(now)
+    if last_pressure_ms <= 0 then last_pressure_ms = now; return end
+    local dt = math.min(1.0, math.max(0, now - last_pressure_ms) / 1000)
+    if dt <= 0 then return end
+    last_pressure_ms = now
+
+    local phase, sustained_rate, hostile_count = refresh_phase(now)
+    if not encounter_active or hostile_count <= 0 or now - encounter_started_ms < grace_period_ms then
+        sustained_rate = 0
+    end
+    sustained_rate = math.min(maximum_continuous_rate, math.max(0, sustained_rate or 0))
+
+    local capacity_amount = math.max(0, maximum_continuous_rate - sustained_rate) * dt
+    local deferred_amount = consume_deferred(math.min(capacity_amount, requested_deferred_amount(dt)), dt)
+    local total_loss = sustained_rate * dt + deferred_amount
+    if total_loss > EPS then
+        apply_combat_delta("combat.pressure", -total_loss, "combat_pressure", {
+            combat_event = deferred_amount > EPS and "deferred_and_sustained" or "sustained",
+        })
+    end
+end
+
+local function refresh_recovery_lock(now)
+    if not framework_ready() then return end
+    local should_lock = recovery_lock_enabled and (encounter_active or encounter_cooldown)
+    if should_lock and now - last_lock_refresh_ms >= 750 then
+        composure_framework.set_recovery_lock(LOCK_ID, 2.0, {
+            owner = OWNER,
+            category = "combat",
+            label = "Human firefight",
+            priority = 50,
+            metadata = { phase = current_phase, encounter = encounter_number },
+        })
+        last_lock_refresh_ms = now
+    elseif not should_lock and composure_framework.clear_recovery_lock then
+        composure_framework.clear_recovery_lock(LOCK_ID)
+    end
+end
+
+local function finish_encounter(now)
+    local rebound_amount = 0
+    local before = framework_ready() and composure_framework.get_value() or 0
+    -- Passing out is not surviving the encounter. Combat never auto-revives
+    -- the actor from zero; a dedicated pass-out system owns that transition.
+    if rebound_enabled and framework_ready() and before > 0 then
+        local room_to_start = math.max(0, encounter_start_value - before)
+        local earned = encounter_combat_loss * rebound_percent
+        rebound_amount = math.min(room_to_start, earned, rebound_max)
+        if rebound_amount > EPS then
+            rebound_amount = composure_framework.apply_delta("combat.rebound", rebound_amount, {
+                owner = OWNER,
+                kind = "combat_rebound",
+                category = "combat",
+                scope = "human_firefight",
+                bypass_recovery_lock = true,
+                bypass_policies = true,
+                metadata = {
+                    source_type = "combat_rebound",
+                    encounter = encounter_number,
+                    combat_loss = encounter_combat_loss,
+                    starting_composure = encounter_start_value,
+                },
+            })
+        end
+        emit("combat.rebound", {
+            encounter = encounter_number,
+            amount = rebound_amount,
+            combat_loss = encounter_combat_loss,
+            starting_composure = encounter_start_value,
+        })
+    end
+
+    -- Once the actor has psychologically resolved the encounter, unresolved
+    -- deferred combat stress is discarded so it cannot drain after rebound.
+    deferred_queue = {}
+    encounter_active = false
+    encounter_cooldown = false
+    current_phase = "idle"
+    last_phase = "idle"
+    emit("combat.completed", {
+        encounter = encounter_number,
+        combat_loss = encounter_combat_loss,
+        rebound = rebound_amount,
+    })
+    debug_log("encounter %d completed loss=%.2f rebound=%.2f", encounter_number, encounter_combat_loss, rebound_amount)
+end
+
+local function update_encounter(now)
+    local hostile_count = cleanup_threats(now)
+    if forced_phase and now < forced_phase_until_ms then
+        hostile_count = 1
+        last_danger_ms = now
+    end
+
+    if encounter_active and hostile_count <= 0 and now - last_danger_ms >= end_inertia_ms then
+        encounter_active = false
+        encounter_cooldown = true
+        encounter_ended_ms = now
+        emit("combat.ended", {
+            encounter = encounter_number,
+            combat_loss = encounter_combat_loss,
+            deferred_remaining = deferred_total(),
+        })
+        debug_log("encounter %d danger ended; cooldown started", encounter_number)
+    end
+
+    if encounter_cooldown then
+        local delay = rebound_enabled and rebound_delay_ms or post_combat_delay_ms
+        if now - encounter_ended_ms >= delay then finish_encounter(now) end
+    end
+end
+
+local function on_delta_applied(event_name, payload)
+    if not payload or payload.owner ~= OWNER then return end
+    local actual = tonumber(payload.actual) or 0
+    if actual < 0 and (encounter_active or encounter_cooldown) then
+        encounter_combat_loss = encounter_combat_loss + math.abs(actual)
+    end
+end
+
+local function register_listener()
+    if not framework_ready() or type(composure_framework.register_listener) ~= "function" then return false end
+    if composure_framework.unregister_listener then
+        composure_framework.unregister_listener("delta_applied", LISTENER_ID)
+    end
+    return composure_framework.register_listener("delta_applied", LISTENER_ID, on_delta_applied, {
+        owner = OWNER,
+        priority = 20,
+    }) == true
+end
+
+local function actor_on_update()
+    if not db or not db.actor then return end
+    local now = now_ms()
+    if now - last_update_ms < 250 then return end
+    last_update_ms = now
+    local health = actor_health()
+    if health ~= nil then last_health = health end
+
+    if not enabled then
+        if framework_ready() and composure_framework.clear_recovery_lock then
+            composure_framework.clear_recovery_lock(LOCK_ID)
+        end
+        return
+    end
+    if not framework_ready() then report_missing_framework_once(); return end
+    dependency_error_logged = false
+    decay_near_stage(now)
+    update_encounter(now)
+    update_pressure(now)
+    refresh_recovery_lock(now)
+end
+
+local function clear_runtime(clear_core)
+    threats = {}
+    threat_weapon_weight = {}
+    threat_weapon_class = {}
+    npc_next_refresh = {}
+    tracked_bullets = {}
+    finalized_bullets = {}
+    encounter_active = false
+    encounter_cooldown = false
+    encounter_started_ms = 0
+    encounter_ended_ms = 0
+    encounter_start_value = 0
+    encounter_combat_loss = 0
+    last_danger_ms = -1000000
+    current_phase = "idle"
+    last_phase = "idle"
+    deferred_queue = {}
+    instant_history = {}
+    near_miss_stage = 1
+    near_decay_anchor_ms = 0
+    last_health = actor_health()
+    last_update_ms = 0
+    last_pressure_ms = now_ms()
+    last_lock_refresh_ms = 0
+    forced_phase = nil
+    forced_phase_until_ms = 0
+    if clear_core and framework_ready() and composure_framework.clear_recovery_lock then
+        composure_framework.clear_recovery_lock(LOCK_ID)
+    end
+end
+
+local function remaining_cooldown_ms(now)
+    if not encounter_cooldown then return 0 end
+    local delay = rebound_enabled and rebound_delay_ms or post_combat_delay_ms
+    return math.max(0, delay - (now - encounter_ended_ms))
+end
+
+local function save_state(m_data)
+    local now = now_ms()
+    local queue = {}
+    for _, entry in ipairs(deferred_queue) do
+        queue[#queue + 1] = {
+            id = entry.id,
+            remaining = entry.remaining,
+            rate = entry.rate,
+            label = entry.label,
+        }
+    end
+    m_data[SAVE_KEY] = {
+        version = VERSION,
+        encounter_active = encounter_active,
+        encounter_cooldown = encounter_cooldown,
+        encounter_age_ms = math.max(0, now - encounter_started_ms),
+        danger_remaining_ms = encounter_active and math.max(0, end_inertia_ms - (now - last_danger_ms)) or 0,
+        cooldown_remaining_ms = remaining_cooldown_ms(now),
+        encounter_start_value = encounter_start_value,
+        encounter_combat_loss = encounter_combat_loss,
+        encounter_number = encounter_number,
+        deferred_sequence = deferred_sequence,
+        deferred_queue = queue,
+        near_miss_stage = near_miss_stage,
+        near_decay_remaining_ms = near_decay_anchor_ms > 0 and math.max(0, near_deprogress_ms - (now - near_decay_anchor_ms)) or 0,
+    }
+end
+
+local function load_state(m_data)
+    refresh_config()
+    clear_runtime(true)
+    local saved = m_data and m_data[SAVE_KEY] or nil
+    if type(saved) == "table" and enabled then
+        local now = now_ms()
+        encounter_active = saved.encounter_active == true
+        encounter_cooldown = saved.encounter_cooldown == true
+        encounter_started_ms = now - math.max(0, tonumber(saved.encounter_age_ms) or 0)
+        if encounter_active then
+            local danger_remaining = clamp(tonumber(saved.danger_remaining_ms) or end_inertia_ms, 0, end_inertia_ms)
+            last_danger_ms = now - (end_inertia_ms - danger_remaining)
+        elseif encounter_cooldown then
+            local delay = rebound_enabled and rebound_delay_ms or post_combat_delay_ms
+            local remaining = clamp(tonumber(saved.cooldown_remaining_ms) or delay, 0, delay)
+            encounter_ended_ms = now - (delay - remaining)
+        end
+        encounter_start_value = tonumber(saved.encounter_start_value) or 0
+        encounter_combat_loss = math.max(0, tonumber(saved.encounter_combat_loss) or 0)
+        encounter_number = math.max(0, math.floor(tonumber(saved.encounter_number) or 0))
+        deferred_sequence = math.max(0, math.floor(tonumber(saved.deferred_sequence) or 0))
+        if type(saved.deferred_queue) == "table" then
+            for _, entry in ipairs(saved.deferred_queue) do
+                local remaining = math.max(0, tonumber(entry.remaining) or 0)
+                local rate = math.max(0, tonumber(entry.rate) or 0)
+                if remaining > EPS and rate > EPS then
+                    deferred_queue[#deferred_queue + 1] = {
+                        id = tonumber(entry.id) or 0,
+                        remaining = remaining,
+                        rate = rate,
+                        label = entry.label,
+                    }
+                end
+            end
+        end
+        near_miss_stage = clamp(math.floor(tonumber(saved.near_miss_stage) or 1), 1, 3)
+        local near_remaining = math.max(0, tonumber(saved.near_decay_remaining_ms) or 0)
+        if near_remaining > 0 then near_decay_anchor_ms = now - (near_deprogress_ms - near_remaining) end
+    end
+    register_listener()
+end
+
+local function on_option_change()
+    refresh_config()
+    register_listener()
+    if not enabled then clear_runtime(true) end
+end
+
+local function print_status()
+    local now = now_ms()
+    local phase, rate, count, score = phase_profile(now)
+    log("v%s enabled=%s encounter=%d active=%s cooldown=%s phase=%s hostiles=%d score=%.2f sustained=-%.2f/s deferred=%.2f combat_loss=%.2f start=%.2f cooldown_ms=%d near_stage=%d",
+        VERSION, tostring(enabled), encounter_number, tostring(encounter_active), tostring(encounter_cooldown),
+        phase, count, score, rate, deferred_total(), encounter_combat_loss, encounter_start_value,
+        remaining_cooldown_ms(now), near_miss_stage)
+    if db and db.actor and news_manager then
+        local forced_text = forced_phase and string.format("\nForced: %s (%ds)", forced_phase,
+            math.ceil(math.max(0, forced_phase_until_ms - now) / 1000)) or ""
+        news_manager.send_tip(db.actor,
+            string.format("COMBAT STRESS TEST\nPhase: %s | Encounter #%d %s\nHostiles: %d | Threat: %.2f\nSustained: -%.2f/s | Deferred: -%.2f\nEncounter loss: -%.2f | Start: %.1f\nRecovery lock: %s | Cooldown: %.1fs\nNear-miss stage: %d%s",
+                string.upper(phase), encounter_number, encounter_active and "ACTIVE" or (encounter_cooldown and "COOLDOWN" or "IDLE"),
+                count, score, rate, deferred_total(), encounter_combat_loss, encounter_start_value,
+                recovery_lock_enabled and (encounter_active or encounter_cooldown) and "YES" or "NO",
+                remaining_cooldown_ms(now) / 1000, near_miss_stage, forced_text),
+            nil, nil, 8000)
+    end
+end
+
+local function force_test_phase(phase)
+    forced_phase = phase
+    forced_phase_until_ms = now_ms() + forced_phase_duration_ms
+    mark_danger("debug_" .. phase)
+    refresh_phase(now_ms())
+end
+
+local function run_test_action(action)
+    if action == 1 then apply_near_miss(near_miss_radius)
+    elseif action == 2 then apply_near_miss(extreme_near_miss_radius * 0.5)
+    elseif action == 3 then apply_stress_event("actor_hit", hit_loss(0.10), { simulated = true, health_loss_percent = 10 })
+    elseif action == 4 then force_test_phase("alert")
+    elseif action == 5 then force_test_phase("engaged")
+    elseif action == 6 then force_test_phase("overwhelmed")
+    elseif action == 7 then
+        threats = {}
+        forced_phase = nil
+        forced_phase_until_ms = 0
+        last_danger_ms = now_ms() - end_inertia_ms
+        update_encounter(now_ms())
+    end
+end
+
+local function on_key_press(key)
+    if not debug_key or key ~= debug_key then return end
+    if test_action ~= 0 then
+        if test_mode then run_test_action(test_action)
+        else log("test action ignored; enable Test Mode in MCM") end
+    end
+    print_status()
+end
+
+function get_version() return VERSION end
+
+function get_state()
+    local phase, rate, count, score = phase_profile(now_ms())
+    return {
+        version = VERSION,
+        enabled = enabled,
+        encounter = encounter_number,
+        active = encounter_active,
+        cooldown = encounter_cooldown,
+        phase = phase,
+        hostile_count = count,
+        threat_score = score,
+        sustained_rate = rate,
+        deferred_remaining = deferred_total(),
+        combat_loss = encounter_combat_loss,
+        starting_composure = encounter_start_value,
+        recovery_locked = recovery_lock_enabled and (encounter_active or encounter_cooldown),
+        test_mode = test_mode,
+        test_action = test_action,
+        forced_phase = forced_phase,
+        forced_remaining_ms = forced_phase and math.max(0, forced_phase_until_ms - now_ms()) or 0,
+        cooldown_remaining_ms = remaining_cooldown_ms(now_ms()),
+        near_miss_stage = near_miss_stage,
+    }
+end
+
+function notify_human_firefight(reason)
+    if not enabled then return false end
+    mark_danger(reason or "external_human_firefight")
+    return true
+end
+
+function debug_simulate_near_miss(extreme)
+    if not test_mode then return false end
+    apply_near_miss(extreme and extreme_near_miss_radius * 0.5 or near_miss_radius)
+    return true
+end
+
+function debug_simulate_hit(health_loss_fraction)
+    if not test_mode then return false end
+    local fraction = clamp(tonumber(health_loss_fraction) or 0.10, 0, 1)
+    apply_stress_event("actor_hit", hit_loss(fraction), { simulated = true, health_loss_percent = fraction * 100 })
+    return true
+end
+
+function on_game_start()
+    refresh_config()
+    clear_runtime(false)
+    if framework_ready() then register_listener() else report_missing_framework_once() end
+    if callbacks_registered then return end
+    callbacks_registered = true
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+    RegisterScriptCallback("actor_on_first_update", function() last_health = actor_health(); last_pressure_ms = now_ms() end)
+    RegisterScriptCallback("actor_on_net_destroy", function() clear_runtime(true) end)
+    RegisterScriptCallback("on_level_changing", function() tracked_bullets = {}; finalized_bullets = {} end)
+    RegisterScriptCallback("actor_on_update", actor_on_update)
+    RegisterScriptCallback("npc_on_update", npc_on_update)
+    RegisterScriptCallback("npc_on_fighting_actor", npc_on_fighting_actor)
+    RegisterScriptCallback("actor_on_hit_callback", actor_on_hit_callback)
+    RegisterScriptCallback("bullet_on_update", bullet_on_update)
+    RegisterScriptCallback("bullet_on_impact", bullet_on_impact)
+    RegisterScriptCallback("bullet_on_remove", bullet_on_remove)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    log("v%s initialized: human-only, phases alert/engaged/overwhelmed, event split %.0f/%.0f, continuous cap %.2f/s",
+        VERSION, instant_fraction * 100, (1 - instant_fraction) * 100, maximum_continuous_rate)
+end

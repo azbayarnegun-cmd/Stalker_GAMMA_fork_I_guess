@@ -1,0 +1,1895 @@
+-- Composure Thoughts Extended v4.1.0 ("Readable Thoughts" build).
+-- Passive, read-only first-person text presentation for Composure Feedback.
+--
+-- Architecture change from v2.x: thoughts used to spawn as a single batch
+-- (1-5 lines sharing one lifecycle) that had to fully clear before a new
+-- batch could appear. v3 replaces that with an independent 5-slot pool:
+-- each thought has its own start/fade timeline, a new thought can claim a
+-- free slot while others are still on screen, and the headline is just
+-- another slot occupant (rendered in caps for emphasis) rather than a
+-- permanently reserved 6th slot.
+--
+-- Additions over v2.0.3:
+--   * Slot pool (5 independent thoughts max, not one shared batch).
+--   * Claim priority: low-priority triggers (automatic roll, ambient roll,
+--     consumable/generic events, escalation) wait for a free slot and are
+--     skipped if the pool is full. High-priority triggers (combat contact,
+--     entering breaking_point/pass_out) evict the single OLDEST occupied
+--     slot to guarantee they're seen.
+--   * Ambient roll: a second, independent roll active at High/Medium-High
+--     tier ONLY, firing regardless of activity (exploring, mid-firefight,
+--     anything) -- weather/Zone/physical-state/mental-want flavor that
+--     isn't gated behind being idle.
+--   * Valence coloring: any event-sourced thought (consumable, combat,
+--     any category) is colored by the sign of the delta that caused it --
+--     green for positive, orange for negative -- independent of current
+--     tier. A sip of vodka reads calm green even during a breaking_point
+--     panic; a combat hit reads alert orange even at full composure.
+--     State-driven thoughts (headline, automatic roll, ambient roll,
+--     escalation) keep the existing tier-gradient color.
+--
+-- Text-only presentation effects (jitter, flicker, scramble, ghost/double
+-- text) are unchanged in spirit from v2.x but now apply per-slot. No
+-- camera or PPE effectors are touched anywhere in this file.
+--
+-- Every optional dependency (level, level_weathers, IsMonster, framework
+-- recovery locks) is pcall-guarded and degrades gracefully if missing.
+
+local VERSION = "4.1.0"
+local REQUIRED_FRAMEWORK_API = 2
+local LOG = "[composure_thoughts:v4]"
+
+local WINDOW = nil
+local callbacks_registered = false
+local next_roll_ms = nil
+local next_ambient_roll_ms = nil
+local last_event_ms = 0
+local next_event_allowed_ms = 0
+local SETTINGS = {}
+local manual_key_down_ms = nil
+local manual_key_latched = false
+local manual_active = false
+local manual_plan = nil
+local manual_next_step = 1
+local manual_next_ms = 0
+local manual_final_until_ms = nil
+local manual_cooldown_until_ms = 0
+local spawn_thought, pick_from
+local memory_event_ms = 0
+local memory_sources = {}
+local test_index = 0
+
+local SLOT_COUNT = 5
+
+-- ===================== Supporting pools (tier state, unchanged content) =====================
+
+local pools = {
+    high = {
+        "I feel ready for whatever comes.",
+        "My head is clear.",
+        "I can handle this.",
+        "For once, my nerves are quiet.",
+    },
+    medium_high = {
+        "My nerves are holding.",
+        "Stay alert. Keep moving.",
+        "I still have control.",
+        "The Zone has not gotten to me yet.",
+    },
+    medium = {
+        "I feel steady enough.",
+        "Keep breathing. Stay focused.",
+        "Something feels wrong, but I can manage.",
+        "No reason to panic.",
+        "One step at a time.",
+    },
+    medium_low = {
+        "I'm starting to lose focus.",
+        "Every sound feels too close.",
+        "I need a moment to breathe.",
+        "My hands will not stay still.",
+        "The Zone is getting inside my head.",
+        "I should find somewhere safe.",
+    },
+    low = {
+        "I'm barely holding myself together.",
+        "I can hear my heart pounding.",
+        "I need to get out of here.",
+        "Everything is closing in.",
+        "I cannot think straight.",
+        "Something is watching me.",
+        "Do not freeze. Keep moving.",
+    },
+    breaking_point = {
+        "I need to get out. Now.",
+        "I cannot breathe.",
+        "This is too much.",
+        "My body is moving before I can think.",
+        "The edges are going dark.",
+        "There is nowhere safe.",
+        "Do not stop.",
+    },
+    pass_out = {
+        "Everything is fading away.",
+        "I cannot stay awake.",
+        "...",
+    },
+}
+
+local panic_words = { "MOVE", "RUN", "BREATHE", "NOT HERE", "GET OUT", "TOO CLOSE", "NOW" }
+
+-- Ambient exploration lines, filtered by day/night/rain. Weather-gated
+-- specifically; zone/physical/mental pools below are unrestricted.
+local ambient_pool = {
+    neutral = {
+        "Quiet out here. For now.",
+        "Wonder who lived here.",
+        "Nothing moving. Good.",
+        "Long way still to go.",
+        "Should mark this on the map.",
+        "This place used to be someone's home.",
+    },
+    day = {
+        "Sun's out. Small mercy.",
+        "Good day for the Zone.",
+        "Can see for once.",
+        "Almost peaceful, if you don't think about it.",
+    },
+    night = {
+        "Dark comes fast out here.",
+        "Should've moved before nightfall.",
+        "Night's the worst part.",
+        "Can't see a damn thing.",
+    },
+    rain = {
+        "Rain again. Of course.",
+        "Soaked through already.",
+        "Can't hear anything over this rain.",
+        "Storm's rolling in.",
+    },
+}
+
+-- Zone atmosphere -- unrestricted, fires regardless of activity.
+local zone_pool = {
+    "Something clicked out there. Geiger, probably.",
+    "Anomaly's close. Can feel it in the air.",
+    "Zone's quiet today. Too quiet.",
+    "Air tastes wrong here.",
+    "Something's not right about this place.",
+    "Feels like the Zone is watching.",
+}
+
+-- Physical state -- unrestricted, pure flavor (not tied to real hunger/
+-- thirst/sleep values, though that would be a natural future hook).
+-- Mental wants/needs -- unrestricted, idle desires and small comforts.
+local mental_pool = {
+    "Wouldn't mind a hot meal right now.",
+    "Miss having a real bed.",
+    "Wonder what's playing on the radio back at base.",
+    "Could use a smoke.",
+    "Wonder how everyone back home is doing.",
+    "Wish I had someone to talk to.",
+}
+
+-- Location-specific flavor, keyed by level.name(). Any level not listed
+-- here simply falls back to the generic zone/ambient pools -- this list
+-- is deliberately small and easy to extend, not exhaustive. Level name
+-- strings vary between Anomaly/GAMMA builds; verify these against your
+-- actual install (check level.name() via debug_log) and adjust as needed.
+local location_pool = {
+    cordon = {
+        "Feels like everyone starts here. Feels like everyone leaves too.",
+        "Cordon again. Nothing changes.",
+    },
+    garbage = {
+        "Nothing but scrap and old bones out here.",
+        "Whole place smells like rust.",
+    },
+    agroprom = {
+        "Underground again. Hate the underground.",
+        "Old Soviet concrete. Feels like a tomb.",
+    },
+    darkvalley = {
+        "Dark Valley lives up to the name.",
+        "Bandit territory. Eyes open.",
+    },
+    yantar = {
+        "Yantar's quiet, in a bad way.",
+        "Lab territory. Something's always wrong here.",
+    },
+    military = {
+        "Military checkpoint. Was never friendly here.",
+        "Whatever happened here, it wasn't good.",
+    },
+    radar = {
+        "Radar array still turning. Nobody home to run it.",
+        "That hum never stops.",
+    },
+    pripyat = {
+        "Pripyat. Feels like walking through a photograph.",
+        "Empty city. Worst kind of quiet.",
+    },
+    generators = {
+        "Generators still humming after all this time.",
+        "This place was never meant to stay standing.",
+    },
+    zaton = {
+        "Zaton's flooded half the year. Still better than some places.",
+        "Boats rotting in the shallows. Nobody's coming back for them.",
+    },
+    jupiter = {
+        "Jupiter plant's a maze. Easy to get turned around.",
+        "Factory floor. Feels like the machines are still listening.",
+    },
+}
+
+-- Dead body flavor -- fires when a corpse is detected nearby (see
+-- scan_for_corpse()). Human vs mutant reads differently.
+local corpse_pool = {
+    human = {
+        "Someone else who didn't make it.",
+        "Stalker. Recent, by the look of it.",
+        "Wonder who they were.",
+        "Didn't know them. Still hits different.",
+    },
+    mutant = {
+        "Something killed this and left it here.",
+        "Dead mutant. Don't linger.",
+        "Whatever did this, I don't want to meet it.",
+    },
+}
+
+-- ===================== Headline pool =====================
+-- One anchor line per tier. Fired on tier transition, rendered in the
+-- claimed slot in caps for emphasis, priced/prioritized like any other
+-- thought (see priority rules in spawn_thought()).
+
+local headlines = {
+    high            = "I'm in control.",
+    medium_high     = "I'm holding steady.",
+    medium          = "I'm managing.",
+    medium_low      = "I'm slipping.",
+    low             = "I'm losing it.",
+    breaking_point  = "I'm about to break.",
+    pass_out        = "I'm going under.",
+}
+
+-- Repeated-bad-tier escalation (fires on 2nd+ automatic group at a bad
+-- tier without recovering above it in between).
+local escalation_lines = {
+    "This isn't getting better.",
+    "How long can I keep this up?",
+}
+
+-- ===================== Tiered event content =====================
+-- Buckets: high | medium | medium_low | low  (medium_high folds into
+-- "high", breaking_point/pass_out fold into "low" - see tier_bucket()).
+
+local event_lines = {
+
+    cigarettes = {
+        high       = { "Habit, not a need. Still nice though.", "Smoke break. Earned it." },
+        medium     = { "Just one. Just to settle down.", "Exhale. That's better." },
+        medium_low = { "Hands shaking too much to light it right.", "Doesn't help as much as it used to." },
+        low        = { "Burning through the pack faster now.", "Can't remember the last one that helped." },
+    },
+
+    alcohol = {
+        high       = { "Just one. Keeps things loose.", "Takes the edge off, that's all." },
+        medium     = { "Warms me up, at least.", "Better with a drink in hand." },
+        medium_low = { "Doesn't fix anything. Helps anyway.", "One more won't hurt." },
+        low        = { "Numbs it more than it solves it.", "Can't feel my hands right." },
+    },
+
+    -- Non-alcoholic drinks, split by genre (item name keyword detection).
+    water = {
+        high       = { "Clean water. One less thing to worry about.", "Cold and clean. Good enough." },
+        medium     = { "Cool water. Simple relief.", "Didn't realize how thirsty I was." },
+        medium_low = { "Wet, at least. Doesn't help much else.", "Barely touched the thirst." },
+        low        = { "Water won't fix this.", "Doesn't reach whatever's actually wrong." },
+    },
+    tea = {
+        high       = { "Warm cup. Small comfort.", "Tastes like somewhere else, for a second." },
+        medium     = { "Warms my hands, at least.", "Slow sip. No rush." },
+        medium_low = { "Doesn't really warm anything anymore.", "Drank it too fast to notice." },
+        low        = { "Cold before I finished it.", "Doesn't help. Nothing does right now." },
+    },
+    coffee = {
+        high       = { "Sharp. Keeps me alert.", "Good coffee. Rare out here." },
+        medium     = { "Keeps me moving, at least.", "Bitter, but it works." },
+        medium_low = { "Jittery more than focused.", "Doesn't clear my head like it should." },
+        low        = { "Makes my hands shake worse.", "Wired, not calm. Wrong kind of awake." },
+    },
+    energy_drink = {
+        high       = { "Artificial, but it works.", "Buzz kicks in fast." },
+        medium     = { "Not the same as real rest.", "Keeps me going a little longer." },
+        medium_low = { "Jittery. Not the good kind of awake.", "Crash is coming later. Worth it for now." },
+        low        = { "Just makes the shaking worse.", "Wired and wrong. Bad combination right now." },
+    },
+
+    -- Food, split by genre.
+    canned_goods = {
+        high       = { "Same as always. No complaints.", "Cracked one open. Good enough." },
+        medium     = { "Tastes like every other tin.", "Filling, at least." },
+        medium_low = { "Barely tasted it.", "Ate straight from the tin. Didn't care." },
+        low        = { "Doesn't matter what's in the tin anymore.", "Ate it cold. Couldn't be bothered." },
+    },
+    bread = {
+        high       = { "Simple. Does the job.", "Still soft. Small win." },
+        medium     = { "Plain, but it's something.", "Ate it without thinking." },
+        medium_low = { "Getting stale. Ate it anyway.", "Barely chewed before swallowing." },
+        low        = { "Stale and I still ate it. Didn't care.", "Doesn't matter how it tastes anymore." },
+    },
+    cured_meat = {
+        high       = { "Good cut. Small luxury.", "Better than the usual ration." },
+        medium     = { "Salty, filling. Fine.", "Decent, for out here." },
+        medium_low = { "Didn't really taste it.", "Ate too fast to enjoy it." },
+        low        = { "Doesn't matter how good it is right now.", "Chewing just to have something to do." },
+    },
+    combat_rations = {
+        high       = { "Built to keep me alive, not to taste good. Fine by me.", "Efficient. That's all it needs to be." },
+        medium     = { "Tastes like it was made in a lab. It probably was.", "Gets the job done." },
+        medium_low = { "Barely registers as food.", "Ate it out of habit, not hunger." },
+        low        = { "Doesn't even taste like anything anymore.", "Just fuel. Nothing more." },
+    },
+
+    -- Comfort food (minus Protein Bar, which gets its own genre below).
+    comfort_food = {
+        high       = { "Small luxury. Feels earned.", "Worth every ruble." },
+        medium     = { "First good thing today.", "Feels like cheating, almost." },
+        medium_low = { "Sweet, but it doesn't fix anything.", "Nice while it lasted." },
+        low        = { "Doesn't reach me anymore.", "Tastes like nothing." },
+    },
+    protein_bar = {
+        high       = { "Chalky, but it works.", "Practical. Not a treat, just fuel." },
+        medium     = { "Gets the job done.", "Not much taste, but it holds me over." },
+        medium_low = { "Barely register chewing it.", "Ate it without thinking." },
+        low        = { "Doesn't even taste like anything now.", "Just something to do with my hands." },
+    },
+
+    -- Mutant food -- previously unmapped, falls back to generic before this.
+    mutant_food = {
+        high       = { "Didn't think I'd ever eat one of these. Not bad.", "Strange meat. Edible, at least." },
+        medium     = { "Tastes wrong, but it's food.", "Trying not to think about where this came from." },
+        medium_low = { "Barely got it down.", "Something about this feels wrong to eat." },
+        low        = { "Ate it anyway. Didn't have a choice.", "Don't think about what it used to be." },
+    },
+
+    cannabis = {
+        high       = { "Slow burn. Nowhere I need to be.", "Takes the edge off, easy." },
+        medium     = { "Hazy, but calmer.", "Slows everything down a little." },
+        medium_low = { "Doesn't quiet my head like it used to.", "Smoked it just to feel something different." },
+        low        = { "Doesn't touch whatever this is.", "Head's too loud for this to help." },
+    },
+
+    -- Medical / drugs -- previously unmapped, falls back to generic before this.
+    medical = {
+        high       = { "Patched up. Good as it gets out here.", "Wound's covered. Moving on." },
+        medium     = { "That'll hold for now.", "Not pretty, but it'll do." },
+        medium_low = { "Hands shaking while I wrap it.", "Just have to trust it's enough." },
+        low        = { "Doesn't feel like enough.", "Bandaged and still shaking." },
+    },
+    painkillers = {
+        high       = { "Dulls it. That's all I need.", "Takes the sting off." },
+        medium     = { "Doesn't fix it, just quiets it.", "Enough to keep moving." },
+        medium_low = { "Barely touches it anymore.", "Numb, not better." },
+        low        = { "Doesn't reach whatever's actually wrong.", "Just makes it distant, not gone." },
+    },
+    antibiotics = {
+        high       = { "Hope that's enough to stop it spreading.", "Better safe than losing a limb." },
+        medium     = { "Can't tell if it's working yet.", "Nothing to do now but wait." },
+        medium_low = { "Hope this is enough.", "Fighting something I can't even see." },
+        low        = { "Can't tell if I'm getting worse or it's working.", "Nothing to do but wait it out." },
+    },
+    stimulant_injection = {
+        high       = { "Jolt hits fast. Good.", "Sharp and ready." },
+        medium     = { "Keeps me moving. That's the point.", "Forced alertness. Works for now." },
+        medium_low = { "Heart's racing more than it should.", "Wired, not steady." },
+        low        = { "Shaking worse now, not better.", "Too much, too fast. Can't slow down." },
+    },
+    opioid_injection = {
+        high       = { "Distance from the pain. Nothing else changes.", "Everything gets a little further away." },
+        medium     = { "Quiets the pain. Quiets everything, really.", "Numb is better than hurting." },
+        medium_low = { "Can barely feel my own hands.", "Everything's distant. Not sure that's good." },
+        low        = { "Can't tell what's the pain and what's the drug anymore.", "Too far away from everything right now." },
+    },
+    antirad = {
+        high       = { "Might've just dodged something worse.", "Precaution. Worth it." },
+        medium     = { "Hope that was enough.", "Better than finding out the hard way." },
+        medium_low = { "No way to know if it worked.", "Just have to trust it." },
+        low        = { "Too late to know if it mattered.", "Hope that wasn't for nothing." },
+    },
+    specialist_drug = {
+        high       = { "Edge kicks in. Good.", "Sharper than I should be, but it works." },
+        medium     = { "Artificial focus. Still focus.", "Not natural, but it holds." },
+        medium_low = { "Feels forced, not real.", "Edge is fading faster than I'd like." },
+        low        = { "Doesn't feel like me right now.", "Artificial and it's not enough anyway." },
+    },
+    psy_block = {
+        high       = { "Something in my head goes quiet. Good.", "Static's gone, for now." },
+        medium     = { "Quiets whatever's crawling in my skull.", "Head feels more like mine again." },
+        medium_low = { "Doesn't fully block it out.", "Something's still getting through." },
+        low        = { "Not enough to keep it out.", "Still hear it, just quieter." },
+    },
+    cocaine = {
+        high       = { "Sharp. Too sharp, maybe.", "Everything's suddenly very clear." },
+        medium     = { "Fast. Focused. Won't last.", "Jaw's tight. Head's racing." },
+        medium_low = { "Heart's going too fast.", "Too wired for this to be helping." },
+        low        = { "This was a mistake.", "Can't tell what's fear and what's the drug." },
+    },
+
+    firefight_start = {
+        human = {
+            high       = { "Contact. I've got this.", "Finally, something to do." },
+            medium     = { "Gunfire. Move.", "Weapon up. Now." },
+            medium_low = { "Not again. Not now.", "Hands are already shaking." },
+            low        = { "I can't -- move, just move.", "Too much. Too fast." },
+        },
+        mutant = {
+            high       = { "Something's coming. I'm ready.", "Not human. Doesn't matter." },
+            medium     = { "Something's coming.", "Not human. Not even close." },
+            medium_low = { "Teeth. Claws. Move.", "That thing shouldn't exist." },
+            low        = { "It's fast. Too fast.", "I can't -- it's too close." },
+        },
+    },
+
+    firefight_sustained = {
+        human = {
+            high       = { "Steady hands. Steady aim.", "Under control." },
+            medium     = { "Reload. Reload.", "Where's it coming from?" },
+            medium_low = { "Can't think straight over this noise.", "Just have to outlast this." },
+            low        = { "Everything's too loud, too close.", "Don't stop. Don't stop. Don't stop." },
+        },
+        mutant = {
+            high       = { "Hold the line.", "It's just an animal. Focus." },
+            medium     = { "Don't let it flank.", "Keep firing. Keep moving." },
+            medium_low = { "It won't go down.", "Where did it go? Where--" },
+            low        = { "It's still coming. It's still coming.", "I can't track it anymore." },
+        },
+    },
+
+    firefight_end = {
+        human = {
+            high       = { "Clean work. Moving on.", "Handled." },
+            medium     = { "Quiet again. Too quiet.", "Made it. Barely." },
+            medium_low = { "Hands won't stop shaking.", "Check yourself. Check for blood." },
+            low        = { "Can't stop shaking.", "I need to sit down. Now." },
+        },
+        mutant = {
+            high       = { "Dead. Good.", "Handled." },
+            medium     = { "It's down. I'm still up.", "Didn't think that'd work." },
+            medium_low = { "Don't look at it. Just go.", "That was too close." },
+            low        = { "I can still hear it.", "Need to move. Can't stay near that." },
+        },
+    },
+}
+
+-- Maps a consumable's scope + item name to a content genre. Falls back
+-- to the closest sensible bucket for anything unrecognized, so a future
+-- item added to the data table degrades gracefully instead of erroring.
+local function consumable_genre(scope, item_name)
+    local kind = tostring(scope or ""):lower()
+    local item = tostring(item_name or ""):lower()
+    if kind == "alcohol" then return "alcohol" end
+    if kind:find("cigar", 1, true) or kind:find("tobacco", 1, true) then return "cigarettes" end
+    if kind == "cannabis" then return "cannabis" end
+    if kind == "raw" or kind == "mutant food" then return "mutant_food" end
+    if kind == "medical supplies" then return "medical" end
+    if kind == "painkillers and common medicine" then return "painkillers" end
+    if kind == "antibiotics" then return "antibiotics" end
+    if kind == "radiation and protection drugs" then return "antirad" end
+
+    if kind == "drink" or kind == "non-alcoholic drinks" then
+        if item:find("tea", 1, true) then return "tea" end
+        if item:find("coffee", 1, true) then return "coffee" end
+        if item:find("energy", 1, true) then return "energy_drink" end
+        return "water"
+    end
+
+    if kind == "food - mre" then return "combat_rations" end
+    if kind == "food" then
+        if item:find("mre", 1, true) or item:find("irp", 1, true) or item:find("combat ration", 1, true) then return "combat_rations" end
+        if item:find("bread", 1, true) then return "bread" end
+        if item:find("smoked", 1, true) or item:find("sausage", 1, true) or item:find("salmon", 1, true) then return "cured_meat" end
+        return "canned_goods"
+    end
+
+    if kind == "comfort food" then
+        if item == "protein bar" then return "protein_bar" end
+        if item:find("smoked", 1, true) or item:find("sausage", 1, true) or item:find("salmon", 1, true) then return "cured_meat" end
+        return "comfort_food"
+    end
+
+    if scope == "Stimpacks and injections" then
+        if item_name:find("Morphine") or item_name:find("Fentanyl") or item_name:find("Metamizole") then
+            return "opioid_injection"
+        end
+        return "stimulant_injection"
+    end
+
+    if scope == "Performance and specialist drugs" then
+        if item_name == "Psy-block" then return "psy_block" end
+        if item_name == "Cocaine" then return "cocaine" end
+        return "specialist_drug"
+    end
+
+    return nil
+end
+
+local function consumable_label(value)
+    local item = tostring(value or "drink")
+    item = item:gsub("%s+%(Pass time.-%)", "")
+        :gsub("%s+%[[abc]%]", "")
+        :gsub("%s+", " ")
+        :gsub("^%s+", "")
+        :gsub("%s+$", "")
+        :lower()
+    if item:find("flask", 1, true) and item:find("water", 1, true) then return "clean water" end
+    return item ~= "" and item or "drink"
+end
+
+local function cfg(key, fallback)
+    if SETTINGS[key] ~= nil then return SETTINGS[key] end
+    if composure_thoughts_mcm and composure_thoughts_mcm.get_config then
+        local ok, value = pcall(composure_thoughts_mcm.get_config, key)
+        if ok and value ~= nil then SETTINGS[key] = value; return value end
+    end
+    SETTINGS[key] = fallback
+    return fallback
+end
+
+local function refresh_settings()
+    SETTINGS = {}
+end
+
+local function log(fmt, ...)
+    if not cfg("debug_log", false) then return end
+    local ok, message = pcall(string.format, fmt, ...)
+    printf(LOG .. " " .. (ok and message or tostring(fmt)))
+end
+
+local function clamp(value, low, high)
+    value = tonumber(value) or 0
+    if value < low then return low end
+    if value > high then return high end
+    return value
+end
+
+local function framework_ready()
+    if not composure_framework or not composure_framework.supports or not composure_framework.get_snapshot then
+        return false
+    end
+    local ok, supported = pcall(composure_framework.supports, REQUIRED_FRAMEWORK_API)
+    return ok and supported == true
+end
+
+local function effective_snapshot(snapshot)
+    if composure_feedback_test and composure_feedback_test.apply_snapshot then
+        local ok, result = pcall(composure_feedback_test.apply_snapshot, snapshot)
+        if ok and type(result) == "table" then return result end
+    end
+    return snapshot
+end
+
+local function gameplay_input_free()
+    if not is_hud_free then return true end
+    local ok, free = pcall(is_hud_free)
+    return not ok or free == true
+end
+
+-- ===================== Tier helpers =====================
+
+local tier_bucket_map = {
+    high            = "high",
+    medium_high     = "high",
+    medium          = "medium",
+    medium_low      = "medium_low",
+    low             = "low",
+    breaking_point  = "low",
+    pass_out        = "low",
+}
+
+local function tier_bucket(tier)
+    return tier_bucket_map[tier] or "medium"
+end
+
+local function is_bad_tier(tier)
+    return tier == "low" or tier == "breaking_point" or tier == "pass_out"
+end
+
+local function is_calm_tier(tier)
+    return tier == "high" or tier == "medium_high"
+end
+
+-- ===================== Context detection =====================
+-- All guarded; any missing API simply disables that context axis rather
+-- than erroring.
+
+local function get_time_hours()
+    if level and level.get_time_hours then
+        local ok, hours = pcall(level.get_time_hours)
+        if ok and hours then return hours end
+    end
+    return nil
+end
+
+local function is_night()
+    local hours = get_time_hours()
+    if not hours then return false end
+    return hours < 4 or hours > 20
+end
+
+local function is_raining()
+    if not level_weathers or not level_weathers.get_weather_manager then return false end
+    local ok, manager = pcall(level_weathers.get_weather_manager)
+    if not ok or not manager then return false end
+    local ok2, kind = pcall(function() return manager:get_curr_weather() end)
+    if not ok2 or not kind then return false end
+    local raining = WEATHER_KIND and (kind == WEATHER_KIND.RAINING or kind == WEATHER_KIND.STORM)
+    if not raining then return false end
+    if not level or not level.rain_factor then return true end
+    local ok3, factor = pcall(level.rain_factor)
+    return (not ok3) or (factor or 0) > 0.05
+end
+
+local function ambient_weather_context()
+    if is_raining() then return "rain" end
+    if is_night() then return "night" end
+    return "day"
+end
+
+-- ===================== Location / creature / needs detection =====================
+
+local function get_current_location()
+    if not level or not level.name then return nil end
+    local ok, name = pcall(level.name)
+    if not ok or type(name) ~= "string" then return nil end
+    return name:lower()
+end
+
+local creature_scan_ms = 0
+local corpse_roll_scan_ms, mutant_roll_scan_ms = -1, -1
+local creature_scan = { corpse = nil, mutant = nil }
+local corpse_seen, corpse_fifo = {}, {}
+local mutant_encounter = false
+local mutant_missing_since = nil
+local hostility_fallback_logged = false
+
+local function object_kind(obj)
+    if not obj then return nil end
+    local ok_m, mutant = pcall(IsMonster, obj)
+    if ok_m and mutant then return "mutant" end
+    local ok_s, stalker = pcall(IsStalker, obj)
+    if ok_s and stalker then return "human" end
+    return nil
+end
+
+local function object_alive(obj)
+    -- Deliberately called only after object_kind proves creature type.
+    local ok, value = pcall(function() return obj:alive() end)
+    if not ok then return nil end
+    return value == true
+end
+
+local function object_id(obj)
+    local ok, value = pcall(function() return obj:id() end)
+    return ok and value or nil
+end
+
+local function distance3(a, b)
+    local dx, dy, dz = a.x - b.x, a.y - b.y, a.z - b.z
+    return math.sqrt(dx * dx + dy * dy + dz * dz)
+end
+
+local function in_forward_cone(actor_pos, actor_dir, target_pos)
+    local dx, dz = target_pos.x - actor_pos.x, target_pos.z - actor_pos.z
+    local length = math.sqrt(dx * dx + dz * dz)
+    if length < 0.001 then return true end
+    local fx, fz = actor_dir.x or 0, actor_dir.z or 0
+    local flen = math.sqrt(fx * fx + fz * fz)
+    if flen < 0.001 then return true end
+    return ((dx / length) * (fx / flen) + (dz / length) * (fz / flen)) >= 0.707106
+end
+
+local function scan_creatures()
+    creature_scan = { corpse = nil, mutant = nil }
+    if not db or not db.actor or not level or not level.iterate_nearest or not IsMonster or not IsStalker then return end
+    local actor_pos = db.actor:position()
+    local actor_dir = db.actor:direction()
+    local actor_id = object_id(db.actor)
+    local hostility_supported = false
+    local radius = clamp(cfg("mutant_detect_radius", 35), 10, 80)
+    pcall(function()
+        level.iterate_nearest(actor_pos, radius, function(obj)
+            local kind = object_kind(obj)
+            if not kind then return end
+            local alive = object_alive(obj)
+            if alive == nil then return end
+            local ok_pos, pos = pcall(function() return obj:position() end)
+            if not ok_pos or not pos then return end
+            local distance = distance3(actor_pos, pos)
+            if alive and kind == "mutant" then
+                local ok_enemy, enemy = pcall(function() return obj:best_enemy() end)
+                if ok_enemy then hostility_supported = true end
+                local hostile = (ok_enemy and enemy and object_id(enemy) == actor_id) == true
+                if not creature_scan.mutant
+                    or (hostile and not creature_scan.mutant.hostile)
+                    or (hostile == creature_scan.mutant.hostile and distance < creature_scan.mutant.distance) then
+                    creature_scan.mutant = { object = obj, distance = distance, hostile = hostile }
+                end
+            elseif not alive and distance <= clamp(cfg("corpse_detect_radius", 15), 5, 30)
+                and in_forward_cone(actor_pos, actor_dir, pos) then
+                if not creature_scan.corpse or distance < creature_scan.corpse.distance then
+                    creature_scan.corpse = { object = obj, distance = distance, kind = kind, id = object_id(obj) }
+                end
+            end
+        end)
+    end)
+    if creature_scan.mutant and not hostility_supported and not hostility_fallback_logged then
+        hostility_fallback_logged = true
+        log("hostility API unavailable; nearest living-mutant fallback active")
+    end
+end
+
+local function refresh_creature_scan()
+    local now = time_global()
+    if now - creature_scan_ms >= clamp(cfg("creature_scan_interval", 3), 1, 10) * 1000 then
+        creature_scan_ms = now
+        scan_creatures()
+    end
+    return creature_scan
+end
+
+local function mutant_nearby()
+    return refresh_creature_scan().mutant ~= nil
+end
+
+local function chance_at_distance(distance, near_distance, far_distance)
+    if distance <= near_distance then return 1 end
+    if distance >= far_distance then return 0.25 end
+    return 1 - ((distance - near_distance) / (far_distance - near_distance)) * 0.75
+end
+
+local function remember_corpse(id)
+    if id == nil or corpse_seen[id] then return end
+    corpse_seen[id] = true
+    corpse_fifo[#corpse_fifo + 1] = id
+    if #corpse_fifo > 32 then corpse_seen[table.remove(corpse_fifo, 1)] = nil end
+end
+
+local function human_firefight_active(snapshot)
+    for _, lock in ipairs(snapshot.recovery_locks or {}) do
+        if lock.category == "combat" then return true end
+    end
+    return false
+end
+
+local physical_lines = {
+    hunger = { "My stomach is starting to knot.", "I need food before the weakness sets in." },
+    thirst = { "My mouth is dry. I need water.", "Every swallow feels like sandpaper." },
+    sleepiness = { "My eyes keep trying to close.", "I am too tired to trust my reactions." },
+    stamina = { "My lungs need a moment.", "My legs are running out of strength." },
+    overweight = { "This load is grinding into my shoulders.", "I am carrying more than I can safely move with." },
+    cold = { "The cold is settling into my joints.", "I cannot stop shivering." },
+}
+local needs_cache, needs_last_ms = {}, 0
+local needs_previous_rank = {}
+local need_cooldowns, critical_bypass = {}, {}
+local needs_logged_rank = {}
+local next_physical_ms = nil
+
+local function need_severity(value, previous)
+    value = clamp(value, 0, 1)
+    local boundaries = { 0.20, 0.40, 0.60, 0.80 }
+    if previous and previous >= 0 and previous <= 4 then
+        local lower = previous > 0 and boundaries[previous] - 0.03 or 0
+        local upper = previous < 4 and boundaries[previous + 1] + 0.03 or 1
+        if value >= lower and value < upper then
+            return previous, ({ [0] = "none", "mild", "moderate", "severe", "critical" })[previous]
+        end
+    end
+    if value < 0.20 then return 0, "none" end
+    if value < 0.40 then return 1, "mild" end
+    if value < 0.60 then return 2, "moderate" end
+    if value < 0.80 then return 3, "severe" end
+    return 4, "critical"
+end
+
+local function safe_need(module, fn)
+    if type(module) ~= "table" or type(module[fn]) ~= "function" then return nil end
+    local ok, value = pcall(module[fn], false)
+    value = ok and tonumber(value) or nil
+    return value and clamp(value, 0, 1) or nil
+end
+
+local function update_needs_cache()
+    local now = time_global()
+    if now - needs_last_ms < 5000 then return end
+    needs_last_ms = now
+    local values = {
+        thirst = safe_need(actor_status_thirst, "get_water_deprivation"),
+        sleepiness = safe_need(actor_status_sleep, "get_sleepiness"),
+        cold = safe_need(actor_status_temperature, "get_temperature_deprivation"),
+    }
+    local ok_satiety, satiety = pcall(function() return tonumber(db.actor:satiety()) end)
+    if ok_satiety and satiety then values.hunger = clamp(1 - satiety, 0, 1) end
+    -- GAMMA/Anomaly exposes actor power as a normalized read-only value.
+    local ok_power, power = pcall(function() return tonumber(db.actor.power) end)
+    if ok_power and power then values.stamina = clamp(1 - power, 0, 1) end
+    local ok_weight, weight, maximum = pcall(function()
+        return tonumber(db.actor:get_total_weight()), tonumber(db.actor:get_actor_max_weight())
+    end)
+    if ok_weight and weight and maximum and maximum > 0 then
+        values.overweight = clamp((weight / maximum - 0.80) / 0.30, 0, 1)
+    end
+    needs_cache = {}
+    for id, value in pairs(values) do
+        if value ~= nil then
+            local rank, severity = need_severity(value, needs_previous_rank[id])
+            needs_previous_rank[id] = rank
+            needs_cache[id] = { id = id, value = value, rank = rank, severity = severity }
+            if needs_logged_rank[id] ~= rank then
+                log("need source=%s value=%.2f severity=%s", id, value, severity)
+                needs_logged_rank[id] = rank
+            end
+        end
+    end
+end
+
+local function physical_combat_blocked(snapshot)
+    return human_firefight_active(snapshot) or mutant_encounter
+end
+
+local function schedule_physical()
+    next_physical_ms = time_global() + math.random(45, 90) * 1000
+end
+
+local function try_physical_roll(snapshot)
+    if not cfg("needs_thoughts_enabled", true) then return false end
+    update_needs_cache()
+    if not next_physical_ms then schedule_physical(); return false end
+    if time_global() < next_physical_ms or physical_combat_blocked(snapshot) then return false end
+    local candidates, best = {}, 0
+    for id, need in pairs(needs_cache) do
+        if need.rank > 0 and time_global() >= (need_cooldowns[id] or 0) then
+            if need.rank > best then candidates, best = { need }, need.rank
+            elseif need.rank == best then candidates[#candidates + 1] = need end
+        end
+    end
+    if #candidates == 0 then schedule_physical(); return false end
+    local need = candidates[math.random(1, #candidates)]
+    local chance = ({ [1] = 0.25, [2] = 0.55, [3] = 0.85, [4] = 1.00 })[need.rank] or 0
+    if need.rank == 4 and not critical_bypass[need.id] then critical_bypass[need.id] = true; chance = 1 end
+    log("physical roll source=%s severity=%s chance=%.2f", need.id, need.severity, chance)
+    local shown = false
+    if math.random() <= chance then
+        shown = spawn_thought(pick_from(physical_lines[need.id]), snapshot,
+            { source = "physical." .. need.id, priority = "low", valence = "negative" })
+    end
+    if shown then need_cooldowns[need.id] = time_global() + 180000 end
+    schedule_physical()
+    return shown
+end
+
+local combat_context = nil
+local last_sustained_ms = 0
+
+local function update_combat_context(snapshot)
+    local human = human_firefight_active(snapshot)
+    local scan = refresh_creature_scan()
+    local present = (not human) and scan.mutant ~= nil
+    local now = time_global()
+    if present and mutant_encounter then
+        mutant_missing_since = nil
+    elseif present and not mutant_encounter and mutant_roll_scan_ms ~= creature_scan_ms then
+        mutant_roll_scan_ms = creature_scan_ms
+        local chance = chance_at_distance(scan.mutant.distance, 10, clamp(cfg("mutant_detect_radius", 35), 10, 80))
+        log("mutant candidate distance=%.1f chance=%.2f", scan.mutant.distance, chance)
+        if math.random() <= chance then mutant_encounter, mutant_missing_since = true, nil end
+    elseif mutant_encounter then
+        mutant_missing_since = mutant_missing_since or now
+        if now - mutant_missing_since >= clamp(cfg("mutant_end_grace", 9), 3, 20) * 1000 then
+            mutant_encounter = false
+            mutant_missing_since = nil
+        end
+    end
+    local mutant = (not human) and mutant_encounter
+    local new_context = human and "human" or (mutant and "mutant" or nil)
+
+    local edge = nil
+    if new_context and not combat_context then
+        edge = "start"
+    elseif not new_context and combat_context then
+        edge = "end"
+    end
+    local previous = combat_context
+    combat_context = new_context
+    return new_context, edge, previous
+end
+
+-- ===================== Colors =====================
+
+local function tier_color(tier, alpha, slot)
+    local red, green, blue = 226, 226, 220
+    if tier == "medium_low" then red, green, blue = 230, 196, 164 end
+    if tier == "low" then red, green, blue = 232, 156, 132 end
+    if tier == "breaking_point" or tier == "pass_out" then red, green, blue = 235, 105, 96 end
+    local shade = (slot - 1) * 5
+    return GetARGB(math.floor(clamp(alpha, 0, 1) * 255),
+        clamp(red - shade, 0, 255), clamp(green - shade, 0, 255), clamp(blue - shade, 0, 255))
+end
+
+local function valence_color(valence, alpha)
+    local red, green, blue = 226, 226, 220
+    if valence == "positive" then red, green, blue = 150, 220, 140 end
+    if valence == "negative" then red, green, blue = 235, 150, 70 end
+    return GetARGB(math.floor(clamp(alpha, 0, 1) * 255), red, green, blue)
+end
+
+local function record_color(record, alpha)
+    if record.valence == "positive" or record.valence == "negative" then
+        return valence_color(record.valence, alpha)
+    end
+    return tier_color(record.tier, alpha, record.slot_index)
+end
+
+-- ===================== Rendering =====================
+
+local function close_window()
+    if not WINDOW then return end
+    if get_hud and get_hud() then pcall(function() get_hud():RemoveDialogToRender(WINDOW) end) end
+    WINDOW = nil
+end
+
+class "ComposureThoughtsWindow" (CUIScriptWnd)
+
+function ComposureThoughtsWindow:__init() super()
+    self:SetWndRect(Frect():set(0, 0, 1024, 768))
+    self:SetAutoDelete(true)
+    self.xml = CScriptXmlInit()
+    self.xml:ParseFile("ui_composure_thoughts.xml")
+    self.slots = {}
+    for index = 1, SLOT_COUNT do
+        self.slots[index] = self.xml:InitTextWnd("thought_" .. tostring(index), self)
+        self.slots[index]:Show(false)
+    end
+    self.records = {}
+    self.done = false
+end
+
+function ComposureThoughtsWindow:__finalize()
+end
+
+local slot_anchor_by_index = {
+    [1] = { x = 512, y = 286 },
+    [2] = { x = 512, y = 322 },
+    [3] = { x = 512, y = 358 },
+    [4] = { x = 512, y = 394 },
+    [5] = { x = 512, y = 430 },
+}
+
+local function occupied_centers(records, exclude_index)
+    local centers = {}
+    for index, record in pairs(records) do
+        if index ~= exclude_index and record and record.center then
+            centers[#centers + 1] = record.center
+        end
+    end
+    return centers
+end
+
+local function random_center(existing_centers)
+    local horizontal = clamp(cfg("horizontal_spread", 140), 0, 240)
+    local vertical = clamp(cfg("vertical_spread", 155), 40, 260)
+    for attempt = 1, 24 do
+        local angle = math.random() * math.pi * 2
+        local candidate = {
+            x = 512 + math.cos(angle) * horizontal,
+            y = 374 + math.sin(angle) * vertical,
+        }
+        local separated = true
+        for _, existing in ipairs(existing_centers) do
+            local dx, dy = candidate.x - existing.x, candidate.y - existing.y
+            if dx * dx + dy * dy < 58 * 58 then separated = false; break end
+        end
+        if separated then return candidate end
+    end
+    local angle = math.random() * math.pi * 2
+    return { x = 512 + math.cos(angle) * horizontal, y = 374 + math.sin(angle) * vertical }
+end
+
+local effect_profiles = {
+    high            = { jitter = 0,   flicker = false, scramble = false, ghost = false, instant_snap = false },
+    medium_high     = { jitter = 0,   flicker = false, scramble = false, ghost = false, instant_snap = false },
+    medium          = { jitter = 0,   flicker = false, scramble = false, ghost = false, instant_snap = false },
+    medium_low      = { jitter = 1.5, flicker = false, scramble = false, ghost = false, instant_snap = false },
+    low             = { jitter = 3,   flicker = true,  scramble = false, ghost = false, instant_snap = false },
+    breaking_point  = { jitter = 4.5, flicker = true,  scramble = true,  ghost = false, instant_snap = false },
+    pass_out        = { jitter = 0,   flicker = false, scramble = false, ghost = true,  instant_snap = false },
+}
+
+local SCRAMBLE_CHARS = { "#", "%", "&", "*", "?", "$" }
+
+local function scramble_text(text)
+    if #text == 0 then return text end
+    local chars = {}
+    for i = 1, #text do chars[i] = text:sub(i, i) end
+    local mutations = math.max(1, math.floor(#chars * 0.18))
+    for _ = 1, mutations do
+        local index = math.random(1, #chars)
+        if chars[index] ~= " " then
+            chars[index] = SCRAMBLE_CHARS[math.random(1, #SCRAMBLE_CHARS)]
+        end
+    end
+    return table.concat(chars)
+end
+
+function ComposureThoughtsWindow:IsSlotFree(index)
+    local record = self.records[index]
+    if record == nil then return true end
+    -- Time-based check rather than relying solely on the `done` flag
+    -- (which is only set inside Update(), a UI render-tick callback).
+    -- Spawn attempts happen on the game-logic tick (actor_on_update),
+    -- a different cadence, so slot availability must be decidable
+    -- correctly even if Update() hasn't run since this slot expired.
+    return record.done == true or time_global() >= record.finish_ms
+end
+
+function ComposureThoughtsWindow:FindFreeSlot()
+    for index = 1, SLOT_COUNT do
+        if self:IsSlotFree(index) then return index end
+    end
+    return nil
+end
+
+function ComposureThoughtsWindow:FindOldestSlot()
+    local oldest_index, oldest_start = nil, math.huge
+    for index = 1, SLOT_COUNT do
+        local record = self.records[index]
+        if record and record.start_ms < oldest_start then
+            oldest_index, oldest_start = index, record.start_ms
+        end
+    end
+    return oldest_index
+end
+
+function ComposureThoughtsWindow:Spawn(text, tier, valence, priority, headline)
+    if not text or text == "" then return false end
+    local index = self:FindFreeSlot()
+    if not index then
+        if priority == "high" then
+            index = self:FindOldestSlot()
+        else
+            return false
+        end
+    end
+    if not index then return false end
+
+    local now = time_global()
+    local duration_ms = clamp(cfg("duration", 6), 2, 12) * 1000
+    local effects_on = cfg("text_effects_enabled", true) == true
+    local profile = effects_on and (effect_profiles[tier] or effect_profiles.medium) or effect_profiles.high
+
+    local randomized = cfg("random_positions", true) == true
+    local center = randomized and random_center(occupied_centers(self.records, index)) or slot_anchor_by_index[index]
+
+    local slot = self.slots[index]
+    local display_text = headline and text:upper() or text
+    if randomized then
+        slot:SetWndPos(vector2():set(center.x - slot:GetWidth() * 0.5, center.y - slot:GetHeight() * 0.5))
+    end
+    slot:SetText(display_text)
+    slot:SetTextColor(GetARGB(0, 226, 226, 220))
+    slot:Show(true)
+
+    local is_panic_word = false
+    for _, word in ipairs(panic_words) do
+        if text == word then is_panic_word = true; break end
+    end
+
+    self.records[index] = {
+        slot = slot, slot_index = index, center = center,
+        base_text = display_text, tier = tier, valence = valence,
+        start_ms = now, finish_ms = now + duration_ms + math.random(-250, 250),
+        jitter = profile.jitter, flicker = profile.flicker or is_panic_word,
+        scramble = profile.scramble, instant_snap = profile.instant_snap or is_panic_word,
+        ghost = profile.ghost, ghost_slot_index = nil, headline = headline == true,
+        done = false, next_scramble_ms = 0, next_jitter_ms = 0,
+    }
+
+    if profile.ghost then
+        local ghost_index = self:FindFreeSlot()
+        if ghost_index and ghost_index ~= index then
+            local record = self.records[index]
+            record.ghost_slot_index = ghost_index
+            local gslot = self.slots[ghost_index]
+            gslot:SetText(display_text)
+            gslot:SetTextColor(GetARGB(0, 226, 226, 220))
+            gslot:Show(true)
+            if center then
+                gslot:SetWndPos(vector2():set(center.x - gslot:GetWidth() * 0.5 + 6, center.y - gslot:GetHeight() * 0.5 + 4))
+            end
+            self.records[ghost_index] = {
+                slot = gslot, slot_index = ghost_index, center = center,
+                base_text = display_text, tier = tier, valence = valence,
+                start_ms = now, finish_ms = now + duration_ms + 400,
+                jitter = 0, flicker = false, scramble = false, instant_snap = false,
+                ghost = false, is_ghost_duplicate = true, parent_index = index,
+                done = false, next_scramble_ms = 0, next_jitter_ms = 0,
+            }
+        end
+    end
+
+    return true
+end
+
+local manual_centers = {
+    direction = { x = 512, y = 118 },
+    active_negative = { x = 270, y = 245 },
+    past_negative = { x = 285, y = 548 },
+    connector = { x = 512, y = 620 },
+    past_positive = { x = 739, y = 548 },
+    active_positive = { x = 754, y = 245 },
+}
+
+function ComposureThoughtsWindow:ClearAll()
+    for index = 1, SLOT_COUNT do
+        self.records[index] = nil
+        self.slots[index]:Show(false)
+    end
+end
+
+function ComposureThoughtsWindow:HasRecords()
+    for _, record in pairs(self.records) do if record and not record.done then return true end end
+    return false
+end
+
+function ComposureThoughtsWindow:ManualSpawn(index, text, kind, valence, direction_band, temporary)
+    if not text or text == "" or not index or index < 1 or index > SLOT_COUNT then return false end
+    local center = manual_centers[kind] or manual_centers.direction
+    center = { x = center.x + math.random(-16, 16), y = center.y + math.random(-9, 9) }
+    local slot = self.slots[index]
+    slot:SetWndPos(vector2():set(center.x - slot:GetWidth() * 0.5, center.y - slot:GetHeight() * 0.5))
+    slot:SetText(text)
+    slot:SetTextColor(GetARGB(0, 226, 226, 220))
+    slot:Show(true)
+    local now = time_global()
+    local temporary_ms = type(temporary) == "number" and temporary or (temporary and 650 or nil)
+    self.records[index] = {
+        slot = slot, slot_index = index, center = center, base_text = text,
+        tier = "medium", valence = valence, direction_band = direction_band,
+        manual = true, memory = kind == "past_positive" or kind == "past_negative",
+        start_ms = now, finish_ms = temporary_ms and (now + temporary_ms) or math.huge,
+        jitter = 0, flicker = false, scramble = false, instant_snap = false,
+        done = false, next_scramble_ms = 0, next_jitter_ms = 0,
+    }
+    return true
+end
+
+function ComposureThoughtsWindow:CancelManual(fade_ms)
+    local now = time_global()
+    for _, record in pairs(self.records) do
+        if record and record.manual then
+            record.cancel_start_ms = now
+            record.cancel_duration_ms = fade_ms or 1000
+        end
+    end
+end
+
+function ComposureThoughtsWindow:Update()
+    CUIScriptWnd.Update(self)
+    local now = time_global()
+
+    for index = 1, SLOT_COUNT do
+        local record = self.records[index]
+        if record and not record.done then
+            local alpha = 0
+            if now >= record.start_ms and now < record.finish_ms then
+                if record.instant_snap then
+                    alpha = (now < record.finish_ms - 700) and 1 or clamp((record.finish_ms - now) / 700, 0, 1)
+                else
+                    local fade_in = clamp((now - record.start_ms) / 700, 0, 1)
+                    local fade_out = clamp((record.finish_ms - now) / 1300, 0, 1)
+                    alpha = math.min(fade_in, fade_out)
+                end
+
+                if record.flicker and alpha > 0.01 then
+                    if math.random() < 0.12 then alpha = alpha * 0.15 end
+                end
+
+                if record.scramble and alpha > 0.01 and not record.is_ghost_duplicate then
+                    if now >= record.next_scramble_ms then
+                        record.next_scramble_ms = now + 260
+                        if math.random() < 0.35 then
+                            record.slot:SetText(scramble_text(record.base_text))
+                        else
+                            record.slot:SetText(record.base_text)
+                        end
+                    end
+                end
+
+                if record.jitter and record.jitter > 0 and record.center and alpha > 0.01 then
+                    if now >= record.next_jitter_ms then
+                        record.next_jitter_ms = now + 90
+                        local dx = (math.random() * 2 - 1) * record.jitter
+                        local dy = (math.random() * 2 - 1) * record.jitter
+                        record.slot:SetWndPos(vector2():set(
+                            record.center.x - record.slot:GetWidth() * 0.5 + dx,
+                            record.center.y - record.slot:GetHeight() * 0.5 + dy))
+                    end
+                end
+            elseif now >= record.finish_ms then
+                record.done = true
+            end
+
+            if record.cancel_start_ms then
+                alpha = clamp(1 - (now - record.cancel_start_ms) / (record.cancel_duration_ms or 1000), 0, 1)
+                if alpha <= 0 then record.done = true end
+            end
+            local render_alpha = record.is_ghost_duplicate and alpha * 0.35 or alpha
+            if record.memory then render_alpha = render_alpha * 0.72 end
+            if record.direction_band then
+                local colors = {
+                    neutral = { 205, 190, 75 }, loss_minor = { 225, 190, 65 },
+                    loss_moderate = { 230, 130, 48 }, loss_strong = { 205, 48, 42 },
+                    gain_minor = { 82, 145, 78 }, gain_moderate = { 65, 190, 92 },
+                    gain_strong = { 145, 220, 130 },
+                }
+                local c = colors[record.direction_band] or colors.neutral
+                record.slot:SetTextColor(GetARGB(math.floor(render_alpha * 255), c[1], c[2], c[3]))
+            else
+                record.slot:SetTextColor(record_color(record, render_alpha))
+            end
+            record.slot:Show(render_alpha > 0.01)
+
+            if record.done then
+                self.records[index] = nil
+            end
+        end
+    end
+end
+
+local function ensure_window()
+    if WINDOW then return true end
+    if not db or not db.actor or not get_hud or not get_hud() then return false end
+    local ok, window = pcall(ComposureThoughtsWindow)
+    if not ok or not window then
+        log("window construction failed: %s", tostring(window))
+        return false
+    end
+    local added, err = pcall(function() get_hud():AddDialogToRender(window) end)
+    if not added then
+        log("render registration failed: %s", tostring(err))
+        return false
+    end
+    WINDOW = window
+    return true
+end
+
+spawn_thought = function(text, snapshot, opts)
+    opts = opts or {}
+    if not cfg("enabled", true) or type(snapshot) ~= "table" then return false end
+    local tier = snapshot.tier or "medium"
+    if snapshot.value > 69 and not cfg("show_above_medium", true) and opts.source ~= "test" then return false end
+    if not gameplay_input_free() and opts.source ~= "test" then return false end
+    if not ensure_window() then return false end
+
+    local priority = opts.priority or "low"
+    local ok = WINDOW:Spawn(text, tier, opts.valence, priority, opts.headline == true)
+    if ok then
+        log("trigger=%s tier=%s value=%.1f valence=%s priority=%s headline=%s text=%q",
+            tostring(opts.source), tostring(tier), tonumber(snapshot.value) or 0,
+            tostring(opts.valence), priority, tostring(opts.headline == true), text)
+    else
+        log("trigger=%s SKIPPED (pool full) tier=%s", tostring(opts.source), tostring(tier))
+    end
+    return ok
+end
+
+local function shuffled_copy(source)
+    local result = {}
+    for _, text in ipairs(source or {}) do result[#result + 1] = text end
+    for index = #result, 2, -1 do
+        local other = math.random(1, index)
+        result[index], result[other] = result[other], result[index]
+    end
+    return result
+end
+
+local function intensity_for(value)
+    return clamp((70 - clamp(value, 0, 100)) / 69, 0, 1)
+end
+
+local function pick_context_line(context_pool, context_key)
+    local list = context_pool[context_key]
+    if not list or #list == 0 then list = context_pool.neutral end
+    if not list or #list == 0 then
+        for _, fallback in pairs(context_pool) do
+            if #fallback > 0 then list = fallback; break end
+        end
+    end
+    if not list or #list == 0 then return nil end
+    return list[math.random(1, #list)]
+end
+
+local function pick_tiered_line(tiered_table, bucket)
+    local list = tiered_table[bucket]
+    if not list or #list == 0 then list = tiered_table.medium end
+    if not list or #list == 0 then return nil end
+    return list[math.random(1, #list)]
+end
+
+pick_from = function(list)
+    if not list or #list == 0 then return nil end
+    return list[math.random(1, #list)]
+end
+
+local function event_message(record, bucket)
+    if not record or type(record.data) ~= "table" then return nil, nil end
+    local data = record.data
+    local metadata = type(data.metadata) == "table" and data.metadata or {}
+    local actual = tonumber(data.actual) or 0
+    local valence = actual > 0 and "positive" or (actual < 0 and "negative" or nil)
+
+    if data.category == "consumable" then
+        local genre = consumable_genre(data.scope, metadata.item_name or data.label)
+        if genre and event_lines[genre] then
+            return pick_tiered_line(event_lines[genre], bucket), valence
+        end
+        if type(metadata.flavor) == "string" and metadata.flavor ~= "" then return metadata.flavor, valence end
+        return "I need this to work.", valence
+    end
+
+    if data.category == "combat" then
+        local enemy = combat_context or "human"
+        return pick_tiered_line(event_lines.firefight_start[enemy] or event_lines.firefight_start.human, bucket), valence
+    end
+
+    if type(metadata.flavor) == "string" and metadata.flavor ~= "" then return metadata.flavor, valence end
+    if actual > 0 then return "I can feel myself settling down.", valence end
+    return "That shook me more than it should have.", valence
+end
+
+local function source_memory_text(data, positive, amount)
+    local metadata = type(data.metadata) == "table" and data.metadata or {}
+    amount = tonumber(amount) or math.abs(tonumber(data.actual) or 0)
+    if data.category == "consumable" then
+        local item = consumable_label(metadata.item_name or data.label or data.scope)
+        if positive and amount >= 15 then return "That " .. item .. " pulled me back from the edge." end
+        if positive and amount >= 10 then return "That " .. item .. " steadied me more than I expected." end
+        if positive then return "That " .. item .. " helped me settle." end
+        return "That " .. item .. " left me feeling worse."
+    end
+    if data.category == "combat" then
+        if positive then return amount >= 15 and "Surviving that firefight gave me my nerve back."
+            or "Making it through that firefight gave me some nerve back." end
+        if amount >= 15 then return "I can still feel that firefight in my bones." end
+        if amount >= 10 then return "That firefight is still in my head." end
+        return "Those shots left me listening for movement."
+    end
+    if data.category == "exploration" then
+        return positive and "Getting back to shelter eased my nerves."
+            or "That long stretch in the dark wore me down."
+    end
+    if data.category == "recovery" then return "That time in safety helped me breathe again." end
+    local label = tostring(data.scope or data.category or data.id or "experience"):gsub("_", " ")
+    return positive and ("That " .. label .. " gave me some steadiness back.")
+        or ("That " .. label .. " is still weighing on me.")
+end
+
+local function track_memories(snapshot)
+    for _, record in ipairs(snapshot.recent_events or {}) do
+        local t, data = tonumber(record.time_ms) or 0, record.data
+        if record.event == "delta_applied" and t > memory_event_ms and type(data) == "table" then
+            local actual = tonumber(data.actual) or 0
+            if actual ~= 0 and data.category ~= "context" then
+                local key = tostring(data.id or data.category or "unknown") .. (actual > 0 and ":positive" or ":negative")
+                local memory = memory_sources[key] or { amount = 0, last_ms = 0 }
+                memory.amount = memory.amount + math.abs(actual)
+                memory.positive = actual > 0
+                memory.data = data
+                memory.last_ms = t
+                memory_sources[key] = memory
+            end
+            memory_event_ms = math.max(memory_event_ms, t)
+        end
+    end
+end
+
+local function strongest_memory(positive)
+    local best = nil
+    for _, memory in pairs(memory_sources) do
+        if memory.positive == positive and memory.amount >= 5
+            and (not best or memory.amount > best.amount or (memory.amount == best.amount and memory.last_ms > best.last_ms)) then
+            best = memory
+        end
+    end
+    return best and source_memory_text(best.data, best.positive, best.amount) or nil
+end
+
+local function active_modifier_text(snapshot, positive)
+    local best = nil
+    for _, modifier in ipairs(snapshot.modifiers or {}) do
+        local rate = tonumber(modifier.rate) or 0
+        if (positive and rate > 0) or ((not positive) and rate < 0) then
+            if not best or math.abs(rate) > math.abs(tonumber(best.rate) or 0) then best = modifier end
+        end
+    end
+    if best then
+        if best.category == "consumable" then
+            local metadata = type(best.metadata) == "table" and best.metadata or {}
+            local raw_name = metadata.item_name or best.label or best.scope
+            local item = consumable_label(raw_name)
+            local genre = consumable_genre(best.scope, raw_name)
+            if not positive then return "The " .. item .. " is making it harder to stay composed." end
+            if genre == "water" then return "The water is taking the dryness out of my throat." end
+            if genre == "tea" then return "The hot tea is easing the tension in my hands." end
+            if genre == "coffee" then return "The coffee is bringing me back into focus." end
+            if genre == "energy_drink" then return "The energy drink is keeping me moving." end
+            if genre == "cigarettes" then return "The smoke is taking the edge off." end
+            if genre == "alcohol" then return "The alcohol is dulling the edges for now." end
+            if genre == "combat_rations" or genre == "canned_goods" or genre == "bread"
+                or genre == "comfort_food" or genre == "protein_bar" or genre == "cured_meat" then
+                return "The " .. item .. " is helping me feel grounded."
+            end
+            return "The " .. item .. " is helping me steady myself."
+        end
+        if type(best.flavor) == "string" and best.flavor ~= "" then return best.flavor end
+        if best.category == "recovery" then return "The quiet is letting my breathing settle." end
+        local label = tostring(best.label or best.scope or best.category or "This"):gsub("_", " ")
+        return positive and (label .. " is helping me hold together.") or (label .. " is wearing me down.")
+    end
+    if not positive and composure_exploration and composure_exploration.get_diagnostics then
+        local ok, diag = pcall(composure_exploration.get_diagnostics)
+        if ok and type(diag) == "table" and (tonumber(diag.rate_per_minute) or 0) < -0.001 then
+            if diag.profile == "deep_lab" or diag.profile == "underground" then return "The darkness keeps turning shapes into threats." end
+            if tostring(diag.reason):find("rain") then return "The rain is keeping every nerve awake." end
+            return "The open Zone is slowly wearing me down."
+        end
+    end
+    return nil
+end
+
+local function direction_text(snapshot)
+    local rate = (tonumber(snapshot.net_rate) or 0) * 60
+    local amount = math.abs(rate)
+    if amount <= 0.05 then return "I am holding where I am.", "neutral", 0 end
+    local positive = rate > 0
+    if amount <= 0.25 then
+        return positive and "A little easier now." or "I am beginning to lose ground.",
+            positive and "gain_minor" or "loss_minor", positive and 1 or -1
+    elseif amount <= 1.50 then
+        return positive and "I can feel myself coming back." or "I am slipping faster now.",
+            positive and "gain_moderate" or "loss_moderate", positive and 1 or -1
+    end
+    return positive and "I am pulling myself together." or "I am losing my grip.",
+        positive and "gain_strong" or "loss_strong", positive and 1 or -1
+end
+
+local function build_manual_plan(snapshot)
+    local direction, band, sign = direction_text(snapshot)
+    local active_pos, active_neg = active_modifier_text(snapshot, true), active_modifier_text(snapshot, false)
+    local past_pos, past_neg = strongest_memory(true), strongest_memory(false)
+    local entries = { { slot = 1, text = direction, kind = "direction", band = band } }
+    local function add(slot, text, kind, valence)
+        if text then entries[#entries + 1] = { slot = slot, text = text, kind = kind, valence = valence } end
+    end
+    if sign > 0 then
+        add(2, active_neg, "active_negative", "negative")
+        add(3, past_neg, "past_negative", "negative")
+        if (active_neg or past_neg) and (active_pos or past_pos) then add(4, "Even so...", "connector") end
+        add(4, past_pos, "past_positive", "positive")
+        add(5, active_pos, "active_positive", "positive")
+    elseif sign < 0 then
+        add(5, active_pos, "active_positive", "positive")
+        add(4, past_pos, "past_positive", "positive")
+        if (active_pos or past_pos) and (active_neg or past_neg) then add(3, "But...", "connector") end
+        add(3, past_neg, "past_negative", "negative")
+        add(2, active_neg, "active_negative", "negative")
+    else
+        add(2, active_neg, "active_negative", "negative")
+        add(5, active_pos, "active_positive", "positive")
+        add(3, past_neg, "past_negative", "negative")
+        add(4, past_pos, "past_positive", "positive")
+    end
+    return entries
+end
+
+local function start_manual_check(snapshot)
+    if not ensure_window() then return false end
+    WINDOW:ClearAll()
+    manual_active, manual_key_latched, manual_final_until_ms = true, true, nil
+    manual_plan, manual_next_step = build_manual_plan(snapshot), 1
+    manual_next_ms = time_global()
+    log("manual check started direction=%.3f/min thoughts=%d", (tonumber(snapshot.net_rate) or 0) * 60, #manual_plan)
+    return true
+end
+
+local function update_manual_check(snapshot)
+    if not manual_active or not manual_plan then return end
+    local now = time_global()
+    if manual_final_until_ms then
+        if now >= manual_final_until_ms then
+            WINDOW:CancelManual(1000)
+            manual_active, manual_plan, manual_final_until_ms = false, nil, nil
+            manual_cooldown_until_ms = now + 3000
+            log("manual check completed")
+        end
+        return
+    end
+    if now < manual_next_ms then return end
+    local item = manual_plan[manual_next_step]
+    if not item then
+        manual_final_until_ms = now + clamp(cfg("check_final_duration", 5), 2, 12) * 1000
+        return
+    end
+    local mode = tonumber(cfg("check_presentation", 1)) or 1
+    local sequence_ms = clamp(cfg("check_sequence_speed", 0.8), 0.4, 2) * 1000
+    local reflection_ms = sequence_ms * 1.75
+    if item.final then
+        WINDOW:ClearAll()
+        for _, final in ipairs(build_manual_plan(snapshot)) do
+            if final.kind ~= "connector" then WINDOW:ManualSpawn(final.slot, final.text, final.kind, final.valence, final.band, false) end
+        end
+        manual_next_step = #manual_plan + 1
+        manual_final_until_ms = now + clamp(cfg("check_final_duration", 5), 2, 12) * 1000
+        return
+    end
+    if mode == 2 and manual_next_step > 1 then WINDOW:ClearAll() end
+    local lifetime = mode == 2 and (reflection_ms + 1300) or false
+    WINDOW:ManualSpawn(item.slot, item.text, item.kind, item.valence, item.band, lifetime)
+    manual_next_step = manual_next_step + 1
+    manual_next_ms = now + (mode == 2 and reflection_ms or sequence_ms)
+    if mode == 2 and manual_next_step > #manual_plan then
+        -- Final complete picture after the reflective pass.
+        manual_next_ms = now + 1000
+        manual_plan[#manual_plan + 1] = { final = true }
+    end
+end
+
+local last_shown_tier = nil
+local was_bad_tier = false
+local bad_tier_streak = 0
+
+local function check_tier_transition(snapshot)
+    local tier = snapshot.tier or "medium"
+    if last_shown_tier == nil then
+        last_shown_tier = tier
+        was_bad_tier = is_bad_tier(tier)
+        return nil, nil
+    end
+    if tier == last_shown_tier then return nil, nil end
+
+    local entering_severe = is_bad_tier(tier) and not was_bad_tier and (tier == "breaking_point" or tier == "pass_out")
+    last_shown_tier = tier
+    was_bad_tier = is_bad_tier(tier)
+    return headlines[tier], entering_severe
+end
+
+local function track_escalation(snapshot)
+    if is_bad_tier(snapshot.tier) then
+        bad_tier_streak = bad_tier_streak + 1
+    else
+        bad_tier_streak = 0
+    end
+    if bad_tier_streak >= 2 and cfg("escalation_enabled", true) then
+        return escalation_lines[math.random(1, #escalation_lines)]
+    end
+    return nil
+end
+
+local function threshold_for(data)
+    if data and data.category == "consumable" then
+        return clamp(cfg("consumable_event_threshold", 0.3), 0.05, 5)
+    end
+    return clamp(cfg("event_threshold", 2), 0.5, 10)
+end
+
+local function newest_meaningful_event(snapshot)
+    if not cfg("event_thoughts", true) then return nil end
+    local newest = nil
+    for _, record in ipairs(snapshot.recent_events or {}) do
+        local event_time = tonumber(record.time_ms) or 0
+        local data = record.data
+        if record.event == "delta_applied" and event_time > last_event_ms and type(data) == "table"
+            and data.kind ~= "continuous" and math.abs(tonumber(data.actual) or 0) >= threshold_for(data) then
+            if not newest or event_time > (tonumber(newest.time_ms) or 0) then newest = record end
+        end
+    end
+    return newest
+end
+
+local function mark_current_events(snapshot)
+    for _, record in ipairs(snapshot.recent_events or {}) do
+        last_event_ms = math.max(last_event_ms, tonumber(record.time_ms) or 0)
+    end
+end
+
+local function schedule_ambient(failed_roll)
+    local minimum = clamp(cfg("ambient_min_cooldown", 60), 20, 180)
+    local maximum = clamp(cfg("ambient_max_cooldown", 110), minimum, 240)
+    local seconds = maximum
+    if failed_roll then seconds = math.min((minimum + maximum) * 0.5 * 0.5, 40) end
+    seconds = seconds * (0.85 + math.random() * 0.30)
+    next_ambient_roll_ms = time_global() + seconds * 1000
+end
+
+local function pick_ambient_text()
+    local roll = math.random()
+    if roll < 0.28 then
+        return pick_context_line(ambient_pool, ambient_weather_context())
+    elseif roll < 0.50 then
+        if cfg("location_thoughts_enabled", true) then
+            local location = get_current_location()
+            local lines = location and location_pool[location]
+            if lines then return pick_from(lines) end
+        end
+        return pick_from(zone_pool)
+    elseif roll < 0.75 then
+        return pick_from(zone_pool)
+    else
+        return pick_from(mental_pool)
+    end
+end
+
+-- Corpse detection is deliberately its OWN trigger, not folded into the
+-- ambient roll -- a body right next to the player would otherwise only
+-- have an ~18% chance per ~60-110s cooldown of ever being noticed. This
+-- rolls once per creature scan and caches only after successful display.
+local function try_corpse_roll(snapshot)
+    if not cfg("corpse_thoughts_enabled", true) then return false end
+    local candidate = refresh_creature_scan().corpse
+    if not candidate or candidate.id == nil or corpse_seen[candidate.id] then return false end
+    if corpse_roll_scan_ms == creature_scan_ms then return false end
+    corpse_roll_scan_ms = creature_scan_ms
+    local chance = chance_at_distance(candidate.distance, 3, clamp(cfg("corpse_detect_radius", 15), 5, 30))
+    log("corpse candidate id=%s type=%s distance=%.1f chance=%.2f", tostring(candidate.id), candidate.kind, candidate.distance, chance)
+    if math.random() > chance then return false end
+    local shown = spawn_thought(pick_from(corpse_pool[candidate.kind]), snapshot, { source = "corpse", priority = "low" })
+    if shown then remember_corpse(candidate.id) end
+    return shown
+end
+
+local function try_ambient_roll(snapshot)
+    if not cfg("ambient_thoughts_enabled", true) then return false end
+    if not is_calm_tier(snapshot.tier) then return false end
+    if not next_ambient_roll_ms then schedule_ambient(false); return false end
+    if time_global() < next_ambient_roll_ms then return false end
+
+    local chance = clamp(cfg("ambient_chance", 0.18), 0.01, 1)
+    if math.random() <= chance then
+        local text = pick_ambient_text()
+        local shown = spawn_thought(text, snapshot, { source = "ambient", priority = "low" })
+        schedule_ambient(false)
+        return shown
+    else
+        log("ambient roll failed tier=%s chance=%.2f", tostring(snapshot.tier), chance)
+        schedule_ambient(true)
+        return false
+    end
+end
+
+local function reset_transient_state()
+    close_window()
+    refresh_settings()
+    manual_key_down_ms, manual_key_latched, manual_active, manual_plan = nil, false, false, nil
+    manual_final_until_ms, manual_cooldown_until_ms = nil, 0
+    last_shown_tier, was_bad_tier, bad_tier_streak = nil, false, 0
+    combat_context, last_sustained_ms = nil, 0
+    creature_scan_ms, creature_scan = 0, { corpse = nil, mutant = nil }
+    corpse_roll_scan_ms, mutant_roll_scan_ms = -1, -1
+    corpse_seen, corpse_fifo = {}, {}
+    mutant_encounter, mutant_missing_since = false, nil
+    needs_cache, needs_last_ms, next_physical_ms = {}, 0, nil
+    need_cooldowns, critical_bypass = {}, {}
+    needs_previous_rank = {}
+    memory_event_ms, memory_sources = 0, {}
+    next_ambient_roll_ms = nil
+end
+
+local function on_first_update()
+    reset_transient_state()
+    if not framework_ready() then return end
+    local ok, snapshot = pcall(composure_framework.get_snapshot)
+    if ok and type(snapshot) == "table" then
+        snapshot = effective_snapshot(snapshot)
+        mark_current_events(snapshot)
+        last_shown_tier = snapshot.tier
+        was_bad_tier = is_bad_tier(snapshot.tier)
+        next_roll_ms = nil
+    end
+end
+
+local function update_impl()
+    if WINDOW and not manual_active and not WINDOW:HasRecords() then close_window() end
+    if not cfg("enabled", true) or not framework_ready() or not db or not db.actor then
+        close_window()
+        return
+    end
+    local ok, snapshot = pcall(composure_framework.get_snapshot)
+    if not ok or type(snapshot) ~= "table" then return end
+    snapshot = effective_snapshot(snapshot)
+    track_memories(snapshot)
+
+    if manual_key_down_ms and not manual_key_latched and not manual_active and time_global() - manual_key_down_ms >= 600 then
+        start_manual_check(snapshot)
+    end
+    if manual_active then
+        update_manual_check(snapshot)
+        return
+    end
+    if time_global() < manual_cooldown_until_ms then return end
+
+    if cfg("context_aware", true) then
+        local context, edge, previous = update_combat_context(snapshot)
+        if edge == "start" and time_global() >= next_event_allowed_ms then
+            next_event_allowed_ms = time_global() + 6000
+            local bucket = tier_bucket(snapshot.tier)
+            local text = pick_tiered_line(event_lines.firefight_start[context] or event_lines.firefight_start.human, bucket)
+            spawn_thought(text, snapshot, { source = "combat_start", priority = "high", valence = "negative" })
+            mark_current_events(snapshot)
+        elseif edge == "end" and time_global() >= next_event_allowed_ms then
+            next_event_allowed_ms = time_global() + 6000
+            local bucket = tier_bucket(snapshot.tier)
+            local text = pick_tiered_line(event_lines.firefight_end[previous] or event_lines.firefight_end.human, bucket)
+            spawn_thought(text, snapshot, { source = "combat_end", priority = "low", valence = "positive" })
+            mark_current_events(snapshot)
+        elseif context then
+            local now = time_global()
+            if now - last_sustained_ms > clamp(cfg("sustained_interval", 14), 6, 40) * 1000 then
+                last_sustained_ms = now
+                local bucket = tier_bucket(snapshot.tier)
+                local text = pick_tiered_line(event_lines.firefight_sustained[context] or event_lines.firefight_sustained.human, bucket)
+                spawn_thought(text, snapshot, { source = "combat_sustained", priority = "low", valence = "negative" })
+                mark_current_events(snapshot)
+            end
+        end
+    end
+
+    local event = newest_meaningful_event(snapshot)
+    if event then
+        if time_global() >= next_event_allowed_ms then
+            local bucket = tier_bucket(snapshot.tier)
+            local text, valence = event_message(event, bucket)
+            local shown = spawn_thought(text, snapshot, { source = "event", priority = "low", valence = valence })
+            if shown then
+                last_event_ms = math.max(last_event_ms, tonumber(event.time_ms) or 0)
+                next_event_allowed_ms = time_global() + 8000
+            end
+        end
+    else
+        mark_current_events(snapshot)
+    end
+
+    local headline_text, entering_severe = check_tier_transition(snapshot)
+    if headline_text then
+        spawn_thought(headline_text, snapshot, {
+            source = "transition", headline = true,
+            priority = entering_severe and "high" or "low",
+        })
+    end
+
+    try_ambient_roll(snapshot)
+
+    try_corpse_roll(snapshot)
+
+    try_physical_roll(snapshot)
+
+    if not cfg("automatic", true) then return end
+    if not next_roll_ms then
+        local minimum = clamp(cfg("minimum_cooldown", 18), 5, 60)
+        local maximum = clamp(cfg("maximum_cooldown", 95), 30, 180)
+        if maximum < minimum then maximum = minimum end
+        local intensity = intensity_for(snapshot.value)
+        local seconds = (maximum - (maximum - minimum) * intensity) * (0.85 + math.random() * 0.30)
+        next_roll_ms = time_global() + seconds * 1000
+        return
+    end
+    if time_global() < next_roll_ms then return end
+
+    local intensity = intensity_for(snapshot.value)
+    local chance = 0.06 + intensity * 0.84
+    if snapshot.value > 69 then chance = 0.04 end
+
+    local function reschedule(failed_roll)
+        local minimum = clamp(cfg("minimum_cooldown", 18), 5, 60)
+        local maximum = clamp(cfg("maximum_cooldown", 95), 30, 180)
+        if maximum < minimum then maximum = minimum end
+        local seconds = maximum - (maximum - minimum) * intensity
+        if failed_roll then seconds = math.min(seconds * 0.35, 25) end
+        seconds = seconds * (0.85 + math.random() * 0.30)
+        next_roll_ms = time_global() + seconds * 1000
+    end
+
+    if math.random() <= chance then
+        local escalation_text = track_escalation(snapshot)
+        local text
+        if escalation_text then
+            text = escalation_text
+        else
+            local tier = snapshot.tier or "medium"
+            text = pick_from(shuffled_copy(pools[tier] or pools.medium))
+        end
+        spawn_thought(text, snapshot, { source = "automatic", priority = "low" })
+        reschedule(false)
+    else
+        log("automatic roll failed tier=%s chance=%.2f", tostring(snapshot.tier), chance)
+        reschedule(true)
+    end
+end
+
+local function on_actor_update()
+    local ok, err = pcall(update_impl)
+    if not ok then
+        log("update failed: %s", tostring(err))
+    end
+end
+
+local function on_key_press(key)
+    if key == tonumber(cfg("check_key", 45)) and not manual_key_latched and not manual_active and cfg("enabled", true) and gameplay_input_free() then
+        manual_key_down_ms = time_global()
+        return
+    end
+    if key ~= tonumber(cfg("test_key", 64)) or not cfg("enabled", true) or not framework_ready() then return end
+    local ok, snapshot = pcall(composure_framework.get_snapshot)
+    if ok and type(snapshot) == "table" then
+        snapshot = effective_snapshot(snapshot)
+        local cases = {
+            { "corpse.human", "Someone else who didn't make it.", "negative" },
+            { "corpse.mutant", "Whatever killed that mutant may still be close.", "negative" },
+            { "mutant.start", "Something is moving out there.", "negative" },
+            { "mutant.sustained", "It is still circling somewhere nearby.", "negative" },
+            { "mutant.aftermath", "The movement is gone. I can breathe again.", "positive" },
+            { "needs.hunger", physical_lines.hunger[2], "negative" },
+            { "needs.thirst", physical_lines.thirst[2], "negative" },
+            { "needs.sleepiness", physical_lines.sleepiness[2], "negative" },
+            { "needs.stamina", physical_lines.stamina[2], "negative" },
+            { "needs.overweight", physical_lines.overweight[2], "negative" },
+            { "needs.cold", physical_lines.cold[2], "negative" },
+        }
+        test_index = test_index % #cases + 1
+        local case = cases[test_index]
+        log("diagnostic branch=%s (%d/%d), no state mutation", case[1], test_index, #cases)
+        spawn_thought(case[2], snapshot, { source = "test." .. case[1], priority = "high", valence = case[3] })
+    end
+end
+
+local function on_key_release(key)
+    if key ~= tonumber(cfg("check_key", 45)) then return end
+    manual_key_down_ms = nil
+    manual_key_latched = false
+    if manual_active then log("manual check key released; sequence continues") end
+end
+
+local function on_option_change()
+    refresh_settings()
+    next_roll_ms = nil
+    next_ambient_roll_ms = nil
+end
+
+function get_version() return VERSION end
+
+function show_test()
+    if not framework_ready() then return false end
+    local ok, snapshot = pcall(composure_framework.get_snapshot)
+    if not ok or type(snapshot) ~= "table" then return false end
+    snapshot = effective_snapshot(snapshot)
+    local tier = snapshot.tier or "medium"
+    local shown_headline = spawn_thought(headlines[tier], snapshot, { source = "test", headline = true, priority = "high" })
+    local text = pick_from(shuffled_copy(pools[tier] or pools.medium))
+    local shown_text = spawn_thought(text, snapshot, { source = "test", priority = "high" })
+    return shown_headline or shown_text
+end
+
+function on_game_start()
+    if callbacks_registered then return end
+    callbacks_registered = true
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("actor_on_first_update", on_first_update)
+    RegisterScriptCallback("actor_on_update", on_actor_update)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("on_key_release", on_key_release)
+    RegisterScriptCallback("on_level_changing", reset_transient_state)
+    RegisterScriptCallback("actor_on_net_destroy", reset_transient_state)
+    printf(LOG .. " v%s initialized", VERSION)
+end

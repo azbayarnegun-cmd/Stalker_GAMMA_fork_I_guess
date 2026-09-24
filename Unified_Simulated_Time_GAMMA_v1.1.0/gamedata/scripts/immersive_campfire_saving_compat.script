@@ -1,0 +1,414 @@
+-- Immersive Campfire Saving - Unified GAMMA Compatibility v1.0.0
+-- Callback/wrapper implementation. Intentionally replaces no GAMMA base scripts.
+
+local VERSION = "1.0.0"
+local LOG = "[immersive_campfire_compat]"
+local EVENT_GROUP = "immersive_campfire_compat"
+local EVENT_ID = "finish_save_rest"
+local PPE_ID = 111047
+
+local active = false
+local pending_callback = nil
+local pending_minutes = 0
+local saved_music = nil
+local saved_effects = nil
+local ui_locked = false
+local ppe_active = false
+local save_input_passthrough = false
+local manual_passthrough = false
+local original_save_file = nil
+local wrapped_save_file = nil
+local wrapped_class = nil
+local callbacks_registered = false
+
+local defaults = {
+    master_enabled = true,
+    campfire_save_enabled = true,
+    campfire_require_mode = true,
+    campfire_radius = 36,
+    campfire_min_minutes = 15,
+    campfire_max_minutes = 30,
+    campfire_fade_seconds = 5,
+    campfire_mute_audio = true,
+    campfire_force_alife = true,
+    composure_integration = true,
+    show_messages = true,
+    debug_log = false,
+}
+
+local function cfg(key)
+    if unified_time_skip_mcm and unified_time_skip_mcm.get_config then
+        local ok, value = pcall(unified_time_skip_mcm.get_config, key)
+        if ok and value ~= nil then return value end
+    end
+    return defaults[key]
+end
+
+local function log(fmt, ...)
+    local ok, text = pcall(string.format, fmt, ...)
+    printf(LOG .. " " .. (ok and text or tostring(fmt)))
+end
+
+local function debug_log(fmt, ...)
+    if cfg("debug_log") == true then log(fmt, ...) end
+end
+
+local function clamp(value, lo, hi)
+    value = tonumber(value) or lo
+    if value < lo then return lo end
+    if value > hi then return hi end
+    return value
+end
+
+local function actor_ready()
+    if not (level and level.present and level.present()) then return false end
+    if not (db and db.actor) then return false end
+    local ok, alive = pcall(function() return db.actor:alive() end)
+    return ok and alive == true
+end
+
+local function campfire_mode_enabled()
+    if cfg("campfire_require_mode") ~= true then return true end
+    if not (alife_storage_manager and alife_storage_manager.get_state) then return false end
+    local ok, state = pcall(alife_storage_manager.get_state)
+    return ok and state and state.enable_campfire_mode == true
+end
+
+local function nearby_lit_campfire()
+    if not (bind_campfire and bind_campfire.get_nearby_campfire) then
+        return false
+    end
+    local radius = clamp(cfg("campfire_radius"), 4, 100)
+    local ok, campfire = pcall(bind_campfire.get_nearby_campfire, radius, true)
+    if not ok or not campfire then return false end
+    local lit_ok, lit = pcall(function() return campfire:is_on() end)
+    return lit_ok and lit == true
+end
+
+local function other_skip_active()
+    if simulated_time and simulated_time.is_active then
+        local ok, value = pcall(simulated_time.is_active)
+        if ok and value then return true end
+    end
+    if consumable_time_skip and consumable_time_skip.is_active then
+        local ok, value = pcall(consumable_time_skip.is_active)
+        if ok and value then return true end
+    end
+    return false
+end
+
+local function should_immerse()
+    if cfg("master_enabled") ~= true then return false, "master_disabled" end
+    if cfg("campfire_save_enabled") ~= true then return false, "disabled" end
+    if active then return false, "active" end
+    if not actor_ready() then return false, "actor_unavailable" end
+    if other_skip_active() then return false, "other_time_skip" end
+    if not campfire_mode_enabled() then return false, "campfire_mode_off" end
+    if not nearby_lit_campfire() then return false, "no_lit_campfire" end
+    return true, "ready"
+end
+
+local function set_audio_muted()
+    if cfg("campfire_mute_audio") ~= true then return end
+    local console = get_console and get_console() or nil
+    if not console then return end
+    local ok_music, music = pcall(function() return console:get_float("snd_volume_music") end)
+    local ok_effects, effects = pcall(function() return console:get_float("snd_volume_eff") end)
+    if ok_music then saved_music = music end
+    if ok_effects then saved_effects = effects end
+    pcall(function() console:execute("snd_volume_music 0") end)
+    pcall(function() console:execute("snd_volume_eff 0") end)
+end
+
+local function restore_audio()
+    local console = get_console and get_console() or nil
+    if console then
+        if saved_music ~= nil then
+            pcall(function() console:execute("snd_volume_music " .. tostring(saved_music)) end)
+        end
+        if saved_effects ~= nil then
+            pcall(function() console:execute("snd_volume_eff " .. tostring(saved_effects)) end)
+        end
+    end
+    saved_music = nil
+    saved_effects = nil
+end
+
+local function lock_ui()
+    if xr_effects and xr_effects.disable_ui and db and db.actor then
+        local ok = pcall(xr_effects.disable_ui, db.actor, nil)
+        ui_locked = ok == true
+    end
+end
+
+local function unlock_ui()
+    if ui_locked and xr_effects and xr_effects.enable_ui and db and db.actor then
+        pcall(xr_effects.enable_ui, db.actor, nil)
+    end
+    ui_locked = false
+end
+
+local function start_ppe()
+    if level and level.add_pp_effector then
+        local ok = pcall(level.add_pp_effector, "sleep_fade.ppe", PPE_ID, false)
+        ppe_active = ok == true
+    end
+end
+
+local function stop_ppe()
+    if ppe_active and level and level.remove_pp_effector then
+        pcall(level.remove_pp_effector, PPE_ID)
+    end
+    ppe_active = false
+end
+
+local function remove_event()
+    if RemoveTimeEvent then
+        pcall(RemoveTimeEvent, EVENT_GROUP, EVENT_ID)
+    end
+end
+
+local function cleanup_runtime()
+    remove_event()
+    stop_ppe()
+    restore_audio()
+    unlock_ui()
+end
+
+local function notify_minutes(minutes)
+    if cfg("show_messages") ~= true then return end
+    local message = string.format("%d %s", minutes,
+        game.translate_string("st_ics_minutes_passed"))
+    if actor_menu and actor_menu.set_msg then
+        pcall(actor_menu.set_msg, 1, message, 4)
+    else
+        log("%s", message)
+    end
+end
+
+local function advance_world(minutes)
+    local previous_passthrough = nil
+    if simulated_time then
+        previous_passthrough = simulated_time.passthrough
+        simulated_time.passthrough = true
+    end
+
+    local ok, err = pcall(function()
+        level.change_game_time(0, 0, minutes)
+        if cfg("campfire_force_alife") == true then
+            local simulation = alife and alife() or nil
+            if simulation and simulation.force_update then
+                simulation:force_update()
+            end
+        end
+    end)
+
+    if simulated_time then
+        simulated_time.passthrough = previous_passthrough == true
+    end
+    if not ok then log("time advance failed: %s", tostring(err)) end
+
+    if ok and cfg("composure_integration") == true
+    and consumable_time_skip_composure and consumable_time_skip_composure.advance then
+        local bridge_ok, bridge_err = pcall(consumable_time_skip_composure.advance, minutes)
+        if not bridge_ok then debug_log("Composure bridge failed: %s", tostring(bridge_err)) end
+    end
+    return ok
+end
+
+local function finish_save_rest()
+    remove_event()
+    local callback = pending_callback
+    local minutes = pending_minutes
+    pending_callback = nil
+    pending_minutes = 0
+
+    advance_world(minutes)
+    cleanup_runtime()
+    active = false
+    notify_minutes(minutes)
+
+    if callback then
+        local ok, err = pcall(callback)
+        if not ok then log("deferred save failed: %s", tostring(err)) end
+    end
+    debug_log("completed %d-minute campfire save rest", minutes)
+    return true
+end
+
+local function choose_minutes()
+    local minimum = math.floor(clamp(cfg("campfire_min_minutes"), 1, 240))
+    local maximum = math.floor(clamp(cfg("campfire_max_minutes"), 1, 240))
+    if maximum < minimum then maximum = minimum end
+    if maximum == minimum then return minimum end
+    return math.random(minimum, maximum)
+end
+
+local function begin_save_rest(callback, source)
+    local allowed, reason = should_immerse()
+    if not allowed then
+        debug_log("bypass %s: %s", tostring(source), reason)
+        return false
+    end
+
+    active = true
+    pending_callback = callback
+    pending_minutes = choose_minutes()
+    lock_ui()
+    set_audio_muted()
+    start_ppe()
+
+    local delay = clamp(cfg("campfire_fade_seconds"), 0.1, 15)
+    if CreateTimeEvent then
+        local ok, err = pcall(CreateTimeEvent, EVENT_GROUP, EVENT_ID, delay, finish_save_rest)
+        if not ok then
+            log("time event failed: %s", tostring(err))
+            finish_save_rest()
+        end
+    else
+        finish_save_rest()
+    end
+    debug_log("started %s: %d minutes after %.1f seconds", tostring(source), pending_minutes, delay)
+    return true
+end
+
+local function execute_quicksave()
+    if not (level_input and level_input.action_quick_save) then
+        log("current level_input.action_quick_save is unavailable")
+        return
+    end
+    save_input_passthrough = true
+    local ok, err = pcall(level_input.action_quick_save)
+    save_input_passthrough = false
+    if not ok then log("quicksave continuation failed: %s", tostring(err)) end
+end
+
+local function execute_hardsave()
+    local Y, M, D, h
+    Y, M, D, h = game.get_game_time():get(Y, M, D, h)
+    local minute = level.get_time_minutes()
+    local comm = user_name() or "player"
+    local map = level.name and level.name() or "zone"
+    if utils_xml and utils_xml.get_special_txt and db and db.actor then
+        local ok_comm, value_comm = pcall(utils_xml.get_special_txt, db.actor:character_community())
+        local ok_map, value_map = pcall(utils_xml.get_special_txt, map)
+        if ok_comm and value_comm then comm = value_comm end
+        if ok_map and value_map then map = value_map end
+    end
+    exec_console_cmd("main_menu off")
+    exec_console_cmd("save " .. comm .. " - " .. map .. " - hardsave - " ..
+        string.format("%d.%d.%d %d-%02d", D, M, Y, h, minute))
+end
+
+function on_before_save_input(flags, typ, text)
+    if save_input_passthrough or not flags then return end
+    if flags.ret == true then return end
+    typ = tonumber(typ) or 0
+    if typ == 1 then
+        -- Main-menu Save only opens the dialog. SaveFile is wrapped separately
+        -- so time passes after the user confirms a filename.
+        return
+    end
+    if typ ~= 2 and typ ~= 3 then return end
+
+    local continuation = typ == 2 and execute_quicksave or execute_hardsave
+    if begin_save_rest(continuation, typ == 2 and "quicksave" or "hardsave") then
+        flags.ret = true
+        exec_console_cmd("main_menu off")
+    end
+end
+
+local function install_manual_save_wrapper()
+    if not ui_save_dialog then return false end
+    local class_ref = ui_save_dialog.UISaveDialog or ui_save_dialog.save_dialog
+    if not class_ref or not class_ref.SaveFile then return false end
+    if class_ref == wrapped_class and class_ref.SaveFile == wrapped_save_file then return true end
+
+    original_save_file = class_ref.SaveFile
+    wrapped_class = class_ref
+    wrapped_save_file = function(self, file_name)
+        if manual_passthrough then
+            return original_save_file(self, file_name)
+        end
+        local function continue_manual_save()
+            manual_passthrough = true
+            local ok, result = pcall(original_save_file, self, file_name)
+            manual_passthrough = false
+            if not ok then log("manual save continuation failed: %s", tostring(result)) end
+            return result
+        end
+        if begin_save_rest(continue_manual_save, "manual_save") then return end
+        return original_save_file(self, file_name)
+    end
+    class_ref.SaveFile = wrapped_save_file
+    debug_log("installed current ui_save_dialog SaveFile wrapper")
+    return true
+end
+
+function main_menu_on_init(menu)
+    install_manual_save_wrapper()
+end
+
+function actor_on_first_update()
+    install_manual_save_wrapper()
+end
+
+function on_option_change()
+    if not active then return end
+    if cfg("master_enabled") ~= true or cfg("campfire_save_enabled") ~= true then
+        pending_callback = nil
+        pending_minutes = 0
+        active = false
+        cleanup_runtime()
+        log("active rest cancelled because addon was disabled")
+    end
+end
+
+local function cancel_active(reason)
+    if not active then return end
+    pending_callback = nil
+    pending_minutes = 0
+    active = false
+    cleanup_runtime()
+    debug_log("cancelled active rest: %s", tostring(reason))
+end
+
+function on_before_level_changing()
+    cancel_active("level_change")
+end
+
+function actor_on_death()
+    cancel_active("actor_death")
+end
+
+function on_game_load()
+    cancel_active("game_load")
+    install_manual_save_wrapper()
+end
+
+function on_game_start()
+    if callbacks_registered then return end
+    callbacks_registered = true
+    RegisterScriptCallback("on_before_save_input", on_before_save_input)
+    RegisterScriptCallback("main_menu_on_init", main_menu_on_init)
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("on_before_level_changing", on_before_level_changing)
+    RegisterScriptCallback("actor_on_death", actor_on_death)
+    RegisterScriptCallback("on_game_load", on_game_load)
+    debug_log("v%s initialized", VERSION)
+end
+
+function is_active()
+    return active
+end
+
+function test()
+    return begin_save_rest(function()
+        log("test completed without saving")
+    end, "test")
+end
+
+function get_version()
+    return VERSION
+end

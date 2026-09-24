@@ -1,0 +1,132 @@
+-- Reversible native Modded Exes recoil/recovery/ADS-time adapter.
+
+local current_weapon = nil
+local current_id = nil
+local baseline = nil
+local last_targets = {}
+local unsupported_reason = nil
+
+local fields = {
+    { key = "cam_relax", getter = "GetCamRelaxSpeed", setter = "SetCamRelaxSpeed" },
+    { key = "cam_disp", getter = "GetCamDispersion", setter = "SetCamDispersion" },
+    { key = "cam_inc", getter = "GetCamDispersionInc", setter = "SetCamDispersionInc" },
+    { key = "cam_max_v", getter = "GetCamMaxAngleVert", setter = "SetCamMaxAngleVert" },
+    { key = "cam_max_h", getter = "GetCamMaxAngleHorz", setter = "SetCamMaxAngleHorz" },
+    { key = "cam_step_h", getter = "GetCamStepAngleHorz", setter = "SetCamStepAngleHorz" },
+    { key = "zoom_relax", getter = "GetZoomCamRelaxSpeed", setter = "SetZoomCamRelaxSpeed" },
+    { key = "zoom_disp", getter = "GetZoomCamDispersion", setter = "SetZoomCamDispersion" },
+    { key = "zoom_inc", getter = "GetZoomCamDispersionInc", setter = "SetZoomCamDispersionInc" },
+    { key = "zoom_max_v", getter = "GetZoomCamMaxAngleVert", setter = "SetZoomCamMaxAngleVert" },
+    { key = "zoom_max_h", getter = "GetZoomCamMaxAngleHorz", setter = "SetZoomCamMaxAngleHorz" },
+    { key = "zoom_step_h", getter = "GetZoomCamStepAngleHorz", setter = "SetZoomCamStepAngleHorz" },
+    { key = "zoom_time", getter = "GetZoomRotateTime", setter = "SetZoomRotateTime" },
+}
+
+local function object_id(object)
+    if not object or not object.id then return nil end
+    local ok, value = pcall(function() return object:id() end)
+    return ok and value or nil
+end
+
+local function get_value(object, name)
+    local ok, value = pcall(function() return object[name](object) end)
+    if not ok then return nil end
+    value = tonumber(value)
+    if not value or value ~= value then return nil end
+    return value
+end
+
+local function set_value(object, name, value)
+    return pcall(function() object[name](object, value) end)
+end
+
+local function capture(object)
+    local values = {}
+    local count = 0
+    for _, field in ipairs(fields) do
+        local value = get_value(object, field.getter)
+        if value ~= nil then values[field.key] = value; count = count + 1 end
+    end
+    if count == 0 then
+        unsupported_reason = "Modded Exes weapon recoil getters are unavailable"
+        return nil
+    end
+    unsupported_reason = nil
+    return values
+end
+
+local function restore()
+    if current_weapon and baseline then
+        for _, field in ipairs(fields) do
+            local value = baseline[field.key]
+            if value ~= nil then set_value(current_weapon, field.setter, value) end
+        end
+    end
+    current_weapon, current_id, baseline, last_targets = nil, nil, nil, {}
+end
+
+local function apply_target(field, value)
+    if value == nil or not current_weapon then return end
+    local old = last_targets[field.key]
+    if old and math.abs(old - value) < 0.00001 then return end
+    if set_value(current_weapon, field.setter, value) then last_targets[field.key] = value end
+end
+
+local function build_targets(state, config)
+    local pressure = math.max(0, math.min(1, tonumber(state.pressure) or 0))
+    local recoil = config.enable_recoil and config.recoil_strength * pressure or 0
+    local recovery = config.enable_recovery and config.recovery_penalty * pressure or 0
+    local settle = config.enable_settle and config.max_settle_extra * pressure or 0
+    local recoil_mult = 1 + recoil
+    local angle_mult = 1 + recoil * 0.50
+    local recovery_mult = math.max(0.40, 1 - recovery)
+    local targets = {}
+    for key, value in pairs(baseline) do targets[key] = value end
+    targets.cam_disp = baseline.cam_disp and baseline.cam_disp * recoil_mult
+    targets.cam_inc = baseline.cam_inc and baseline.cam_inc * recoil_mult
+    targets.cam_max_v = baseline.cam_max_v and baseline.cam_max_v * angle_mult
+    targets.cam_max_h = baseline.cam_max_h and baseline.cam_max_h * angle_mult
+    targets.cam_step_h = baseline.cam_step_h and baseline.cam_step_h * angle_mult
+    targets.zoom_disp = baseline.zoom_disp and baseline.zoom_disp * recoil_mult
+    targets.zoom_inc = baseline.zoom_inc and baseline.zoom_inc * recoil_mult
+    targets.zoom_max_v = baseline.zoom_max_v and baseline.zoom_max_v * angle_mult
+    targets.zoom_max_h = baseline.zoom_max_h and baseline.zoom_max_h * angle_mult
+    targets.zoom_step_h = baseline.zoom_step_h and baseline.zoom_step_h * angle_mult
+    targets.cam_relax = baseline.cam_relax and baseline.cam_relax * recovery_mult
+    targets.zoom_relax = baseline.zoom_relax and baseline.zoom_relax * recovery_mult
+    targets.zoom_time = baseline.zoom_time and baseline.zoom_time + settle
+    return targets
+end
+
+function sync(weapon, state, config, enabled)
+    local id = object_id(weapon)
+    if not enabled or not weapon or not id then
+        if current_weapon then restore() end
+        return true
+    end
+    if current_id ~= id then
+        restore()
+        current_weapon, current_id = weapon, id
+        baseline = capture(weapon)
+        if not baseline then current_weapon, current_id = nil, nil; return false, unsupported_reason end
+    end
+    local targets = build_targets(state, config)
+    for _, field in ipairs(fields) do apply_target(field, targets[field.key]) end
+    return true
+end
+
+function invalidate()
+    if current_weapon then restore() end
+    return true
+end
+
+function cleanup()
+    restore()
+    return true
+end
+
+function get_diagnostics()
+    local supported = 0
+    if baseline then for _ in pairs(baseline) do supported = supported + 1 end end
+    return { active_weapon_id = current_id, captured_fields = supported, unsupported_reason = unsupported_reason }
+end

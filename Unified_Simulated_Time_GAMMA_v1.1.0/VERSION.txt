@@ -1,0 +1,4 @@
+Unified Simulated Time - GAMMA
+Version: 1.1.0
+Simulation base: Simulated Time Skip 1.2.0
+Build date: 2026-08-26

@@ -1,0 +1,18 @@
+-- Late, narrow compatibility bridge for GAMMA emission/psy-storm item blockers.
+-- It never grants general item use: only CTS-approved alcohol, prepared tea or
+-- coffee, and slow tobacco in registered cover during an active event.
+
+local function on_item_before_use(obj, flags)
+    if not flags or not consumable_time_skip
+        or type(consumable_time_skip.can_allow_sheltered_event_consumable) ~= "function" then
+        return
+    end
+    local ok, allowed = pcall(consumable_time_skip.can_allow_sheltered_event_consumable, obj)
+    if ok and allowed then
+        flags.ret_value = true
+    end
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_item_before_use", on_item_before_use)
+end

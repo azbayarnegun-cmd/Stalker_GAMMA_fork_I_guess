@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<string_table>
+    <string id="ui_mcm_menu_unified_time_skip"><text>Unified Simulated Time</text></string>
+
+    <string id="ui_mcm_unified_time_skip_master_enabled"><text>Enable unified time simulation</text></string>
+    <string id="ui_mcm_unified_time_skip_master_enabled_desc"><text>Master control for the simulation integrations in this addon.</text></string>
+    <string id="ui_mcm_unified_time_skip_step_minutes"><text>Simulation step (minutes)</text></string>
+    <string id="ui_mcm_unified_time_skip_step_minutes_desc"><text>ALife is processed after every simulated step. Level-transition travel uses its protected dynamic 1-5-step rule instead.</text></string>
+    <string id="ui_mcm_unified_time_skip_composure_integration"><text>Advance Composure effects</text></string>
+    <string id="ui_mcm_unified_time_skip_composure_integration_desc"><text>Age Composure modifiers by simulated game time when the Consumable Time-Skip bridge is installed.</text></string>
+    <string id="ui_mcm_unified_time_skip_show_messages"><text>Show elapsed-time messages</text></string>
+    <string id="ui_mcm_unified_time_skip_show_messages_desc"><text>Show travel and campfire-save minutes after completion.</text></string>
+    <string id="ui_mcm_unified_time_skip_debug_log"><text>Debug logging</text></string>
+    <string id="ui_mcm_unified_time_skip_debug_log_desc"><text>Write integration, bypass and completion details to the X-Ray log.</text></string>
+
+    <string id="ui_mcm_unified_time_skip_sleep_enabled"><text>Simulate sleeping</text></string>
+    <string id="ui_mcm_unified_time_skip_sleep_enabled_desc"><text>Advance sleep in stepped ALife time instead of one clock jump.</text></string>
+    <string id="ui_mcm_unified_time_skip_level_transition_enabled"><text>Simulate level-transition travel</text></string>
+    <string id="ui_mcm_unified_time_skip_level_transition_enabled_desc"><text>Protected travel before map unload: enemies cannot damage the actor, emissions are deferred, and duration uses 1-5 dynamic steps.</text></string>
+    <string id="ui_mcm_unified_time_skip_transition_fallback_min"><text>Unknown route minimum minutes</text></string>
+    <string id="ui_mcm_unified_time_skip_transition_fallback_min_desc"><text>Minimum travel duration for a transition not present in the bundled route table.</text></string>
+    <string id="ui_mcm_unified_time_skip_transition_fallback_max"><text>Unknown route maximum minutes</text></string>
+    <string id="ui_mcm_unified_time_skip_transition_fallback_max_desc"><text>Maximum travel duration for a transition not present in the bundled route table.</text></string>
+
+    <string id="ui_mcm_unified_time_skip_campfire_save_enabled"><text>Immersive campfire saving</text></string>
+    <string id="ui_mcm_unified_time_skip_campfire_save_enabled_desc"><text>Pass time before saving near a lit campfire without replacing GAMMA menu or input scripts.</text></string>
+    <string id="ui_mcm_unified_time_skip_campfire_require_mode"><text>Require campfire-save mode</text></string>
+    <string id="ui_mcm_unified_time_skip_campfire_require_mode_desc"><text>Apply only while Anomaly/GAMMA campfire-save mode is enabled.</text></string>
+    <string id="ui_mcm_unified_time_skip_campfire_radius"><text>Campfire search radius</text></string>
+    <string id="ui_mcm_unified_time_skip_campfire_radius_desc"><text>Search radius used by GAMMA's current lit-campfire function.</text></string>
+    <string id="ui_mcm_unified_time_skip_campfire_min_minutes"><text>Campfire save minimum minutes</text></string>
+    <string id="ui_mcm_unified_time_skip_campfire_min_minutes_desc"><text>Minimum random time passed before the save completes.</text></string>
+    <string id="ui_mcm_unified_time_skip_campfire_max_minutes"><text>Campfire save maximum minutes</text></string>
+    <string id="ui_mcm_unified_time_skip_campfire_max_minutes_desc"><text>Maximum random time passed before the save completes.</text></string>
+    <string id="ui_mcm_unified_time_skip_campfire_fade_seconds"><text>Campfire blackout seconds</text></string>
+    <string id="ui_mcm_unified_time_skip_campfire_fade_seconds_desc"><text>Real seconds spent in the blackout before time passes and saving continues.</text></string>
+    <string id="ui_mcm_unified_time_skip_campfire_mute_audio"><text>Mute campfire blackout</text></string>
+    <string id="ui_mcm_unified_time_skip_campfire_mute_audio_desc"><text>Temporarily mute music and effects and restore their exact volumes afterward.</text></string>
+    <string id="ui_mcm_unified_time_skip_campfire_force_alife"><text>Update ALife after campfire save</text></string>
+    <string id="ui_mcm_unified_time_skip_campfire_force_alife_desc"><text>Force one ALife update after the campfire-save clock change.</text></string>
+
+    <string id="ui_mcm_unified_time_skip_books_enabled"><text>Simulate GAMMA books</text></string>
+    <string id="ui_mcm_unified_time_skip_books_enabled_desc"><text>Requires the GAMMA Books Pass Time addon.</text></string>
+    <string id="ui_mcm_unified_time_skip_anabiotic_enabled"><text>Simulate anabiotic shelter</text></string>
+    <string id="ui_mcm_unified_time_skip_anabiotic_enabled_desc"><text>Simulate the emission time passage caused by an anabiotic drug.</text></string>
+    <string id="ui_mcm_unified_time_skip_placeable_campfire_enabled"><text>Simulate campfire preparation</text></string>
+    <string id="ui_mcm_unified_time_skip_placeable_campfire_enabled_desc"><text>Requires the separate Placeable Campfires addon. This is not the save feature above.</text></string>
+    <string id="ui_mcm_unified_time_skip_flash_enabled"><text>Simulate DAO flash anomaly</text></string>
+    <string id="ui_mcm_unified_time_skip_flash_enabled_desc"><text>Requires the DAO flash-anomaly scripts.</text></string>
+    <string id="ui_mcm_unified_time_skip_soulslike_enabled"><text>Simulate Soulslike respawn</text></string>
+    <string id="ui_mcm_unified_time_skip_soulslike_enabled_desc"><text>Requires Jabbers' Soulslike Gamemode addon.</text></string>
+
+    <string id="st_ics_minutes_passed"><text>minutes passed.</text></string>
+    <string id="st_uts_travel_minutes_passed"><text>travel minutes passed.</text></string>
+    <string id="st_uts_transition_blocked_anomaly"><text>Travel is unavailable during an active emission or psy-storm.</text></string>
+</string_table>

@@ -1,0 +1,510 @@
+-- simulated_time.script
+-- Incremental time skip with full ALife simulation each step
+-- Unified GAMMA compatibility edition v1.1.0
+--
+-- Public API:
+--   simulated_time.advance(total_minutes, opts)
+--   simulated_time.advance_sync(total_minutes)
+--   simulated_time.is_active()
+--   simulated_time.capture_time(fn, suppress_ppe, ...)
+--
+-- Config: misc/simulated_time.ltx  [settings] step_minutes = N
+--
+-- Usage from other mods:
+--   simulated_time.advance(120)  -- 2 hours, no callback
+--   simulated_time.advance(60, function() printf("done!") end)
+--   simulated_time.advance(180, { on_complete = fn, step = 5, label = "Traveling..." })
+--
+-- Options table:
+--   on_complete  function()       called when simulation finishes
+--   on_abort     function(reason) called after cleanup if simulation aborts
+--   on_step      function(e, t)   called each step with (elapsed_min, total_min)
+--   step         number           minutes per step (default 3)
+--   steps        number           exact target step count (overrides step)
+--   label        string           activity name shown on overlay (e.g. "Sleeping", "Traveling")
+--   silent       bool             skip overlay entirely
+
+local DEFAULT_STEP = 3
+do
+	local cfg = ini_file("misc\\simulated_time.ltx")
+	if cfg and cfg:section_exist("settings") and cfg:line_exist("settings", "step_minutes") then
+		DEFAULT_STEP = cfg:r_u32("settings", "step_minutes")
+	end
+end
+
+local function unified_cfg(key, fallback)
+	if unified_time_skip_mcm and unified_time_skip_mcm.get_config then
+		local ok, value = pcall(unified_time_skip_mcm.get_config, key)
+		if ok and value ~= nil then return value end
+	end
+	return fallback
+end
+
+local function configured_step(override)
+	local value = tonumber(override or unified_cfg("step_minutes", DEFAULT_STEP)) or DEFAULT_STEP
+	return math.max(1, math.min(10, math.floor(value)))
+end
+
+local PPE_ID = 31337
+
+local _cgt = level.change_game_time
+
+local state = nil
+local sync_active = false
+local overlay = nil
+local callbacks_registered = false
+
+-- Exposed as simulated_time.passthrough. When true, the Travel catch-all does a
+-- plain vanilla level.change_game_time jump instead of simulating. Set by
+-- bracket() around vanilla callbacks of hooks the player did not enable.
+passthrough = false
+local h_s, m_s, time_left_str
+
+----------------------------------------------------------------
+-- Overlay
+----------------------------------------------------------------
+class "SimOverlay" (CUIScriptWnd)
+
+function SimOverlay:__init(label) super()
+	self:SetWndRect(Frect():set(0, 0, 1024, 768))
+	self.fmt = label
+
+	self.text = CUITextWnd()
+	self.text:SetWndRect(Frect():set(0, 370, 1024, 30))
+	self.text:SetFont(GetFontGraffiti22Russian())
+	self.text:SetTextColor(GetARGB(255, 200, 200, 200))
+	self.text:SetTextAlignment(CGameFont.alCenter)
+	self.text:SetText(self:format_text(0, 1))
+	self:AttachChild(self.text)
+end
+
+function SimOverlay:format_text(elapsed_min, total_min)
+	local left = total_min - elapsed_min
+	local h = math.floor(left / 60)
+	local m = left % 60
+	local time_str = h > 0
+		and string.format("%s %s %s %s", h, h_s, m, m_s)
+		or  string.format("%s %s", m, m_s)
+	return self.fmt .. ". " .. time_left_str .. ": " .. time_str
+end
+
+function SimOverlay:SetProgress(elapsed_min, total_min)
+	self.text:SetText(self:format_text(elapsed_min, total_min))
+end
+
+local function init_strings()
+	if not h_s then
+		h_s = game.translate_string("st_sim_h")
+		m_s = game.translate_string("st_sim_m")
+		time_left_str = game.translate_string("st_sim_time_left")
+	end
+end
+
+local function show_overlay(label, total_min)
+	init_strings()
+	level.add_pp_effector("black_infinite.ppe", PPE_ID, true)
+	level.disable_input()
+	overlay = SimOverlay(label or game.translate_string("st_sim_simulating"))
+	if total_min then
+		overlay:SetProgress(0, total_min)
+	end
+	get_hud():AddDialogToRender(overlay)
+end
+
+local function hide_overlay()
+	if overlay then
+		get_hud():RemoveDialogToRender(overlay)
+		overlay = nil
+	end
+	level.remove_pp_effector(PPE_ID)
+	level.enable_input()
+end
+
+function show_splash(label, total_min)
+	show_overlay(label, total_min)
+end
+
+function hide_splash()
+	hide_overlay()
+end
+
+----------------------------------------------------------------
+-- Capture helper
+----------------------------------------------------------------
+
+--- Capture a time skip from a function that calls level.change_game_time.
+-- Temporarily replaces change_game_time (and optionally add_pp_effector)
+-- to intercept the time value without actually advancing game time.
+-- @param fn            function to call
+-- @param suppress_ppe  bool  also suppress add_pp_effector calls
+-- @param ...           arguments passed through to fn
+-- @return number|nil   captured minutes, or nil if fn didn't call change_game_time
+function capture_time(fn, suppress_ppe, ...)
+	local captured = nil
+	local real_cgt = level.change_game_time
+	local real_ppe
+	local args = {...}
+	level.change_game_time = function(d, h, m)
+		captured = d * 1440 + h * 60 + m
+	end
+	if suppress_ppe then
+		real_ppe = level.add_pp_effector
+		level.add_pp_effector = function() end
+	end
+	local result = { pcall(fn, unpack(args)) }
+	level.change_game_time = real_cgt
+	if real_ppe then
+		level.add_pp_effector = real_ppe
+	end
+	if not result[1] then
+		printf("[SIM] capture_time error: %s", tostring(result[2]))
+		return nil
+	end
+	return captured
+end
+
+----------------------------------------------------------------
+-- Passthrough bracket
+----------------------------------------------------------------
+
+--- Wrap a vanilla callback so that any level.change_game_time it triggers is
+-- passed straight through by the Travel catch-all (plain vanilla jump, no
+-- simulation). Used by the default bypass stubs shipped for hooks the player
+-- did not enable in the installer. Forwards arguments and return values, and
+-- always clears the passthrough flag even if the wrapped callback errors.
+-- @param orig  function  the original vanilla callback
+-- @return function  wrapped callback
+function bracket(orig)
+	return function(...)
+		passthrough = true
+		local r = { pcall(orig, ...) }
+		passthrough = false
+		if not r[1] then
+			printf("[SIM] passthrough error: %s", r[2])
+			return
+		end
+		return unpack(r, 2)
+	end
+end
+
+----------------------------------------------------------------
+-- Core
+----------------------------------------------------------------
+local function save_alife_state(with_switch)
+	local saved = {
+		opu  = ini_sys:r_u32("alife", "objects_per_update"),
+		opt  = ini_sys:r_u32("alife", "process_time"),
+	}
+	if with_switch then
+		saved.dist = alife():switch_distance()
+	end
+	return saved
+end
+
+local function override_alife(with_switch)
+	if with_switch then
+		alife():set_switch_distance(0)
+	end
+	RemoveTimeEvent(0, "obj_per_upd")
+	alife():set_objects_per_update(65534)
+	alife():set_process_time(999999)
+end
+
+local function restore_alife(saved)
+	if not saved then return end
+	if saved.dist then
+		alife():set_switch_distance(saved.dist)
+	end
+	alife():set_objects_per_update(saved.opu)
+	alife():set_process_time(saved.opt)
+end
+
+local function advance_composure(minutes)
+	if unified_cfg("composure_integration", true) ~= true then return end
+	if not (consumable_time_skip_composure and consumable_time_skip_composure.advance) then return end
+	local ok, err = pcall(consumable_time_skip_composure.advance, minutes)
+	if not ok and unified_cfg("debug_log", false) == true then
+		printf("[SIM] Composure bridge failed: %s", tostring(err))
+	end
+end
+
+local function do_step()
+	if not state then return true end
+
+	local now = time_global()
+
+	if state.step_start then
+		state.step_times[#state.step_times + 1] = now - state.step_start
+	end
+
+	if state.elapsed_min >= state.total_min then
+		finish(now)
+		return true
+	end
+
+	if overlay then
+		overlay:SetProgress(state.elapsed_min, state.total_min)
+	end
+	if state.on_step then
+		local ok, err = pcall(state.on_step, state.elapsed_min, state.total_min)
+		if not ok then printf("[SIM] step callback failed: %s", tostring(err)) end
+	end
+
+	state.step_start = now
+
+	local step = math.min(state.step, state.total_min - state.elapsed_min)
+	local ok, err = pcall(function()
+		_cgt(0, 0, step)
+		alife():force_update()
+		advance_composure(step)
+	end)
+	if not ok then
+		printf("[SIM] step failed: %s", tostring(err))
+		abort("step_error")
+		return true
+	end
+	state.elapsed_min = state.elapsed_min + step
+
+	return false
+end
+
+function finish(now)
+	if not state then return end
+	local total_ms = now - state.t0
+	local on_complete = state.on_complete
+
+	if not state.silent then pcall(hide_overlay) end
+	pcall(restore_alife, state.saved)
+	printf("[SIM]   restored alife: opu=%s opt=%s dist=%s", state.saved.opu, state.saved.opt, state.saved.dist or "n/a")
+	log_results(total_ms, state)
+
+	local gt = game.get_game_time()
+	printf("[SIM] async done: game time %s", gt:timeToString(game.CTime.TimeToMins))
+
+	local s = state
+	state = nil
+
+	if on_complete then
+		local ok, err = pcall(on_complete, s)
+		if not ok then printf("[SIM] completion callback failed: %s", tostring(err)) end
+	end
+end
+
+----------------------------------------------------------------
+-- Public API
+----------------------------------------------------------------
+
+--- Start a simulated time skip.
+-- @param total_minutes  number   how many game minutes to advance
+-- @param opts           function|table  callback or options table
+-- @return true if started, false if already active
+function advance(total_minutes, opts)
+	if state or sync_active then
+		printf("[SIM] already active, ignoring advance(%s)", total_minutes)
+		return false
+	end
+
+	if type(opts) == "function" then
+		opts = { on_complete = opts }
+	end
+	opts = opts or {}
+	total_minutes = math.max(0, math.floor(tonumber(total_minutes) or 0))
+	if total_minutes <= 0 then
+		if opts.on_complete then pcall(opts.on_complete, { total_min = 0, elapsed_min = 0 }) end
+		return true
+	end
+
+	if unified_cfg("master_enabled", true) ~= true then
+		_cgt(0, 0, total_minutes)
+		advance_composure(total_minutes)
+		if opts.on_complete then
+			pcall(opts.on_complete, { total_min = total_minutes, elapsed_min = total_minutes, bypassed = true })
+		end
+		return true
+	end
+
+	local requested_steps = tonumber(opts.steps)
+	local step
+	if requested_steps and requested_steps > 0 then
+		requested_steps = math.max(1, math.floor(requested_steps))
+		step = math.max(1, math.ceil(total_minutes / requested_steps))
+	else
+		step = configured_step(opts.step)
+	end
+
+	local gt = game.get_game_time()
+	printf("[SIM] async start: %s min (step %s) | game time %s | label: %s",
+		total_minutes, step, gt:timeToString(game.CTime.TimeToMins), opts.label or "nil")
+
+	local saved_ok, saved = pcall(save_alife_state, true)
+	if not saved_ok then
+		printf("[SIM] unable to snapshot ALife: %s", tostring(saved))
+		return false
+	end
+	printf("[SIM]   saved alife: opu=%s opt=%s dist=%s", saved.opu, saved.opt, saved.dist or "n/a")
+	local override_ok, override_err = pcall(override_alife, true)
+	if not override_ok then
+		pcall(restore_alife, saved)
+		printf("[SIM] unable to configure ALife: %s", tostring(override_err))
+		return false
+	end
+
+	state = {
+		total_min   = total_minutes,
+		elapsed_min = 0,
+		step        = step,
+		planned_steps = requested_steps,
+		saved       = saved,
+		on_complete = opts.on_complete,
+		on_abort    = opts.on_abort,
+		on_step     = opts.on_step,
+		silent      = opts.silent,
+		step_times  = {},
+		step_start  = nil,
+		t0          = time_global(),
+	}
+
+	if not opts.silent then
+		local overlay_ok, overlay_err = pcall(show_overlay, opts.label, total_minutes)
+		if not overlay_ok then
+			state = nil
+			pcall(restore_alife, saved)
+			pcall(hide_overlay)
+			printf("[SIM] overlay failed: %s", tostring(overlay_err))
+			return false
+		end
+	end
+
+	AddUniqueCall(do_step)
+	return true
+end
+
+function is_active()
+	return state ~= nil or sync_active
+end
+
+--- Run a simulated time skip synchronously (all steps in one frame, no overlay).
+-- Used by the travel interceptor for cases where async is not possible.
+-- @param total_minutes  number   how many game minutes to advance
+-- @param step_size      number   minutes per step (default 3)
+-- @return true if completed, false if already active
+function advance_sync(total_minutes, step_size)
+	if state or sync_active then
+		printf("[SIM] already active, ignoring advance_sync(%s)", total_minutes)
+		return false
+	end
+	total_minutes = math.max(0, math.floor(tonumber(total_minutes) or 0))
+	step_size = configured_step(step_size)
+	if total_minutes <= 0 then return true end
+	sync_active = true
+
+	local gt = game.get_game_time()
+	printf("[SIM] sync start: %s min (step %s) | game time %s", total_minutes, step_size, gt:timeToString(game.CTime.TimeToMins))
+
+	local saved_ok, saved = pcall(save_alife_state)
+	if not saved_ok then
+		sync_active = false
+		printf("[SIM] unable to snapshot ALife: %s", tostring(saved))
+		return false
+	end
+	printf("[SIM]   saved alife: opu=%s opt=%s", saved.opu, saved.opt)
+	local override_ok, override_err = pcall(override_alife)
+	if not override_ok then
+		sync_active = false
+		pcall(restore_alife, saved)
+		printf("[SIM] unable to configure ALife: %s", tostring(override_err))
+		return false
+	end
+
+	local t0 = time_global()
+	local elapsed = 0
+	local steps = 0
+	local run_ok, run_err = pcall(function()
+		while elapsed < total_minutes do
+			local s = math.min(step_size, total_minutes - elapsed)
+			_cgt(0, 0, s)
+			alife():force_update()
+			advance_composure(s)
+			SendScriptCallback("actor_on_update", db.actor_binder, 200)
+			elapsed = elapsed + s
+			steps = steps + 1
+		end
+	end)
+
+	pcall(restore_alife, saved)
+	printf("[SIM]   restored alife: opu=%s opt=%s", saved.opu, saved.opt)
+	sync_active = false
+	if not run_ok then
+		printf("[SIM] sync step failed: %s", tostring(run_err))
+		return false
+	end
+
+	local total_ms = time_global() - t0
+	local gt2 = game.get_game_time()
+	printf("[SIM] sync done: %s ms | %s steps | game time %s", total_ms, steps, gt2:timeToString(game.CTime.TimeToMins))
+	return true
+end
+
+--- Abort an asynchronous skip and restore every runtime resource.
+-- Used defensively if another addon forces a load, death or level change.
+function abort(reason)
+	if not state then return false end
+	local s = state
+	state = nil
+	if RemoveUniqueCall then pcall(RemoveUniqueCall, do_step) end
+	if not s.silent then pcall(hide_overlay) end
+	pcall(restore_alife, s.saved)
+	printf("[SIM] aborted: %s after %s/%s min", tostring(reason or "unknown"),
+		tostring(s.elapsed_min), tostring(s.total_min))
+	if s.on_abort then
+		local ok, err = pcall(s.on_abort, reason or "unknown", s)
+		if not ok then printf("[SIM] abort callback failed: %s", tostring(err)) end
+	end
+	return true
+end
+
+local function abort_for_transition()
+	abort("level_change")
+end
+
+local function abort_for_load()
+	abort("game_load")
+end
+
+local function abort_for_death()
+	abort("actor_death")
+end
+
+local function option_changed()
+	if state and unified_cfg("master_enabled", true) ~= true then
+		abort("disabled_in_mcm")
+	end
+end
+
+function on_game_start()
+	if callbacks_registered or not RegisterScriptCallback then return end
+	callbacks_registered = true
+	RegisterScriptCallback("on_before_level_changing", abort_for_transition)
+	RegisterScriptCallback("on_game_load", abort_for_load)
+	RegisterScriptCallback("actor_on_death", abort_for_death)
+	RegisterScriptCallback("on_option_change", option_changed)
+	printf("[SIM] unified core initialized")
+end
+
+----------------------------------------------------------------
+-- Diagnostics
+----------------------------------------------------------------
+function log_results(total_ms, s)
+	if not s then return end
+	local n = #s.step_times
+	local sum, mn, mx = 0, 999999, 0
+	for _, t in ipairs(s.step_times) do
+		sum = sum + t
+		if t < mn then mn = t end
+		if t > mx then mx = t end
+	end
+	if n == 0 then mn = 0 end
+	local avg = n > 0 and (sum / n) or 0
+
+	printf("[SIM]   perf: %s ms total | %s steps | avg %.1f | min %s | max %s ms/step", total_ms, n, avg, mn, mx)
+end

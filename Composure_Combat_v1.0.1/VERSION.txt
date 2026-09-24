@@ -1,0 +1,2 @@
+Composure Combat v1.0.1
+Requires Composure Core v2.1.0 or Framework API 2

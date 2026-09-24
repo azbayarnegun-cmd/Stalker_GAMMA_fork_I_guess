@@ -1,0 +1,141 @@
+-- Dynamic Weapon Stability state. No engine or weapon writes occur here.
+
+local current = 1
+local ceiling = 1
+local shot_load = 0
+local last_shot_ms = nil
+local disturbances = {}
+
+local function now_ms()
+    if time_global then return time_global() end
+    return 0
+end
+
+local function clamp(v, lo, hi)
+    if v < lo then return lo end
+    if v > hi then return hi end
+    return v
+end
+
+local function smoothstep(v)
+    v = clamp(v, 0, 1)
+    return v * v * (3 - 2 * v)
+end
+
+local function approach(value, target, amount)
+    if value < target then return math.min(value + amount, target) end
+    return math.max(value - amount, target)
+end
+
+local function disturbance_load()
+    local now = now_ms()
+    local total = 0
+    for id, entry in pairs(disturbances) do
+        if entry.expires_at and now >= entry.expires_at then
+            disturbances[id] = nil
+        else
+            total = total + entry.amount
+        end
+    end
+    return clamp(total, 0, 0.85)
+end
+
+function set_disturbance(id, amount, opts)
+    if type(id) ~= "string" or id == "" then return false end
+    amount = tonumber(amount) or 0
+    if amount <= 0 then disturbances[id] = nil; return true end
+    opts = opts or {}
+    local ttl = tonumber(opts.ttl or opts.duration)
+    disturbances[id] = {
+        id = id,
+        owner = tostring(opts.owner or "external"),
+        amount = clamp(amount, 0, 0.85),
+        expires_at = ttl and ttl > 0 and now_ms() + ttl * 1000 or nil,
+    }
+    return true
+end
+
+function clear_disturbance(id)
+    local existed = disturbances[id] ~= nil
+    disturbances[id] = nil
+    return existed
+end
+
+function clear_owner(owner)
+    local count = 0
+    for id, entry in pairs(disturbances) do
+        if entry.owner == owner then disturbances[id] = nil; count = count + 1 end
+    end
+    return count
+end
+
+function on_shot(config)
+    if not config.enable_shot_accumulation then return end
+    local now = now_ms()
+    local rapid = last_shot_ms and now - last_shot_ms <= 180
+    local new_burst = not last_shot_ms or now - last_shot_ms > 450
+    local amount = config.instability_per_shot
+    if config.preserve_first_shot and new_burst then amount = amount * 0.65 end
+    if rapid then amount = amount + config.automatic_extra end
+    shot_load = clamp(shot_load + amount, 0, 0.75)
+    current = clamp(current - amount * 0.35, 0, 1)
+    last_shot_ms = now
+end
+
+function update(value, movement, dt, config)
+    local start = math.max(1, tonumber(config.start_composure) or 69)
+    local severity = smoothstep((start + 1 - value) / start)
+    local strength = clamp(tonumber(config.overall_strength) or 1, 0, 1.5)
+    local max_loss = clamp(tonumber(config.max_stability_loss) or 0.55, 0, 0.80)
+    ceiling = clamp(1 - severity * max_loss * strength, 0.15, 1)
+
+    local burst_rate = clamp(tonumber(config.burst_recovery) or 0.35, 0.05, 1)
+    burst_rate = burst_rate * (1 - 0.45 * severity)
+    shot_load = approach(shot_load, 0, burst_rate * dt)
+
+    local movement_load = 0
+    if config.enable_dynamic_stability then
+        if movement.sprinting then movement_load = config.sprint_penalty
+        elseif movement.moving then movement_load = config.moving_penalty end
+        if movement.airborne then movement_load = math.max(movement_load, config.sprint_penalty) end
+        if movement.landing then movement_load = math.max(movement_load, config.moving_penalty * 1.5) end
+        if movement.crouched then movement_load = movement_load * 0.60 end
+    end
+
+    local stance_bonus = 0
+    if config.enable_dynamic_stability then
+        if movement.crouched then stance_bonus = stance_bonus + config.crouch_bonus end
+        if not movement.moving and not movement.airborne then stance_bonus = stance_bonus + config.stationary_bonus end
+    end
+
+    local target = clamp(ceiling + stance_bonus - movement_load - shot_load - disturbance_load(), 0.05, 1)
+    local recovery = clamp(tonumber(config.stability_recovery) or 0.55, 0.10, 1.50)
+    recovery = recovery * (1 - 0.40 * severity)
+    if movement.crouched then recovery = recovery * 1.20 end
+    if not movement.moving then recovery = recovery * 1.15 end
+    local speed = target < current and 3.0 or recovery
+    current = approach(current, target, speed * dt)
+
+    local stability_loss = 1 - current
+    local pressure = clamp((severity * 0.20 + stability_loss * 0.80) * strength, 0, 1)
+    return {
+        value = value,
+        severity = severity,
+        current = current,
+        ceiling = ceiling,
+        target = target,
+        shot_load = shot_load,
+        movement_load = movement_load,
+        disturbance_load = disturbance_load(),
+        pressure = pressure,
+        sway_signal = pressure,
+    }
+end
+
+function get_snapshot()
+    return { current = current, ceiling = ceiling, shot_load = shot_load, disturbances = disturbances }
+end
+
+function reset()
+    current, ceiling, shot_load, last_shot_ms, disturbances = 1, 1, 0, nil, {}
+end

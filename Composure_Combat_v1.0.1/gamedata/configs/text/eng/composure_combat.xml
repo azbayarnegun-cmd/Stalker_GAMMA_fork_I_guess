@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+    <string id="ui_mcm_menu_composure_combat"><text>Composure Combat</text></string>
+    <string id="ui_mcm_composure_combat_enabled"><text>Enable Composure Combat</text></string>
+    <string id="ui_mcm_composure_combat_enabled_desc"><text>Enables human-firefight detection, stress, recovery locks and rebound. Mutants are excluded from v1.</text></string>
+    <string id="ui_mcm_composure_combat_combat_distance"><text>Human combat detection distance</text></string>
+    <string id="ui_mcm_composure_combat_combat_distance_desc"><text>Maximum distance in metres for a human actively targeting the actor to count as a combat threat.</text></string>
+    <string id="ui_mcm_composure_combat_grace_period"><text>Firefight grace period</text></string>
+    <string id="ui_mcm_composure_combat_grace_period_desc"><text>Seconds after an encounter starts before sustained pressure begins. Discrete hits and near misses still apply immediately.</text></string>
+    <string id="ui_mcm_composure_combat_end_inertia"><text>Combat end inertia</text></string>
+    <string id="ui_mcm_composure_combat_end_inertia_desc"><text>Seconds without a tracked human threat before active danger ends.</text></string>
+
+    <string id="ui_mcm_composure_combat_alert_rate"><text>Alert pressure per second</text></string>
+    <string id="ui_mcm_composure_combat_alert_rate_desc"><text>Sustained loss rate during a one-hostile Alert firefight.</text></string>
+    <string id="ui_mcm_composure_combat_engaged_rate"><text>Engaged pressure per second</text></string>
+    <string id="ui_mcm_composure_combat_engaged_rate_desc"><text>Sustained loss rate during an Engaged firefight.</text></string>
+    <string id="ui_mcm_composure_combat_overwhelmed_rate"><text>Overwhelmed pressure per second</text></string>
+    <string id="ui_mcm_composure_combat_overwhelmed_rate_desc"><text>Sustained loss rate while heavily outnumbered or facing very high weapon threat.</text></string>
+    <string id="ui_mcm_composure_combat_maximum_continuous_rate"><text>Maximum continuous loss per second</text></string>
+    <string id="ui_mcm_composure_combat_maximum_continuous_rate_desc"><text>Hard combined limit for sustained firefight pressure and deferred event stress. Default 0.30 per second.</text></string>
+
+    <string id="ui_mcm_composure_combat_hit_enabled"><text>Human hit stress</text></string>
+    <string id="ui_mcm_composure_combat_hit_enabled_desc"><text>Applies stress when a human NPC removes actor health. Environmental and mutant damage is excluded.</text></string>
+    <string id="ui_mcm_composure_combat_hit_band_1"><text>Hit loss: up to 5% health</text></string>
+    <string id="ui_mcm_composure_combat_hit_band_2"><text>Hit loss: 5-10% health</text></string>
+    <string id="ui_mcm_composure_combat_hit_band_3"><text>Hit loss: 10-15% health</text></string>
+    <string id="ui_mcm_composure_combat_hit_band_4"><text>Hit loss: 15-20% health</text></string>
+    <string id="ui_mcm_composure_combat_hit_band_5"><text>Hit loss: over 20% health</text></string>
+    <string id="ui_mcm_composure_combat_hit_band_1_desc"><text>Raw event stress before the instant/deferred split.</text></string>
+    <string id="ui_mcm_composure_combat_hit_band_2_desc"><text>Raw event stress before the instant/deferred split.</text></string>
+    <string id="ui_mcm_composure_combat_hit_band_3_desc"><text>Raw event stress before the instant/deferred split.</text></string>
+    <string id="ui_mcm_composure_combat_hit_band_4_desc"><text>Raw event stress before the instant/deferred split.</text></string>
+    <string id="ui_mcm_composure_combat_hit_band_5_desc"><text>Raw event stress before the instant/deferred split.</text></string>
+
+    <string id="ui_mcm_composure_combat_near_miss_enabled"><text>Hostile bullet near misses</text></string>
+    <string id="ui_mcm_composure_combat_near_miss_enabled_desc"><text>Tracks bullets fired by human NPCs who are actively fighting the actor.</text></string>
+    <string id="ui_mcm_composure_combat_near_miss_radius"><text>Normal near-miss radius</text></string>
+    <string id="ui_mcm_composure_combat_near_miss_radius_desc"><text>Closest bullet distance in metres that can produce a normal near-miss event.</text></string>
+    <string id="ui_mcm_composure_combat_extreme_near_miss_radius"><text>Extreme near-miss radius</text></string>
+    <string id="ui_mcm_composure_combat_extreme_near_miss_radius_desc"><text>Closest bullet distance in metres that uses the stronger extreme values.</text></string>
+    <string id="ui_mcm_composure_combat_near_normal_1"><text>Normal near miss: first</text></string>
+    <string id="ui_mcm_composure_combat_near_normal_2"><text>Normal near miss: repeated</text></string>
+    <string id="ui_mcm_composure_combat_near_normal_3"><text>Normal near miss: saturated</text></string>
+    <string id="ui_mcm_composure_combat_near_extreme_1"><text>Extreme near miss: first</text></string>
+    <string id="ui_mcm_composure_combat_near_extreme_2"><text>Extreme near miss: repeated</text></string>
+    <string id="ui_mcm_composure_combat_near_extreme_3"><text>Extreme near miss: saturated</text></string>
+    <string id="ui_mcm_composure_combat_near_normal_1_desc"><text>Raw first-stage stress for a normal near miss.</text></string>
+    <string id="ui_mcm_composure_combat_near_normal_2_desc"><text>Diminished second-stage stress for repeated normal near misses.</text></string>
+    <string id="ui_mcm_composure_combat_near_normal_3_desc"><text>Minimum saturated stress for repeated normal near misses.</text></string>
+    <string id="ui_mcm_composure_combat_near_extreme_1_desc"><text>Raw first-stage stress for an extremely close bullet.</text></string>
+    <string id="ui_mcm_composure_combat_near_extreme_2_desc"><text>Diminished second-stage stress for repeated extremely close bullets.</text></string>
+    <string id="ui_mcm_composure_combat_near_extreme_3_desc"><text>Minimum saturated stress for repeated extremely close bullets.</text></string>
+    <string id="ui_mcm_composure_combat_near_miss_deprogress"><text>Near-miss stage recovery</text></string>
+    <string id="ui_mcm_composure_combat_near_miss_deprogress_desc"><text>Seconds without a near miss before the diminishing stage moves one step toward the full startle response.</text></string>
+
+    <string id="ui_mcm_composure_combat_instant_fraction"><text>Event instant fraction</text></string>
+    <string id="ui_mcm_composure_combat_instant_fraction_desc"><text>Part of hit and near-miss stress applied immediately. Default 0.30; the rest is deferred.</text></string>
+    <string id="ui_mcm_composure_combat_deferred_duration"><text>Deferred event duration</text></string>
+    <string id="ui_mcm_composure_combat_deferred_duration_desc"><text>Nominal seconds over which each event's deferred share attempts to drain. The continuous cap can extend it.</text></string>
+    <string id="ui_mcm_composure_combat_instant_cap_1s"><text>Instant loss cap per second</text></string>
+    <string id="ui_mcm_composure_combat_instant_cap_1s_desc"><text>Maximum raw instant combat-event loss requested inside one rolling second. Excess moves into deferred pressure.</text></string>
+    <string id="ui_mcm_composure_combat_instant_cap_3s"><text>Instant loss cap per three seconds</text></string>
+    <string id="ui_mcm_composure_combat_instant_cap_3s_desc"><text>Maximum raw instant combat-event loss requested inside three rolling seconds. Excess moves into deferred pressure.</text></string>
+
+    <string id="ui_mcm_composure_combat_recovery_lock"><text>Lock recovery during encounter</text></string>
+    <string id="ui_mcm_composure_combat_recovery_lock_desc"><text>Reports a Core recovery lock throughout active danger and the post-combat cooldown.</text></string>
+    <string id="ui_mcm_composure_combat_post_combat_delay"><text>Post-combat recovery delay</text></string>
+    <string id="ui_mcm_composure_combat_post_combat_delay_desc"><text>Cooldown after active danger when Combat Rebound is disabled.</text></string>
+    <string id="ui_mcm_composure_combat_rebound_enabled"><text>Combat Rebound</text></string>
+    <string id="ui_mcm_composure_combat_rebound_enabled_desc"><text>After surviving and remaining safe, restores Combat's recorded loss without refunding unrelated stress.</text></string>
+    <string id="ui_mcm_composure_combat_rebound_delay"><text>Rebound safety delay</text></string>
+    <string id="ui_mcm_composure_combat_rebound_delay_desc"><text>Safe seconds after active danger ends before rebound resolves the encounter. Default timing allows deferred stress to finish first.</text></string>
+    <string id="ui_mcm_composure_combat_rebound_percent"><text>Rebound percentage</text></string>
+    <string id="ui_mcm_composure_combat_rebound_percent_desc"><text>Share of actual loss caused by this Combat encounter eligible for rebound.</text></string>
+    <string id="ui_mcm_composure_combat_rebound_max"><text>Maximum rebound</text></string>
+    <string id="ui_mcm_composure_combat_rebound_max_desc"><text>Maximum Composure restored by one completed encounter. Rebound never exceeds the encounter's starting value.</text></string>
+
+    <string id="ui_mcm_composure_combat_debug_key"><text>Diagnostics and test key</text></string>
+    <string id="ui_mcm_composure_combat_debug_key_desc"><text>Prints current phase, threats, deferred stress, encounter loss and rebound cooldown. Default F6.</text></string>
+    <string id="ui_mcm_composure_combat_test_mode"><text>Enable test actions</text></string>
+    <string id="ui_mcm_composure_combat_test_mode_desc"><text>Allows the selected F6 test action to change combat state or Composure. Leave disabled during normal play.</text></string>
+    <string id="ui_mcm_composure_combat_test_action"><text>F6 action</text></string>
+    <string id="ui_mcm_composure_combat_test_action_desc"><text>Select Status for diagnostics only or a simulation action for controlled validation.</text></string>
+    <string id="ui_mcm_composure_combat_forced_phase_duration"><text>Forced phase duration</text></string>
+    <string id="ui_mcm_composure_combat_forced_phase_duration_desc"><text>Seconds a diagnostic Alert, Engaged or Overwhelmed phase remains active.</text></string>
+    <string id="ui_mcm_composure_combat_debug_log"><text>Diagnostic logging</text></string>
+    <string id="ui_mcm_composure_combat_debug_log_desc"><text>Writes encounter, phase, event split and rebound details to the X-Ray log.</text></string>
+
+    <string id="ui_mcm_composure_combat_test_status"><text>Status only</text></string>
+    <string id="ui_mcm_composure_combat_test_near"><text>Simulate normal near miss</text></string>
+    <string id="ui_mcm_composure_combat_test_extreme"><text>Simulate extreme near miss</text></string>
+    <string id="ui_mcm_composure_combat_test_hit"><text>Simulate 10% human hit</text></string>
+    <string id="ui_mcm_composure_combat_test_alert"><text>Force Alert phase</text></string>
+    <string id="ui_mcm_composure_combat_test_engaged"><text>Force Engaged phase</text></string>
+    <string id="ui_mcm_composure_combat_test_overwhelmed"><text>Force Overwhelmed phase</text></string>
+    <string id="ui_mcm_composure_combat_test_end"><text>End current encounter</text></string>
+</string_table>

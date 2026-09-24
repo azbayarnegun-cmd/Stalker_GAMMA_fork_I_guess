@@ -1,0 +1,123 @@
+-- Composure Status Thoughts v3 settings inside Composure Feedback.
+
+local KEY_F6 = (DIK_keys and DIK_keys.DIK_F6) or 64
+local KEY_X = (DIK_keys and DIK_keys.DIK_X) or 45
+
+local defaults = {
+    enabled = true,
+    automatic = true,
+    random_positions = true,
+    horizontal_spread = 140,
+    vertical_spread = 155,
+    duration = 6,
+    minimum_cooldown = 18,
+    maximum_cooldown = 95,
+    event_thoughts = true,
+    event_threshold = 2,
+    consumable_event_threshold = 0.3,
+    low_caps = true,
+    show_above_medium = true,
+    test_key = KEY_F6,
+    check_key = KEY_X,
+    check_presentation = 1,
+    check_sequence_speed = 0.8,
+    check_final_duration = 5,
+    debug_log = false,
+
+    -- v2 additions
+    text_effects_enabled = true,
+    context_aware = true,
+    escalation_enabled = true,
+    mutant_detect_radius = 35,
+    creature_scan_interval = 3,
+    mutant_end_grace = 9,
+    sustained_interval = 14,
+
+    -- v3 additions: ambient roll (fires at High/Medium-High tier,
+    -- independent of activity -- weather/Zone/physical/mental flavor)
+    ambient_thoughts_enabled = true,
+    ambient_chance = 0.18,
+    ambient_min_cooldown = 60,
+    ambient_max_cooldown = 110,
+
+    -- v4 additions
+    location_thoughts_enabled = true,
+    corpse_thoughts_enabled = true,
+    corpse_detect_radius = 15,
+    needs_thoughts_enabled = true,
+}
+
+function get_config(key)
+    if ui_mcm and ui_mcm.get then
+        local ok, value = pcall(ui_mcm.get, "composure_thoughts/" .. key)
+        if ok and value ~= nil then return value end
+    end
+    return defaults[key]
+end
+
+function on_mcm_load()
+    return {
+        id = "composure_thoughts",
+        sh = true,
+        gr = {
+            { id = "enabled", type = "check", val = 1, def = true },
+            { id = "automatic", type = "check", val = 1, def = true },
+            { id = "random_positions", type = "check", val = 1, def = true },
+            { id = "horizontal_spread", type = "track", val = 2,
+              min = 0, max = 240, step = 10, def = 140 },
+            { id = "vertical_spread", type = "track", val = 2,
+              min = 40, max = 260, step = 10, def = 155 },
+            { id = "duration", type = "track", val = 2,
+              min = 2, max = 12, step = 0.5, prec = 1, def = 6 },
+            { id = "minimum_cooldown", type = "track", val = 2,
+              min = 5, max = 60, step = 1, def = 18 },
+            { id = "maximum_cooldown", type = "track", val = 2,
+              min = 30, max = 180, step = 5, def = 95 },
+            { id = "line1", type = "line" },
+            { id = "event_thoughts", type = "check", val = 1, def = true },
+            { id = "event_threshold", type = "track", val = 2,
+              min = 0.5, max = 10, step = 0.5, prec = 1, def = 2 },
+            { id = "consumable_event_threshold", type = "track", val = 2,
+              min = 0.05, max = 5, step = 0.05, prec = 2, def = 0.3 },
+            { id = "low_caps", type = "check", val = 1, def = true },
+            { id = "show_above_medium", type = "check", val = 1, def = true },
+            { id = "line2", type = "line" },
+            { id = "text_effects_enabled", type = "check", val = 1, def = true },
+            { id = "context_aware", type = "check", val = 1, def = true },
+            { id = "escalation_enabled", type = "check", val = 1, def = true },
+            { id = "mutant_detect_radius", type = "track", val = 2,
+              min = 10, max = 80, step = 5, def = 35 },
+            { id = "creature_scan_interval", type = "track", val = 2,
+              min = 1, max = 10, step = 1, def = 3 },
+            { id = "mutant_end_grace", type = "track", val = 2,
+              min = 3, max = 20, step = 1, def = 9 },
+            { id = "sustained_interval", type = "track", val = 2,
+              min = 6, max = 40, step = 1, def = 14 },
+            { id = "line3", type = "line" },
+            { id = "ambient_thoughts_enabled", type = "check", val = 1, def = true },
+            { id = "ambient_chance", type = "track", val = 2,
+              min = 0.01, max = 1, step = 0.01, prec = 2, def = 0.18 },
+            { id = "ambient_min_cooldown", type = "track", val = 2,
+              min = 20, max = 180, step = 5, def = 60 },
+            { id = "ambient_max_cooldown", type = "track", val = 2,
+              min = 20, max = 240, step = 5, def = 110 },
+            { id = "line4", type = "line" },
+            { id = "location_thoughts_enabled", type = "check", val = 1, def = true },
+            { id = "corpse_thoughts_enabled", type = "check", val = 1, def = true },
+            { id = "corpse_detect_radius", type = "track", val = 2,
+              min = 5, max = 30, step = 1, def = 15 },
+            { id = "needs_thoughts_enabled", type = "check", val = 1, def = true },
+            { id = "line5", type = "line" },
+            { id = "check_key", type = "key_bind", val = 2, def = KEY_X },
+            { id = "check_presentation", type = "list", val = 2, def = 1,
+              content = { { 1, "composure_thoughts_check_accumulating" },
+                          { 2, "composure_thoughts_check_reflection" } } },
+            { id = "check_sequence_speed", type = "track", val = 2,
+              min = 0.4, max = 2, step = 0.1, prec = 1, def = 0.8 },
+            { id = "check_final_duration", type = "track", val = 2,
+              min = 2, max = 12, step = 0.5, prec = 1, def = 5 },
+            { id = "test_key", type = "key_bind", val = 2, def = KEY_F6 },
+            { id = "debug_log", type = "check", val = 1, def = false },
+        },
+    }
+end

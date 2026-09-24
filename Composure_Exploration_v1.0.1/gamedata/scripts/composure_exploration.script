@@ -1,0 +1,814 @@
+--[[
+    Composure Exploration v1.0.1
+    Persistent environmental pressure and Expedition Strain for GAMMA.
+    Requires Composure Core / Framework API 2.
+--]]
+
+local VERSION = "1.0.1"
+local OWNER = "composure_exploration"
+local LOCK_ID = "exploration.unsafe"
+local POLICY_ID = "exploration.transition_scale"
+local LOG = "[composure_exploration:v1]"
+
+local callbacks_registered = false
+local policy_registered = false
+local bridge_installed = false
+local original_simulated_advance = nil
+local wrapped_simulated_advance = nil
+local transition_active = false
+local transition_started_ms = 0
+local last_game_stamp = nil
+local valid_time_samples = 0
+local last_valid_sample_ms = 0
+local last_elapsed_minutes = 0
+local next_tick_ms = 0
+local entry_grace_until_ms = 0
+local entry_grace_started_ms = 0
+local lifecycle_state = "initializing"
+local lifecycle_reason = "startup"
+local lock_active = false
+local combat_hold_until_ms = 0
+local anomaly_hold_until_ms = 0
+local last_anomaly_distance = nil
+local last_anomaly_band = "none"
+local last_profile = "initializing"
+local last_reason = "initializing"
+local last_rate = 0
+local last_loss = 0
+local exposure_minutes = 0
+local campfire_relief_used = 0
+local campfire_rearm_progress = 0
+local override_anomaly_distance = nil
+local override_anomaly_inside = false
+local forced_profile = nil
+
+local deep_labs = {
+    l08u_brainlab = true, l10u_bunker = true, l12u_sarcofag = true,
+    l12u_control_monolith = true, l13u_warlab = true, jupiter_underground = true,
+    labx8 = true, labx16 = true, labx18 = true, labx19 = true,
+}
+
+local underground_levels = {
+    agroprom_underground = true, l03u_agr_underground = true,
+    y04_pole = true, k00_marsh_underground = true,
+}
+
+local function now_ms()
+    return time_global and time_global() or 0
+end
+
+local function log(fmt, ...)
+    printf(LOG .. " " .. fmt, ...)
+end
+
+local function cfg(key, fallback)
+    if composure_exploration_mcm and composure_exploration_mcm.get_config then
+        local ok, result = pcall(composure_exploration_mcm.get_config, key)
+        if ok and result ~= nil then return result end
+    end
+    return fallback
+end
+
+local function debug_log(fmt, ...)
+    if cfg("debug_log", false) == true then log(fmt, ...) end
+end
+
+local function clamp(value, low, high)
+    value = tonumber(value) or low
+    if value < low then return low end
+    if value > high then return high end
+    return value
+end
+
+local function framework_ready()
+    return composure_framework
+        and type(composure_framework.supports) == "function"
+        and composure_framework.supports(2)
+        and type(composure_framework.get_value) == "function"
+        and type(composure_framework.apply_delta) == "function"
+        and type(composure_framework.set_recovery_lock) == "function"
+        and type(composure_framework.clear_recovery_lock) == "function"
+        and type(composure_framework.register_adjustment_policy) == "function"
+end
+
+local function actor_ready()
+    return db and db.actor and db.actor:alive()
+end
+
+local function get_level_name()
+    local ok, name = pcall(function() return level.name() end)
+    return ok and string.lower(tostring(name or "")) or ""
+end
+
+local function get_hour()
+    if level and type(level.get_time_hours) == "function" then
+        local ok, hour = pcall(level.get_time_hours)
+        if ok and tonumber(hour) then return tonumber(hour) end
+    end
+    return 12
+end
+
+local function is_night()
+    local hour = get_hour()
+    local start_hour = clamp(cfg("night_start_hour", 20), 0, 23)
+    local end_hour = clamp(cfg("night_end_hour", 6), 0, 23)
+    if start_hour > end_hour then return hour >= start_hour or hour < end_hour end
+    return hour >= start_hour and hour < end_hour
+end
+
+local function current_weather_name()
+    local candidates = {}
+    if level and type(level.get_weather) == "function" then
+        local ok, result = pcall(level.get_weather)
+        if ok then candidates[#candidates + 1] = result end
+    end
+    if level_weathers and type(level_weathers.get_weather_manager) == "function" then
+        local ok, manager = pcall(level_weathers.get_weather_manager)
+        if ok and manager then
+            candidates[#candidates + 1] = manager.weather_name
+            candidates[#candidates + 1] = manager.current_weather
+            candidates[#candidates + 1] = manager.weather
+        end
+    end
+    for _, value in ipairs(candidates) do
+        if value ~= nil then return string.lower(tostring(value)) end
+    end
+    return ""
+end
+
+local function weather_addition()
+    local weather = current_weather_name()
+    if weather == "" then return 0, "clear/unknown" end
+    if string.find(weather, "storm", 1, true) or string.find(weather, "thunder", 1, true)
+        or string.find(weather, "heavy", 1, true) then
+        return tonumber(cfg("heavy_storm_add", 0.75)) or 0.75, "heavy storm"
+    end
+    if string.find(weather, "rain", 1, true) or string.find(weather, "drizzle", 1, true) then
+        return tonumber(cfg("light_rain_add", 0.25)) or 0.25, "light rain"
+    end
+    return 0, weather
+end
+
+local function is_lit_campfire()
+    if not (bind_campfire and type(bind_campfire.get_nearby_campfire) == "function") then return false end
+    local radius = clamp(cfg("campfire_radius", 36), 4, 100)
+    local ok, fire = pcall(bind_campfire.get_nearby_campfire, radius, true)
+    if not ok or not fire then return false end
+    local on_ok, is_on = pcall(function() return fire:is_on() end)
+    return on_ok and is_on == true
+end
+
+local function is_friendly_base()
+    if ish_campfire_saving and type(ish_campfire_saving.is_within_friendly_base) == "function" then
+        local ok, result = pcall(ish_campfire_saving.is_within_friendly_base)
+        if ok and result == true then return true end
+    end
+    if not (SIMBOARD and SIMBOARD.smarts_by_names and db and db.actor) then return false end
+    local community = nil
+    if gameplay_disguise and type(gameplay_disguise.get_default_comm) == "function" then
+        local ok, result = pcall(gameplay_disguise.get_default_comm)
+        if ok then community = result end
+    end
+    local radius = clamp(cfg("safe_base_radius", 50), 10, 150)
+    local function positive(value)
+        return value == true or (tonumber(value) or 0) > 0
+    end
+    for _, smart in pairs(SIMBOARD.smarts_by_names) do
+        local props = smart and smart.props
+        local friendly = props and ((community and positive(props[community])) or positive(props.all))
+        if smart and smart.is_on_actor_level and props and positive(props.base)
+            and friendly and (tonumber(smart.dist_to_actor) or 99999) <= radius then
+            return true
+        end
+    end
+    return false
+end
+
+local function active_combat_count()
+    if not (db and db.actor and xr_combat_ignore and type(xr_combat_ignore.fighting_with_actor_npcs) == "table") then return 0 end
+    local origin = db.actor:position()
+    local distance = clamp(cfg("combat_distance", 100), 10, 250)
+    local max_sqr = distance * distance
+    local count = 0
+    for id in pairs(xr_combat_ignore.fighting_with_actor_npcs) do
+        local storage = db.storage and db.storage[id]
+        local npc = storage and storage.object
+        local ok, valid = pcall(function()
+            return npc and npc:alive() and npc:position():distance_to_sqr(origin) <= max_sqr
+        end)
+        if ok and valid then count = count + 1 end
+    end
+    return count
+end
+
+local function has_companion()
+    if not (db and db.actor and type(get_player_squad) == "function") then return false end
+    local ok, squad = pcall(get_player_squad)
+    if not ok or not squad then return false end
+    local members_ok, members = pcall(function()
+        if type(squad.members) == "function" then return squad:members() end
+        return squad.members
+    end)
+    if not members_ok or type(members) ~= "table" then return false end
+    local actor_id = db.actor:id()
+    local origin = db.actor:position()
+    local radius = clamp(cfg("companion_radius", 75), 5, 150)
+    local max_sqr = radius * radius
+    for key, member in pairs(members) do
+        local id = tonumber(member) or tonumber(key)
+        if id and id ~= actor_id then
+            local object = level.object_by_id and level.object_by_id(id) or nil
+            local alive_ok, nearby = pcall(function()
+                return object and object:alive() and object:position():distance_to_sqr(origin) <= max_sqr
+            end)
+            if alive_ok and nearby then return true end
+        end
+    end
+    return false
+end
+
+local function anomaly_section(object)
+    local ok, section = pcall(function() return object:section() end)
+    if not ok or not section then return nil end
+    section = string.lower(tostring(section))
+    if string.find(section, "zone_", 1, true) == 1
+        or string.find(section, "anomal", 1, true)
+        or string.find(section, "field", 1, true) then return section end
+    return nil
+end
+
+local function scan_anomaly_distance()
+    if override_anomaly_distance ~= nil then return override_anomaly_distance, override_anomaly_inside end
+    if cfg("anomaly_enabled", true) ~= true or not (level and level.iterate_nearest and db and db.actor) then return nil, false end
+    local origin = db.actor:position()
+    local radius = clamp(cfg("anomaly_near_radius", 25), 5, 75)
+    local nearest = nil
+    pcall(level.iterate_nearest, origin, radius, function(object)
+        if not object or not anomaly_section(object) then return end
+        local ok, distance = pcall(function() return object:position():distance_to(origin) end)
+        if ok and distance and (not nearest or distance < nearest) then nearest = distance end
+    end)
+    return nearest, nearest ~= nil and nearest <= 1.5
+end
+
+local function anomaly_addition()
+    local distance, inside = scan_anomaly_distance()
+    last_anomaly_distance = distance
+    local addition = 0
+    local band = "none"
+    if inside then
+        addition, band = tonumber(cfg("anomaly_inside_add", 0.75)) or 0.75, "inside"
+    elseif distance and distance <= clamp(cfg("anomaly_immediate_radius", 10), 1, 30) then
+        addition, band = tonumber(cfg("anomaly_immediate_add", 0.50)) or 0.50, "immediate"
+    elseif distance and distance <= clamp(cfg("anomaly_near_radius", 25), 5, 75) then
+        addition, band = tonumber(cfg("anomaly_near_add", 0.25)) or 0.25, "near"
+    end
+    if addition > 0 then
+        anomaly_hold_until_ms = now_ms() + clamp(cfg("anomaly_exit_grace_seconds", 5), 0, 20) * 1000
+        last_anomaly_band = band
+        return addition, band
+    end
+    if now_ms() < anomaly_hold_until_ms then
+        return tonumber(cfg("anomaly_near_add", 0.25)) or 0.25, "exit grace"
+    end
+    last_anomaly_band = "none"
+    return 0, "none"
+end
+
+local function profile_for_level()
+    if forced_profile then return forced_profile end
+    local name = get_level_name()
+    if deep_labs[name] or string.find(name, "lab", 1, true) then return "deep_lab" end
+    if underground_levels[name] or string.find(name, "underground", 1, true) then return "underground" end
+    return "surface_outdoor"
+end
+
+local function profile_rate(profile)
+    if profile == "deep_lab" then return tonumber(cfg("deep_lab_rate", 1.50)) or 1.50 end
+    if profile == "underground" then return tonumber(cfg("underground_rate", 0.75)) or 0.75 end
+    return tonumber(cfg("surface_outdoor_rate", 0.25)) or 0.25
+end
+
+local function expedition_multiplier(minutes)
+    minutes = tonumber(minutes) or 0
+    if minutes >= 480 then return 1.50 end
+    if minutes >= 360 then return 1.40 end
+    if minutes >= 240 then return 1.30 end
+    if minutes >= 180 then return 1.20 end
+    if minutes >= 120 then return 1.15 end
+    if minutes >= 60 then return 1.05 end
+    return 1.00
+end
+
+local function time_context()
+    if transition_active then return "level_transition" end
+    if immersive_campfire_saving_compat and type(immersive_campfire_saving_compat.is_active) == "function" then
+        local ok, active = pcall(immersive_campfire_saving_compat.is_active)
+        if ok and active then return "campfire_rest" end
+    end
+    if consumable_time_skip and type(consumable_time_skip.is_active) == "function" then
+        local ok, active = pcall(consumable_time_skip.is_active)
+        if ok and active then return "consumable_skip" end
+    end
+    return "world"
+end
+
+local function set_lock(active)
+    lock_active = active == true
+    if not framework_ready() then return end
+    if active then
+        composure_framework.set_recovery_lock(LOCK_ID, 4, {
+            owner = OWNER, reason = "unsafe exploration", category = "exploration",
+        })
+    else
+        composure_framework.clear_recovery_lock(LOCK_ID)
+    end
+end
+
+local function apply_loss(rate, elapsed_minutes, profile, reason)
+    if rate <= 0 or elapsed_minutes <= 0 or not framework_ready() then return 0 end
+    local scale = clamp(cfg("master_loss_scale", 1), 0, 3)
+    local cap = clamp(cfg("maximum_loss_per_minute", 5), 0, 10)
+    local per_minute = math.min(rate * scale, cap)
+    local requested = per_minute * elapsed_minutes
+    local current = composure_framework.get_value()
+    local floor = clamp(cfg("exploration_floor", 50), 0, 100)
+    local actual = math.min(requested, math.max(0, current - floor))
+    if actual <= 0 then return 0 end
+    local applied = composure_framework.apply_delta("exploration.tick", -actual, {
+        owner = OWNER,
+        category = "exploration",
+        kind = "time_based_exploration",
+        metadata = { profile = profile, reason = reason, elapsed_minutes = elapsed_minutes },
+    })
+    return math.abs(tonumber(applied) or 0)
+end
+
+local function reduce_exposure_internal(minutes, minimum)
+    local amount = math.max(0, tonumber(minutes) or 0)
+    local floor = math.max(0, tonumber(minimum) or 0)
+    local before = exposure_minutes
+    exposure_minutes = math.max(floor, exposure_minutes - amount)
+    return before - exposure_minutes
+end
+
+local function process_campfire_rest(elapsed_minutes)
+    local cap = math.max(0, tonumber(cfg("campfire_max_relief_minutes", 60)) or 60)
+    local available = math.max(0, cap - campfire_relief_used)
+    local requested = elapsed_minutes * math.max(0, tonumber(cfg("campfire_relief_rate", 2)) or 2)
+    local removed = reduce_exposure_internal(math.min(available, requested), cfg("campfire_minimum_exposure", 60))
+    campfire_relief_used = campfire_relief_used + removed
+    return removed
+end
+
+local function process_elapsed(elapsed_minutes)
+    if cfg("enabled", true) ~= true or not actor_ready() then
+        set_lock(false)
+        return
+    end
+    if elapsed_minutes <= 0 then return end
+    local context = time_context()
+    local safe_base = is_friendly_base()
+    local lit_fire = is_lit_campfire()
+    local combat = active_combat_count() > 0 or now_ms() < combat_hold_until_ms
+
+    if combat then
+        last_reason, last_rate, last_loss = "combat pause", 0, 0
+        set_lock(true)
+        return
+    end
+    if safe_base then
+        local removed = reduce_exposure_internal(elapsed_minutes * math.max(0, tonumber(cfg("safe_base_recovery_rate", 4)) or 4), 0)
+        last_profile, last_reason, last_rate, last_loss = "safe_area", "safe base; exposure -" .. string.format("%.1f", removed), 0, 0
+        set_lock(false)
+        return
+    end
+    if context == "campfire_rest" then
+        local removed = process_campfire_rest(elapsed_minutes)
+        last_profile, last_reason, last_rate, last_loss = "campfire_safe", "campfire rest; exposure -" .. string.format("%.1f", removed), 0, 0
+        set_lock(false)
+        return
+    end
+
+    local exposure_scale = context == "level_transition"
+        and clamp(cfg("transition_exposure_scale", 1), 0, 2) or 1
+    exposure_minutes = exposure_minutes + elapsed_minutes * exposure_scale
+    campfire_rearm_progress = campfire_rearm_progress + elapsed_minutes * exposure_scale
+    if campfire_rearm_progress >= math.max(0, tonumber(cfg("campfire_relief_reset_minutes", 120)) or 120) then
+        campfire_relief_used = 0
+        campfire_rearm_progress = 0
+    end
+
+    local profile = profile_for_level()
+    local rate = profile_rate(profile)
+    local reasons = { profile }
+    if profile ~= "surface_outdoor" or is_night() then
+        if is_night() then
+            rate = rate + (tonumber(cfg("night_add", 0.50)) or 0.50)
+            reasons[#reasons + 1] = "night"
+        end
+    end
+    if profile == "surface_outdoor" then
+        local weather, weather_name = weather_addition()
+        rate = rate + weather
+        if weather > 0 then reasons[#reasons + 1] = weather_name end
+    end
+    local anomaly, anomaly_band = anomaly_addition()
+    rate = rate + anomaly
+    if anomaly > 0 then reasons[#reasons + 1] = "anomaly " .. anomaly_band end
+    rate = rate * expedition_multiplier(exposure_minutes)
+    if has_companion() then
+        rate = rate * clamp(cfg("companion_multiplier", 0.75), 0.25, 1)
+        reasons[#reasons + 1] = "companion"
+    end
+    if lit_fire then
+        rate = rate * clamp(cfg("campfire_live_multiplier", 0.25), 0, 1)
+        reasons[#reasons + 1] = "lit campfire"
+    end
+    last_profile = profile
+    last_reason = table.concat(reasons, ", ")
+    last_rate = rate
+    last_loss = apply_loss(rate, elapsed_minutes, profile, last_reason)
+    set_lock(rate > 0)
+end
+
+local function transition_policy(amount, context)
+    if not transition_active or type(amount) ~= "number" or amount == 0 then return amount end
+    context = context or {}
+    local metadata = context.metadata or {}
+    if metadata.ignore_exploration_transition_scale == true then return amount end
+    return amount * clamp(cfg("transition_composure_scale", 0.25), 0, 1)
+end
+
+local function register_policy()
+    if not framework_ready() then return false end
+    composure_framework.unregister_adjustment_policy(POLICY_ID)
+    policy_registered = composure_framework.register_adjustment_policy(POLICY_ID, transition_policy, {
+        owner = OWNER, priority = 90,
+    }) == true
+    return policy_registered
+end
+
+local function is_transition_label(label)
+    if label == nil then return false end
+    local text = string.lower(tostring(label))
+    local translated = nil
+    if game and type(game.translate_string) == "function" then
+        local ok, result = pcall(game.translate_string, "st_sim_traveling")
+        if ok then translated = string.lower(tostring(result or "")) end
+    end
+    return (translated and translated ~= "" and text == translated)
+        or string.find(text, "travel", 1, true) ~= nil
+        or string.find(text, "transition", 1, true) ~= nil
+end
+
+local function end_transition(reason)
+    if not transition_active then return end
+    transition_active = false
+    transition_started_ms = 0
+    debug_log("level-transition context ended: %s", tostring(reason))
+end
+
+local function install_time_bridge()
+    if bridge_installed and simulated_time and simulated_time.advance == wrapped_simulated_advance then return true end
+    if not (simulated_time and type(simulated_time.advance) == "function") then return false end
+    if simulated_time.advance == wrapped_simulated_advance then bridge_installed = true return true end
+    original_simulated_advance = simulated_time.advance
+    wrapped_simulated_advance = function(total_minutes, opts)
+        local options = opts
+        if type(options) == "function" then options = { on_complete = options } end
+        options = options or {}
+        if not is_transition_label(options.label) then return original_simulated_advance(total_minutes, opts) end
+
+        local original_complete = options.on_complete
+        local original_abort = options.on_abort
+        local wrapped_options = {}
+        for key, value in pairs(options) do wrapped_options[key] = value end
+        transition_active = true
+        transition_started_ms = now_ms()
+        wrapped_options.on_complete = function(state)
+            end_transition("complete")
+            if original_complete then return original_complete(state) end
+        end
+        wrapped_options.on_abort = function(reason, state)
+            end_transition("abort")
+            if original_abort then return original_abort(reason, state) end
+        end
+        local ok, result = pcall(original_simulated_advance, total_minutes, wrapped_options)
+        if not ok then
+            end_transition("error")
+            error(result)
+        end
+        if result == false then end_transition("rejected") end
+        return result
+    end
+    simulated_time.advance = wrapped_simulated_advance
+    bridge_installed = true
+    debug_log("Unified Simulated Time bridge installed")
+    return true
+end
+
+local month_days_before = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 }
+
+local function is_leap_year(year)
+    return year % 400 == 0 or (year % 4 == 0 and year % 100 ~= 0)
+end
+
+local function days_before_year(year)
+    local previous = year - 1
+    return previous * 365 + math.floor(previous / 4)
+        - math.floor(previous / 100) + math.floor(previous / 400)
+end
+
+-- CTime userdata can be reused by the engine across a level load. Keeping the
+-- userdata itself therefore risks comparing the clock with the same mutated
+-- object. Store an immutable numeric timestamp instead.
+local function current_game_stamp()
+    if not (game and type(game.get_game_time) == "function") then return nil end
+    local ok, current = pcall(game.get_game_time)
+    if not ok or not current or type(current.get) ~= "function" then return nil end
+
+    local got, year, month, day, hour, minute, second, millisecond = pcall(function()
+        local Y, M, D, h, m, s, ms = 0, 0, 0, 0, 0, 0, 0
+        Y, M, D, h, m, s, ms = current:get(Y, M, D, h, m, s, ms)
+        return Y, M, D, h, m, s, ms
+    end)
+    if not got then return nil end
+    year, month, day = tonumber(year), tonumber(month), tonumber(day)
+    hour, minute, second = tonumber(hour), tonumber(minute), tonumber(second)
+    millisecond = tonumber(millisecond) or 0
+    if not year or not month or not day or not hour or not minute or not second
+        or year < 1 or month < 1 or month > 12 or day < 1 then return nil end
+
+    local days = days_before_year(year) + month_days_before[month] + day - 1
+    if month > 2 and is_leap_year(year) then days = days + 1 end
+    return days * 86400 + hour * 3600 + minute * 60 + second + millisecond / 1000
+end
+
+local function sample_game_elapsed()
+    local stamp = current_game_stamp()
+    if not stamp then
+        last_elapsed_minutes = 0
+        return 0, false
+    end
+    last_valid_sample_ms = now_ms()
+    valid_time_samples = valid_time_samples + 1
+    if not last_game_stamp then
+        last_game_stamp = stamp
+        last_elapsed_minutes = 0
+        return 0, true
+    end
+
+    local seconds = stamp - last_game_stamp
+    last_game_stamp = stamp
+    if seconds < 0 then
+        valid_time_samples = 1
+        last_elapsed_minutes = 0
+        return 0, false
+    end
+    last_elapsed_minutes = math.min(seconds / 60, 720)
+    return last_elapsed_minutes, true
+end
+
+local function clear_runtime_lock()
+    set_lock(false)
+end
+
+local function begin_arrival_initialization(reason)
+    clear_runtime_lock()
+    last_game_stamp = nil
+    valid_time_samples = 0
+    last_valid_sample_ms = 0
+    last_elapsed_minutes = 0
+    entry_grace_started_ms = now_ms()
+    entry_grace_until_ms = entry_grace_started_ms
+        + clamp(cfg("entry_grace_seconds", 5), 0, 5) * 1000
+    lifecycle_state = "arrival_grace"
+    lifecycle_reason = reason or "arrival"
+    last_reason = "arrival initialization"
+    next_tick_ms = 0
+    policy_registered = false
+    end_transition("lifecycle")
+    debug_log("arrival initialization: %s; grace %.1fs",
+        lifecycle_reason, math.max(0, entry_grace_until_ms - entry_grace_started_ms) / 1000)
+end
+
+local function prepare_level_change()
+    clear_runtime_lock()
+    last_game_stamp = nil
+    valid_time_samples = 0
+    last_elapsed_minutes = 0
+    lifecycle_state = "level_changing"
+    lifecycle_reason = "level change"
+    policy_registered = false
+    end_transition("level_change")
+end
+
+local function deactivate_lifecycle(reason)
+    clear_runtime_lock()
+    last_game_stamp = nil
+    valid_time_samples = 0
+    last_elapsed_minutes = 0
+    lifecycle_state = "inactive"
+    lifecycle_reason = reason or "inactive"
+    end_transition(lifecycle_reason)
+end
+
+local function on_actor_update()
+    local now = now_ms()
+    if now < next_tick_ms then return end
+    next_tick_ms = now + 1000
+    if not policy_registered then register_policy() end
+    if not bridge_installed then install_time_bridge() end
+    if transition_active and simulated_time and type(simulated_time.is_active) == "function" then
+        local ok, active = pcall(simulated_time.is_active)
+        if ok and not active and now - transition_started_ms > 1000 then end_transition("watchdog") end
+    end
+
+    local elapsed, valid = sample_game_elapsed()
+    if lifecycle_state == "arrival_grace" then
+        clear_runtime_lock()
+        last_reason = "arrival grace"
+        if now >= entry_grace_until_ms then
+            if valid_time_samples >= 2 then
+                lifecycle_state = "active"
+                lifecycle_reason = "arrival validated"
+                last_game_stamp = current_game_stamp() or last_game_stamp
+                last_elapsed_minutes = 0
+                debug_log("arrival validated with %d clock samples", valid_time_samples)
+            else
+                lifecycle_state = "clock_wait"
+                lifecycle_reason = "arrival clock unavailable"
+                last_game_stamp = nil
+                valid_time_samples = 0
+                debug_log("arrival grace expired without two valid clock samples")
+            end
+        end
+        return
+    end
+
+    if lifecycle_state == "clock_wait" then
+        clear_runtime_lock()
+        last_reason = "waiting for game clock"
+        if valid and valid_time_samples >= 2 then
+            lifecycle_state = "active"
+            lifecycle_reason = "clock recovered"
+            last_game_stamp = current_game_stamp() or last_game_stamp
+            last_elapsed_minutes = 0
+            debug_log("game clock recovered; exploration resumed")
+        end
+        return
+    end
+
+    if lifecycle_state ~= "active" then
+        clear_runtime_lock()
+        return
+    end
+
+    if lock_active and last_valid_sample_ms > 0 and now - last_valid_sample_ms > 6000 then
+        clear_runtime_lock()
+        lifecycle_state = "clock_wait"
+        lifecycle_reason = "clock watchdog"
+        last_game_stamp = nil
+        valid_time_samples = 0
+        last_reason = "clock watchdog cleared recovery lock"
+        debug_log("clock watchdog cleared stale recovery lock")
+        return
+    end
+    if valid then process_elapsed(elapsed) end
+end
+
+local function on_actor_hit()
+    combat_hold_until_ms = math.max(combat_hold_until_ms,
+        now_ms() + clamp(cfg("post_combat_hold_seconds", 30), 0, 180) * 1000)
+end
+
+local function on_actor_sleep(hours)
+    local elapsed = math.max(0, tonumber(hours) or 0) * 60
+    if elapsed <= 0 then return end
+    if is_friendly_base() then
+        exposure_minutes, campfire_relief_used, campfire_rearm_progress = 0, 0, 0
+    elseif is_lit_campfire() then
+        process_campfire_rest(elapsed)
+    else
+        exposure_minutes = exposure_minutes * clamp(cfg("unsafe_sleep_exposure_multiplier", 0.50), 0, 1)
+    end
+    begin_arrival_initialization("sleep")
+end
+
+local function save_state(m_data)
+    m_data.composure_exploration_v1 = {
+        exposure_minutes = exposure_minutes,
+        campfire_relief_used = campfire_relief_used,
+        campfire_rearm_progress = campfire_rearm_progress,
+    }
+end
+
+local function load_state(m_data)
+    local data = m_data and m_data.composure_exploration_v1 or nil
+    exposure_minutes = math.max(0, tonumber(data and data.exposure_minutes) or 0)
+    campfire_relief_used = math.max(0, tonumber(data and data.campfire_relief_used) or 0)
+    campfire_rearm_progress = math.max(0, tonumber(data and data.campfire_rearm_progress) or 0)
+    begin_arrival_initialization("load_state")
+end
+
+local function on_actor_first_update()
+    begin_arrival_initialization("actor_first_update")
+end
+
+local function on_option_change()
+    begin_arrival_initialization("option_change")
+end
+
+local function on_actor_death()
+    deactivate_lifecycle("actor_death")
+end
+
+local function on_key_press(key)
+    local debug_key = cfg("debug_key", DIK_keys and DIK_keys.DIK_F7 or nil)
+    if not debug_key or key ~= debug_key then return end
+    local distance = last_anomaly_distance and string.format("%.1fm", last_anomaly_distance) or "none"
+    local message = string.format("Exploration: %s | %.2f/min | exposure %.0fm | anomaly %s",
+        last_profile, last_rate, exposure_minutes, distance)
+    log("%s | reason=%s | last_loss=%.3f | lifecycle=%s/%s | elapsed=%.3fm | samples=%d | lock=%s | transition=%s",
+        message, last_reason, last_loss, lifecycle_state, lifecycle_reason,
+        last_elapsed_minutes, valid_time_samples, tostring(lock_active), tostring(transition_active))
+    if db and db.actor and news_manager then news_manager.send_tip(db.actor, message, nil, nil, 5000) end
+end
+
+function get_version() return VERSION end
+
+function get_exposure_minutes() return exposure_minutes end
+
+function reduce_exposure(minutes, source)
+    local removed = reduce_exposure_internal(minutes, 0)
+    debug_log("exposure reduced by %.2f from %s", removed, tostring(source or "external"))
+    return removed
+end
+
+function add_exposure(minutes, source)
+    local amount = math.max(0, tonumber(minutes) or 0)
+    exposure_minutes = exposure_minutes + amount
+    debug_log("exposure increased by %.2f from %s", amount, tostring(source or "external"))
+    return exposure_minutes
+end
+
+function set_anomaly_distance(distance, inside)
+    override_anomaly_distance = distance ~= nil and math.max(0, tonumber(distance) or 0) or nil
+    override_anomaly_inside = inside == true
+end
+
+function clear_anomaly_distance() override_anomaly_distance, override_anomaly_inside = nil, false end
+
+function set_level_profile(profile)
+    if profile == nil or profile == "auto" then forced_profile = nil return true end
+    if profile ~= "surface_outdoor" and profile ~= "underground" and profile ~= "deep_lab" then return false end
+    forced_profile = profile
+    return true
+end
+
+function begin_level_transition()
+    transition_active = true
+    transition_started_ms = now_ms()
+end
+
+function end_level_transition() end_transition("external") end
+
+function get_diagnostics()
+    return {
+        version = VERSION, profile = last_profile, reason = last_reason,
+        rate_per_minute = last_rate, last_loss = last_loss,
+        exposure_minutes = exposure_minutes,
+        expedition_multiplier = expedition_multiplier(exposure_minutes),
+        campfire_relief_used = campfire_relief_used,
+        campfire_rearm_progress = campfire_rearm_progress,
+        anomaly_distance = last_anomaly_distance, anomaly_band = last_anomaly_band,
+        transition_active = transition_active, bridge_installed = bridge_installed,
+        policy_registered = policy_registered,
+        lifecycle_state = lifecycle_state, lifecycle_reason = lifecycle_reason,
+        valid_time_samples = valid_time_samples,
+        last_elapsed_minutes = last_elapsed_minutes,
+        last_valid_sample_ms = last_valid_sample_ms,
+        recovery_lock_active = lock_active,
+        grace_remaining_ms = math.max(0, entry_grace_until_ms - now_ms()),
+    }
+end
+
+function on_game_start()
+    begin_arrival_initialization("game_start")
+    register_policy()
+    if callbacks_registered then return end
+    callbacks_registered = true
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+    RegisterScriptCallback("actor_on_first_update", on_actor_first_update)
+    RegisterScriptCallback("actor_on_update", on_actor_update)
+    RegisterScriptCallback("actor_on_before_hit", on_actor_hit)
+    RegisterScriptCallback("actor_on_weapon_fired", on_actor_hit)
+    RegisterScriptCallback("actor_on_sleep", on_actor_sleep)
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("on_before_level_changing", prepare_level_change)
+    RegisterScriptCallback("actor_on_death", on_actor_death)
+    log("v%s initialized", VERSION)
+end
