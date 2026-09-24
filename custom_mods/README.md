@@ -38,5 +38,5 @@ There's no size limit; upload the whole mod. Big binary files (`.dds`, `.ogg`, `
 |---|---|---|---|---|
 | [Alife set: xlibs, AlifePlus, AlifeTactics, AlifeBalance, AlifeGuard](Alife%20Plus%20-%20damian_sirbu/NOTES.md) | [github](https://github.com/damiansirbu-stalker) | 1.8.5 / 1.8.7 / 1.2.0 / 1.1.3 / 1.3.1 | yes | Uploaded. No file conflicts with GAMMA; see NOTES for required settings |
 | [BODYCAM: PiP & 3DSS compat patch + modded exes gamedata](BODYCAM%20-%20PiP%20and%203DSS/NOTES.md) | ? | patch 1.7; exes 2026.9.2 / MT-TEST 2026.7.13 | yes | Uploaded. Must load after 3DSS for GAMMA; two exes gamedata versions conflict (keep one) |
-| [Composure](Composure/NOTES.md) | own mod | ? | yes | Awaiting upload |
+| [Composure suite: Core, Combat, Recovery, Exploration, Consumables, Thoughts, Weapon Handling + Time-Skip, Unified Simulated Time](Composure/NOTES.md) | own mod | Core 2.1.0 (API 2) | yes | Uploaded. No conflicts. Heartbeat/Visuals/Feedback(HUD) modules not uploaded yet |
 | [Inventory set: Squared Away, Layered Pouches, HD Icons, FIUT, Seamless Sort + own SA addons 10–95](SquaredAway%20+%20Addon%20Pouch%20+%20Immersive%20Inventory/NOTES.md) | ? / own | SA 3.1.0 / pouches 1.5.3 / addons 10–95 | yes | Partly uploaded (two uploads hit the 100-file limit). Overrides GAMMA scripts: HD Icons (8), magazine_binder, QAW MCM |
