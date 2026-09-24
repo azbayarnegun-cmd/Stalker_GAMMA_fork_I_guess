@@ -1,3 +1,16 @@
 *.xml encoding=windows-1251
 *.ltx linguist-language=INI
 *.script linguist-language=Lua
+
+# custom_mods/: big binary assets go through Git LFS (text files stay normal so they can be read and edited)
+custom_mods/**/*.dds filter=lfs diff=lfs merge=lfs -text
+custom_mods/**/*.ogg filter=lfs diff=lfs merge=lfs -text
+custom_mods/**/*.wav filter=lfs diff=lfs merge=lfs -text
+custom_mods/**/*.ogf filter=lfs diff=lfs merge=lfs -text
+custom_mods/**/*.omf filter=lfs diff=lfs merge=lfs -text
+custom_mods/**/*.db filter=lfs diff=lfs merge=lfs -text
+custom_mods/**/*.db[0-9]* filter=lfs diff=lfs merge=lfs -text
+custom_mods/**/*.xdb* filter=lfs diff=lfs merge=lfs -text
+custom_mods/**/*.7z filter=lfs diff=lfs merge=lfs -text
+custom_mods/**/*.zip filter=lfs diff=lfs merge=lfs -text
+custom_mods/**/*.rar filter=lfs diff=lfs merge=lfs -text
