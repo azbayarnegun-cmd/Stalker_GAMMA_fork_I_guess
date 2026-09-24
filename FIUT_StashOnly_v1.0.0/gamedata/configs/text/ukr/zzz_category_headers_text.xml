@@ -1,0 +1,1023 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="ui_mcm_menu_CategoryHeaders">
+		<text>F.I.U.T - Fomok's Inventory Utility Tool</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders">
+		<text>F.I.U.T - Fomok's Inventory Utility Tool</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_general">
+		<text>Загальні</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_general">
+		<text>Загальні</text>
+	</string>
+	<string id="ui_mcm_cathdr_general">
+		<text>Загальні</text>
+	</string>
+	<string id="ui_mcm_menu_CategoryHeaders_cathdr_general">
+		<text>Загальні</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders_cathdr_general">
+		<text>Загальні</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general">
+		<text>Загальні</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_appearance">
+		<text>Смуга заголовка та фон</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_appearance">
+		<text>Смуга заголовка та фон</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance">
+		<text>Смуга заголовка та фон</text>
+	</string>
+	<string id="ui_mcm_menu_CategoryHeaders_cathdr_appearance">
+		<text>Смуга заголовка та фон</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders_cathdr_appearance">
+		<text>Смуга заголовка та фон</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance">
+		<text>Смуга заголовка та фон</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_text">
+		<text>Текст заголовка</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_text">
+		<text>Текст заголовка</text>
+	</string>
+	<string id="ui_mcm_cathdr_text">
+		<text>Текст заголовка</text>
+	</string>
+	<string id="ui_mcm_menu_CategoryHeaders_cathdr_text">
+		<text>Текст заголовка</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders_cathdr_text">
+		<text>Текст заголовка</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text">
+		<text>Текст заголовка</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_weight">
+		<text>Відображення ваги</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_weight">
+		<text>Відображення ваги</text>
+	</string>
+	<string id="ui_mcm_cathdr_weight">
+		<text>Відображення ваги</text>
+	</string>
+	<string id="ui_mcm_menu_CategoryHeaders_cathdr_weight">
+		<text>Відображення ваги</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders_cathdr_weight">
+		<text>Відображення ваги</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_weight">
+		<text>Відображення ваги</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_categories">
+		<text>Назви категорій</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_categories">
+		<text>Назви категорій</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories">
+		<text>Назви категорій</text>
+	</string>
+	<string id="ui_mcm_menu_CategoryHeaders_cathdr_categories">
+		<text>Назви категорій</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders_cathdr_categories">
+		<text>Назви категорій</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories">
+		<text>Назви категорій</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_enable">
+		<text>Увімкнути заголовки категорій</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_enable">
+		<text>Увімкнути заголовки категорій</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_enable">
+		<text>Увімкнути заголовки категорій</text>
+	</string>
+	<string id="ui_mcm_enable">
+		<text>Увімкнути заголовки категорій</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_in_inventory">
+		<text>Показувати заголовки в інвентарі</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_in_inventory">
+		<text>Показувати заголовки в інвентарі</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_in_inventory">
+		<text>Показувати заголовки в інвентарі</text>
+	</string>
+	<string id="ui_mcm_show_in_inventory">
+		<text>Показувати заголовки в інвентарі</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_in_containers">
+		<text>Показувати заголовки в схованках, ящиках верстата й тілах</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_in_containers">
+		<text>Показувати заголовки в схованках, ящиках верстата й тілах</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_in_containers">
+		<text>Показувати заголовки в схованках, ящиках верстата й тілах</text>
+	</string>
+	<string id="ui_mcm_show_in_containers">
+		<text>Показувати заголовки в схованках, ящиках верстата й тілах</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_in_trade">
+		<text>Показувати заголовки у вікні торгівлі</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_in_trade">
+		<text>Показувати заголовки у вікні торгівлі</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_in_trade">
+		<text>Показувати заголовки у вікні торгівлі</text>
+	</string>
+	<string id="ui_mcm_show_in_trade">
+		<text>Показувати заголовки у вікні торгівлі</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_colored_headers">
+		<text>Власний колір для кожної категорії (вимк. = один колір для всіх заголовків)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_colored_headers">
+		<text>Власний колір для кожної категорії (вимк. = один колір для всіх заголовків)</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_colored_headers">
+		<text>Власний колір для кожної категорії (вимк. = один колір для всіх заголовків)</text>
+	</string>
+	<string id="ui_mcm_colored_headers">
+		<text>Власний колір для кожної категорії (вимк. = один колір для всіх заголовків)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_bg_opacity">
+		<text>Непрозорість фону заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_bg_opacity">
+		<text>Непрозорість фону заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_bg_opacity">
+		<text>Непрозорість фону заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_bg_opacity">
+		<text>Непрозорість фону заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_thickness">
+		<text>Товщина смуги заголовка (% висоти рядка, 10-100)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_thickness">
+		<text>Товщина смуги заголовка (% висоти рядка, 10-100)</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_thickness">
+		<text>Товщина смуги заголовка (% висоти рядка, 10-100)</text>
+	</string>
+	<string id="ui_mcm_thickness">
+		<text>Товщина смуги заголовка (% висоти рядка, 10-100)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_section_tint">
+		<text>Підфарбовувати фон під кожною категорією</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_section_tint">
+		<text>Підфарбовувати фон під кожною категорією</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_section_tint">
+		<text>Підфарбовувати фон під кожною категорією</text>
+	</string>
+	<string id="ui_mcm_section_tint">
+		<text>Підфарбовувати фон під кожною категорією</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_section_tint_alpha">
+		<text>Непрозорість підсвічування фону категорії (0-120)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_section_tint_alpha">
+		<text>Непрозорість підсвічування фону категорії (0-120)</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_section_tint_alpha">
+		<text>Непрозорість підсвічування фону категорії (0-120)</text>
+	</string>
+	<string id="ui_mcm_section_tint_alpha">
+		<text>Непрозорість підсвічування фону категорії (0-120)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_names">
+		<text>Показувати назву категорії на заголовку (вимк. = лише смуга та вага)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_show_names">
+		<text>Показувати назву категорії на заголовку (вимк. = лише смуга та вага)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_show_names">
+		<text>Показувати назву категорії на заголовку (вимк. = лише смуга та вага)</text>
+	</string>
+	<string id="ui_mcm_show_names">
+		<text>Показувати назву категорії на заголовку (вимк. = лише смуга та вага)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_font_size">
+		<text>Розмір тексту заголовка (1=дрібний, 2=середній, 3=великий)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_font_size">
+		<text>Розмір тексту заголовка (1=дрібний, 2=середній, 3=великий)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_font_size">
+		<text>Розмір тексту заголовка (1=дрібний, 2=середній, 3=великий)</text>
+	</string>
+	<string id="ui_mcm_font_size">
+		<text>Розмір тексту заголовка (1=дрібний, 2=середній, 3=великий)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_txt_alpha">
+		<text>Непрозорість тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_txt_alpha">
+		<text>Непрозорість тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_txt_alpha">
+		<text>Непрозорість тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_txt_alpha">
+		<text>Непрозорість тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_txt_red">
+		<text>Червоний канал тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_txt_red">
+		<text>Червоний канал тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_txt_red">
+		<text>Червоний канал тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_txt_red">
+		<text>Червоний канал тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_txt_green">
+		<text>Зелений канал тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_txt_green">
+		<text>Зелений канал тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_txt_green">
+		<text>Зелений канал тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_txt_green">
+		<text>Зелений канал тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_txt_blue">
+		<text>Синій канал тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_txt_blue">
+		<text>Синій канал тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_txt_blue">
+		<text>Синій канал тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_txt_blue">
+		<text>Синій канал тексту заголовка (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_weight">
+		<text>Показувати загальну вагу категорії на заголовку</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_weight_show_weight">
+		<text>Показувати загальну вагу категорії на заголовку</text>
+	</string>
+	<string id="ui_mcm_cathdr_weight_show_weight">
+		<text>Показувати загальну вагу категорії на заголовку</text>
+	</string>
+	<string id="ui_mcm_show_weight">
+		<text>Показувати загальну вагу категорії на заголовку</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_001loadout">
+		<text>Текст заголовка (Спорядження) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_001loadout">
+		<text>Текст заголовка (Спорядження) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_001loadout">
+		<text>Текст заголовка (Спорядження) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_001loadout">
+		<text>Текст заголовка (Спорядження) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_001loadout">
+		<text>Приховати заголовок "Спорядження"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_001loadout">
+		<text>Приховати заголовок "Спорядження"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_001loadout">
+		<text>Приховати заголовок "Спорядження"</text>
+	</string>
+	<string id="ui_mcm_hide_001loadout">
+		<text>Приховати заголовок "Спорядження"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_010weapons">
+		<text>Текст заголовка (Зброя) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_010weapons">
+		<text>Текст заголовка (Зброя) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_010weapons">
+		<text>Текст заголовка (Зброя) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_010weapons">
+		<text>Текст заголовка (Зброя) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_010weapons">
+		<text>Приховати заголовок "Зброя"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_010weapons">
+		<text>Приховати заголовок "Зброя"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_010weapons">
+		<text>Приховати заголовок "Зброя"</text>
+	</string>
+	<string id="ui_mcm_hide_010weapons">
+		<text>Приховати заголовок "Зброя"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_020outfits">
+		<text>Текст заголовка (Костюми) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_020outfits">
+		<text>Текст заголовка (Костюми) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_020outfits">
+		<text>Текст заголовка (Костюми) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_020outfits">
+		<text>Текст заголовка (Костюми) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_020outfits">
+		<text>Приховати заголовок "Костюми"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_020outfits">
+		<text>Приховати заголовок "Костюми"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_020outfits">
+		<text>Приховати заголовок "Костюми"</text>
+	</string>
+	<string id="ui_mcm_hide_020outfits">
+		<text>Приховати заголовок "Костюми"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_030artifacts">
+		<text>Текст заголовка (Артефакти) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_030artifacts">
+		<text>Текст заголовка (Артефакти) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_030artifacts">
+		<text>Текст заголовка (Артефакти) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_030artifacts">
+		<text>Текст заголовка (Артефакти) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_030artifacts">
+		<text>Приховати заголовок "Артефакти"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_030artifacts">
+		<text>Приховати заголовок "Артефакти"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_030artifacts">
+		<text>Приховати заголовок "Артефакти"</text>
+	</string>
+	<string id="ui_mcm_hide_030artifacts">
+		<text>Приховати заголовок "Артефакти"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_040devices">
+		<text>Текст заголовка (Пристрої) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_040devices">
+		<text>Текст заголовка (Пристрої) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_040devices">
+		<text>Текст заголовка (Пристрої) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_040devices">
+		<text>Текст заголовка (Пристрої) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_040devices">
+		<text>Приховати заголовок "Пристрої"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_040devices">
+		<text>Приховати заголовок "Пристрої"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_040devices">
+		<text>Приховати заголовок "Пристрої"</text>
+	</string>
+	<string id="ui_mcm_hide_040devices">
+		<text>Приховати заголовок "Пристрої"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_050tools">
+		<text>Текст заголовка (Інструменти) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_050tools">
+		<text>Текст заголовка (Інструменти) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_050tools">
+		<text>Текст заголовка (Інструменти) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_050tools">
+		<text>Текст заголовка (Інструменти) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_050tools">
+		<text>Приховати заголовок "Інструменти"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_050tools">
+		<text>Приховати заголовок "Інструменти"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_050tools">
+		<text>Приховати заголовок "Інструменти"</text>
+	</string>
+	<string id="ui_mcm_hide_050tools">
+		<text>Приховати заголовок "Інструменти"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_060medical">
+		<text>Текст заголовка (Медикаменти) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_060medical">
+		<text>Текст заголовка (Медикаменти) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_060medical">
+		<text>Текст заголовка (Медикаменти) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_060medical">
+		<text>Текст заголовка (Медикаменти) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_060medical">
+		<text>Приховати заголовок "Медикаменти"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_060medical">
+		<text>Приховати заголовок "Медикаменти"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_060medical">
+		<text>Приховати заголовок "Медикаменти"</text>
+	</string>
+	<string id="ui_mcm_hide_060medical">
+		<text>Приховати заголовок "Медикаменти"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_070foods">
+		<text>Текст заголовка (Їжа) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_070foods">
+		<text>Текст заголовка (Їжа) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_070foods">
+		<text>Текст заголовка (Їжа) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_070foods">
+		<text>Текст заголовка (Їжа) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_070foods">
+		<text>Приховати заголовок "Їжа"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_070foods">
+		<text>Приховати заголовок "Їжа"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_070foods">
+		<text>Приховати заголовок "Їжа"</text>
+	</string>
+	<string id="ui_mcm_hide_070foods">
+		<text>Приховати заголовок "Їжа"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_090quest">
+		<text>Текст заголовка (Квестові) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_090quest">
+		<text>Текст заголовка (Квестові) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_090quest">
+		<text>Текст заголовка (Квестові) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_090quest">
+		<text>Текст заголовка (Квестові) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_090quest">
+		<text>Приховати заголовок "Квестові"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_090quest">
+		<text>Приховати заголовок "Квестові"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_090quest">
+		<text>Приховати заголовок "Квестові"</text>
+	</string>
+	<string id="ui_mcm_hide_090quest">
+		<text>Приховати заголовок "Квестові"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_100notes">
+		<text>Текст заголовка (Нотатки) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_100notes">
+		<text>Текст заголовка (Нотатки) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_100notes">
+		<text>Текст заголовка (Нотатки) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_100notes">
+		<text>Текст заголовка (Нотатки) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_100notes">
+		<text>Приховати заголовок "Нотатки"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_100notes">
+		<text>Приховати заголовок "Нотатки"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_100notes">
+		<text>Приховати заголовок "Нотатки"</text>
+	</string>
+	<string id="ui_mcm_hide_100notes">
+		<text>Приховати заголовок "Нотатки"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_110ammo">
+		<text>Текст заголовка (Патрони) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_110ammo">
+		<text>Текст заголовка (Патрони) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_110ammo">
+		<text>Текст заголовка (Патрони) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_110ammo">
+		<text>Текст заголовка (Патрони) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_110ammo">
+		<text>Приховати заголовок "Патрони"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_110ammo">
+		<text>Приховати заголовок "Патрони"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_110ammo">
+		<text>Приховати заголовок "Патрони"</text>
+	</string>
+	<string id="ui_mcm_hide_110ammo">
+		<text>Приховати заголовок "Патрони"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_120mutantparts">
+		<text>Текст заголовка (Частини мутантів) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_120mutantparts">
+		<text>Текст заголовка (Частини мутантів) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_120mutantparts">
+		<text>Текст заголовка (Частини мутантів) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_120mutantparts">
+		<text>Текст заголовка (Частини мутантів) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_120mutantparts">
+		<text>Приховати заголовок "Частини мутантів"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_120mutantparts">
+		<text>Приховати заголовок "Частини мутантів"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_120mutantparts">
+		<text>Приховати заголовок "Частини мутантів"</text>
+	</string>
+	<string id="ui_mcm_hide_120mutantparts">
+		<text>Приховати заголовок "Частини мутантів"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_130misc">
+		<text>Текст заголовка (Різне) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_130misc">
+		<text>Текст заголовка (Різне) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_130misc">
+		<text>Текст заголовка (Різне) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_130misc">
+		<text>Текст заголовка (Різне) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_130misc">
+		<text>Приховати заголовок "Різне"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_130misc">
+		<text>Приховати заголовок "Різне"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_130misc">
+		<text>Приховати заголовок "Різне"</text>
+	</string>
+	<string id="ui_mcm_hide_130misc">
+		<text>Приховати заголовок "Різне"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_140upgrades">
+		<text>Текст заголовка (Покращення) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_140upgrades">
+		<text>Текст заголовка (Покращення) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_140upgrades">
+		<text>Текст заголовка (Покращення) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_140upgrades">
+		<text>Текст заголовка (Покращення) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_140upgrades">
+		<text>Приховати заголовок "Покращення"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_140upgrades">
+		<text>Приховати заголовок "Покращення"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_140upgrades">
+		<text>Приховати заголовок "Покращення"</text>
+	</string>
+	<string id="ui_mcm_hide_140upgrades">
+		<text>Приховати заголовок "Покращення"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_150parts">
+		<text>Текст заголовка (Деталі) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_150parts">
+		<text>Текст заголовка (Деталі) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_150parts">
+		<text>Текст заголовка (Деталі) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_150parts">
+		<text>Текст заголовка (Деталі) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_150parts">
+		<text>Приховати заголовок "Деталі"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_150parts">
+		<text>Приховати заголовок "Деталі"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_150parts">
+		<text>Приховати заголовок "Деталі"</text>
+	</string>
+	<string id="ui_mcm_hide_150parts">
+		<text>Приховати заголовок "Деталі"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_zzz_pinned_favorites">
+		<text>Текст заголовка (Обране) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_zzz_pinned_favorites">
+		<text>Текст заголовка (Обране) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_zzz_pinned_favorites">
+		<text>Текст заголовка (Обране) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_zzz_pinned_favorites">
+		<text>Текст заголовка (Обране) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_zzz_pinned_favorites">
+		<text>Приховати заголовок "Обране"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_zzz_pinned_favorites">
+		<text>Приховати заголовок "Обране"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_zzz_pinned_favorites">
+		<text>Приховати заголовок "Обране"</text>
+	</string>
+	<string id="ui_mcm_hide_zzz_pinned_favorites">
+		<text>Приховати заголовок "Обране"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_zzz_pinned_junk">
+		<text>Текст заголовка (Мотлох) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_zzz_pinned_junk">
+		<text>Текст заголовка (Мотлох) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_zzz_pinned_junk">
+		<text>Текст заголовка (Мотлох) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_zzz_pinned_junk">
+		<text>Текст заголовка (Мотлох) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_zzz_pinned_junk">
+		<text>Приховати заголовок "Мотлох"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_zzz_pinned_junk">
+		<text>Приховати заголовок "Мотлох"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_zzz_pinned_junk">
+		<text>Приховати заголовок "Мотлох"</text>
+	</string>
+	<string id="ui_mcm_hide_zzz_pinned_junk">
+		<text>Приховати заголовок "Мотлох"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_zzz_unmapped">
+		<text>Текст заголовка (Різне) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_zzz_unmapped">
+		<text>Текст заголовка (Різне) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_zzz_unmapped">
+		<text>Текст заголовка (Різне) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_zzz_unmapped">
+		<text>Текст заголовка (Різне) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_zzz_unmapped">
+		<text>Приховати заголовок "Різне"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_zzz_unmapped">
+		<text>Приховати заголовок "Різне"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_zzz_unmapped">
+		<text>Приховати заголовок "Різне"</text>
+	</string>
+	<string id="ui_mcm_hide_zzz_unmapped">
+		<text>Приховати заголовок "Різне"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_allow_collapse">
+		<text>Клік по заголовку згортає або розгортає категорію</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_allow_collapse">
+		<text>Клік по заголовку згортає або розгортає категорію</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_allow_collapse">
+		<text>Клік по заголовку згортає або розгортає категорію</text>
+	</string>
+	<string id="ui_mcm_allow_collapse">
+		<text>Клік по заголовку згортає або розгортає категорію</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_zzz_magazines">
+		<text>Текст заголовка (Магазини для зброї) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_zzz_magazines">
+		<text>Текст заголовка (Магазини для зброї) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_zzz_magazines">
+		<text>Текст заголовка (Магазини для зброї) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_zzz_magazines">
+		<text>Текст заголовка (Магазини для зброї) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_zzz_magazines">
+		<text>Приховати заголовок "Магазини для зброї"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_zzz_magazines">
+		<text>Приховати заголовок "Магазини для зброї"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_zzz_magazines">
+		<text>Приховати заголовок "Магазини для зброї"</text>
+	</string>
+	<string id="ui_mcm_hide_zzz_magazines">
+		<text>Приховати заголовок "Магазини для зброї"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_debug_runs">
+		<text>Налагодження: записувати визначення категорій у лог</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_debug_runs">
+		<text>Налагодження: записувати визначення категорій у лог</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_debug_runs">
+		<text>Налагодження: записувати визначення категорій у лог</text>
+	</string>
+	<string id="ui_mcm_debug_runs">
+		<text>Налагодження: записувати визначення категорій у лог</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_zzz_ammo_parts">
+		<text>Текст заголовка (Компоненти набоїв) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_zzz_ammo_parts">
+		<text>Текст заголовка (Компоненти набоїв) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_zzz_ammo_parts">
+		<text>Текст заголовка (Компоненти набоїв) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_label_zzz_ammo_parts">
+		<text>Текст заголовка (Компоненти набоїв) - використовуйте _ замість пробілу</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_zzz_ammo_parts">
+		<text>Приховати заголовок "Компоненти набоїв"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_zzz_ammo_parts">
+		<text>Приховати заголовок "Компоненти набоїв"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_zzz_ammo_parts">
+		<text>Приховати заголовок "Компоненти набоїв"</text>
+	</string>
+	<string id="ui_mcm_hide_zzz_ammo_parts">
+		<text>Приховати заголовок "Компоненти набоїв"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_empty_inventory">
+		<text>Завжди показувати всі заголовки: інвентар</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_empty_inventory">
+		<text>Завжди показувати всі заголовки: інвентар</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_empty_inventory">
+		<text>Завжди показувати всі заголовки: інвентар</text>
+	</string>
+	<string id="ui_mcm_show_empty_inventory">
+		<text>Завжди показувати всі заголовки: інвентар</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_empty_bodies">
+		<text>Завжди показувати всі заголовки: тіла</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_empty_bodies">
+		<text>Завжди показувати всі заголовки: тіла</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_empty_bodies">
+		<text>Завжди показувати всі заголовки: тіла</text>
+	</string>
+	<string id="ui_mcm_show_empty_bodies">
+		<text>Завжди показувати всі заголовки: тіла</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_empty_stashes">
+		<text>Завжди показувати всі заголовки: схованки та ящики</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_empty_stashes">
+		<text>Завжди показувати всі заголовки: схованки та ящики</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_empty_stashes">
+		<text>Завжди показувати всі заголовки: схованки та ящики</text>
+	</string>
+	<string id="ui_mcm_show_empty_stashes">
+		<text>Завжди показувати всі заголовки: схованки та ящики</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_keep_span">
+		<text>Зберігати розмір категорії під час вилучення предметів</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_keep_span">
+		<text>Зберігати розмір категорії під час вилучення предметів</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_keep_span">
+		<text>Зберігати розмір категорії під час вилучення предметів</text>
+	</string>
+	<string id="ui_mcm_keep_span">
+		<text>Зберігати розмір категорії під час вилучення предметів</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_keep_emptied">
+		<text>Залишати заголовки порожніх категорій до перевідкриття</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_keep_emptied">
+		<text>Залишати заголовки порожніх категорій до перевідкриття</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_keep_emptied">
+		<text>Залишати заголовки порожніх категорій до перевідкриття</text>
+	</string>
+	<string id="ui_mcm_keep_emptied">
+		<text>Залишати заголовки порожніх категорій до перевідкриття</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_compact_rows">
+		<text>Компактні рядки (висота заголовка за товщиною)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_compact_rows">
+		<text>Компактні рядки (висота заголовка за товщиною)</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_compact_rows">
+		<text>Компактні рядки (висота заголовка за товщиною)</text>
+	</string>
+	<string id="ui_mcm_compact_rows">
+		<text>Компактні рядки (висота заголовка за товщиною)</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_rules">
+		<text>Правила предметів</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_rules_enable">
+		<text>Увімкнути правила предметів</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_rules_rules_enable">
+		<text>Увімкнути правила предметів</text>
+	</string>
+	<string id="ui_mcm_cathdr_rules_rules_enable">
+		<text>Увімкнути правила предметів</text>
+	</string>
+	<string id="ui_mcm_rules_enable">
+		<text>Увімкнути правила предметів</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_rules_clear">
+		<text>Скинути всі правила</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_rules_rules_clear">
+		<text>Скинути всі правила</text>
+	</string>
+	<string id="ui_mcm_cathdr_rules_rules_clear">
+		<text>Скинути всі правила</text>
+	</string>
+	<string id="ui_mcm_rules_clear">
+		<text>Скинути всі правила</text>
+	</string>
+	<string id="st_fiut_pin_open">
+		<text>Закріпити</text>
+	</string>
+	<string id="st_fiut_pin_remove">
+		<text>Відкріпити</text>
+	</string>
+	<string id="st_fiut_pin_slot_1">
+		<text>У слот 1</text>
+	</string>
+	<string id="st_fiut_pin_slot_2">
+		<text>У слот 2</text>
+	</string>
+	<string id="st_fiut_pin_slot_3">
+		<text>У слот 3</text>
+	</string>
+	<string id="st_fiut_pin_slot_4">
+		<text>У слот 4</text>
+	</string>
+	<string id="st_fiut_pin_slot_5">
+		<text>У слот 5</text>
+	</string>
+	<string id="st_fiut_pin_slot_taken">
+		<text>Слот %s: %s</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_drag">
+		<text>Перетягування заголовків</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_drag">
+		<text>Перетягування заголовків</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag">
+		<text>Перетягування заголовків</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_enable">
+		<text>Перетягувати заголовки для зміни порядку</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_enable">
+		<text>Перетягувати заголовки для зміни порядку</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_enable">
+		<text>Перетягувати заголовки для зміни порядку</text>
+	</string>
+	<string id="ui_mcm_drag_enable">
+		<text>Перетягувати заголовки для зміни порядку</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_order_mode">
+		<text>Лише в режимі перестановки</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_order_mode">
+		<text>Лише в режимі перестановки</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_order_mode">
+		<text>Лише в режимі перестановки</text>
+	</string>
+	<string id="ui_mcm_drag_order_mode">
+		<text>Лише в режимі перестановки</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_on_block">
+		<text>Кидати будь-де в категорії (по заливці)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_on_block">
+		<text>Кидати будь-де в категорії (по заливці)</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_on_block">
+		<text>Кидати будь-де в категорії (по заливці)</text>
+	</string>
+	<string id="ui_mcm_drag_on_block">
+		<text>Кидати будь-де в категорії (по заливці)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_hold_ms">
+		<text>Затримка перед початком перетягування (мс)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_hold_ms">
+		<text>Затримка перед початком перетягування (мс)</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_hold_ms">
+		<text>Затримка перед початком перетягування (мс)</text>
+	</string>
+	<string id="ui_mcm_drag_hold_ms">
+		<text>Затримка перед початком перетягування (мс)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_ghost">
+		<text>Показувати копію заголовка біля курсора</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_ghost">
+		<text>Показувати копію заголовка біля курсора</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_ghost">
+		<text>Показувати копію заголовка біля курсора</text>
+	</string>
+	<string id="ui_mcm_drag_ghost">
+		<text>Показувати копію заголовка біля курсора</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_ghost_alpha">
+		<text>Прозорість копії заголовка</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_ghost_alpha">
+		<text>Прозорість копії заголовка</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_ghost_alpha">
+		<text>Прозорість копії заголовка</text>
+	</string>
+	<string id="ui_mcm_drag_ghost_alpha">
+		<text>Прозорість копії заголовка</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_debug">
+		<text>Налагодження: лог перетягування</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_debug">
+		<text>Налагодження: лог перетягування</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_debug">
+		<text>Налагодження: лог перетягування</text>
+	</string>
+	<string id="ui_mcm_drag_debug">
+		<text>Налагодження: лог перетягування</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_hide_arrows">
+		<text>Приховати стрілки вгору/вниз (лише перетягування)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_hide_arrows">
+		<text>Приховати стрілки вгору/вниз (лише перетягування)</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_hide_arrows">
+		<text>Приховати стрілки вгору/вниз (лише перетягування)</text>
+	</string>
+	<string id="ui_mcm_drag_hide_arrows">
+		<text>Приховати стрілки вгору/вниз (лише перетягування)</text>
+	</string>
+</string_table>

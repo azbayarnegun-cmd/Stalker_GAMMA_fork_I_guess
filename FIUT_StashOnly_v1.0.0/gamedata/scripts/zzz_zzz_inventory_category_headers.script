@@ -1,0 +1,4287 @@
+--[[
+	Category Headers for Sorting Plus
+
+	Stateless rebuild + row reservation + MCM configuration. MCM options
+	(registered in the companion file zzz_zzz_category_headers_mcm.script)
+	let you, per category:
+		- rename its header to any text you want (typed exactly as-is,
+		  no capitalization/symbol changes)
+		- give two categories the SAME custom name to merge them under
+		  one shared header (only works cleanly if they're already
+		  adjacent in Sorting Plus's own sort order)
+		- hide a category's header entirely (its items just flow into
+		  whatever's next to them, no label, no gap)
+	Plus a master enable/disable checkbox, per-category colors (mapped
+	from a companion item-highlight addon's color table), text
+	color/size sliders, and a header thickness slider.
+
+	If MCM isn't installed, or a category has no override set, behavior
+	is identical to the non-MCM version - auto-generated names, nothing
+	hidden.
+
+	NOTE: an earlier version of this had a "Change Category" right-click
+	menu feature letting you manually reassign an item to a different
+	category. Removed - direct access to Sorting Plus's own kind
+	override table (which would have let it physically place a
+	reassigned item correctly) was confirmed inaccessible via testing,
+	so an overridden item could only ever be relabeled while staying in
+	its original grid position, which caused enough confusing edge
+	cases (a stray extra header wherever it happened to sit) that it
+	wasn't worth keeping in its current form.
+
+	INSTALL
+	This script + the _mcm.script companion + zzz_category_headers.xml
+	(under configs\ui) as a normal addon. Filenames are prefixed so they
+	load after zzz_rax_sortingplus_mcm and zzz_ray_sortingplus_mcm.
+--]]
+
+printf("[CATHDR] SCRIPT FILE LOADED/EXECUTED | already_hooked=%s", tostring(_G.cathdr_already_loaded))
+
+if not _G.cathdr_already_loaded then
+	_G.cathdr_already_loaded = true
+
+
+	-- ============================================================
+	-- Settings
+	--
+	-- These are the fallback values used if MCM isn't installed at
+	-- all - kept matching the MCM defaults in
+	-- zzz_zzz_category_headers_mcm.script's DEFAULTS table for
+	-- consistency (update both together).
+	-- ============================================================
+	local HEADERS_ENABLED = true   -- kept in sync with MCM's master checkbox, if MCM is present
+
+	local HEADER_TXT_COLOR = GetARGB(255, 215, 215, 215)
+	local HEADER_FONT      = GetFontLetterica16Russian()
+
+	local HEADER_COLOR_ALPHA = 20         -- header background opacity, MCM-configurable
+	local HEADERS_COLORED    = true       -- if false, every header uses FLAT_HEADER_RGB instead of its category color
+	local FLAT_HEADER_RGB    = { r = 25, g = 25, b = 25 }
+	local HEADER_THICKNESS   = 50         -- percentage of the reserved row height the bar actually fills
+	local COMPACT_HEADERS    = false      -- reserve only the height the bar draws, instead of a whole row
+
+	-- Floor for the above, mirroring the MCM slider's minimum. Kept here
+	-- as well because refresh_settings clamps to it; see the note there.
+	local THICKNESS_MIN      = 45
+
+	local SECTION_TINT_ENABLED = true     -- tint the grid area under each header with that category's color
+	local SECTION_TINT_ALPHA   = 15       -- opacity of that tint
+	local SHOW_SECTION_WEIGHT  = true     -- show each category's total weight on the right of its header
+	local SHOW_HEADER_NAMES    = true     -- show the category name text on the bar (off = bar/weight only)
+	local COLLAPSE_ENABLED     = true     -- allow clicking a header to fold its items away
+	-- Draw headers for categories holding nothing, per container type.
+	local SHOW_EMPTY_INVENTORY = false
+	local SHOW_EMPTY_BODIES    = false
+	local SHOW_EMPTY_STASHES   = false
+
+	-- Hold a category's block at the size and row it had while the gaps
+	-- left behind by removed items are still standing. See the sticky
+	-- layout pass beside layout_hash for the whole story.
+	local KEEP_SPAN_ON_REMOVE  = true
+
+	-- Keep drawing the header of a category whose last item just left,
+	-- until the container is reopened. Independent of the three
+	-- SHOW_EMPTY_* toggles above: those draw every configured category
+	-- all the time, this one only keeps what was actually there.
+	local KEEP_EMPTIED_HEADERS = false
+
+	-- Seamless Inventory Sort's ammo-parts settings, cached. Read once
+	-- per settings change rather than per item: the classifier below is
+	-- the hottest thing this addon runs, and two ui_mcm.get calls inside
+	-- it meant thousands of them every time a big bag was rebuilt.
+	local AMMO_PARTS_ROW   = false
+
+	local AMMO_PARTS_ORDER = 9.5
+
+	-- Nudge for the reorder-mode button, applied on top of the slot worked
+	-- out from the sort-button strip. Driven by MCM (Button placement), so
+	-- it has to be declared up here where refresh_settings can reach it -
+	-- the rest of the button's tunables live down beside show_order_button.
+
+	-- Global (not local) so it can be flipped from the console too.
+	CATHDR_DEBUG_RUNS = false
+
+	-- Rebuild a missing cell area from where the cell is actually drawn.
+	-- See recover_area for the whole story. Set false to go back to the
+	-- old behaviour (such cells are logged and then left alone).
+	local RECOVER_ORPHAN_AREA = true
+
+	-- Which sections are currently folded, keyed by the header's
+	-- displayed label (that's what the player actually clicked, and it
+	-- stays stable across rebuilds even as items move around).
+	-- Persisted so a collapsed inventory stays collapsed across saves.
+	local collapsed_sections = {}
+
+	-- Categories whose header can never be folded. Favorites and
+	-- Loadout are pulled out of their natural position by Sorting Plus
+	-- and can end up merged with each other, so their section bounds
+	-- aren't reliable enough to fold safely.
+	local NON_COLLAPSIBLE_CATS = {
+		["zzz_pinned_favorites"] = true,
+		["001loadout"] = true,
+	}
+
+	-- Collapsing is disabled entirely in trade windows (their layout
+	-- behaves differently enough to misbehave). NOTE: this only
+	-- suppresses folding while displaying a trade bag - it never
+	-- clears collapsed_sections, so whatever you folded in your
+	-- personal inventory is still folded when you go back to it.
+	local function collapse_allowed_here(id)
+		return id == "actor_bag" or id == "npc_bag"
+	end
+
+	-- Where empty-category placeholders are worth drawing.
+	--
+	-- Three separate toggles, because the trade-off differs by context:
+	-- your own bag usually holds most categories, so placeholders fill
+	-- small gaps, whereas a corpse holds two or three and would be almost
+	-- entirely placeholders.
+	--
+	-- The trade window has no toggle and never shows them. A vendor stocks
+	-- a handful of categories, so headers for everything they do not sell
+	-- would bury the few lines that matter, and the player's side lists
+	-- only what is on offer rather than the whole bag.
+	--
+	-- Bodies and stashes share one container id (npc_bag), so they are
+	-- told apart by ui_inventory's own npc_is_box flag, set from
+	-- IsInvbox(obj) when the panel opens. Anything that is not a box - a
+	-- corpse, a living NPC - counts as a body. If the flag cannot be read
+	-- the stash setting wins, since containers are the more common case
+	-- and a placeholder is easier to notice and switch off than a missing
+	-- header is to diagnose.
+	--
+	-- Separate from container_allowed, which decides whether headers are
+	-- drawn at all: trade still gets headers for what is really there.
+	local function empty_categories_allowed(id)
+		if id == "actor_bag" then
+			return SHOW_EMPTY_INVENTORY
+		end
+
+		if id == "npc_bag" then
+			local gui = ui_inventory and ui_inventory.GUI
+			if gui and gui.npc_is_box == false then
+				return SHOW_EMPTY_BODIES
+			end
+			return SHOW_EMPTY_STASHES
+		end
+
+		return false
+	end
+
+	-- Where a header may outlive the last item in its category.
+	--
+	-- Same two containers collapsing is allowed in, and for the same
+	-- reason the trade window has no "always show all headers" toggle: a
+	-- vendor's side lists only what is on offer, and the player's side
+	-- only what is being sold, so a header left behind there describes a
+	-- section that was never really a section. Your own bag, a corpse and
+	-- a stash are the places you empty a category on purpose.
+	local function keep_emptied_allowed(id)
+		return KEEP_EMPTIED_HEADERS and (id == "actor_bag" or id == "npc_bag")
+	end
+
+	local function save_state(m_data)
+		m_data.cathdr_collapsed = collapsed_sections
+	end
+
+	local function load_state(m_data)
+		collapsed_sections = m_data.cathdr_collapsed or {}
+	end
+
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("load_state", load_state)
+
+	-- Rough per-character width for the current header font, used to
+	-- size the hover tooltip to its longest line. There's no text
+	-- measuring API anywhere in this codebase to call instead, so this
+	-- is an estimate - kept slightly generous so text doesn't clip.
+	local FONT_CHAR_W = 7
+
+	-- Which "kind"-sorted containers headers should actually apply to.
+	-- actor_bag = personal inventory, actor_trade_bag/npc_trade_bag =
+	-- both sides of a trade window, npc_bag = everything else that
+	-- uses this same container type (stashes, workbench stashes,
+	-- corpses/bodies).
+	local SHOW_IN_INVENTORY  = true
+	local SHOW_IN_CONTAINERS = true
+	local SHOW_IN_TRADE      = true
+
+	local function container_allowed(id)
+		local gui = ui_inventory and ui_inventory.GUI
+		return id == "npc_bag" and gui ~= nil and gui.mode == "loot"
+			and gui.npc_is_box == true
+	end
+
+	-- ============================================================
+	-- kind -> category lookup, read straight from sortingplus.ltx
+	-- ============================================================
+	-- Favorited/junked items are pulled out of their normal kind's block
+	-- by Sorting Plus - favorites to the very front, junk to the very
+	-- back. Declared up here because get_category needs them.
+	local FAVORITES_PSEUDO_CAT = "zzz_pinned_favorites"
+	local JUNK_PSEUDO_CAT = "zzz_pinned_junk"
+
+	local MAGAZINES_PSEUDO_CAT = "zzz_magazines"   -- loose (non-loadout) magazines
+	local AMMO_PARTS_PSEUDO_CAT = "zzz_ammo_parts" -- cases, bullets, powder (Seamless Inventory Sort)
+	local UNMAPPED_PSEUDO_CAT = "zzz_unmapped"   -- items whose kind isn't in sortingplus.ltx at all
+
+	local kind_to_category = {}
+
+	-- Sorting Plus's classifier, reached through its module table rather
+	-- than as a bare global - `function get_sort_kind()` at the top of
+	-- its script lands in that script's namespace, not _G. Seamless hooks
+	-- the same field, so going through the table picks up its ammo-parts
+	-- reclassification too.
+	local function sort_kind_of(sec)
+		local sp = zzz_rax_sortingplus_mcm
+		return sp and sp.get_sort_kind and sp.get_sort_kind(sec) or nil
+	end
+	local category_weight = {}   -- [cat_id] = real Sorting Plus sort weight, e.g. "070foods" -> 7
+
+	-- Per-section memo for get_category (see its comments). Declared here
+	-- so build_kind_map can invalidate it whenever the category config is
+	-- re-read.
+	local category_memo = {}
+
+	local function build_kind_map()
+		kind_to_category = {}
+		category_weight = {}
+		category_memo = {}
+
+		local ini = ini_file("sortingplus.ltx")
+		if not ini then
+			return
+		end
+
+		local n = ini:line_count("sortingplusmcm")
+		for i = 0, n - 1 do
+			local res, category, kinds_str = ini:r_line_ex("sortingplusmcm", i, "", "")
+			if res and category and kinds_str then
+				-- Strip any trailing ";comment" before splitting.
+				-- sortingplus.ltx writes e.g.
+				--   002mags = 0,mags;support for ARM
+				-- and only a few categories carry such a comment -
+				-- exactly the ones that were misbehaving. Left in, the
+				-- kind becomes "mags;support for ARM", so the real kind
+				-- "mags" never maps and those items fall through to the
+				-- unmapped fallback. Cheap to strip here and correct
+				-- whether or not the engine's parser already does it.
+				kinds_str = string.gsub(kinds_str, ";.*$", "")
+
+				local kinds = str_explode(kinds_str, ",")
+
+				category_weight[category] = tonumber(kinds[1])
+
+				-- Skip kinds already claimed by an earlier category. Stock
+				-- sortingplus.ltx ships 070foods with i_drink listed
+				-- TWICE; a user traced header overlap to exactly that
+				-- duplicate, so don't let a repeated entry re-register.
+				local seen_kinds = {}
+
+				for k = 2, #kinds do
+					local kind = kinds[k]
+					if kind then
+						-- trim stray whitespace/tabs around the token
+						kind = string.gsub(kind, "^%s+", "")
+						kind = string.gsub(kind, "%s+$", "")
+						if kind ~= "" and not seen_kinds[kind] then
+							seen_kinds[kind] = true
+							if kind_to_category[kind] == nil then
+								kind_to_category[kind] = category
+							end
+						end
+					end
+				end
+			end
+		end
+
+		-- one-shot report so the log confirms these two actually mapped
+		printf("[CATHDR] kind map | mags->%s loadout->%s w_pistol->%s",
+			tostring(kind_to_category["mags"]),
+			tostring(kind_to_category["loadout"]),
+			tostring(kind_to_category["w_pistol"]))
+	end
+
+	build_kind_map()
+
+	-- All category ids we might need an MCM entry for, read straight
+	-- from sortingplus.ltx's [sortingplusmcm] section. Excludes
+	-- 000favorites/999junk - those are real Sorting Plus categories
+	-- (used for its own sort order) but get_category above never
+	-- actually produces them for headers anymore, so an MCM field for
+	-- them would just be dead/misleading. Also excludes 080mutantfoods:
+	-- it is a linked follower of 070foods, so it is drawn under the Food
+	-- & Drinks label and colour (see canon_cat in the labelling pass) and
+	-- its own label/hide options would never be consulted. Rename or hide
+	-- the pair through the 070foods entry instead.
+	local EXCLUDED_CATEGORIES = {
+		["000favorites"] = true,
+		["999junk"] = true,
+		["080mutantfoods"] = true,
+		-- never produced: carried mags -> 001loadout, loose mags ->
+		-- zzz_magazines, so its options were dead and its label
+		-- duplicated "Magazines" in every translation
+		["002mags"] = true,
+	}
+
+	local function get_all_category_ids()
+		local ids = {}
+
+		local ini = ini_file("sortingplus.ltx")
+		if ini then
+			local n = ini:line_count("sortingplusmcm")
+			for i = 0, n - 1 do
+				local res, category, kinds_str = ini:r_line_ex("sortingplusmcm", i, "", "")
+				if res and category and not EXCLUDED_CATEGORIES[category] then
+					ids[#ids+1] = category
+				end
+			end
+		end
+
+		ids[#ids+1] = "zzz_pinned_favorites"
+		ids[#ids+1] = "zzz_pinned_junk"
+		ids[#ids+1] = MAGAZINES_PSEUDO_CAT
+		ids[#ids+1] = AMMO_PARTS_PSEUDO_CAT
+		ids[#ids+1] = UNMAPPED_PSEUDO_CAT
+
+		return ids
+	end
+
+	-- ============================================================
+	-- MCM settings cache: [cat_id] = { label = string_or_nil, hidden = bool }
+	-- Refreshed on load and whenever the player changes an MCM option.
+	-- If MCM isn't installed, this stays empty and everything falls
+	-- back to the auto-generated names with nothing hidden.
+	-- ============================================================
+	local category_overrides = {}
+
+	-- Sorting Plus takes its category order either from sortingplus.ltx
+	-- OR from its own MCM fields, depending on SortingPlus/useltx (see
+	-- zzz_rax_sortingplus_mcm.script, which does exactly this). We read
+	-- the ltx at load, so re-ordering categories in Sorting Plus's MCM
+	-- left our weights stale: the list then looked unsorted to the
+	-- boundary detection and the moved categories got labelled
+	-- Favorites. Mirror its logic here and re-read on every settings
+	-- change.
+	-- ============================================================
+	-- Categories that must always hold the SAME Sorting Plus weight.
+	--
+	-- Foods and Mutantfoods are presented as one section: they share
+	-- weight 7, Sorting Plus interleaves them, and Mutantfoods is drawn
+	-- under the Foods label so it never opens a second header. That only
+	-- holds while the two weights stay equal. Let them drift apart and
+	-- mutant food breaks out into a block of its own that has no header
+	-- at all - visibly a bug, and the state a stock install starts in,
+	-- since stock ships them at 7 and 8.
+	--
+	-- The first entry of a group is its leader: it is the one that
+	-- appears in the reorder list and whose value the others copy.
+	-- ============================================================
+	local LINKED_CATEGORIES = {
+		["070foods"]       = { "070foods", "080mutantfoods" },
+		["080mutantfoods"] = { "070foods", "080mutantfoods" },
+	}
+
+	-- Identity of a category for "is this the same section?" purposes.
+	-- Members of a linked group all answer with their leader, because
+	-- they are drawn as one section and Sorting Plus interleaves them.
+	local function canon_cat(cat_id)
+		local grp = LINKED_CATEGORIES[cat_id]
+		return grp and grp[1] or cat_id
+	end
+
+	-- Force every linked group onto its leader's weight, in memory and
+	-- in Sorting Plus's own settings.
+	--
+	-- Writing back matters: correcting only category_weight would fix
+	-- where we draw the headers while Sorting Plus carried on sorting
+	-- the items somewhere else, which is worse than leaving it alone.
+	--
+	-- Runs on every settings refresh rather than only during a reorder,
+	-- so a config that has drifted apart - a fresh install, a manual
+	-- edit in Sorting Plus's MCM page, a "Default" press - is repaired
+	-- as soon as it is seen instead of staying broken until someone
+	-- happens to move Food & Drinks with the arrows.
+	local linked_enforce_busy = false
+
+	local function enforce_linked_weights() end
+
+	local function report_duplicate_weights()
+		if not CATHDR_DEBUG_RUNS then
+			return
+		end
+
+		local tostr = tostring
+
+		-- Canonical categories only. A linked follower answers with its
+		-- leader, so the deliberate 070foods/080mutantfoods pair never
+		-- shows up here.
+		local by_w = {}
+		for cat, w in pairs(category_weight) do
+			if type(w) == "number" and canon_cat(cat) == cat then
+				local bucket = by_w[w]
+				if not bucket then
+					bucket = {}
+					by_w[w] = bucket
+				end
+				bucket[#bucket+1] = cat
+			end
+		end
+
+		for w, bucket in pairs(by_w) do
+			if #bucket > 1 then
+				-- Do the colliders all carry the same explicit MCM label? If
+				-- so this is the documented merge-by-name case and correct.
+				-- Only an override counts: two categories with no override
+				-- cannot share an auto-generated name, those come from the
+				-- (distinct) ids.
+				local shared_label = nil
+				local merged = true
+				local names = ""
+
+				for _, cat in ipairs(bucket) do
+					names = (names == "") and cat or (names .. " + " .. cat)
+
+					local ov = category_overrides[cat]
+					local lbl = ov and ov.label
+					if not (lbl and lbl ~= "") then
+						merged = false
+					elseif shared_label == nil then
+						shared_label = lbl
+					elseif shared_label ~= lbl then
+						merged = false
+					end
+				end
+
+				if merged then
+					printf("[CATHDR] dup | weight %s: %s - same custom name, merged on purpose",
+						tostr(w), names)
+				else
+					printf("[CATHDR] dup | weight %s: %s - COLLISION, expect overlapping or split headers. Fix: MCM > SortingPlus > Default > Save (useltx=%s)",
+						tostr(w), names,
+						tostr(ui_mcm and ui_mcm.get("SortingPlus/useltx")))
+				end
+			end
+		end
+	end
+
+	-- ============================================================
+	-- WHERE A CATEGORY'S WEIGHT LIVES
+	--
+	-- Every category keeps its sort weight in Sorting Plus except Ammo
+	-- Parts, which is Seamless Inventory Sort's and lives under its
+	-- ap_order option. That is the only thing that made Ammo Parts
+	-- special: it is a normal category that happens to store its number
+	-- somewhere else.
+	--
+	-- Routing reads and writes through these two means the rest of the
+	-- reorder code never has to know. It used to instead, which is why
+	-- Ammo Parts was pinned to Ammo + 0.5, moved when Ammo moved, and had
+	-- arrows that behaved unlike everyone else's.
+	-- ============================================================
+	local function weight_read(cat)
+		if cat == AMMO_PARTS_PSEUDO_CAT then
+			return ui_mcm.get("seamless_sort/siss_gaps/ap_order")
+		end
+		return ui_mcm.get("SortingPlus/" .. cat)
+	end
+
+	local function weight_write(cat, w) end
+
+	-- ============================================================
+	-- REORDER MODE, DRIVEN FROM OUTSIDE
+	--
+	-- order_edit_mode is a chunk local, which is right - nothing should
+	-- be able to set it by accident. But the pair panel now carries the
+	-- button that turns it on, and that panel lives in another script.
+	--
+	-- A bare `function` declared inside this chunk lands on THIS script's
+	-- namespace table rather than in _G, so it is reachable as
+	-- zzz_zzz_inventory_category_headers.toggle_order_mode() and nowhere
+	-- else. The local stays local; only a door onto it is published.
+	--
+	-- The body is the same work the button's own handler did, kept here
+	-- so both paths cannot drift apart.
+	-- ============================================================
+	function toggle_order_mode(cc) return false end
+
+	function is_order_mode()
+		return order_edit_mode
+	end
+
+	local function refresh_category_weights()
+		if not ui_mcm then
+			return
+		end
+
+		if ui_mcm.get("SortingPlus/useltx") == true then
+			build_kind_map()   -- ltx is authoritative; re-read in case it changed
+		else
+			for cat, _ in pairs(category_weight) do
+				local w = weight_read(cat)
+				if w then
+					category_weight[cat] = w
+				end
+			end
+		end
+
+		-- Ammo Parts is not in sortingplus.ltx, so build_kind_map never
+		-- gives it an entry - and without one it has no rank, no place in
+		-- ordered_categories and no arrows. Added here from its own
+		-- option, which is what makes it reorderable like anything else.
+		if AMMO_PARTS_ROW then
+			local w = weight_read(AMMO_PARTS_PSEUDO_CAT)
+			if w then
+				category_weight[AMMO_PARTS_PSEUDO_CAT] = w
+			end
+		else
+			category_weight[AMMO_PARTS_PSEUDO_CAT] = nil
+		end
+
+		enforce_linked_weights()
+	end
+
+	-- Bumped whenever settings change, so containers know to rebuild
+	-- even though their item layout (and therefore their signature)
+	-- hasn't changed at all.
+	local settings_gen = 0
+
+	-- ============================================================
+	-- Favoriting/unfavoriting an item has to force a rebuild too.
+	--
+	-- The rebuild only runs when layout_hash changes, and that hash is
+	-- built from sections and grid positions. Marking an item favorite
+	-- changes neither if Sorting Plus does not actually have to move it -
+	-- which is exactly what happens when the item is already at the top.
+	-- Favorite a weapon in a stash whose first category is Weapons and it
+	-- does not budge, so nothing looks different to the hash and the
+	-- header never updates until something else forces a refresh. That is
+	-- the reported "the second weapon stays in Weapons until I move it
+	-- out and back".
+	--
+	-- Classification is not in the hash on purpose: it would mean calling
+	-- get_category for every cell on the every-frame probe path. Instead
+	-- we take the signal from the source. Every route that toggles the
+	-- flags - the K/J keybinds and both context-menu actions - goes
+	-- through set_favorite/set_junk, so wrapping those two catches all of
+	-- them for the cost of one increment.
+	-- ============================================================
+	-- Upper bound (ms) on how long a reorder keeps retrying its saved
+	-- scroll position. The retry stops the moment the target is actually
+	-- reached, so on a normal reorder this cap is never approached - it
+	-- only matters when the target can never be reached, e.g. the bag
+	-- genuinely got shorter, where it is the safety valve that stops the
+	-- latch retrying forever.
+	--
+	-- It has to comfortably outlast the refill after On_Sort, which is
+	-- incremental (one AddItem at a time) and therefore scales with how
+	-- much the actor is carrying, plus the Update probe's 200ms throttle
+	-- and the rebuild that probe kicks off. Being generous is cheap here;
+	-- being short is what left the view stranded near the top.
+	local SCROLL_RESTORE_WINDOW = 1500
+
+	-- Re-run the inventory's current sort, so items land where their
+	-- (possibly just changed) classification says they belong.
+	--
+	-- Same call the reorder arrows use, and it inherits the same scroll
+	-- preservation: the position is saved here and re-asserted by the
+	-- Update hook as the grid refills, so toggling a favorite does not
+	-- throw the view back to the top.
+	--
+	-- Set to false to leave repositioning entirely to Sorting Plus's own
+	-- "resort" option, at the cost of the item not moving until the next
+	-- sort.
+	local RESORT_ON_FAVORITE_TOGGLE = true
+
+	local function resort_open_containers()
+		local gui = ui_inventory and ui_inventory.GUI
+		if not (gui and gui.sort_btn and gui:IsShown()) then
+			return
+		end
+
+		local saved = {}
+		for id, cc in pairs(gui.CC or {}) do
+			if cc and cc.scroll then
+				saved[id] = cc.scroll:GetCurrentScrollPos()
+			end
+		end
+
+		local idx = 1
+		for k = 1, #gui.sort_btn do
+			if gui.sort_btn[k]:GetCheck() then idx = k break end
+		end
+		gui:On_Sort(idx)
+
+		for id, pos in pairs(saved) do
+			local cc = gui.CC[id]
+			if cc and cc.scroll and pos and pos > 0 then
+				cc.cat_scroll_restore = pos
+				cc.cat_scroll_restore_until = time_global() + SCROLL_RESTORE_WINDOW
+				cc.cat_scroll_last_set = nil
+			end
+		end
+	end
+
+	local function hook_favorite_setters() end
+
+	local function refresh_settings()
+		settings_gen = settings_gen + 1
+		refresh_category_weights()
+		category_overrides = {}
+
+		-- Seamless's own options, snapshotted here so the per-item
+		-- classifier never has to ask MCM. Done before the no-MCM bail-out
+		-- below so the stand-alone defaults are always set.
+		if ui_mcm then
+			AMMO_PARTS_ROW = ui_mcm.get("seamless_sort/siss_general/enable") ~= false
+			                 and ui_mcm.get("seamless_sort/siss_gaps/ammo_parts_row") ~= false
+			AMMO_PARTS_ORDER = ui_mcm.get("seamless_sort/siss_gaps/ap_order") or 9.5
+		else
+			AMMO_PARTS_ROW = false
+			AMMO_PARTS_ORDER = 9.5
+		end
+
+		if not ui_mcm then
+			HEADERS_ENABLED = true
+			return
+		end
+
+		SHOW_EMPTY_INVENTORY = ui_mcm.get("CategoryHeaders/cathdr_general/show_empty_inventory") == true
+		SHOW_EMPTY_BODIES    = ui_mcm.get("CategoryHeaders/cathdr_general/show_empty_bodies") == true
+		SHOW_EMPTY_STASHES   = ui_mcm.get("CategoryHeaders/cathdr_general/show_empty_stashes") == true
+
+		KEEP_SPAN_ON_REMOVE  = ui_mcm.get("CategoryHeaders/cathdr_general/keep_span") ~= false
+		KEEP_EMPTIED_HEADERS = ui_mcm.get("CategoryHeaders/cathdr_general/keep_emptied") == true
+
+		local enabled = ui_mcm.get("CategoryHeaders/cathdr_general/enable")
+		HEADERS_ENABLED = (enabled ~= false)
+
+		for _, cat in ipairs(get_all_category_ids()) do
+			local label = ui_mcm.get("CategoryHeaders/cathdr_categories/label_" .. cat)
+			local hidden = ui_mcm.get("CategoryHeaders/cathdr_categories/hide_" .. cat)
+
+			-- Underscores in a user-typed label become spaces. X-Ray's
+			-- LTX parser (which MCM persists settings through) strips
+			-- real spaces out of values on read, so a literal space
+			-- typed into the box is lost by the time it reaches us -
+			-- "Food and Drinks" would come back as "FoodandDrinks".
+			-- Underscore is the workaround, and it matches what
+			-- display_name already does for auto-generated names.
+			-- Done here, once per settings change, rather than per
+			-- rebuild - gsub allocates a string every call.
+			if label and label ~= "" then
+				label = string.gsub(label, "_", " ")
+			end
+
+			category_overrides[cat] = { label = label, hidden = hidden and true or false }
+		end
+
+		local txt_a = ui_mcm.get("CategoryHeaders/cathdr_text/txt_alpha") or 255
+		local txt_r = ui_mcm.get("CategoryHeaders/cathdr_text/txt_red") or 215
+		local txt_g = ui_mcm.get("CategoryHeaders/cathdr_text/txt_green") or 215
+		local txt_b = ui_mcm.get("CategoryHeaders/cathdr_text/txt_blue") or 215
+		HEADER_TXT_COLOR = GetARGB(txt_a, txt_r, txt_g, txt_b)
+
+		local size_idx = ui_mcm.get("CategoryHeaders/cathdr_text/font_size") or 1
+		if size_idx >= 3 then
+			HEADER_FONT = GetFontLetterica25()
+			FONT_CHAR_W = 11
+		elseif size_idx >= 2 then
+			HEADER_FONT = GetFontLetterica18Russian()
+			FONT_CHAR_W = 8
+		else
+			HEADER_FONT = GetFontLetterica16Russian()
+			FONT_CHAR_W = 7
+		end
+
+		SHOW_HEADER_NAMES = ui_mcm.get("CategoryHeaders/cathdr_text/show_names") ~= false
+		COLLAPSE_ENABLED = ui_mcm.get("CategoryHeaders/cathdr_general/allow_collapse") ~= false
+		CATHDR_DEBUG_RUNS = ui_mcm.get("CategoryHeaders/cathdr_general/debug_runs") and true or false
+		-- also publish on _G: a bare assignment lands in THIS script's
+		-- namespace, so other files (the search module) could not see it
+		_G.CATHDR_DEBUG_RUNS = CATHDR_DEBUG_RUNS
+
+		local colored = ui_mcm.get("CategoryHeaders/cathdr_appearance/colored_headers")
+		HEADERS_COLORED = (colored ~= false)
+
+		HEADER_COLOR_ALPHA = ui_mcm.get("CategoryHeaders/cathdr_appearance/bg_opacity") or 20
+		-- Clamped, not just defaulted. The slider's floor moved up to 45,
+		-- but a value saved under the old range is still whatever it was -
+		-- MCM hands back the stored number, not the current minimum - so
+		-- anyone who had picked 10 would keep a sliver of a bar with no way
+		-- to tell why theirs looks different from everyone else's.
+		HEADER_THICKNESS = ui_mcm.get("CategoryHeaders/cathdr_appearance/thickness") or 50
+		if HEADER_THICKNESS < THICKNESS_MIN then
+			HEADER_THICKNESS = THICKNESS_MIN
+		end
+		COMPACT_HEADERS = ui_mcm.get("CategoryHeaders/cathdr_appearance/compact_rows") == true
+
+		local tint = ui_mcm.get("CategoryHeaders/cathdr_appearance/section_tint")
+		SECTION_TINT_ENABLED = (tint ~= false)
+		SECTION_TINT_ALPHA = ui_mcm.get("CategoryHeaders/cathdr_appearance/section_tint_alpha") or 15
+
+		SHOW_SECTION_WEIGHT = ui_mcm.get("CategoryHeaders/cathdr_weight/show_weight") ~= false
+
+		-- "or 0" only covers the option being missing entirely; a stored 0
+		-- is a number and passes through untouched.
+
+		local show_inv = ui_mcm.get("CategoryHeaders/cathdr_general/show_in_inventory")
+		SHOW_IN_INVENTORY = (show_inv ~= false)
+
+		SHOW_IN_CONTAINERS = ui_mcm.get("CategoryHeaders/cathdr_general/show_in_containers") ~= false
+		SHOW_IN_TRADE = ui_mcm.get("CategoryHeaders/cathdr_general/show_in_trade") ~= false
+
+		-- Last, deliberately: it reads category_overrides to tell a
+		-- deliberate merge from an accidental collision, and that table
+		-- is rebuilt above. Called from here rather than from
+		-- refresh_category_weights (where the linked-group pass lives)
+		-- because that runs before the labels are refreshed.
+		report_duplicate_weights()
+	end
+
+	refresh_settings()
+	-- NOT registering "on_game_start": it is not a registered AXR callback
+	-- in this build and only produces a stack trace in the log.
+	-- refresh_settings() already ran above, and actor_on_first_update
+	-- covers the first in-game refresh.
+	RegisterScriptCallback("actor_on_first_update", refresh_settings)
+	RegisterScriptCallback("on_option_change", refresh_settings)
+
+	-- Tried immediately in case Sorting Plus is already loaded, and again
+	-- on first update in case it is not - script load order between two
+	-- addons is not guaranteed. The hook guards itself against being
+	-- installed twice.
+	hook_favorite_setters()
+	RegisterScriptCallback("actor_on_first_update", hook_favorite_setters)
+
+	local function display_name(cat_id)
+		if not cat_id then
+			return "Other"
+		end
+
+		local clean = tostring(cat_id)
+		clean = string.gsub(clean, "^%d+", "")
+		clean = string.gsub(clean, "_", " ")
+		clean = string.gsub(clean, "^%l", string.upper)
+
+		if clean == "" then
+			return tostring(cat_id)
+		end
+
+		return clean
+	end
+
+	-- Returns the raw category id (for MCM override lookup) and the
+	-- auto-generated default display name for it. obj is optional
+	-- (only needed for the loadout-mag special case). Third return
+	-- value is true when the item's actual grid position is NOT
+	-- predictable from its category id - true for an unmapped kind,
+	-- whose real position Sorting Plus itself doesn't have a fixed
+	-- rule for either. Excluded from the boundary-detection ordering
+	-- logic (see compute_display_runs) since letting it participate
+	-- could break detection for genuinely-ordered categories around it.
+	--
+	-- IMPORTANT: this used to also special-case Favorites/Junk into
+	-- their own "000favorites"/"999junk" groups, matching those keys
+	-- in sortingplus.ltx. Removed - confirmed by testing that Sorting
+	-- Plus doesn't actually relocate favorited/junked items to a
+	-- shared section, it just marks them in place with a highlight.
+	-- Labeling just that one item differently split its normal kind's
+	-- block in two around it. Loadout (currently-loaded magazines) is
+	-- kept since that genuinely is a separate physical group.
+	-- Per-section memo for the category lookup below is declared further
+	-- up (beside kind_to_category) so build_kind_map can clear it.
+	-- Without it, every rebuild re-ran the kind lookup AND display_name's
+	-- gsub chain (which allocates strings) for every item, several times
+	-- over - a meaningful chunk of the garbage that was crashing the game.
+
+	-- Third return value = "position-exempt": true means this item's
+	-- physical grid position tells us nothing reliable, so it must not
+	-- feed the displacement (Favorites/Junk) detection.
+	--
+	-- Magazines are exempt. A magazine's category legitimately flips as
+	-- you use it - carried in a loadout it sorts as "loadout", otherwise
+	-- by its own kind, and in mag overhauls that kind is w_ammo (Ammo),
+	-- not "mags", so the jump is large. The item doesn't physically move
+	-- until something triggers a re-sort though, so for a while it sits
+	-- in the Loadout block while claiming Ammo's sort weight. That looks
+	-- identical to a favorited item pulled to the front, which is why
+	-- mags taken out of a loadout were getting a bogus "Favorites"
+	-- header in the wrong colour.
+	-- Seamless Inventory Sort's ammo-parts settings. Both are snapshots
+	-- taken in refresh_settings; see the declarations at the top.
+	local function ammo_parts_order()
+		return AMMO_PARTS_ORDER
+	end
+
+	-- ============================================================
+	-- Which category an item belongs to.
+	--
+	-- Split in two, because the answer is part fixed and part live.
+	--
+	-- static_category holds everything that only depends on the section
+	-- and the category config: is it a magazine, is it an ammo
+	-- component, and which category does its kind map to. All of that is
+	-- ini reads, so it is memoised per section and thrown away by
+	-- build_kind_map whenever the config is re-read.
+	--
+	-- category_of applies the parts that can change without the section
+	-- changing - carried magazine, favorite, junk - on top.
+	--
+	-- This ordering is the point. The old single function did two
+	-- ui_mcm.get calls, two or three SYS_GetParam reads and a
+	-- magazine_binder lookup for EVERY item BEFORE it consulted its own
+	-- memo, so the memo only ever saved the kind lookup. With a few
+	-- hundred items in a bag, and the classifier running twice per item
+	-- per rebuild, that was the bulk of the hitch when a container
+	-- opened. The memo is now the first thing read and covers every ini
+	-- read; what is left is table lookups.
+	-- ============================================================
+	local function static_category(sec)
+		local st = category_memo[sec]
+		if st then
+			return st
+		end
+
+		local is_mag = SYS_GetParam(1, sec, "is_mag") and true or false
+
+		-- magazine_binder's is_magazine reads the very same is_mag flag,
+		-- so it is only worth asking when the flag itself said no. It is
+		-- consulted at all because that is what magazine_binder uses to
+		-- decide what counts as a magazine.
+		local mb = magazine_binder
+		local mag_section = is_mag
+			or (mb and mb.is_magazine and mb.is_magazine(sec) and true or false)
+
+		local cat, name, exempt
+		if is_mag then
+			-- loose magazines get their own section rather than being
+			-- lumped in with real ammo (mag overhauls give magazines
+			-- kind = w_ammo, so they'd otherwise land under Ammo)
+			cat, name, exempt = MAGAZINES_PSEUDO_CAT, "Magazines", true
+		else
+			local kind = sort_kind_of(sec) or SYS_GetParam(0, sec, "kind") or "na"
+			local c = kind_to_category[kind]
+			if c then
+				cat, name, exempt = c, display_name(c), false
+			else
+				-- Unrecognized kind (an item from a mod that isn't listed in
+				-- sortingplus.ltx at all) gets its own pseudo-category rather
+				-- than being folded into a real one: Sorting Plus has no
+				-- placement rule for it either, so its position could be
+				-- anywhere and would otherwise break detection for the
+				-- genuinely-ordered categories around it.
+				cat, name, exempt = UNMAPPED_PSEUDO_CAT, "Misc", true
+			end
+		end
+
+		st = {
+			cat, name, exempt,
+			mag = mag_section,
+			-- Read whether or not the ammo-parts row is currently on: it is
+			-- one ini lookup per SECTION, and caching it unconditionally
+			-- keeps the memo valid across an MCM toggle of that option.
+			comp = SYS_GetParam(1, sec, "is_component") and true or false,
+		}
+		category_memo[sec] = st
+		return st
+	end
+
+	-- id is the cell's own object id. It is only used for the carried-
+	-- magazine lookup, which is keyed by id anyway, so no game object has
+	-- to be resolved here at all - the per-item level.object_by_id the
+	-- old signature forced on every caller is gone.
+	--
+	-- Returns: category id, default display name, position-exempt.
+	-- "Position-exempt" means this item's physical grid position tells us
+	-- nothing reliable, so it must not feed the displacement
+	-- (Favorites/Junk) detection.
+	local function category_of(sec, id)
+		local st = static_category(sec)
+
+		-- Seamless Inventory Sort can give ammo components (cases,
+		-- bullets, powder) their own sort rank: it flags them with
+		-- is_component, reclassifies their sort kind to "ammo_parts" and
+		-- injects item_order["ammo_parts"] = ap_order. They share kind
+		-- w_ammo with real ammo, so without this we resolved them to Ammo,
+		-- saw them sitting far from the Ammo block, and mislabelled them
+		-- as displaced.
+		if AMMO_PARTS_ROW and st.comp then
+			return AMMO_PARTS_PSEUDO_CAT, "Ammo Parts", false
+		end
+
+		-- A carried magazine has to be a magazine first.
+		--
+		-- magazine_binder's carried_mags registry is keyed by object id
+		-- and saved with the game (mdata.carried_mags). The engine recycles
+		-- ids once objects are destroyed, and entries only get cleared when
+		-- se_item_on_unregister actually fires for that object - so a save
+		-- can carry an id whose original magazine is long gone. Whatever
+		-- new object later inherits that id then answers true to
+		-- is_carried_mag.
+		--
+		-- magazine_binder never trips over this because it only ever asks
+		-- about magazines. We asked about every item, which is how an
+		-- unrelated knife or artifact ended up classified as Loadout:
+		-- misplaced, and position_exempt so it was never even flagged as
+		-- displaced - it just silently sat in the wrong block.
+		if st.mag and id then
+			local mb = magazine_binder
+			if mb and mb.is_carried_mag and mb.is_carried_mag(id) then
+				return "001loadout", "Loadout", true
+			end
+		end
+
+		-- Favorited and junked items are pulled out of their kind's block
+		-- by Sorting Plus, so ask it which they are rather than trying to
+		-- infer it from where they ended up. Inference needs the
+		-- displacement to actually show, and sometimes it cannot: a
+		-- container holding only favorited items has one run and nothing to
+		-- compare it against, and two favorited items whose kinds happen to
+		-- already be in ascending order look perfectly sorted.
+		--
+		-- Gated on SORTFAVS/SORTJUNK because those decide whether Sorting
+		-- Plus actually repositions the item: with sorting off, a favorited
+		-- item stays in its normal category and labelling it Favorites
+		-- would put a header where no block exists.
+		--
+		-- Both are plain table lookups on Sorting Plus's side, so they stay
+		-- live per call rather than being folded into the section memo.
+		local sp = zzz_rax_sortingplus_mcm
+		if sp then
+			if sp.SORTFAVS and sp.is_favorite and sp.is_favorite(sec) then
+				return FAVORITES_PSEUDO_CAT, "Favorites", true
+			end
+			if sp.SORTJUNK and sp.is_junk and sp.is_junk(sec) then
+				return JUNK_PSEUDO_CAT, "Junk", true
+			end
+		end
+
+		return st[1], st[2], st[3]
+	end
+
+	-- ============================================================
+	-- Weight of everything represented by one grid cell.
+	--
+	-- A cell isn't always one item: stacked items live in ci.childs,
+	-- which is a mixed structure (keyed by real object id for most
+	-- items, but plain array entries holding round-counts for ammo),
+	-- so there's no single clean way to weigh a stack. Strategy:
+	--   - the cell's own object via obj:weight(), which correctly
+	--     includes attachments and loaded ammo
+	--   - each child that resolves to a real object, likewise
+	--   - anything that doesn't resolve falls back to the section's
+	--     base inv_weight
+	-- Totals for plain stacks are exact; heavily-stacked ammo may be
+	-- slightly approximate.
+	-- ============================================================
+	local base_weight_memo = {}
+
+	local function base_weight(sec)
+		local w = base_weight_memo[sec]
+		if w == nil then
+			w = SYS_GetParam(2, sec, "inv_weight") or 0
+			base_weight_memo[sec] = w
+		end
+		return w
+	end
+
+	local function cell_weight(ci)
+		local total = 0
+
+		local obj = ci.ID and level.object_by_id(ci.ID)
+		if obj then
+			total = total + (obj:weight() or 0)
+		else
+			total = total + base_weight(ci.section)
+		end
+
+		if ci.childs then
+			for id, _ in pairs(ci.childs) do
+				local cobj = type(id) == "number" and level.object_by_id(id)
+				if cobj then
+					total = total + (cobj:weight() or 0)
+				else
+					total = total + base_weight(ci.section)
+				end
+			end
+		end
+
+		return total
+	end
+
+	-- ============================================================
+	-- Total trade value of everything in one cell.
+	--
+	-- Uses utils_item.get_item_cost with the container's own
+	-- trade_profile, which is what the base game itself uses for trade
+	-- totals - so this is the trader's actual price (condition,
+	-- discounts and all), not the raw base cost. Only items the trader
+	-- will actually deal in are counted (trade status 4), matching the
+	-- game's own definition of sellable.
+	-- ============================================================
+	local function cell_value(self, ci)
+		if not (utils_item and utils_item.get_item_cost and self.trade_profile) then
+			return 0
+		end
+
+		local ids = { [ci.ID] = true }
+		if ci.childs then
+			for id, _ in pairs(ci.childs) do
+				if type(id) == "number" then
+					ids[id] = true
+				end
+			end
+		end
+
+		local total = 0
+		for id, _ in pairs(ids) do
+			local obj = id and level.object_by_id(id)
+			if obj then
+				local ok = true
+				if utils_item.get_item_trade_status then
+					ok = (utils_item.get_item_trade_status(obj, self.trade_profile) == 4)
+				end
+				if ok then
+					total = total + (utils_item.get_item_cost(obj, self.trade_profile) or 0)
+				end
+			end
+		end
+
+		return total
+	end
+
+	-- What each container shows on its headers:
+	--   "money"  - player's side of a trade window
+	--   "none"   - trader's side (a combined price for the vendor's
+	--              whole stock isn't useful, and weight is irrelevant
+	--              once you're trading)
+	--   "weight" - everywhere else
+	local function header_metric(id)
+		if id == "actor_trade_bag" then
+			return "money"
+		elseif id == "npc_trade_bag" then
+			return "none"
+		end
+		return "weight"
+	end
+
+	-- ============================================================
+	-- Localised weight unit.
+	--
+	-- The base game reads this from the string table
+	-- (ui_inventory.script:245, `local weight_unit = gts("st_kg")`);
+	-- a hardcoded "kg" showed English units on the three non-English
+	-- translations this addon ships. " RU" stays hardcoded because the
+	-- base game hardcodes it too (ui_inventory.script:3741).
+	--
+	-- Resolved lazily and memoised: this file can load before the
+	-- string tables are ready, and translate_string echoes the id back
+	-- when it cannot resolve one, so that case falls back to "kg"
+	-- rather than printing "st_kg" on every header.
+	-- ============================================================
+	local weight_unit = nil
+
+	local function unit_kg()
+		if not weight_unit then
+			local u = game.translate_string("st_kg")
+			weight_unit = (u and u ~= "" and u ~= "st_kg") and u or "kg"
+		end
+		return weight_unit
+	end
+
+	-- ============================================================
+	-- Minimum height for anything the player has to hit with the
+	-- cursor: the collapse indicator, the two reorder arrows, and the
+	-- weight label (which doubles as the tooltip hover target).
+	--
+	-- These used to be sized to the drawn bar, i.e. to the Appearance
+	-- "thickness" setting. That slider used to go down to 10, which on a
+	-- normal grid is a ~5px tall hitbox - nothing looks broken, the
+	-- clicks just stop landing. Thickness is cosmetic now and the hit
+	-- targets keep their own floor, clamped so they can never spill
+	-- out of the reserved row and eat clicks meant for the item below.
+	--
+	-- The slider's floor has since risen to 45, which on any sane grid
+	-- clears this on its own. The floor stays regardless: it costs a
+	-- comparison, and it is what keeps a tiny grid or a future range
+	-- change from quietly breaking clicks again.
+	--
+	-- The boxes are invisible (no <texture> on those xml nodes), so
+	-- growing them changes nothing on screen; the text inside is
+	-- vertically centred so it stays on the bar whatever the box does.
+	-- ============================================================
+	local HIT_MIN_H = 18
+
+	-- ============================================================
+	-- How much room one header takes, and how the bar sits in it.
+	--
+	-- Classic behaviour: a header reserves a whole grid row and paints
+	-- the bar inside it, vertically centred. The thickness slider only
+	-- decides how much of that row gets painted, so turning it down buys
+	-- empty space rather than a tighter list.
+	--
+	-- Compact behaviour: the reservation follows the bar. A header takes
+	-- the height it actually draws plus one grid line, and everything
+	-- below moves up by the difference.
+	--
+	-- The row count comes back as a FRACTION of a row, which is the whole
+	-- trick. Every placement in the rebuild already works in rows, and
+	-- the row-to-pixel conversion is linear:
+	--
+	--   y(row) = (row - 1) * grid_size + row * grid_line
+	--          = row * pitch - grid_size
+	--
+	-- so a fractional row lands exactly where the pixels say it should
+	-- and every existing offset, tint span and shift keeps working with
+	-- no other arithmetic touched. At 100% thickness this returns exactly
+	-- 1 and the result is identical to the classic layout, which is also
+	-- what it returns whenever compact rows are off.
+	--
+	-- Floored so the slot can always hold a HIT_MIN_H hit target. Below
+	-- that the collapse indicator and reorder arrows would have to hang
+	-- outside the header and start eating clicks meant for the item
+	-- underneath - the failure HIT_MIN_H exists to prevent. So the list
+	-- keeps tightening as thickness comes down until the header is as
+	-- short as it can be and still be clicked, and then stops.
+	--
+	-- Returns: height in rows, height in pixels, bar height in pixels.
+	-- ============================================================
+	local function header_metrics(self)
+		local grid_size = self.grid_size or 0
+		local grid_line = self.grid_line or 0
+		local pitch = grid_size + grid_line
+		local bar = grid_size * (HEADER_THICKNESS / 100)
+
+		if pitch <= 0 then
+			return 1, pitch, bar
+		end
+
+		local slot = pitch
+
+		if COMPACT_HEADERS then
+			slot = bar + grid_line
+
+			local floor_h = HIT_MIN_H + grid_line
+			if slot < floor_h then
+				slot = floor_h
+			end
+			if slot > pitch then
+				slot = pitch
+			end
+		end
+
+		-- The grid line is the gap to whatever comes next, so the bar only
+		-- ever gets what is left of the slot. Matters at the floor above,
+		-- where the slot is wider than the thickness asked for.
+		if bar > slot - grid_line then
+			bar = slot - grid_line
+		end
+
+		return slot / pitch, slot, bar
+	end
+
+	-- ============================================================
+	-- Real text measurement.
+	--
+	-- Widths here used to be estimated as (character count x
+	-- FONT_CHAR_W), on the basis that no measuring API existed. It
+	-- does: the base game sizes its right-click menu to its longest
+	-- entry with AdjustWidthToText + GetWidth (utils_ui.script:3491),
+	-- which is the identical problem.
+	--
+	-- The estimate could only ever be wrong, because the font is not
+	-- monospaced - a W is roughly three times the width of an i, and
+	-- the count treats them the same. FONT_CHAR_W was therefore kept
+	-- deliberately generous so text would not clip, which is why the
+	-- weight tooltip always came out too wide, and why the [-] hitbox
+	-- reached further than the glyph it draws.
+	--
+	-- MEASURE ON A REAL TEXT WINDOW, NOT ON A STATIC.
+	--
+	-- The first attempt at this measured through
+	-- CUIStatic:TextControl() and silently returned the fallback every
+	-- single time, because that does not hand back something carrying
+	-- AdjustWidthToText. Nothing broke and nothing changed on screen,
+	-- which is the worst way for a guard to fail - it was only caught
+	-- by measuring a screenshot (192 canvas units wide, exactly the
+	-- estimate to within 2px, versus 129 for the real thing).
+	--
+	-- The base game gets a genuine CUITextWnd from GetTextItem()
+	-- (utils_ui.script:3541); InitTextWnd returns the same kind of
+	-- object, so the measuring controls are built with that and used
+	-- DIRECTLY - no TextControl() hop.
+	--
+	-- Measuring resizes the control it is called on, so these are
+	-- throwaways that never display anything. They are parked far
+	-- below the 768-unit canvas rather than hidden, because whether a
+	-- hidden window still measures correctly is one more thing that
+	-- could silently return zero, and off-canvas cannot.
+	--
+	-- Every caller still passes the estimate as a fallback, so a build
+	-- without these methods behaves exactly as it did before.
+	-- ============================================================
+	local MEASURE_PARK_Y = 4000
+
+	local function measure_text(txt, s, fallback)
+		if not (txt and s) then
+			return fallback
+		end
+
+		if not (txt.SetText and txt.AdjustWidthToText and txt.GetWidth) then
+			return fallback
+		end
+
+		txt:SetText(s)
+		txt:AdjustWidthToText()
+
+		local w = txt:GetWidth()
+		if not w or w <= 0 then
+			return fallback
+		end
+
+		return math.ceil(w)
+	end
+
+	-- Header glyphs are only ever "[-]", "[+]", "^" and "v", so their
+	-- widths are worth remembering rather than re-measuring on every
+	-- header of every rebuild. Font changes bump settings_gen, which
+	-- is what invalidates them.
+	local glyph_w_memo = {}
+	local glyph_w_gen = -1
+
+	-- align_t lands in ui_inventory's namespace, not _G (a bare
+	-- assignment always does). "vc" = 1 = vertical centre.
+	local function align_vcenter(txt)
+		if not (txt and txt.SetVTextAlignment) then
+			return
+		end
+		local t = ui_inventory and ui_inventory.align_t
+		txt:SetVTextAlignment((t and t["vc"]) or 1)
+	end
+
+	-- ============================================================
+	-- Categories that are ALWAYS hidden, not user-configurable.
+	--
+	-- Empty now. 080mutantfoods used to live here: it shares its sort
+	-- weight with 070foods, so Sorting Plus genuinely interleaves the
+	-- two, and showing a Mutantfoods header produced duplicate and
+	-- fragmented Food/Drinks headers. Hiding it made its items flow into
+	-- the Food/Drinks group, which was right whenever ordinary food was
+	-- also in the bag - but a hidden run draws no header at all, so a bag
+	-- holding only mutant meat ended up with no food header.
+	--
+	-- It is handled by canon_cat in the labelling pass instead: a linked
+	-- follower now borrows its leader's label, which suppresses the
+	-- duplicate header the same way while still drawing one when the
+	-- follower is on its own.
+	--
+	-- Kept as a hook for any category that genuinely must never show.
+	-- ============================================================
+	local FORCE_HIDDEN_CATEGORIES = {}
+
+	-- Applies any MCM override for this category id on top of the
+	-- auto-generated default. Returns the effective label to show and
+	-- whether this category's header should be suppressed entirely.
+	local function get_effective_label(cat_id, default_label)
+		if FORCE_HIDDEN_CATEGORIES[cat_id] then
+			return default_label, true
+		end
+		local override = category_overrides[cat_id]
+		if not override then
+			return default_label, false
+		end
+
+		local label = default_label
+		if override.label and override.label ~= "" then
+			label = override.label
+		end
+
+		return label, override.hidden
+	end
+
+	-- ============================================================
+	-- Per-category header background colors, mapped from an item-
+	-- highlight addon's kind-based color table onto our own
+	-- sortingplus.ltx-based category ids. Alpha bumped up (that addon
+	-- uses low alpha suited to a subtle tint layered over an item
+	-- icon; a header is a solid bar with nothing under it, so it
+	-- needs to be much more opaque to read clearly) - hue/RGB kept
+	-- as-is from the source so headers still visually match the
+	-- item highlights.
+	-- ============================================================
+	local CATEGORY_RGB = {
+		["001loadout"]     = { r = 50,  g = 160, b = 110 },
+		["002mags"]        = { r = 70,  g = 130, b = 210 },
+		["010weapons"]     = { r = 55,  g = 95,  b = 150 },
+		["020outfits"]     = { r = 40,  g = 130, b = 70 },
+		["030artifacts"]   = { r = 170, g = 40,  b = 170 },
+		["040devices"]     = { r = 150, g = 70,  b = 190 },
+		["050tools"]       = { r = 110, g = 110, b = 110 },
+		["060medical"]     = { r = 210, g = 50,  b = 50 },
+		["070foods"]       = { r = 70,  g = 170, b = 50 },
+		["080mutantfoods"] = { r = 140, g = 100, b = 40 },
+		["090quest"]       = { r = 190, g = 190, b = 90 },
+		["100notes"]       = { r = 190, g = 190, b = 90 },
+		["110ammo"]        = { r = 190, g = 170, b = 40 },
+		["120mutantparts"] = { r = 150, g = 70,  b = 40 },
+		["130misc"]        = { r = 90,  g = 90,  b = 90 },
+		["140upgrades"]    = { r = 90,  g = 190, b = 190 },
+		["150parts"]       = { r = 170, g = 90,  b = 40 },
+
+		["zzz_magazines"]        = { r = 120, g = 85,  b = 30 },
+		["zzz_ammo_parts"]       = { r = 150, g = 130, b = 35 },
+		["zzz_pinned_favorites"] = { r = 176, g = 238, b = 26 },
+		["zzz_pinned_junk"]      = { r = 200, g = 0,   b = 0 },
+	}
+
+	local DEFAULT_CATEGORY_RGB = { r = 70, g = 70, b = 70 }   -- fallback for any category not in the table above
+
+	local function color_for_category(cat_id)
+		local rgb = HEADERS_COLORED and (CATEGORY_RGB[cat_id] or DEFAULT_CATEGORY_RGB) or FLAT_HEADER_RGB
+		return GetARGB(HEADER_COLOR_ALPHA, rgb.r, rgb.g, rgb.b)
+	end
+
+	local function tint_color_for_category(cat_id)
+		local rgb = HEADERS_COLORED and (CATEGORY_RGB[cat_id] or DEFAULT_CATEGORY_RGB) or FLAT_HEADER_RGB
+		return GetARGB(SECTION_TINT_ALPHA, rgb.r, rgb.g, rgb.b)
+	end
+
+	-- ============================================================
+	-- Draw/reuse header slot #cnt at the given row with the given label
+	-- ============================================================
+	-- Parsed on first actual use rather than at main-chunk load: this
+	-- file can load mid-on_game_start (see init_settings), and parsing
+	-- UI XML while other UI scripts are still initialising is exactly
+	-- the kind of cascade that broke Enhanced GUI compatibility.
+	local header_xml = nil
+
+	local function get_header_xml()
+		if not header_xml then
+			header_xml = CScriptXmlInit()
+			header_xml:ParseFile("zzz_category_headers.xml")
+		end
+		return header_xml
+	end
+	-- ============================================================
+	-- Tint z-order.
+	--
+	-- Tints and item cells are both children of self.st, and X-Ray draws
+	-- siblings in the order they were attached - there is no z-index to
+	-- set afterwards. So whichever was created first ends up underneath.
+	--
+	-- Cells are created lazily, as the bag grows to hold more items than
+	-- it ever has before (UICellContainer:AddItem). Tints were created
+	-- lazily too, on the first rebuild that needed them. Whether a given
+	-- item drew above or below its tint therefore came down to which
+	-- happened to be created first - which is why the same item looked
+	-- right on one open and washed out on the next.
+	--
+	-- Fix: build the whole tint pool immediately after InitControls,
+	-- when self.st exists but no cell does. Every cell created from then
+	-- on attaches later and so always draws on top.
+	--
+	-- Pool size covers every category the ltx defines plus the pseudo
+	-- ones, with headroom. Past that, ShowSectionTint still creates on
+	-- demand and that tint keeps the old z-order problem - a deliberate
+	-- trade so an unusual setup degrades in appearance instead of
+	-- failing outright.
+	-- ============================================================
+	local TINT_POOL_SIZE = 32
+
+	-- The four containers headers can ever apply to, independent of the
+	-- MCM toggles that decide whether they are shown right now.
+	--
+	-- The tint pool is gated on THIS rather than on container_allowed,
+	-- because the pool can only be built at construction and the GUI is
+	-- constructed once per session: gating on a live toggle would leave a
+	-- container the player enables later with no pool, and therefore back
+	-- to the mis-layered tints this exists to prevent.
+	local TINTABLE_CONTAINERS = {
+
+		["npc_bag"]         = true,
+
+
+	}
+
+	local base_InitControls = utils_ui.UICellContainer.InitControls
+
+	function utils_ui.UICellContainer:InitControls(owner, prof, ele_base)
+		base_InitControls(self, owner, prof, ele_base)
+
+		-- self.ID is assigned at the top of __init, before this runs, so
+		-- it is safe to test here. Other cell containers in the game (and
+		-- other addons') get nothing attached.
+		if not (self.st and TINTABLE_CONTAINERS[self.ID]) then
+			return
+		end
+
+		local tints = {}
+		for i = 1, TINT_POOL_SIZE do
+			local t = get_header_xml():InitStatic("header", self.st)
+			t:TextControl():SetText("")
+			t:Show(false)
+			tints[i] = t
+		end
+		self.cat_tints = tints
+	end
+
+	-- ============================================================
+	-- Draw/reuse a tint band behind one category's rows.
+	-- ============================================================
+	function utils_ui.UICellContainer:ShowSectionTint(cnt, first_row, row_count, color)
+		self.cat_tints = self.cat_tints or {}
+
+		local t = self.cat_tints[cnt]
+		if not t then
+			-- Beyond the pre-created pool. Draws above items rather than
+			-- behind them; see the note on TINT_POOL_SIZE.
+			t = get_header_xml():InitStatic("header", self.st)
+			t:TextControl():SetText("")
+			self.cat_tints[cnt] = t
+		end
+
+		t:SetTextureColor(color)
+
+		local grid_size = self.grid_size
+		local grid_line = self.grid_line
+		local y = (first_row - 1) * grid_size + first_row * grid_line
+		local h = row_count * grid_size + (row_count - 1) * grid_line
+		local w = self.prof:GetWidth()
+
+		t:SetWndPos(vector2():set(0, y))
+		t:SetWndSize(vector2():set(w, h))
+		t:Show(true)
+	end
+	-- ============================================================
+	-- Category reordering.
+	--
+	-- Sorting Plus takes its order either from sortingplus.ltx or from
+	-- its own MCM fields, chosen by SortingPlus/useltx. We write the MCM
+	-- fields (ui_mcm.set) and then fire on_option_change, which Sorting
+	-- Plus is registered for - it rebuilds item_order and ab_k exactly as
+	-- if the values had been edited by hand in the menu.
+	--
+	-- Every category is renumbered into a fresh contiguous sequence on
+	-- each move, not just the two being swapped. That is deliberate: it
+	-- makes duplicate weights structurally impossible, and duplicates are
+	-- what caused the overlapping/splitting headers we chased for weeks.
+	-- ============================================================
+	local order_edit_mode = false
+
+	-- The reorder toggle used to be a button of its own at the end of
+	-- Sorting Plus's sort strip, with its own artwork, colours and
+	-- placement nudges. The pair panel carries that control now, so all of
+	-- it has gone - button, texture, MCM placement options and the flag
+	-- the panel used to hide it with. toggle_order_mode below is the only
+	-- way into the mode, and the panel's swap button is what calls it.
+
+	-- Favorites and Junk are pinned ends of the list, not part of the
+	-- reorderable middle. Favorites sits far below everything (-20 in the
+	-- shipped sortingplus.ltx) and Junk far above (100), leaving room for
+	-- the movable categories in between. Renumbering them was what broke
+	-- things: shifting Favorites off its extreme let other categories land
+	-- above it and reintroduced the overlap bugs.
+	-- Categories that must always share one value. Foods and Mutantfoods
+	-- are shown as a single section (Mutantfoods borrows the Foods label
+	-- so it never draws a second header), so giving them different weights
+	-- splits that section apart. Moving either moves both.
+	-- Display-only categories that have no Sorting Plus weight of their
+	-- own: their items sort at another category's rank, so their arrows
+	-- must move THAT category. Magazines and ammo components both carry
+	-- kind w_ammo, so both ride on Ammo.
+	-- Ammo Parts used to be listed here, riding on Ammo. It no longer
+	-- does: it carries its own weight (see weight_read) and reorders on
+	-- its own, so proxying it would drive Ammo's number from two places.
+	local PSEUDO_PROXY = {}
+
+	-- Which real category a display-only one actually rides on.
+	--
+	-- Ammo Parts is fixed to Ammo. Magazines is not, and assuming it was
+	-- caused the reported bugs: its arrows moved Ammo, moving Ammo past
+	-- it broke the layout, and Ammo and Magazines always agreed about
+	-- whether an "up" arrow was available because both resolved to the
+	-- same category.
+	--
+	-- With magazine_binder installed, Sorting Plus's get_sort_kind
+	-- returns "mags" for a loose magazine, which maps to 002mags - the
+	-- log had Magazines physically sitting up at -1 next to Loadout while
+	-- we were calling its rank 4, Ammo's. Without magazine_binder,
+	-- magazines keep kind w_ammo and really do sort with Ammo.
+	--
+	-- Resolved through kind_to_category rather than hardcoding "002mags",
+	-- so it follows whatever category the shipped ltx maps the "mags"
+	-- kind to.
+	local function proxy_for(cat_id)
+		if cat_id == MAGAZINES_PSEUDO_CAT then
+			local via_kind = kind_to_category["mags"]
+			if magazine_binder and via_kind and category_weight[via_kind] then
+				return via_kind
+			end
+			return "110ammo"
+		end
+		return PSEUDO_PROXY[cat_id]
+	end
+
+	-- By default a display-only category only offers arrows when the
+	-- category it rides on has no header of its own, so that one sort
+	-- weight is never driven from two places. Categories listed here opt
+	-- out of that and always show arrows.
+	--
+	-- Magazines is listed as a safety net. Now that it resolves to
+	-- 002mags rather than to Ammo, the default rule would let it through
+	-- anyway - nothing ever draws a 002mags header, because loose mags
+	-- are labelled Magazines and carried ones Loadout. Keeping the entry
+	-- means it still gets arrows if some other setup does surface one.
+	--
+	-- zzz_ammo_parts is deliberately NOT listed: it really does ride on
+	-- Ammo, its position is already pinned to Ammo + 0.5 by the sync
+	-- below, and a second set of arrows driving that same value is more
+	-- confusing than useful. Add it here if you disagree - the behaviour
+	-- is identical to using Ammo's own arrows.
+	local PROXY_ARROWS_ALWAYS = {
+		["zzz_magazines"] = true,
+	}
+
+	-- Categories that sit outside the reorderable middle entirely.
+	--
+	-- Favorites and Junk are the pinned ends of the list: Favorites far
+	-- below everything (-20 in the shipped sortingplus.ltx) and Junk far
+	-- above (100), leaving room for the movable categories in between.
+	-- Renumbering them was what broke things originally - shifting
+	-- Favorites off its extreme let other categories land above it and
+	-- reintroduced the overlap bugs.
+	--
+	-- Loadout is pinned for a different reason. Sorting Plus decides
+	-- whether a magazine is "carried" when it sorts, while we decide when
+	-- we draw, so the two can briefly disagree about whether an item
+	-- belongs to Loadout or Mags. ORDER_ALIAS papers over that by having
+	-- Loadout report Mags' order value, which is only sound while the two
+	-- sit next to each other (-2 and -1). Move Loadout somewhere else -
+	-- swapping it with Ammo, say - and every Loadout item reports an
+	-- order from wherever Mags ended up while physically sitting
+	-- elsewhere, so the displacement check sees the sequence as broken
+	-- and starts inventing headers. Keeping it pinned keeps that
+	-- adjacency guaranteed.
+	local REORDER_PINNED = {
+		["000favorites"] = true,
+		["001loadout"]   = true,
+		["999junk"] = true,
+	}
+
+	-- `present`, when given, is the set of categories currently holding
+	-- items (see cat_present_targets). Anything absent is left out, so
+	-- neighbours are the sections the player can actually see above and
+	-- below - a category with nothing in it is skipped rather than
+	-- silently absorbing the swap.
+	--
+	-- Absent categories keep their weights untouched, so they stay
+	-- wherever they were relative to everything else and reappear in a
+	-- sensible place once the player picks such an item up again.
+	local function ordered_categories(present)
+		local list = {}
+		for cat, w in pairs(category_weight) do
+			-- only the first member of a linked group represents it
+			local grp = LINKED_CATEGORIES[cat]
+			local is_follower = grp and grp[1] ~= cat
+
+			if not REORDER_PINNED[cat] and not is_follower
+				and (not present or present[cat])
+			then
+				list[#list + 1] = { cat = cat, w = w }
+			end
+		end
+		table.sort(list, function(a, b)
+			if a.w ~= b.w then return a.w < b.w end
+			return a.cat < b.cat
+		end)
+		return list
+	end
+
+	-- Index of `cat` in a prebuilt list, plus the index it would swap
+	-- with when moved in `dir`. Returns nil when no swap is possible -
+	-- the category isn't in the list, or there is nothing left to move
+	-- past in that direction.
+	--
+	-- Shared by move_category and by the arrow-visibility check, so an
+	-- arrow is drawn if and only if clicking it would actually do
+	-- something. Working off a prebuilt list keeps the per-header checks
+	-- from rebuilding it once per arrow.
+	local function neighbour_index(list, cat, dir)
+		local i
+		for k, v in ipairs(list) do
+			if v.cat == cat then i = k break end
+		end
+		if not i then return nil end
+
+		-- Step to the next neighbour that actually holds a DIFFERENT
+		-- weight. Swapping two categories that already share a value
+		-- exchanges identical numbers, so nothing moves and the arrow
+		-- looks dead - which is easy to run into, because stock Sorting
+		-- Plus ships quest and notes both on 8. Skipping over the tie
+		-- means the arrow always produces a visible step, and the
+		-- category being skipped keeps its value.
+		local j = i + dir
+		while list[j] and list[j].w == list[i].w do
+			j = j + dir
+		end
+		if not list[j] then return nil end
+
+		return i, j
+	end
+
+	local function move_category(cat_id, dir, present) return false end
+
+	local function glyph_width(cc, glyph, fallback)
+		if glyph_w_gen ~= settings_gen then
+			glyph_w_gen = settings_gen
+			glyph_w_memo = {}
+		end
+
+		local cached = glyph_w_memo[glyph]
+		if cached then
+			return cached
+		end
+
+		if not cc.cat_measure then
+			cc.cat_measure = get_header_xml():InitTextWnd("header_arrow", cc.st)
+			cc.cat_measure:SetWndPos(vector2():set(0, MEASURE_PARK_Y))
+		end
+
+		cc.cat_measure:SetWndSize(vector2():set(400, 24))
+		cc.cat_measure:SetFont(HEADER_FONT)
+
+		local w = measure_text(cc.cat_measure, glyph, fallback)
+		glyph_w_memo[glyph] = w
+
+		if CATHDR_DEBUG_RUNS then
+			printf("[CATHDR] measure | glyph '%s' = %s (estimate was %s)",
+				tostring(glyph), tostring(w), tostring(fallback))
+		end
+
+		return w
+	end
+
+	-- Breathing room around a measured glyph, so the click target is
+	-- the indicator plus a little rather than the indicator exactly.
+	local GLYPH_PAD = 6
+
+	function utils_ui.UICellContainer:ShowCategoryHeader(cnt, row, label, bg_color, weight_text, collapsed, can_collapse, can_up, can_dn)
+		self.cat_headers = self.cat_headers or {}
+		self.cat_weights = self.cat_weights or {}
+		self.cat_arrows  = self.cat_arrows or {}
+
+		local h = self.cat_headers[cnt]
+		if not h then
+			h = get_header_xml():InitStatic("header", self.st)
+			self.cat_headers[cnt] = h
+		end
+
+		h:SetTextureColor(bg_color)
+		h:TextControl():SetTextColor(HEADER_TXT_COLOR)
+
+		local grid_size = self.grid_size
+		local grid_line = self.grid_line
+		local row_y = (row - 1) * grid_size + row * grid_line
+		local w = self.prof:GetWidth()
+
+		-- Thickness is a percentage of the bar's slot, centred vertically
+		-- within it - never exceeds the space reserved for it (so it can't
+		-- overlap the item row below), just leaves more or less empty
+		-- margin above and below the bar itself.
+		--
+		-- How big that slot is depends on the compact-rows setting; see
+		-- header_metrics, which the placement pass calls too so the space
+		-- reserved and the space drawn can never disagree. "usable" is the
+		-- slot minus its trailing grid line, which is the gap to whatever
+		-- comes next - classically the rest of the row, compactly just the
+		-- bar.
+		local _, slot_h, bar_h = header_metrics(self)
+		local usable = slot_h - grid_line
+		local y = row_y + (usable - bar_h) / 2
+
+		-- Hit targets get their own height (see HIT_MIN_H) and are
+		-- centred on the bar, so a thin bar stays clickable. Clamped so
+		-- they can never start above the header or spill past what it
+		-- reserved - with compact rows that is the slot, which
+		-- header_metrics already floored at HIT_MIN_H for exactly this.
+		local hit_cap = COMPACT_HEADERS and slot_h or grid_size
+		local hit_h = bar_h
+		if hit_h < HIT_MIN_H then hit_h = HIT_MIN_H end
+		if hit_h > hit_cap then hit_h = hit_cap end
+
+		local hit_y = row_y + (usable - hit_h) / 2
+		if hit_y < row_y then hit_y = row_y end
+
+		h:SetWndPos(vector2():set(0, y))
+		h:SetWndSize(vector2():set(w, bar_h))
+		h:TextControl():SetFont(HEADER_FONT)
+		h:TextControl():SetText(SHOW_HEADER_NAMES and label or "")
+		h:Show(true)
+
+		-- Right-aligned weight label, drawn as its own control over the
+		-- same bar (the bar's own text is centre-aligned, so it can't
+		-- also host a right-aligned string).
+		local wl = self.cat_weights[cnt]
+		if weight_text then
+			if not wl then
+				-- InitStatic (not InitTextWnd) deliberately: hover
+				-- detection below uses IsCursorOverWindow, which is a
+				-- confirmed-working method on this control type (it's
+				-- what the base game uses on item cells).
+				wl = get_header_xml():InitStatic("header_weight", self.st)
+				self.cat_weights[cnt] = wl
+			end
+
+			-- Deliberately narrow: this control doubles as the hover
+			-- target for the heaviest-items tooltip, so it covers only
+			-- the right-hand portion of the bar where the number
+			-- actually is, not the full header width. Text stays
+			-- right-aligned so it renders in the same place as before.
+			local ww = w / 6
+			wl:TextControl():SetTextColor(HEADER_TXT_COLOR)
+			wl:TextControl():SetFont(HEADER_FONT)
+			align_vcenter(wl:TextControl())
+			wl:SetWndPos(vector2():set(w - ww - 6, hit_y))
+			wl:SetWndSize(vector2():set(ww, hit_h))
+			wl:TextControl():SetText(weight_text)
+			wl:Show(true)
+		elseif wl then
+			wl:Show(false)
+		end
+
+		-- Collapse indicator on the left of the bar. Purely an
+		-- indicator - the whole header is the click target (see the
+		-- OnKeyboard hook), which is far more forgiving to hit than a
+		-- small arrow would be.
+		-- reorder arrows, only while edit mode is on
+		self.cat_up = self.cat_up or {}
+		self.cat_dn = self.cat_dn or {}
+
+		-- Each direction is drawn independently: the topmost movable
+		-- section gets only "v", the bottom one only "^". Slots are packed
+		-- left to right in the order they are shown, so a hidden arrow
+		-- leaves no gap - a lone "v" sits where "^" normally would.
+		--
+		-- Placed on the left, just right of the collapse indicator. They
+		-- used to sit mid-bar, straight over the centred category name,
+		-- which made both hard to read.
+		-- Both arrows share one slot width so they line up whichever is
+		-- drawn, and the collapse indicator is measured here rather than
+		-- inside its own block below because the arrows are positioned
+		-- relative to it - including when it is not drawn at all.
+		local collapse_w = glyph_width(self, collapsed and "[+]" or "[-]",
+			FONT_CHAR_W * 3 + 8) + GLYPH_PAD
+
+		local up_w = glyph_width(self, "^", FONT_CHAR_W * 2 + 6)
+		local dn_w = glyph_width(self, "v", FONT_CHAR_W * 2 + 6)
+
+		local aw = ((up_w > dn_w) and up_w or dn_w) + GLYPH_PAD
+		local ax = 4 + collapse_w + 6
+		local slot = 0
+
+		local function place_arrow(store, glyph, wanted)
+			local a = store[cnt]
+			if not (order_edit_mode and wanted) then
+				if a then a:Show(false) end
+				return
+			end
+
+			if not a then
+				a = get_header_xml():InitStatic("order_arrow", self.st)
+				store[cnt] = a
+			end
+
+			a:TextControl():SetTextColor(HEADER_TXT_COLOR)
+			a:TextControl():SetFont(HEADER_FONT)
+			align_vcenter(a:TextControl())
+			a:TextControl():SetText(glyph)
+			a:SetWndPos(vector2():set(ax + slot * (aw + 2), hit_y))
+			a:SetWndSize(vector2():set(aw, hit_h))
+			a:Show(true)
+			slot = slot + 1
+		end
+
+		place_arrow(self.cat_up, "^", can_up)
+		place_arrow(self.cat_dn, "v", can_dn)
+
+		local ar = self.cat_arrows[cnt]
+		if can_collapse then
+			if not ar then
+				ar = get_header_xml():InitStatic("header_arrow", self.st)
+				self.cat_arrows[cnt] = ar
+			end
+
+			ar:TextControl():SetTextColor(HEADER_TXT_COLOR)
+			ar:TextControl():SetFont(HEADER_FONT)
+			align_vcenter(ar:TextControl())
+			-- Sized to the measured glyph plus GLYPH_PAD, so the
+			-- clickable area is the indicator itself. It used to be
+			-- three estimated character widths plus 8, which reached
+			-- noticeably further right than the "[-]" it draws.
+			ar:SetWndPos(vector2():set(4, hit_y))
+			ar:SetWndSize(vector2():set(collapse_w, hit_h))
+			ar:TextControl():SetText(collapsed and "[+]" or "[-]")
+			ar:Show(true)
+		elseif ar then
+			ar:Show(false)
+		end
+	end
+
+	-- ============================================================
+	-- Cheap snapshot of the current item layout, used to skip the
+	-- entire expensive rebuild when nothing has actually changed.
+	--
+	-- PERFORMANCE-CRITICAL: Scroll_Reinit fires constantly (275k+ calls
+	-- in one logged session), so this runs constantly too. It used to
+	-- build a string per item plus one big concatenated string every
+	-- call - tens of millions of string allocations per session, which
+	-- was enough to exhaust memory and crash the game. It's now a
+	-- purely numeric rolling hash: no strings, no garbage. Section
+	-- names are mapped to small integers once and reused (section_id).
+	-- ============================================================
+	local section_ids = {}
+	local section_id_next = 1
+
+	local function section_id(sec)
+		local id = section_ids[sec]
+		if not id then
+			id = section_id_next
+			section_ids[sec] = id
+			section_id_next = section_id_next + 1
+		end
+		return id
+	end
+
+	-- ============================================================
+	-- The aspect-ratio factor the base game applies to cell X/width.
+	--
+	-- UICellItem:Set does not use utils_xml.screen_ratio() raw - it
+	-- clamps it for 16:10 (1600x1024 in particular) before positioning
+	-- anything. Reading the raw value back gives a different number than
+	-- the one the cell was actually placed with, which is fine until you
+	-- try to invert the placement maths (recover_area) or size something
+	-- to match a cell (the highlight in reposition_item). Mirrored here
+	-- so both use exactly what Set used.
+	-- ============================================================
+	local RATIO_1610 = (4/3) / (16/10)
+
+	local function cell_ratio()
+		local ratio = utils_xml.screen_ratio()
+		if (ratio > RATIO_1610) and (ratio < 1) then
+			return RATIO_1610
+		end
+		return ratio
+	end
+
+	-- How many grid cells wide/high a drawn cell actually is.
+	--
+	-- Set builds the pixel size as
+	--   px = ceil(cells * grid_size / scale) + (ceil(cells / scale) - 1) * grid_line
+	-- which for a footprint of N cells comes to N * (grid_size + grid_line)
+	-- - grid_line, so this inverts cleanly. Rounded rather than floored
+	-- because HD icon scaling leaves the odd off-by-one pixel.
+	local function px_to_cells(px, pitch, grid_line)
+		if not (px and px > 0) then
+			return 1
+		end
+		local n = math.floor(((px + grid_line) / pitch) + 0.5)
+		return (n < 1) and 1 or n
+	end
+
+	-- ============================================================
+	-- Rebuild a cell's missing area from its drawn position.
+	--
+	-- utils_ui writes ci.area in exactly one place (UICellItem:Set) and
+	-- never clears it, so in theory a placed cell always has one. In
+	-- practice player logs show cells that are shown, hold a section, sit
+	-- on an exact grid row - and have area = nil. Every such section seen
+	-- so far (swiss_knife, batteries_dead, grooming, prt_o_fabrics_*,
+	-- prt_o_ballistic_*) is one with a standalone HD inventory icon, and
+	-- only on installs running the HD icon override addons. That points
+	-- at the footprint disagreement those addons expose:
+	--
+	--   Sorting Plus FindFreeCell  -> utils_xml.get_item_axis(sec,1),
+	--                                 scale from icon_override's table
+	--   utils_ui  UICellItem:Set   -> raw SYS_GetParam inv_grid_width/height,
+	--                                 scale from the raw ini only
+	--
+	-- i.e. the room booked and the pixels drawn are computed from two
+	-- different sources. Fixing that properly means overriding Set, which
+	-- is placement, which this addon deliberately does not touch.
+	--
+	-- What it can do is stop such a cell being invisible to itself. With
+	-- no area the cell is absent from the layout hash (so it can never
+	-- trigger a rebuild) and absent from the items list (so nothing ever
+	-- repositions it) - it just sits wherever it was last drawn, on top of
+	-- a header or alone in open space. That is the reported bug.
+	--
+	-- Inverting Set's own placement maths recovers the row and column:
+	--   pos.y = row * pitch - grid_size
+	--   pos.x = (col * pitch - grid_size) * ratio      (pitch = size + line)
+	-- and the footprint comes from the cell's drawn size, which is the
+	-- number that matters for not overlapping anything.
+	--
+	-- Refuses unless the result lands on an exact grid intersection and
+	-- fits inside the container's real grid. Both matter: Set has a second
+	-- branch that centres a cell in self.st when it has no area at all,
+	-- and those land off-grid and must stay refused; and the result is
+	-- written back to ci.area, which UICellItem:Reset later feeds straight
+	-- to FreeRoom(a.y, a.x, a.w, a.h) with no bounds check of its own.
+	-- The grid only ever grows during a container's life (Grow adds rows,
+	-- Reset only sets values), so something in bounds now stays in bounds.
+	--
+	-- Written back rather than kept in a side table so that every existing
+	-- reader - the hash, the sort, the shift, the section geometry, and
+	-- Seamless Inventory Sort's own fingerprint - picks it up unchanged.
+	-- As soon as the engine places the cell properly, Set overwrites this
+	-- with the real thing.
+	-- ============================================================
+	local function recover_area(self, ci)
+		local tostr = tostring
+		if not RECOVER_ORPHAN_AREA then
+			return nil
+		end
+
+		local cell = ci.cell
+		if not (cell and cell:IsShown()) then
+			return nil
+		end
+
+		local grid_size = self.grid_size
+		local grid_line = self.grid_line
+		if not (grid_size and grid_line) then
+			return nil
+		end
+
+		local pitch = grid_size + grid_line
+		if pitch <= 0 then
+			return nil
+		end
+
+		local pos = cell:GetWndPos()
+		if not pos then
+			return nil
+		end
+
+		local ratio = cell_ratio()
+		if not (ratio and ratio > 0) then
+			return nil
+		end
+
+		local exact_row = (pos.y + grid_size) / pitch
+		local exact_col = ((pos.x / ratio) + grid_size) / pitch
+
+		local row = math.floor(exact_row + 0.5)
+		local col = math.floor(exact_col + 0.5)
+
+		-- Off-grid means this was never a grid placement (Set's centred
+		-- free-cell branch, or something else moved it), so leave it be.
+		if math.abs(exact_row - row) > 0.34 or math.abs(exact_col - col) > 0.34 then
+			return nil
+		end
+		if row < 1 or col < 1 then
+			return nil
+		end
+
+		local grid = self.grid
+		local cols = self.cols
+		if not (grid and grid[row] and cols and col <= cols) then
+			return nil
+		end
+
+		-- ci.W / ci.H are the UNRATIOED pixel sizes Set computed; the
+		-- aspect ratio is applied to width only at SetWndSize time. pitch
+		-- is unratioed too, so both invert against it directly - scaling
+		-- W by ratio first would double-apply it.
+		local w = px_to_cells(ci.W, pitch, grid_line)
+		local h = px_to_cells(ci.H, pitch, grid_line)
+
+		-- Clamp the footprint into the grid rather than rejecting outright:
+		-- the position is the part that matters, and an oversized icon
+		-- hanging off the edge is exactly the case this exists for.
+		if col + w - 1 > cols then
+			w = cols - col + 1
+		end
+		while h > 1 and not grid[row + h - 1] do
+			h = h - 1
+		end
+
+		local area = { y = row, x = col, w = w, h = h }
+		ci.area = area
+
+		if CATHDR_DEBUG_RUNS then
+			printf("[CATHDR] RECOVERED | ID=%s sec=%s area=%s,%s size=%sx%s from y=%s x=%s",
+				tostr(self.ID), tostr(ci.section),
+				tostr(row), tostr(col), tostr(w), tostr(h),
+				tostr(pos.y), tostr(pos.x))
+		end
+
+		return area
+	end
+
+	-- Scratch arrays for the per-rebuild passes below. Module-level and
+	-- reused: a rebuild reads only indices 1..n, so nothing has to be
+	-- cleared between runs, and no per-item table is allocated at all.
+	-- Rebuilds never overlap - every one of them runs to completion
+	-- inside a single Scroll_Reinit call - so one set is enough for all
+	-- containers.
+	local cat_buf    = {}   -- item index -> category id
+	local exempt_buf = {}   -- item index -> position-exempt flag
+	local w_buf      = {}   -- item index -> that cell's weight or value
+
+	-- hoisted so we don't allocate a new closure on every sort call
+	local function cell_order(a, b)
+		if a.area.y ~= b.area.y then
+			return a.area.y < b.area.y
+		end
+		return a.area.x < b.area.x
+	end
+
+	-- Layout fingerprint. Allocation-free and sort-free, so it is cheap
+	-- enough for the every-Scroll_Reinit and every-frame paths.
+	--
+	-- Each item contributes (section) * (position) rather than
+	-- (section + position). That product is what makes the total notice
+	-- two items trading places: with a plain sum the section and position
+	-- terms are independent, so a swap moves the same numbers between
+	-- items and the total is unchanged. Multiplying binds each section to
+	-- the position it actually occupies.
+	--
+	-- That matters - the old commutative sum missed 99.7% of position
+	-- swaps in testing, so a reorder that moved items without changing
+	-- which items exist could go unnoticed. With the product form,
+	-- randomised swaps over realistic distinct grid positions produced no
+	-- misses at all.
+	--
+	-- Still order-independent, which it must be: pairs() over self.cell
+	-- has no defined order, and a hash that depended on it would change
+	-- between identical calls and force constant rebuilds.
+	--
+	-- Worst-case term is ~1e13, well inside the 2^53 range doubles
+	-- represent exactly, so the arithmetic stays lossless.
+	local function layout_hash(self)
+		local acc = 0
+		local ids = section_ids
+
+		for _, ci in pairs(self.cell) do
+			local area = ci.area
+
+			-- Recovered here, not just in collect_items: a cell missing from
+			-- the hash cannot contribute a change, so nothing it did would
+			-- ever reach the rebuild that repositions it. Costs one extra
+			-- branch on the hot path and allocates only the once, when a
+			-- genuinely arealess cell is first seen.
+			if ci.section and not area then
+				area = recover_area(self, ci)
+			end
+
+			if ci.section and area then
+				-- Stacked contents count too, or moving PART of a stack
+				-- (5 rounds out of 50) leaves the cell at the same section
+				-- and position, the hash looks unchanged, and the rebuild
+				-- is skipped - which is why header weights only refreshed
+				-- on reopening before.
+				--
+				-- COUNTS only, never the runtime child ids: Mags Redux
+				-- re-binds magazine child objects, handing them new ids
+				-- with no visible change to the bag, and hashing those made
+				-- every refresh look like a real change.
+				local child_sum = 0
+				local childs = ci.childs
+				if childs then
+					for _, cval in pairs(childs) do
+						if type(cval) == "number" then
+							child_sum = child_sum + cval
+						end
+					end
+				end
+
+				-- child_sum belongs INSIDE the left factor, not added on
+				-- afterwards. Added on, it is independent of position, so
+				-- two cells of the same section swapping places - one
+				-- holding a stack, one not - moved the count between
+				-- positions without changing the total. Testing caught
+				-- exactly that case.
+				local sid = ids[ci.section] or section_id(ci.section)
+				local term = (sid * 8191 + child_sum * 131 + 1) * (area.y * 127 + area.x + 1)
+
+				acc = (acc + term) % 4294967296
+			end
+		end
+
+		-- The container's own geometry, not just its contents.
+		--
+		-- Headers and tints are drawn the full width of self.prof and take
+		-- that width fresh from GetWidth on every rebuild, so they track the
+		-- panel automatically - but ONLY when a rebuild happens. Nothing
+		-- here used to notice a panel that had changed size while holding
+		-- the same items in the same places, so a header could keep a width
+		-- that no longer matched anything.
+		--
+		-- That never showed while a container open triggered a rebuild on
+		-- practically every frame: whenever the real geometry landed, the
+		-- next rebuild picked it up. Pacing the rebuilds took that cover
+		-- away, and wide-UI setups (EGUI) - where the panel is resized to
+		-- something much wider than the stock layout - got headers stuck at
+		-- whatever width was in force at the last rebuild.
+		--
+		-- Three engine calls a hash, against a loop over every cell, so the
+		-- cost is noise. grid_size and grid_line ride along because header
+		-- row heights are derived from them and they move with the layout
+		-- for the same reasons the width does.
+		local prof = self.prof
+		if prof then
+			acc = (acc + prof:GetWidth() * 7919 + prof:GetHeight() * 6247) % 4294967296
+		end
+		acc = (acc + (self.grid_size or 0) * 31 + (self.grid_line or 0) * 17) % 4294967296
+
+		return acc
+	end
+
+	-- ============================================================
+	-- Rebuild pacing.
+	--
+	-- A container does not necessarily fill in one go. Reinit() bulk-
+	-- fills behind ignore_scroll and is invisible to us, but the refresh
+	-- paths add items to a live bag a few per frame, over dozens of
+	-- frames - and every one of those adds calls Scroll_Reinit, because
+	-- AddItem does. utils_ui even has a standing TODO about it: "to
+	-- prevent spawn of items flooding in container, we need to time this
+	-- in update function".
+	--
+	-- Rebuilding on each of those re-does the whole bag every frame while
+	-- it grows, so filling n items costs n^2/2. A player log of one
+	-- inventory open showed the bag climbing 0 -> 170 items across ~50
+	-- rebuilds, repeated on every open: that is the second-long dip.
+	--
+	-- So while changes keep arriving, rebuild on an interval rather than
+	-- on every change, and do one final rebuild once the container has
+	-- been still for a moment. Both numbers are in milliseconds, and both
+	-- are deliberately short: the point is to stop rebuilding sixty times
+	-- a second, not to hold the layout back.
+	--
+	-- A change that arrives on its own - one item taken, a favorite
+	-- toggled - lands more than BUILD_INTERVAL after the previous
+	-- rebuild, so it is still handled on the spot. Only bursts pace.
+	--
+	-- Timed rather than counted in frames on purpose. time_global() is
+	-- the engine's per-frame clock, so a frame counter would be the same
+	-- thing at a resolution of one - which is exactly what was too fine:
+	-- one rebuild per frame is still fifty rebuilds for a fill spread
+	-- over fifty frames.
+	-- ============================================================
+	local BUILD_INTERVAL = 120   -- ms between rebuilds while a burst is running
+	local BUILD_SETTLE   = 40    -- ms of quiet before the closing rebuild
+
+	-- ============================================================
+	-- Sticky layout: remembering where a category WAS
+	--
+	-- Seamless Inventory Sort's "keep the gaps when removing items"
+	-- deliberately leaves a hole where a dropped or looted item used to
+	-- be instead of repacking the bag, so nothing slides under the
+	-- cursor during a shift-drag sweep. The items behave; the headers
+	-- did not. A section's bounds are measured from the items still in
+	-- it, so on a pure removal:
+	--   * taking the FIRST item of a category moved its header down
+	--     into the hole it left,
+	--   * taking the item on the last row shrank the tint behind it,
+	--   * taking the LAST item of a category deleted the header
+	--     outright - and that header was worth one row of offset, so
+	--     everything below it jumped up a row. Precisely the shift the
+	--     option exists to prevent.
+	--
+	-- So: snapshot every item's grid position at each real layout
+	-- change, along with the row span each drawn section occupied. When
+	-- a later rebuild finds that nothing was added and nothing moved -
+	-- i.e. the container did not repack - the remembered spans are
+	-- restored and an emptied section keeps its row. As soon as the
+	-- layout genuinely changes (an item arrives, a sort runs, the
+	-- window is reopened) the snapshot is retaken and the spans follow
+	-- the new positions.
+	--
+	-- Decided by observation rather than by reading Seamless's own
+	-- keep_gaps setting. Whatever the reason the bag did not repack the
+	-- correct response is the same, it costs nothing when Seamless is
+	-- absent, and it also covers a removal at the very bottom of a list
+	-- that is repacking normally - where nothing moves either.
+	-- ============================================================
+	local function sticky_of(self)
+		local st = self.cat_sticky
+		if not st then
+			st = { span = {}, seen = {} }
+			self.cat_sticky = st
+		end
+		return st
+	end
+
+	-- Grid position packed into one number, same form Seamless uses for
+	-- its own removal check.
+	local function packed_pos(area)
+		return area.y * 4096 + area.x
+	end
+
+	-- True when every item still present sits exactly where the snapshot
+	-- left it. Items that have gone are the whole point and are not
+	-- looked for; anything ADDED shows up as an id with no entry and
+	-- fails on the spot.
+	local function nothing_moved_since(self, items)
+		local st = self.cat_sticky
+		local pos = st and st.pos
+		if not pos then
+			return false
+		end
+
+		for i = 1, #items do
+			local ci = items[i]
+			local id = ci.ID
+			-- Showcase containers hold section-only cells with no id.
+			-- With nothing stable to key on, never freeze them.
+			if not id then
+				return false
+			end
+			if pos[id] ~= packed_pos(ci.area) then
+				return false
+			end
+		end
+
+		return true
+	end
+
+	local function snapshot_positions(self, items)
+		local st = sticky_of(self)
+		local pos = {}
+		for i = 1, #items do
+			local ci = items[i]
+			if ci.ID then
+				pos[ci.ID] = packed_pos(ci.area)
+			end
+		end
+		st.pos = pos
+	end
+
+	-- Sorted item list for a rebuild. Only called when layout_hash says
+	-- something actually changed, so the allocation and the sort are paid
+	-- on real changes rather than on every Scroll_Reinit.
+	local function collect_items(self)
+		local items = {}
+		local n = 0
+		local orphans = nil
+
+		for _, ci in pairs(self.cell) do
+			-- Second chance for anything the hash pass could not take (it
+			-- only runs on cells with a section), and a no-op for everything
+			-- it already recovered, since ci.area is set by then.
+			if ci.section and not ci.area then
+				recover_area(self, ci)
+			end
+
+			if ci.section and ci.area then
+				n = n + 1
+				items[n] = ci
+			elseif ci.cell and ci.cell:IsShown() then
+				-- A visible cell with no section or no area is invisible
+				-- to everything below: it is not in the items array, so
+				-- no run contains it, so reposition_item never touches
+				-- it - it just stays wherever it was last drawn, which
+				-- lands it on top of a header or in open space. It is
+				-- also absent from the hash, so nothing about it can
+				-- trigger the rebuild that would fix it.
+				--
+				-- Collected rather than acted on: guessing at a repair
+				-- without knowing which field is missing, or why, risks
+				-- making it worse. The caller logs these under the debug
+				-- option.
+				orphans = orphans or {}
+				orphans[#orphans + 1] = ci
+			end
+		end
+
+		-- Cells usually arrive close to grid order, so check before
+		-- sorting: an O(n) scan beats an O(n log n) sort whenever the
+		-- array is already ordered, and costs one pass when it is not.
+		local sorted = true
+		for i = 2, n do
+			if cell_order(items[i], items[i - 1]) then
+				sorted = false
+				break
+			end
+		end
+		if not sorted then
+			table.sort(items, cell_order)
+		end
+
+		return items, orphans
+	end
+
+	-- ============================================================
+	-- Move an already-placed item down by shift_rows worth of pixels,
+	-- computed fresh from its untouched original row every time.
+	-- ============================================================
+	local function reposition_item(self, ci, shift_rows, ratio)
+		-- NOTE: no "shift_rows <= 0 -> skip" shortcut here.
+		--
+		-- That used to exist because the offset could only ever grow
+		-- (one row added per header). Collapsing can REMOVE more rows
+		-- than the headers above added, so shift_rows is now legitimately
+		-- zero or negative - and skipping those left the affected items
+		-- sitting at their raw Sorting Plus position while everything
+		-- else moved up, so they overlapped the categories below. A
+		-- shift of zero still has to be applied, because the item may
+		-- have been moved by a previous rebuild.
+		if not ci.cell then
+			return
+		end
+
+		local target_row = ci.area.y + shift_rows
+		local target_y = (target_row - 1) * self.grid_size + target_row * self.grid_line
+
+		local cur_pos = ci.cell:GetWndPos()
+
+		-- Only write the position back when it actually differs. Most
+		-- rebuilds are triggered by something small - a weight changing, a
+		-- single item leaving - and leave the great majority of the bag
+		-- exactly where it was, so this skips two engine calls and a
+		-- vector2 allocation per untouched item. Comparing against the
+		-- REAL current position, not against shift_rows, is what makes it
+		-- safe: an item moved by an earlier rebuild still differs here and
+		-- is still corrected.
+		if cur_pos.y ~= target_y then
+			ci.cell:SetWndPos(vector2():set(cur_pos.x, target_y))
+		end
+
+		-- The hover/compatible-ammo highlight (ci.hl) is a SIBLING of
+		-- ci.cell, not a child, so moving ci.cell doesn't move it
+		-- automatically. It's only ever Show()'n/colored, never
+		-- repositioned, by the base game code (UICellItem:Highlight,
+		-- UIInventory:Highlight) - so we have to keep it in sync
+		-- ourselves. ci.cell's actual rendered width is ci.W * ratio
+		-- (the base game applies a screen-aspect-ratio scale to width
+		-- only, not to ci.W itself), so the highlight needs that same
+		-- factor or it comes out too wide, worse the wider the item is.
+		if ci.hl then
+			ci.hl:SetWndPos(ci.cell:GetWndPos())
+			ci.hl:SetWndSize(vector2():set(ci.W * ratio, ci.H))
+		end
+	end
+
+	-- ============================================================
+	-- Pseudo-categories for items Sorting Plus physically pulls out of
+	-- their normal kind's block (favorited items go to the very front,
+	-- junked items to the very back) - same MCM override mechanism as
+	-- real categories (renameable/hideable), but not tied to any real
+	-- sortingplus.ltx entry.
+	-- ============================================================
+	-- ============================================================
+	-- Group items into contiguous runs by their RAW category id (not
+	-- final label - grouping by the underlying id keeps this correct
+	-- even if the user merges two categories under one custom label).
+	-- Also tracks whether the run's actual grid position is
+	-- "unpredictable" (see get_category's third return value) - if ANY
+	-- item in the run has an unpredictable position, the whole run is
+	-- marked that way, since mixing in even one such item means we
+	-- can't trust the run's position for boundary-detection purposes.
+	-- ============================================================
+	local function compute_runs_by_category(items)
+		local n = #items
+
+		-- Classify every item exactly once, into scratch arrays reused
+		-- across rebuilds so this costs no garbage.
+		--
+		-- The old version walked the list with a lookahead and asked for
+		-- the category of whichever item ended a run TWICE - once as the
+		-- lookahead that broke the inner loop, then again as the head of
+		-- the next run - and resolved a game object with level.object_by_id
+		-- for every one of those calls. Both are gone: the classifier now
+		-- takes the cell's own id (which is the object id the carried-mag
+		-- check wanted all along), and each item is looked at once.
+		for i = 1, n do
+			local ci = items[i]
+			local cat_id, _, exempt = category_of(ci.section, ci.ID)
+			cat_buf[i] = cat_id
+			exempt_buf[i] = exempt
+		end
+
+		local runs = {}
+		local i = 1
+
+		while i <= n do
+			local cat_id = cat_buf[i]
+			local start_i = i
+			local run_exempt = exempt_buf[i]
+			i = i + 1
+
+			while i <= n and cat_buf[i] == cat_id do
+				if exempt_buf[i] then
+					run_exempt = true
+				end
+				i = i + 1
+			end
+
+			runs[#runs+1] = { start_idx = start_i, count = i - start_i, cat_id = cat_id, position_exempt = run_exempt }
+		end
+
+		return runs
+	end
+
+	-- Every real category id has a numeric prefix (002mags, 010weapons,
+	-- 110ammo, ...), but that's just a naming/menu-ordering convention -
+	-- the REAL sort weight Sorting Plus actually uses internally is the
+	-- first CSV value in sortingplus.ltx's [sortingplusmcm] section
+	-- (category_weight, built above), which can differ significantly
+	-- (070foods and 080mutantfoods are BOTH weight 7, for example) - so
+	-- that's what we use here, falling back to the id's own prefix only
+	-- for anything not found in that table (shouldn't normally happen).
+	-- Categories that must share one ordering value for displacement
+	-- detection. Sorting Plus decides placement with
+	--   sort_k = is_carried_mag(obj) and "loadout" or ...
+	-- evaluated when it sorts, while we evaluate is_carried_mag when we
+	-- draw. Pull a mag out of your loadout and our label flips to Mags
+	-- straight away, but the item physically stays in the Loadout block
+	-- until something triggers a re-sort - so a weight-0 run appears
+	-- inside a weight--1 block, the sequence looks broken, and a bogus
+	-- Favorites header got invented right there.
+	--
+	-- Loadout and Mags are deliberately adjacent (-1 and 0), so them
+	-- interleaving is never real displacement. Sharing an order value
+	-- makes that case a non-event. Headers/labels are unaffected - this
+	-- only feeds the ordering check.
+	local ORDER_ALIAS = {
+		["001loadout"] = "002mags",
+	}
+
+	local function order_num_for_cat(cat_id)
+		if cat_id == AMMO_PARTS_PSEUDO_CAT then
+			return ammo_parts_order()
+		end
+
+		if proxy_for(cat_id) and not category_weight[cat_id] then
+			cat_id = proxy_for(cat_id)
+		end
+		cat_id = ORDER_ALIAS[cat_id] or cat_id
+		local weight = category_weight[cat_id]
+		if weight then
+			return weight
+		end
+
+		local digits = tostring(cat_id):match("^(%d+)")
+		return digits and tonumber(digits) or 999999
+	end
+
+	local function compute_display_runs(items)
+		local tostr = tostring
+		local cat_runs = compute_runs_by_category(items)
+		local n = #cat_runs
+
+		for _, run in ipairs(cat_runs) do
+			run.order_num = order_num_for_cat(run.cat_id)
+		end
+
+		-- Find the boundaries of the genuinely-sorted "normal" region by
+		-- growing it inward from a confirmed anchor, rather than
+		-- comparing every run against a single running min/max across
+		-- the WHOLE list. That global-comparison approach had a real
+		-- bug: favorited items keep their OWN natural order number even
+		-- though they're pinned to the front out of sequence (a
+		-- favorited ammo item is still numerically "110"), so a single
+		-- high number sitting anywhere in the pinned block would poison
+		-- every later comparison and wrongly mark genuinely-normal
+		-- lower-numbered categories (Weapons, Devices, ...) as pushed
+		-- out of place too.
+		--
+		-- Instead: walk backward from the last run, extending a
+		-- confirmed "properly non-decreasing" tail one step at a time
+		-- as long as each earlier run's number is <= the smallest
+		-- number confirmed so far. The first run that breaks that
+		-- pattern - and everything before it - is the front-pinned
+		-- block, full stop, regardless of what its own numbers happen
+		-- to be. Then do the same walking forward from there to find
+		-- where a back-pinned (Junk) block begins, if any.
+		--
+		-- Runs marked position_exempt (unmapped kind - see get_category/
+		-- compute_runs_by_category) are skipped for this comparison
+		-- entirely (always treated as fitting, never updating the
+		-- tracked min/max) since we don't actually know where Sorting
+		-- Plus physically placed them. Letting them participate in the
+		-- comparison could wrongly break the chain for genuinely-
+		-- ordered categories around them (confirmed by testing).
+		local function is_unmapped(run)
+			return run.position_exempt
+		end
+
+		-- Find the largest genuinely sorted stretch of the list, and
+		-- treat that as the "normal" region: runs before it were pulled
+		-- to the front (favorites), runs after it pushed to the back
+		-- (junk).
+		--
+		-- This used to anchor on the LAST run and walk backwards,
+		-- assuming the bottom of the list is always in sorted order.
+		-- That only holds with Seamless Inventory Sort installed - the
+		-- base engine drops any item you move or modify to the BOTTOM
+		-- of the list, out of order, and SortingPlus only re-sorts on
+		-- open. With an unsorted tail the backward walk stopped almost
+		-- immediately, so nearly every run ended up flagged "before the
+		-- sorted region" and the whole inventory was labelled Favorites.
+		--
+		-- Scanning for the longest sorted stretch instead makes no
+		-- assumption about where the mess is: unsorted leftovers at the
+		-- bottom simply fall outside it.
+		-- Segments are scored by how many RUNS (category groups) they
+		-- span, with item count only as a tie-break.
+		--
+		-- Item count alone doesn't work: favorite enough of one thing -
+		-- say a big pile of ammo - and the favorites block outweighs the
+		-- entire real list, gets chosen as the sorted body, and then
+		-- renders its own category headers while everything else is
+		-- pinned. A favorites block is a handful of category groups no
+		-- matter how many items are stuffed into it, whereas the real
+		-- sorted list spans many, so counting groups is stable against
+		-- however much you favorite.
+		local best_from, best_to = 1, n
+		local best_runs, best_items = -1, -1
+		local seg_from, seg_items, seg_runs, last_order = 1, 0, 0, nil
+		local seg_seen = {}
+
+		local function close_segment(seg_to)
+			if seg_runs > best_runs or (seg_runs == best_runs and seg_items > best_items) then
+				best_runs, best_items = seg_runs, seg_items
+				best_from, best_to = seg_from, seg_to
+			end
+		end
+
+		local function start_segment(k, run)
+			seg_from, seg_items, seg_runs, last_order = k, run.count, 1, run.order_num
+			seg_seen = { [canon_cat(run.cat_id)] = true }
+		end
+
+		for k = 1, n do
+			local run = cat_runs[k]
+			local cid = canon_cat(run.cat_id)
+
+			if is_unmapped(run) then
+				-- We can't trust WHERE these sit, so they can't be used to
+				-- bridge the runs on either side of them into one segment.
+				-- Loadout is exempt, and it sits between the favorites
+				-- block and the real list: treating it as transparent made
+				-- favorited ammo(0)+weapons(1) read as continuous with
+				-- devices(4)+tools(5)..., so the favorites merged into the
+				-- body and lost their header. Ending the segment here keeps
+				-- the two sides separate; the run itself is still never
+				-- scored or pinned.
+				close_segment(k - 1)
+				seg_from, seg_items, seg_runs, last_order = k + 1, 0, 0, nil
+				seg_seen = {}
+			elseif seg_seen[cid] and cat_runs[k - 1]
+				and canon_cat(cat_runs[k - 1].cat_id) ~= cid then
+				-- This category already appeared earlier in the segment
+				-- with something else in between, so one of the two is
+				-- out of place. Order numbers can't see this: a favorited
+				-- weapon and the real Weapons block share a weight, so
+				-- the sequence still looks perfectly sorted.
+				--
+				-- Compared on the CANONICAL id, which matters for linked
+				-- groups. Foods and Mutantfoods share a weight and
+				-- interleave on purpose, so a single mutant steak landing
+				-- mid-block gives Foods -> Mutantfoods -> Foods. Compared
+				-- raw, that reads as a duplicate and splits the body in
+				-- two - and then whichever half holds more items wins and
+				-- the other half gets pinned as displaced. Picking up one
+				-- unrelated item was enough to flip which half won, which
+				-- is why the whole inventory would suddenly render as
+				-- Favorites for no apparent reason.
+				close_segment(k - 1)
+				start_segment(k, run)
+			elseif last_order == nil or run.order_num >= last_order then
+				last_order = run.order_num
+				seg_items = seg_items + run.count
+				seg_runs = seg_runs + 1
+				seg_seen[cid] = true
+			else
+				close_segment(k - 1)
+				start_segment(k, run)
+			end
+		end
+		close_segment(n)
+
+		local tail_start, head_end = best_from, best_to
+
+		-- Runs outside the sorted body aren't automatically "pinned".
+		-- A category can legitimately sit before the body and still be
+		-- in its correct place - Loadout (weight -1) sits ahead of the
+		-- main list, and the favorites block lands between it and the
+		-- body, cutting it off from the sorted stretch. Blanket-marking
+		-- everything before the body as front-pinned mislabelled
+		-- Loadout as Favorites and made its header vanish.
+		--
+		-- So walk outwards from the body and reclaim any run whose
+		-- order is still consistent with where it sits; only genuinely
+		-- out-of-place runs get pinned.
+		-- Which categories the sorted body already contains. A run
+		-- outside the body whose category ALSO appears inside it is a
+		-- duplicate, i.e. a copy that got pulled out of place -
+		-- favorited/junked items are exactly that.
+		--
+		-- Needed because order numbers alone can't catch it: a favorited
+		-- weapon and the real Weapons block share the same weight, so
+		-- the sequence still looks sorted. It used to be caught only
+		-- incidentally, by the lower-weight Loadout/Mags runs sitting
+		-- between them creating a dip - and once magazines became
+		-- position-exempt that dip vanished, so favorited weapons
+		-- started rendering as a second "Weapons" header at the top.
+		-- Keyed by canonical id so a linked group counts as one section
+		-- here too: a stray Mutantfoods run outside the body is the same
+		-- section as the Foods run inside it, not a different category
+		-- that happens to be nearby.
+		local body_cats = {}
+		for k = tail_start, head_end do
+			body_cats[canon_cat(cat_runs[k].cat_id)] = true
+		end
+
+		-- The favorites block is contiguous at the very TOP of the list,
+		-- so once this backward walk pins something, everything further
+		-- up is part of that same block and gets pinned too.
+		--
+		-- Without this, a favorited item whose category has a low weight
+		-- slipped through: with the body starting at Tools (5), a
+		-- favorited weapon (1) satisfied "fits ahead of the body" and was
+		-- reclaimed, rendering a second Weapons header above Favorites.
+		-- The duplicate-category rule couldn't catch it either, because
+		-- when every weapon you own is favorited the category never
+		-- appears in the body to compare against.
+		--
+		-- Safe because the walk runs from the body outwards: any genuine
+		-- category sitting between the body and the favorites block is
+		-- reached (and reclaimed) before the first favorite is hit.
+		-- Deliberately NOT mirrored in the forward/junk walk below -
+		-- that one moves from the body towards the end and legitimately
+		-- meets real categories (Misc, Parts) after a duplicate.
+		local edge = cat_runs[tail_start] and cat_runs[tail_start].order_num
+		local pinned_front = false
+
+		for k = tail_start - 1, 1, -1 do
+			local run = cat_runs[k]
+			if is_unmapped(run) then
+				-- Never pinned, but its order still tightens the edge:
+				-- Loadout(-1) sitting above the body means anything above
+				-- IT must be <= -1 to be legitimately placed, which is what
+				-- exposes favorited ammo(0)/weapons(1) as displaced.
+				if edge and run.order_num < edge then
+					edge = run.order_num
+				end
+			elseif pinned_front or body_cats[canon_cat(run.cat_id)] then
+				run.pin = "front"
+				pinned_front = true
+			elseif edge and run.order_num <= edge then
+				edge = run.order_num          -- fits ahead of the body
+			else
+				run.pin = "front"
+				pinned_front = true
+			end
+		end
+
+		edge = cat_runs[head_end] and cat_runs[head_end].order_num
+		for k = head_end + 1, n do
+			local run = cat_runs[k]
+			if is_unmapped(run) then
+				-- never pinned, but still tightens the edge (see above)
+				if edge and run.order_num > edge then
+					edge = run.order_num
+				end
+			elseif edge and run.order_num >= edge then
+				-- Order checked BEFORE the duplicate rule. Foods and
+				-- Mutantfoods share a weight and interleave, so a second
+				-- Foods run can legitimately follow Mutantfoods - it is
+				-- still in its correct place and must not be pinned as
+				-- Junk just for repeating a category already in the body.
+				edge = run.order_num
+			elseif body_cats[canon_cat(run.cat_id)] then
+				run.pin = "back"              -- duplicate, and out of order
+			else
+				run.pin = "back"
+			end
+		end
+
+		for _, run in ipairs(cat_runs) do
+			if run.pin == "front" or run.cat_id == FAVORITES_PSEUDO_CAT then
+				run.label, run.hidden = get_effective_label(FAVORITES_PSEUDO_CAT, "Favorites")
+				run.color_cat_id = FAVORITES_PSEUDO_CAT
+			elseif run.pin == "back" or run.cat_id == JUNK_PSEUDO_CAT then
+				run.label, run.hidden = get_effective_label(JUNK_PSEUDO_CAT, "Junk")
+				run.color_cat_id = JUNK_PSEUDO_CAT
+			elseif run.cat_id == AMMO_PARTS_PSEUDO_CAT then
+				run.label, run.hidden = get_effective_label(AMMO_PARTS_PSEUDO_CAT, "Ammo Parts")
+				run.color_cat_id = AMMO_PARTS_PSEUDO_CAT
+			elseif run.cat_id == MAGAZINES_PSEUDO_CAT then
+				run.label, run.hidden = get_effective_label(MAGAZINES_PSEUDO_CAT, "Magazines")
+				run.color_cat_id = MAGAZINES_PSEUDO_CAT
+			elseif run.cat_id == UNMAPPED_PSEUDO_CAT then
+				run.label, run.hidden = get_effective_label(UNMAPPED_PSEUDO_CAT, "Misc")
+				run.color_cat_id = UNMAPPED_PSEUDO_CAT
+			else
+				-- Linked categories are presented as ONE section, so a
+				-- follower run borrows its leader's label and colour
+				-- instead of its own. The label is what decides whether a
+				-- new header is drawn (see last_visible_label below), so
+				-- Foods -> Mutantfoods -> Foods collapses to a single
+				-- Food & Drinks header with the mutant meat inside it.
+				--
+				-- This replaces force-hiding Mutantfoods, which produced
+				-- the same result only while ordinary food was also
+				-- present: a hidden run draws nothing at all, so a bag
+				-- holding nothing but mutant meat got no food header
+				-- whatsoever. Relabelling covers both cases.
+				local display_cat = canon_cat(run.cat_id)
+				run.label, run.hidden = get_effective_label(display_cat, display_name(display_cat))
+				run.color_cat_id = display_cat
+			end
+		end
+
+		-- Decide which runs actually draw a NEW header, without combining
+		-- their start_idx/count (that would break reposition_item, which
+		-- assumes each run is one contiguous slice of the items array -
+		-- two runs of the same label separated by a hidden run in
+		-- between are NOT contiguous with each other).
+		--
+		-- A hidden run doesn't count as breaking adjacency for the
+		-- VISIBLE runs of the same label around it - categories that
+		-- share the same real sort weight (Foods and Mutantfoods both
+		-- being weight 7, for example) aren't guaranteed to stay in two
+		-- clean separate blocks, Sorting Plus can interleave them. If
+		-- Mutantfoods is hidden, a Food/Drinks - Mutantfoods -
+		-- Food/Drinks sequence should read as one continuous Food/
+		-- Drinks group with some invisible items in the middle, not two
+		-- separate headers (confirmed by testing - it was showing two).
+		-- A genuinely different VISIBLE category in between still
+		-- correctly breaks the chain, so it gets its own header again.
+		-- Diagnostic: one line per run, only on an actual rebuild (which
+		-- happens on real changes, not per frame). Shows exactly what the
+		-- detector saw, so a mislabelled section can be traced without
+		-- guessing at it.
+		if CATHDR_DEBUG_RUNS then
+			for k = 1, n do
+				local r = cat_runs[k]
+				printf("[CATHDR] run %s | cat=%s order=%s count=%s exempt=%s pin=%s",
+					k, tostr(r.cat_id), tostr(r.order_num), tostr(r.count),
+					tostr(r.position_exempt), tostr(r.pin))
+
+				-- For runs we flagged as displaced, dump a few sections
+				-- with their raw kind and what Sorting Plus itself thinks
+				-- the sort kind is. If those disagree, that is the cause.
+				if r.pin then
+					local shown = 0
+					for idx = r.start_idx, r.start_idx + r.count - 1 do
+						local ci = items[idx]
+						if ci and ci.section and shown < 4 then
+							shown = shown + 1
+							printf("[CATHDR]    sec=%s raw_kind=%s sort_kind=%s -> cat=%s weight=%s",
+								tostr(ci.section),
+								tostr(SYS_GetParam(0, ci.section, "kind")),
+								tostr(sort_kind_of(ci.section)),
+								tostr(kind_to_category[sort_kind_of(ci.section)
+									or SYS_GetParam(0, ci.section, "kind")]),
+								tostr(category_weight[r.cat_id]))
+						end
+					end
+				end
+			end
+			printf("[CATHDR] body = runs %s..%s", tostr(tail_start), tostr(head_end))
+		end
+
+		local result = {}
+		local last_visible_label = nil
+
+		for _, run in ipairs(cat_runs) do
+			local show_header
+
+			if run.hidden then
+				show_header = false
+			elseif run.label == last_visible_label then
+				show_header = false
+			else
+				show_header = true
+				last_visible_label = run.label
+			end
+
+			result[#result+1] = {
+				start_idx = run.start_idx,
+				count = run.count,
+				label = run.label,
+				hidden = run.hidden,
+				show_header = show_header,
+				color_cat_id = run.color_cat_id,
+			}
+		end
+
+		return result
+	end
+
+	-- ============================================================
+	-- Full rebuild: draw headers and shift each item down to make
+	-- room for them, given an already-sorted items list. No memory
+	-- of previous calls beyond the header count itself - everything
+	-- computed fresh from current state.
+	-- ============================================================
+	-- The header tooltip lists a section's heaviest few items, so only
+	-- that many ever need to be kept. Insertion into a list that is
+	-- never longer than TOP_N, cheapest-first rejection: an item that
+	-- cannot beat the current last entry costs one comparison and
+	-- allocates nothing.
+	local TOP_N = 5
+
+	local function push_top(list, sec, w)
+		w = w or 0
+		local n = #list
+		if n >= TOP_N and w <= list[n].w then
+			return
+		end
+
+		local pos = n + 1
+		for i = 1, n do
+			if w > list[i].w then
+				pos = i
+				break
+			end
+		end
+
+		table.insert(list, pos, { sec = sec, w = w })
+		if #list > TOP_N then
+			table.remove(list)
+		end
+	end
+
+	function utils_ui.UICellContainer:RebuildCategoryHeaders(items, runs)
+		if not container_allowed(self.ID) then return end
+		local ipairs_ = ipairs
+
+		-- cell_ratio, not screen_ratio: this is handed to reposition_item to
+		-- size the highlight against the cell, and the cell was placed with
+		-- the 16:10-clamped value. On 1600x1024 the raw one is a different
+		-- number and the highlight came out the wrong width.
+		local ratio = cell_ratio()
+
+		-- ------------------------------------------------------------
+		-- Pass 1: group runs into visual "sections" - one per drawn
+		-- header - and record each section's RAW row span (the rows
+		-- Sorting Plus actually placed the items on, before any of our
+		-- shifting). Everything stays in raw rows here and is turned
+		-- into final rows in pass 2, because with collapsing the offset
+		-- is no longer a simple "+1 per header": a collapsed section
+		-- REMOVES rows, so the running offset can go down as well as up.
+		-- ------------------------------------------------------------
+		local metric = header_metric(self.ID)
+		local want_totals = SHOW_SECTION_WEIGHT and metric ~= "none"
+
+		local sections = {}
+
+		-- Header rows reserved by emptied sections that sit past the last
+		-- drawn one, so they have nothing below them to charge the row to.
+		-- Folded into the row delta at the end of pass 2.
+		local tail_reserve = 0
+
+		for _, run in ipairs_(runs) do
+			local first_ci = items[run.start_idx]
+			local raw_start = first_ci.area.y
+
+			local last_idx = run.start_idx + run.count - 1
+			local raw_end = raw_start
+			local run_weight = 0
+
+			for idx = run.start_idx, last_idx do
+				local ci = items[idx]
+
+				-- Reserved rows OR drawn rows, whichever is taller.
+				--
+				-- Normally identical. They come apart when the room Sorting
+				-- Plus booked was computed from a different footprint than the
+				-- one utils_ui drew with - the HD icon override case described
+				-- on recover_area - and then a 1-row booking can carry a 2-row
+				-- icon. Trusting the booking alone puts the next header inside
+				-- that icon. Taking the larger costs nothing when they agree.
+				local height = (ci.area and ci.area.h) or 1
+				local drawn = px_to_cells(ci.H, self.grid_size + self.grid_line, self.grid_line)
+				if drawn > height then
+					height = drawn
+				end
+
+				local bottom = ci.area.y + height - 1
+				if bottom > raw_end then
+					raw_end = bottom
+				end
+				if want_totals then
+					-- Parked in the scratch array rather than in a fresh
+					-- { sec, w } table per item: the tooltip only ever shows
+					-- the heaviest five, and building a table for every item
+					-- in the bag on every rebuild just to sort and throw all
+					-- but five of them away was pure garbage. The section is
+					-- not known yet at this point, so the top-five list is
+					-- filled in the second pass below.
+					local cw = (metric == "money") and cell_value(self, ci) or cell_weight(ci)
+					run_weight = run_weight + cw
+					w_buf[idx] = cw
+				end
+			end
+
+			local into = nil
+
+			if run.show_header then
+				into = {
+					raw_start = raw_start,
+					raw_end = raw_end,
+					first_idx = run.start_idx,
+					last_idx = last_idx,
+					label = run.label,
+					color_cat_id = run.color_cat_id,
+					weight = run_weight,
+					items = want_totals and {} or nil,
+				}
+				sections[#sections+1] = into
+			elseif #sections > 0 then
+				into = sections[#sections]
+				if raw_end > into.raw_end then
+					into.raw_end = raw_end
+				end
+				into.last_idx = last_idx
+				into.weight = into.weight + run_weight
+			end
+
+			-- Now that the run's section is known, offer each item to that
+			-- section's heaviest-five list. push_top keeps it bounded and
+			-- sorted as it goes, so nothing is allocated for the items that
+			-- do not make the cut and there is no per-section sort at the
+			-- end. A run merged into the previous section feeds the same
+			-- list, which is what the old copy-then-sort did too.
+			if want_totals and into and into.items then
+				for idx = run.start_idx, last_idx do
+					push_top(into.items, items[idx].section, w_buf[idx])
+				end
+			end
+		end
+
+		-- ------------------------------------------------------------
+		-- Sticky pass: hold every section where it was for as long as the
+		-- bag is not repacking (see nothing_moved_since above).
+		--
+		-- Runs before the placeholder pass below so a section held over
+		-- here already counts as present and does not also get a second,
+		-- weight-placed header from that pass.
+		-- ------------------------------------------------------------
+		local sticky = sticky_of(self)
+		local freeze = KEEP_SPAN_ON_REMOVE and self.cat_freeze
+		                and next(sticky.span) ~= nil
+
+		-- Every category drawing a header of its own right now, resolved
+		-- the same way the placeholder pass resolves it, so "was here
+		-- earlier" and "is here now" are answered in the same terms.
+		-- Never cleared except by Reset, which is what makes reopening the
+		-- container the point at which a kept-over header finally goes.
+		for _, s in ipairs_(sections) do
+			sticky.seen[s.color_cat_id] = true
+
+			local t = s.color_cat_id
+			if not category_weight[t] then
+				t = proxy_for(t)
+			end
+			if t then
+				sticky.seen[canon_cat(t)] = true
+			end
+		end
+
+		if not freeze then
+			-- A real layout change: this is the arrangement the next run of
+			-- removals gets measured against.
+			--
+			-- Keyed by label because that is what a drawn section is: two
+			-- runs sharing a label are one section, and a label the
+			-- detector produced twice in one layout describes two disjoint
+			-- row ranges that cannot both be restored from one entry. Those
+			-- are dropped rather than guessed at - the section simply keeps
+			-- today's stock behaviour.
+			local span, dupe = {}, nil
+			for _, s in ipairs_(sections) do
+				if span[s.label] then
+					dupe = dupe or {}
+					dupe[s.label] = true
+				else
+					span[s.label] = {
+						raw_start = s.raw_start,
+						raw_end = s.raw_end,
+						label = s.label,
+						color_cat_id = s.color_cat_id,
+					}
+				end
+			end
+			if dupe then
+				for label in pairs(dupe) do
+					span[label] = nil
+				end
+			end
+			sticky.span = span
+		else
+			-- An emptied section is DRAWN as a placeholder when either
+			-- "keep emptied headers" or this container's "always show all
+			-- headers" is on. Otherwise it only reserves its row, so the
+			-- rows below stay exactly where they are and the gap it leaves
+			-- is simply blank - which is what keeping the gaps looks like
+			-- everywhere else in the list.
+			local draw_ghosts = keep_emptied_allowed(self.ID)
+			                    or empty_categories_allowed(self.ID)
+
+			local live = {}
+			for _, s in ipairs_(sections) do
+				live[s.label] = true
+
+				local f = sticky.span[s.label]
+				if f then
+					-- Grow back out to the remembered bounds, never in: on a
+					-- pure removal an item can only have left, so the
+					-- recorded span is always the outer one. Taking the max
+					-- also means a section that somehow grew keeps the
+					-- larger of the two rather than being clipped.
+					if f.raw_start < s.raw_start then
+						s.raw_start = f.raw_start
+					end
+					if f.raw_end > s.raw_end then
+						s.raw_end = f.raw_end
+					end
+				end
+			end
+
+			local ghosts = nil
+			for _, f in pairs(sticky.span) do
+				if not live[f.label] then
+					ghosts = ghosts or {}
+					ghosts[#ghosts + 1] = f
+				end
+			end
+
+			if ghosts then
+				-- pairs() has no defined order and every insert shifts the
+				-- indices after it, so place them in row order, top down.
+				table.sort(ghosts, function(a, b)
+					if a.raw_start ~= b.raw_start then
+						return a.raw_start < b.raw_start
+					end
+					return a.raw_end < b.raw_end
+				end)
+
+				for _, f in ipairs_(ghosts) do
+					local at = #sections + 1
+					for i = 1, #sections do
+						local s = sections[i]
+						if s.raw_start > f.raw_start
+							or (s.raw_start == f.raw_start and s.raw_end > f.raw_end)
+						then
+							at = i
+							break
+						end
+					end
+
+					if draw_ghosts then
+						-- Same shape as a placeholder from the pass below,
+						-- but keeping the rows it really occupied rather than
+						-- collapsing to a bare bar, so the block stays the
+						-- size it was until the container is reopened.
+						table.insert(sections, at, {
+							raw_start = f.raw_start,
+							raw_end = f.raw_end,
+							first_idx = 1,
+							last_idx = 0,
+							label = f.label,
+							color_cat_id = f.color_cat_id,
+							weight = 0,
+							items = want_totals and {} or nil,
+							empty = true,
+						})
+					elseif sections[at] then
+						-- Not drawn, but its header row still has to be paid
+						-- for or everything below it moves up by one - the
+						-- exact shift this pass exists to stop. Charge it to
+						-- the section that follows it instead.
+						sections[at].pre_offset = (sections[at].pre_offset or 0) + 1
+					else
+						tail_reserve = tail_reserve + 1
+					end
+				end
+			end
+		end
+
+		-- ------------------------------------------------------------
+		-- Optional: placeholder sections for categories holding nothing.
+		--
+		-- Every section above came from real items, so a category with none
+		-- simply had no run and therefore no header. These synthesise one:
+		-- zero item rows, header only, slotted in by sort weight so it lands
+		-- where that category's items would have gone.
+		--
+		-- Marked empty = true and given an intentionally reversed index
+		-- range (first_idx 1, last_idx 0) so every "for idx = first, last"
+		-- loop in pass 2 runs zero times with no extra guards.
+		-- ------------------------------------------------------------
+		-- "Always show all headers" draws every configured category, held
+		-- or not. "Keep emptied headers" draws only the ones this
+		-- container has actually held since it was opened, which is what
+		-- lets it work while the first option is off.
+		--
+		-- The sticky pass above already covers a container that is not
+		-- repacking, and its kept headers keep their original rows. This
+		-- covers the repacking case, where the remembered rows no longer
+		-- refer to anything and the header has to be re-placed by sort
+		-- weight, the same way a never-held category is.
+		local want_all_empty = empty_categories_allowed(self.ID)
+		local want_kept_empty = keep_emptied_allowed(self.ID)
+
+		if (want_all_empty or want_kept_empty) and #sections > 0 then
+			-- What is already on screen, resolved the way pass 2 resolves it
+			-- so a category represented by a display-only section (Magazines
+			-- standing in for Mags) does not also get an empty header.
+			local have = {}
+			for _, s in ipairs_(sections) do
+				-- Raw id as well as the resolved one. A Magazines section
+				-- resolves to whatever it rides on (002mags), so checking
+				-- only the resolved id would leave zzz_magazines looking
+				-- absent and add a second, empty Magazines header right
+				-- next to the real one.
+				have[s.color_cat_id] = true
+
+				local t = s.color_cat_id
+				if not category_weight[t] then
+					t = proxy_for(t)
+				end
+				if t then
+					have[canon_cat(t)] = true
+				end
+			end
+
+			-- Anchors: sections whose position is genuinely weight-based.
+			-- The pinned Favorites and Junk blocks are excluded, because they
+			-- are positional and have no weight of their own - anchoring to
+			-- them would let an empty header land above Favorites or below
+			-- Junk.
+			local first_anchor, last_anchor = nil, nil
+			local anchor_w = {}
+			for i, s in ipairs_(sections) do
+				local t = s.color_cat_id
+				if not category_weight[t] then
+					t = proxy_for(t)
+				end
+				local w = t and category_weight[t]
+				if w then
+					anchor_w[i] = w
+					first_anchor = first_anchor or i
+					last_anchor = i
+				end
+			end
+
+			if first_anchor then
+				local missing = {}
+				for cat, w in pairs(category_weight) do
+					-- EXCLUDED_CATEGORIES matters here, not just for the
+					-- MCM list. category_weight holds every entry in the
+					-- ltx, including ones that are never drawn as
+					-- themselves - 002mags in particular, whose items
+					-- always surface as either Loadout or Magazines. With
+					-- no MCM entry it has no user label and no colour of
+					-- its own, so an empty placeholder for it appeared as
+					-- a stray "Mags" header tinted like Weapons.
+					if not REORDER_PINNED[cat]
+						and not EXCLUDED_CATEGORIES[cat]
+						and canon_cat(cat) == cat
+						and not have[cat]
+						and (want_all_empty or sticky.seen[cat])
+					then
+						local label, hidden = get_effective_label(cat, display_name(cat))
+						if not hidden then
+							missing[#missing + 1] = { cat = cat, w = w, label = label }
+						end
+					end
+				end
+
+				-- Display-only categories are not in category_weight, so
+				-- the loop above can never produce one. Without this,
+				-- Magazines and Ammo Parts vanish the moment their last
+				-- item leaves and stay gone until one comes back - the
+				-- one kind of category the option silently did not cover.
+				--
+				-- Their rank comes from whatever they ride on, the same
+				-- resolution used everywhere else, so an empty Magazines
+				-- header sits where magazines would actually sort.
+				-- zzz_unmapped is deliberately absent: it is a catch-all
+				-- for items with no known category, so "empty" is its
+				-- normal state and a permanent Misc header would be noise.
+				local pseudo = {
+					{ id = MAGAZINES_PSEUDO_CAT,  name = "Magazines" },
+					{ id = AMMO_PARTS_PSEUDO_CAT, name = "Ammo Parts" },
+				}
+
+				for _, p in ipairs_(pseudo) do
+					if not have[p.id] and (want_all_empty or sticky.seen[p.id]) then
+						local target = proxy_for(p.id)
+						local w = target and category_weight[target]
+
+						-- Ammo Parts ranks just after Ammo, matching the
+						-- offset Seamless sorts it at.
+						if w and p.id == AMMO_PARTS_PSEUDO_CAT then
+							w = w + 0.5
+						end
+
+						if w then
+							local label, hidden = get_effective_label(p.id, p.name)
+							if not hidden then
+								missing[#missing + 1] = { cat = p.id, w = w, label = label }
+							end
+						end
+					end
+				end
+
+				-- Heaviest first. Each insert shifts the indices of everything
+				-- after it, so inserting top-down would invalidate positions
+				-- already found for later entries.
+				table.sort(missing, function(a, b)
+					if a.w ~= b.w then return a.w > b.w end
+					return a.cat > b.cat
+				end)
+
+				for _, m in ipairs_(missing) do
+					local at, raw = nil, nil
+
+					for i = first_anchor, last_anchor do
+						local w = anchor_w[i]
+						if w and w > m.w then
+							at = i
+							raw = sections[i].raw_start
+							break
+						end
+					end
+
+					if not at then
+						-- Heavier than every anchor: sits after the last weighted
+						-- section, which keeps it above a trailing pinned Junk
+						-- block instead of below it.
+						at = last_anchor + 1
+						raw = sections[last_anchor].raw_end + 1
+					end
+
+					table.insert(sections, at, {
+						raw_start = raw,
+						raw_end = raw - 1,
+						first_idx = 1,
+						last_idx = 0,
+						label = m.label,
+						color_cat_id = m.cat,
+						weight = 0,
+						items = want_totals and {} or nil,
+						empty = true,
+					})
+
+					-- Re-index the anchor bookkeeping around the insert.
+					local shifted = {}
+					for i, w in pairs(anchor_w) do
+						shifted[i >= at and i + 1 or i] = w
+					end
+					shifted[at] = m.w
+					anchor_w = shifted
+					if at <= first_anchor then first_anchor = at end
+					last_anchor = last_anchor + 1
+				end
+			end
+		end
+
+		-- ------------------------------------------------------------
+		-- Pass 2: place everything, tracking a running row offset.
+		-- Each header adds its own height; a collapsed section removes all
+		-- the rows its items would have occupied, so everything below
+		-- moves up to close the gap.
+		-- ------------------------------------------------------------
+		self.cat_top = self.cat_top or {}
+		local offset = 0
+		local cnt = 0
+
+		-- A whole row classically, a fraction of one with compact rows on.
+		-- Read once: it depends only on the container's grid and the
+		-- settings, neither of which moves during a rebuild.
+		local hdr_rows = header_metrics(self)
+
+		local can_collapse_here = COLLAPSE_ENABLED and collapse_allowed_here(self.ID)
+
+		-- Which categories are drawn as their own header right now. A
+		-- display-only category (Magazines, Ammo Parts) only offers
+		-- arrows when the real category it rides on has no header of its
+		-- own - otherwise two headers would move the same value.
+		local shown_cats = {}
+		for _, s in ipairs_(sections) do
+			shown_cats[s.color_cat_id] = true
+		end
+
+		-- Which real categories the player is actually carrying something
+		-- from right now, resolved to the weight each one would move.
+		--
+		-- Reordering swaps a category's weight with its neighbour's, and
+		-- the neighbour used to be picked from every configured category,
+		-- carried or not. Swapping with a category that has no items on
+		-- screen exchanges the two numbers correctly but changes nothing
+		-- visible, so the arrow looks like it did nothing - the reported
+		-- "sometimes categories aren't swapping". Restricting the
+		-- neighbour search to what is present makes every click move the
+		-- section past the one actually drawn above or below it.
+		--
+		-- Built from the runs rather than from drawn headers, so a
+		-- category whose header the player has hidden still counts: its
+		-- items are there and it occupies space in the list.
+		--
+		-- Display-only sections resolve through proxy_for() to the
+		-- category they ride on, and linked groups mark every member, so
+		-- a Food & Drinks block made up purely of mutant meat still
+		-- registers 070foods (the group's leader, and the entry that
+		-- represents it in the reorder list) as present.
+		local present_targets = {}
+		for _, s in ipairs_(sections) do
+			local t = s.color_cat_id
+			if not category_weight[t] then
+				t = proxy_for(t)
+			end
+			if t and category_weight[t] then
+				present_targets[t] = true
+				for _, c in ipairs_(LINKED_CATEGORIES[t] or {}) do
+					present_targets[c] = true
+				end
+			end
+		end
+		self.cat_present_targets = present_targets
+
+		-- Built once per rebuild and reused for every header's arrow
+		-- check below, rather than rebuilt per arrow.
+		local order_list = ordered_categories(present_targets)
+
+		for _, s in ipairs_(sections) do
+			-- Rows reserved by an emptied section that is being kept but not
+			-- drawn (sticky pass above). Counted first, so everything from
+			-- this point down keeps the row it already had.
+			offset = offset + (s.pre_offset or 0) * hdr_rows
+
+			-- Decide visibility FIRST, before drawing anything. The old
+			-- order drew the header and tint up front and tried to hide
+			-- them afterwards, which the tint pass then undid.
+			local hidden = {}
+			local any_visible = false
+
+			for idx = s.first_idx, s.last_idx do
+				hidden[idx] = false
+				any_visible = true
+			end
+
+			-- An empty placeholder has no items by construction, so the
+			-- loop above never runs and any_visible stays false. That is
+			-- the "nothing survived, drop it" signal for a real section,
+			-- which would delete the very header this option exists to
+			-- draw - and subtract rows it never occupied on top of that.
+			if s.empty then
+				any_visible = true
+			end
+
+			if not any_visible then
+				-- Nothing in this section survived the search: drop the
+				-- whole thing, header included, and reclaim its rows so
+				-- the sections below close the gap.
+				for idx = s.first_idx, s.last_idx do
+					local ci = items[idx]
+					if ci.cell then ci.cell:Show(false) end
+					if ci.hl then ci.hl:Show(false) end
+				end
+				offset = offset - (s.raw_end - s.raw_start + 1)
+			else
+				cnt = cnt + 1
+				-- Collapsing a section with nothing in it would toggle a
+				-- [-]/[+] that never changes anything on screen.
+				local can_collapse = can_collapse_here
+					and not NON_COLLAPSIBLE_CATS[s.color_cat_id]
+					and not s.empty
+				local collapsed = can_collapse and collapsed_sections[s.label] or false
+
+				local header_row = s.raw_start + offset
+				offset = offset + hdr_rows
+
+				local weight_text = nil
+				if want_totals and not s.empty then
+					if metric == "money" then
+						weight_text = string.format("%s RU", math.floor(s.weight))
+					else
+						weight_text = string.format("%.1f %s", s.weight, unit_kg())
+					end
+
+					-- Already the heaviest few, in order (see push_top), so
+					-- there is nothing left to sort or copy here.
+					self.cat_top[cnt] = s.items or {}
+				end
+
+				self.cat_labels = self.cat_labels or {}
+				self.cat_labels[cnt] = s.label
+				self.cat_can_collapse = self.cat_can_collapse or {}
+				self.cat_can_collapse[cnt] = can_collapse
+
+				-- Favorites/Junk are positional, not real Sorting Plus
+				-- categories, so there is no weight to move for them.
+				-- Which real category this header's arrows would move:
+				-- itself, or the category it proxies for.
+				local move_target = s.color_cat_id
+				if not category_weight[move_target] then
+					local proxy = proxy_for(s.color_cat_id)
+					if proxy and (PROXY_ARROWS_ALWAYS[s.color_cat_id]
+						or not shown_cats[proxy])
+					then
+						move_target = proxy
+					else
+						move_target = nil
+					end
+				end
+
+				local can_reorder = move_target ~= nil
+					and category_weight[move_target] ~= nil
+					and not REORDER_PINNED[move_target]
+
+				-- Draw each arrow only if that direction has somewhere to
+				-- go. The topmost movable section has nothing above it
+				-- but the pinned categories, which it cannot swap with,
+				-- so an "up" arrow there is an invitation to click
+				-- something that does nothing.
+				local can_up, can_dn = false, false
+				if can_reorder then
+					can_up = neighbour_index(order_list, move_target, -1) ~= nil
+					can_dn = neighbour_index(order_list, move_target,  1) ~= nil
+				end
+
+				self.cat_reorder_id = self.cat_reorder_id or {}
+				self.cat_reorder_id[cnt] = can_reorder and move_target or nil
+
+				self:ShowCategoryHeader(cnt, header_row, s.label,
+					color_for_category(s.color_cat_id), weight_text, collapsed, can_collapse, can_up, can_dn)
+
+				if collapsed then
+					for idx = s.first_idx, s.last_idx do
+						local ci = items[idx]
+						if ci.cell then ci.cell:Show(false) end
+						if ci.hl then ci.hl:Show(false) end
+					end
+					offset = offset - (s.raw_end - s.raw_start + 1)
+
+					if SECTION_TINT_ENABLED then
+						self:ShowSectionTint(cnt, header_row, hdr_rows, tint_color_for_category(s.color_cat_id))
+					end
+				else
+					for idx = s.first_idx, s.last_idx do
+						local ci = items[idx]
+						if hidden[idx] then
+							if ci.cell then ci.cell:Show(false) end
+							if ci.hl then ci.hl:Show(false) end
+						else
+							if ci.cell then ci.cell:Show(true) end
+							reposition_item(self, ci, offset, ratio)
+						end
+					end
+
+					if SECTION_TINT_ENABLED then
+						local rows = s.raw_end - s.raw_start + 1
+						if rows > 0 then
+							self:ShowSectionTint(cnt, header_row, rows + hdr_rows, tint_color_for_category(s.color_cat_id))
+						elseif s.empty then
+							-- Zero item rows, so tint just the header bar,
+							-- the same way a collapsed section does -
+							-- otherwise an empty category is the only
+							-- header on screen with no tint behind it.
+							self:ShowSectionTint(cnt, header_row, hdr_rows, tint_color_for_category(s.color_cat_id))
+						end
+					end
+				end
+			end
+		end
+
+		-- Reserved rows with nothing below them to charge to (see above).
+		offset = offset + tail_reserve * hdr_rows
+
+		-- net rows added/removed, so Scroll_Reinit can size the
+		-- scrollable area correctly (negative when things are collapsed)
+		self.cat_row_delta = offset
+
+		-- hide leftovers from a previous, larger rebuild
+		--
+		-- cat_up/cat_dn belong here just as much as the others. Missed,
+		-- a reorder arrow pooled at an index the current layout no longer
+		-- reaches stays on screen at the position it held last time -
+		-- typically just below the real bottom header, since that is the
+		-- index that comes and goes as the last section changes row
+		-- count. It is also unclickable, because the OnKeyboard scan only
+		-- walks 1..cat_header_cnt, so it looks like a phantom.
+		if self.cat_headers then
+			for i = cnt + 1, (self.cat_header_cnt or 0) do
+				if self.cat_headers[i] then
+					self.cat_headers[i]:Show(false)
+				end
+				if self.cat_weights and self.cat_weights[i] then
+					self.cat_weights[i]:Show(false)
+				end
+				if self.cat_arrows and self.cat_arrows[i] then
+					self.cat_arrows[i]:Show(false)
+				end
+				if self.cat_up and self.cat_up[i] then
+					self.cat_up[i]:Show(false)
+				end
+				if self.cat_dn and self.cat_dn[i] then
+					self.cat_dn[i]:Show(false)
+				end
+			end
+		end
+		if self.cat_tints then
+			local used = SECTION_TINT_ENABLED and cnt or 0
+			for i = used + 1, (self.cat_tint_cnt or 0) do
+				if self.cat_tints[i] then
+					self.cat_tints[i]:Show(false)
+				end
+			end
+		end
+
+		self.cat_header_cnt = cnt
+		self.cat_tint_cnt = SECTION_TINT_ENABLED and cnt or 0
+
+	end
+
+	-- ============================================================
+	-- Hook Scroll_Reinit: this is the "grid has settled" checkpoint,
+	-- called after every add during both bulk Reinit and single
+	-- incremental adds (equip/unequip/etc) - and, per testing, far
+	-- more often than that (275k+ calls logged in one session), likely
+	-- as routine UI bookkeeping regardless of whether anything visible
+	-- actually changed. A cheap fingerprint check (layout_hash)
+	-- skips the expensive rescan/redraw entirely when the item layout
+	-- is identical to last time - the row_end inflation below still
+	-- has to happen either way (using the cached header count on the
+	-- skip path), since the scroll-size calculation depends on it.
+	--
+	-- IMPORTANT: base_Scroll_Reinit computes its content size from
+	-- self.row_end and calls self.scroll:AddWindow(self.st, true)
+	-- exactly once - and that call appears to snapshot the scrollable
+	-- range at that moment (confirmed by testing: resizing self.st
+	-- afterward didn't extend how far the scrollbar could reach, even
+	-- with a large safety margin added). Calling AddWindow a second
+	-- time ourselves to fix that caused a serious memory leak (also
+	-- confirmed by testing). So instead of adding a call, we make the
+	-- ONE call the base function already makes use the right number:
+	-- temporarily tell it there are more rows than there really are
+	-- (real row count + headers needed), let it size and register
+	-- everything correctly against that, then immediately restore the
+	-- true row_end afterward, since other code (item placement) needs
+	-- that to stay accurate.
+	-- ============================================================
+	local base_Scroll_Reinit = utils_ui.UICellContainer.Scroll_Reinit
+
+	-- Run the base sizing against the row count the headers actually
+	-- produce, without rebuilding them. Used on both skip paths: the
+	-- layout is unchanged, or a rebuild has been deferred to this frame's
+	-- Update. cat_row_delta is the last rebuild's net row change, which is
+	-- the right number in the first case and one frame stale in the
+	-- second - a scrollbar a row out for a single frame, corrected before
+	-- it can be interacted with.
+	local function scroll_only(self, keep_pos)
+		local true_row_end = self.row_end
+		self.cat_row_end_inflated = true
+		self.row_end = true_row_end + (self.cat_row_delta or 0)
+		base_Scroll_Reinit(self, keep_pos)
+		self.row_end = true_row_end
+		self.cat_row_end_inflated = nil
+	end
+
+	function utils_ui.UICellContainer:Scroll_Reinit(keep_pos)
+		local tostr = tostring
+		local was_ignoring = self.ignore_scroll
+
+		if was_ignoring or not (HEADERS_ENABLED and self.sort_method == "kind" and container_allowed(self.ID)) then
+			base_Scroll_Reinit(self, keep_pos)
+			return
+		end
+
+		local signature = layout_hash(self)
+
+		if signature == self.cat_last_signature and self.cat_settings_gen == settings_gen then
+			-- nothing changed since last time - headers/positions are
+			-- already correct, just need row_end adjusted by the same
+			-- net delta as before so the scroll area stays sized right
+			-- (delta, not header count: collapsed sections remove rows)
+			self.cat_dirty = nil
+			scroll_only(self, keep_pos)
+			return
+		end
+
+		-- Something really did change. Pace the rebuild (see BUILD_INTERVAL
+		-- above): if the last one was recent this is part of a burst, so
+		-- note that a rebuild is owed and let the scroll sizing carry the
+		-- frame. The Update hook closes it out once the burst ends.
+		--
+		-- The hash runs first so cat_dirty only ever means a real pending
+		-- change. It is a walk over the container's cells, which is
+		-- perhaps a hundredth of a rebuild - well worth paying to keep the
+		-- deferral from firing on the many Scroll_Reinit calls that change
+		-- nothing at all.
+		local tg = time_global()
+		if self.cat_last_build and (tg - self.cat_last_build) < BUILD_INTERVAL then
+			self.cat_dirty = true
+			self.cat_dirty_tg = tg
+			scroll_only(self, keep_pos)
+			return
+		end
+
+		self.cat_last_build = tg
+		self.cat_dirty = nil
+		self.cat_dirty_tg = nil
+
+		local items, orphans = collect_items(self)
+
+		-- Did this container repack, or did it only lose items? Worked out
+		-- before cat_settings_gen is updated, because a settings change can
+		-- relabel or recolour sections without a single item moving, and the
+		-- remembered spans are keyed by label - restoring them across that
+		-- would hold sections at bounds that no longer belong to them.
+		self.cat_freeze = (self.cat_settings_gen == settings_gen)
+		                  and nothing_moved_since(self, items)
+
+		self.cat_last_signature = signature
+		self.cat_settings_gen = settings_gen
+
+		-- The Update probe now shares this exact hash, so recording it here
+		-- stops the probe seeing a stale value moments later and ordering a
+		-- second, identical rebuild. That redundant pass is what used to
+		-- undo the scroll position after a reorder.
+		self.cat_quick_hash = signature
+
+		-- Reported on a real rebuild only, so this stays quiet instead of
+		-- firing on every Scroll_Reinit. An item listed here is one we
+		-- never position, and is the shape of bug where a single item sits
+		-- on a header or alone in empty space while everything around it
+		-- is fine.
+		if orphans and CATHDR_DEBUG_RUNS then
+			for i = 1, #orphans do
+				local ci = orphans[i]
+				local pos = ci.cell and ci.cell:GetWndPos()
+				printf("[CATHDR] ORPHAN | ID=%s sec=%s area=%s y=%s x=%s W=%s H=%s - not positioned",
+					tostr(self.ID), tostr(ci.section),
+					ci.area and (tostr(ci.area.y) .. "," .. tostr(ci.area.x)) or "nil",
+					pos and tostr(pos.y) or "?", pos and tostr(pos.x) or "?",
+					tostr(ci.W), tostr(ci.H))
+
+				-- Anything still here survived recover_area, so dump the two
+				-- footprint calculations side by side. If they disagree, the
+				-- HD icon override addons are the cause and this is the proof.
+				local sec = ci.section
+				if sec then
+					local ok, axis = pcall(utils_xml.get_item_axis, sec, 1)
+					local ov = aaa_rax_icon_override_mcm and aaa_rax_icon_override_mcm.icon_override
+					local ok2, s_spp = pcall(function()
+						return ov and ov:section_exist(sec) and (ov:r_float_ex(sec, "inv_grid_scale") or 1)
+						       or SYS_GetParam(2, sec, "inv_grid_scale", 1)
+					end)
+					printf("[CATHDR] FOOTPRINT | sec=%s axis=%sx%s ini=%sx%s scale_sortingplus=%s scale_utils_ui=%s",
+						tostr(sec),
+						tostr(ok and axis and axis.w), tostr(ok and axis and axis.h),
+						tostr(SYS_GetParam(2, sec, "inv_grid_width")),
+						tostr(SYS_GetParam(2, sec, "inv_grid_height")),
+						tostr(ok2 and s_spp),
+						tostr(SYS_GetParam(2, sec, "inv_grid_scale", 1)))
+				end
+			end
+		end
+
+		-- compute_display_runs does a full per-item pass, so it's done ONCE
+		-- here and shared with both the header count and the rebuild - it
+		-- used to run twice per rebuild.
+		local runs = compute_display_runs(items)
+
+		-- Build first so cat_row_delta reflects this layout (collapsed
+		-- sections make it smaller, not just bigger), then re-run the
+		-- base sizing with the corrected row count.
+		self:RebuildCategoryHeaders(items, runs)
+
+		-- New baseline for the next removal, taken only when this rebuild
+		-- was a genuine layout change. Re-baselining on a frozen pass too
+		-- would make a slow sequence of removals creep: each step would be
+		-- measured against the step before it rather than against the
+		-- arrangement the spans were recorded from.
+		if not self.cat_freeze then
+			snapshot_positions(self, items)
+		end
+
+		scroll_only(self, keep_pos)
+
+		if CATHDR_DEBUG_RUNS then
+			printf("[CATHDR] scroll | ID=%s row_end=%s delta=%s grid=%s/%s scroll_h=%s content_h=%s",
+				tostr(self.ID), tostr(self.row_end), tostr(self.cat_row_delta),
+				tostr(self.grid_size), tostr(self.grid_line),
+				tostr(self.scroll and self.scroll:GetHeight()),
+				tostr(self.st and self.st:GetHeight()))
+		end
+	end
+
+	-- ============================================================
+	-- A hidden cell must never show a highlight.
+	--
+	-- Mags Reloaded's rax_persistent_highlight overrides Highlight with
+	--   self.hl:Show(persistant_highlight or state)
+	-- so items with a persistent highlight (loadout magazines, favorites)
+	-- force their overlay back on whenever anything calls Highlight -
+	-- which left glowing outlines floating over items the search had
+	-- filtered away. Re-assert it here, after the base call.
+	-- ============================================================
+
+	-- ============================================================
+	-- Hook Scroll_SetPos - this is what actually blocks scrolling.
+	--
+	-- The base function refuses to scroll at all when the content looks
+	-- shorter than the viewport:
+	--
+	--   if ((grid_size + grid_line) * self.row_end) < scroll:GetHeight()
+	--       then Y = 0 end
+	--
+	-- It reads the RAW row_end, which we deliberately restore after
+	-- Scroll_Reinit because item placement depends on it - so the rows
+	-- our headers add are invisible to this check and it snaps the
+	-- position back to 0 on every wheel movement.
+	--
+	-- Whether that bites depends on viewport height, which is why it hit
+	-- an ultrawide user and not us: 43 * 11 rows = 473px against a 610px
+	-- inventory viewport is "too short" and gets blocked, while the same
+	-- bag against a 390px trade viewport scrolls fine. Reported by
+	-- Denley, who also identified this function as the cause.
+	--
+	-- Expose the effective row count for the duration of the check only.
+	-- ============================================================
+	local base_Scroll_SetPos = utils_ui.UICellContainer.Scroll_SetPos
+
+	function utils_ui.UICellContainer:Scroll_SetPos(Y, force)
+		if HEADERS_ENABLED
+			and self.sort_method == "kind"
+			and container_allowed(self.ID)
+			and not self.cat_row_end_inflated
+			and (self.cat_row_delta or 0) ~= 0
+		then
+			local true_row_end = self.row_end
+			self.row_end = true_row_end + self.cat_row_delta
+			local res = base_Scroll_SetPos(self, Y, force)
+			self.row_end = true_row_end
+			return res
+		end
+
+		return base_Scroll_SetPos(self, Y, force)
+	end
+
+	-- ============================================================
+	-- Hook RemoveItem: only invalidates our cached state - it must NOT
+	-- touch the UI.
+	--
+	-- This callback can fire from inside the engine's object destroy
+	-- queue (consuming food via an action-wheel addon does exactly
+	-- that: net_Destroy -> callback -> RemoveItem). Calling
+	-- Scroll_Reinit here, as this used to, reaches
+	-- CUIScrollView::Clear and tears down scroll-view windows while
+	-- the engine is mid-destruction, which faults - it surfaced as a
+	-- bogus "not enough memory" crash with Clear at the top of the
+	-- stack.
+	--
+	-- Nothing is lost by deferring: the Update hook's layout_hash probe
+	-- notices the removal on the very next frame and rebuilds then,
+	-- from a safe context.
+	-- ============================================================
+	local base_RemoveItem = utils_ui.UICellContainer.RemoveItem
+
+	function utils_ui.UICellContainer:RemoveItem(obj, sec)
+		base_RemoveItem(self, obj, sec)
+		if not container_allowed(self.ID) then return end
+		self.cat_last_signature = nil
+		self.cat_quick_hash = nil
+	end
+
+	-- ui_inventory's refresh loops call RemoveItem_byID, not RemoveItem,
+	-- so hooking only the latter left the common case relying on the
+	-- probe noticing on its own. Same treatment, same reason.
+	local base_RemoveItem_byID = utils_ui.UICellContainer.RemoveItem_byID
+
+	function utils_ui.UICellContainer:RemoveItem_byID(id)
+		base_RemoveItem_byID(self, id)
+		if not container_allowed(self.ID) then return end
+		self.cat_last_signature = nil
+		self.cat_quick_hash = nil
+	end
+
+	-- ============================================================
+	-- Hover tooltip listing the heaviest items in a category, shown
+	-- when the cursor is over that category's weight number.
+	--
+	-- Built from a pooled background + up to 5 text lines (created
+	-- once, reused), same approach as the headers themselves. Hover
+	-- polling piggybacks on UICellContainer:Update, which the base
+	-- game already calls every frame and already early-outs when the
+	-- cursor isn't over the container at all - so this costs nothing
+	-- while you're not pointing at the panel.
+	-- ============================================================
+	local TIP_BG_COLOR = GetARGB(230, 20, 20, 20)
+	local TIP_LINE_H = 16
+
+	-- Gap between the cursor and the corner of the box.
+	local TIP_CURSOR_PAD = 12
+
+	-- The script UI space is a fixed 1024x768 virtual canvas whatever
+	-- the real resolution is - the same rect ui_inventory and utils_ui
+	-- clamp their own hints to (ui_inventory.script:4857).
+	local TIP_SCREEN_W = 1024
+	local TIP_SCREEN_H = 768
+
+	local item_name_memo = {}
+
+	local function item_display_name(sec)
+		local n = item_name_memo[sec]
+		if not n then
+			local raw = SYS_GetParam(0, sec, "inv_name")
+			n = raw and game.translate_string(raw) or sec
+			item_name_memo[sec] = n
+		end
+		return n
+	end
+
+	function utils_ui.UICellContainer:HideWeightTip()
+		self.tip_shown_idx = nil
+
+		if self.tip_bg then
+			self.tip_bg:Show(false)
+		end
+		if self.tip_lines then
+			for _, l in pairs(self.tip_lines) do
+				l:Show(false)
+			end
+		end
+	end
+
+	function utils_ui.UICellContainer:ShowWeightTip(idx)
+		local top = self.cat_top and self.cat_top[idx]
+		local anchor = self.cat_weights and self.cat_weights[idx]
+		if not top or #top == 0 or not anchor then
+			self:HideWeightTip()
+			return
+		end
+
+		-- Rebuilt only when the content can actually have changed.
+		--
+		-- ShowWeightTip runs from Update, i.e. every frame the cursor sits
+		-- on a weight readout, and it formats five strings and measures
+		-- them. Keyed on the hovered header, the rebuild signature and
+		-- the settings generation, that work happens once per tooltip
+		-- instead of sixty times a second.
+		--
+		-- It also stops the box drifting with the cursor now that it is
+		-- positioned from it: it appears where the cursor was and stays
+		-- put, which is how a tooltip is supposed to behave.
+		if self.tip_shown_idx == idx
+			and self.tip_shown_sig == self.cat_last_signature
+			and self.tip_shown_gen == settings_gen
+			and self.tip_bg and self.tip_bg:IsShown()
+		then
+			return
+		end
+
+		self.tip_lines = self.tip_lines or {}
+
+		-- Parented to the owner window, NOT to self.st.
+		--
+		-- self.st is the scrolled content (utils_ui.script:2442 adds it
+		-- to the scrollbar), so anything attached to it is clipped by the
+		-- viewport - a tooltip on a header near the bottom edge was cut
+		-- in half. And because these controls are created on first hover,
+		-- any cell created later (the bag growing past its previous
+		-- high-water mark in AddItem) attached after them and drew ON TOP
+		-- of the tooltip. Sibling z-order is attach order and there is no
+		-- z-index, so the tint-pool trick cannot help here: this control
+		-- needs to be last, not first.
+		--
+		-- utils_ui does the same thing with the drag icon for the same
+		-- reason (On_Drag: "must be assigned on the base UI"), and that
+		-- is also where the coordinate space comes from - a child of the
+		-- owner is positioned in raw screen units, which is what
+		-- GetCursorPosition returns.
+		local tip_parent = self.owner or self.st
+
+		if not self.tip_bg then
+			self.tip_bg = get_header_xml():InitStatic("tip_bg", tip_parent)
+			self.tip_bg:SetTextureColor(TIP_BG_COLOR)
+		end
+
+		local panel_w = self.prof:GetWidth()
+
+		-- Build the lines first so the box can be sized to the longest
+		-- one, rather than a fixed width that's usually too wide.
+		-- Measuring control, built from the same node as the visible
+		-- lines so it carries the same font - its own font is therefore
+		-- deliberately left alone. InitTextWnd, not InitStatic: see the
+		-- note on measure_text.
+		if not self.tip_measure then
+			self.tip_measure = get_header_xml():InitTextWnd("tip_line", tip_parent)
+			self.tip_measure:SetWndPos(vector2():set(0, MEASURE_PARK_Y))
+		end
+		self.tip_measure:SetWndSize(vector2():set(600, TIP_LINE_H))
+
+		local lines = {}
+		local text_w = 0
+		for i = 1, #top do
+			local s
+			if header_metric(self.ID) == "money" then
+				s = string.format("%s RU  %s", math.floor(top[i].w), item_display_name(top[i].sec))
+			else
+				s = string.format("%.1f %s  %s", top[i].w, unit_kg(), item_display_name(top[i].sec))
+			end
+			lines[i] = s
+
+			local lw = measure_text(self.tip_measure, s, #s * FONT_CHAR_W)
+			if lw > text_w then
+				text_w = lw
+			end
+		end
+
+		-- 4 to the left of the text (where the lines are drawn) and 8
+		-- to the right. The old +14 was on top of an estimate that was
+		-- already generous, which is most of why this box looked too
+		-- wide however many times it got trimmed.
+		local width = text_w + 12
+		if width > panel_w then
+			width = panel_w
+		end
+
+		if CATHDR_DEBUG_RUNS then
+			printf("[CATHDR] measure | tip width=%s text=%s lines=%s",
+				tostring(width), tostring(text_w), tostring(#top))
+		end
+
+		local height = #top * TIP_LINE_H + 6
+
+		-- Anchored to the cursor rather than to the header control, which
+		-- is what the panel-relative maths above used to do. Now that the
+		-- box lives on the owner window it is not clipped by anything, so
+		-- it is clamped to the canvas by hand instead: left of the cursor
+		-- (the weight readout it belongs to is right-aligned), below it,
+		-- flipping above when there is no room underneath.
+		local cur = GetCursorPosition()
+		local tx = cur.x - width - TIP_CURSOR_PAD
+		local ty = cur.y + TIP_CURSOR_PAD
+
+		if ty + height > TIP_SCREEN_H then
+			ty = cur.y - height - TIP_CURSOR_PAD
+		end
+		if ty < 0 then ty = 0 end
+
+		if tx + width > TIP_SCREEN_W then tx = TIP_SCREEN_W - width end
+		if tx < 0 then tx = 0 end
+
+		self.tip_bg:SetWndPos(vector2():set(tx, ty))
+		self.tip_bg:SetWndSize(vector2():set(width, height))
+		self.tip_bg:Show(true)
+
+		local bg_pos = self.tip_bg:GetWndPos()
+
+		for i = 1, #top do
+			local l = self.tip_lines[i]
+			if not l then
+				l = get_header_xml():InitStatic("tip_line", tip_parent)
+				self.tip_lines[i] = l
+			end
+
+			l:TextControl():SetTextColor(HEADER_TXT_COLOR)
+			l:TextControl():SetText(lines[i])
+			l:SetWndPos(vector2():set(bg_pos.x + 4, bg_pos.y + 3 + (i - 1) * TIP_LINE_H))
+			l:SetWndSize(vector2():set(width - 8, TIP_LINE_H))
+			l:Show(true)
+		end
+
+		for i = #top + 1, #self.tip_lines do
+			self.tip_lines[i]:Show(false)
+		end
+
+		self.tip_shown_idx = idx
+		self.tip_shown_sig = self.cat_last_signature
+		self.tip_shown_gen = settings_gen
+	end
+
+	-- ============================================================
+	-- Click a header to fold/unfold its category.
+	--
+	-- UICellContainer:OnKeyboard receives MOUSE_1 press/release (that's
+	-- how the base game does drag and item clicks), so this is the
+	-- supported way in - no new input plumbing needed. We only act when
+	-- the cursor ISN'T over an item cell (self.hover.idx nil), so this
+	-- can never swallow a click meant for dragging or using an item.
+	-- ============================================================
+	local base_OnKeyboard = utils_ui.UICellContainer.OnKeyboard
+
+	function utils_ui.UICellContainer:OnKeyboard(dik, keyboard_action)
+		if not container_allowed(self.ID) then return base_OnKeyboard(self, dik, keyboard_action) end
+		-- Reorder controls. Kept separate from the collapse block below,
+		-- which is gated on the collapse settings.
+		if dik == DIK_keys.MOUSE_1
+			and keyboard_action == ui_events.WINDOW_KEY_RELEASED
+			and not self.hover.idx
+			and self.sort_method == "kind"
+			and container_allowed(self.ID)
+		then
+			if order_edit_mode then
+				for i = 1, (self.cat_header_cnt or 0) do
+					local cat = self.cat_reorder_id and self.cat_reorder_id[i]
+					local up = self.cat_up and self.cat_up[i]
+					local dn = self.cat_dn and self.cat_dn[i]
+
+					if cat and up and up:IsShown() and up:IsCursorOverWindow() then
+						move_category(cat, -1, self.cat_present_targets)
+						return base_OnKeyboard(self, dik, keyboard_action)
+					end
+					if cat and dn and dn:IsShown() and dn:IsCursorOverWindow() then
+						move_category(cat, 1, self.cat_present_targets)
+						return base_OnKeyboard(self, dik, keyboard_action)
+					end
+				end
+			end
+		end
+
+		if COLLAPSE_ENABLED
+			and dik == DIK_keys.MOUSE_1
+			and keyboard_action == ui_events.WINDOW_KEY_RELEASED
+			and not self.hover.idx
+			and self.cat_arrows
+			and self.sort_method == "kind"
+			and collapse_allowed_here(self.ID)
+		then
+			for i = 1, (self.cat_header_cnt or 0) do
+				-- Click target is the [-]/[+] indicator on the left of
+				-- the bar, not the whole header - so clicking anywhere
+				-- else on a header does nothing.
+				local ar = self.cat_arrows and self.cat_arrows[i]
+				if ar and ar:IsShown() and ar:IsCursorOverWindow()
+					and self.cat_can_collapse and self.cat_can_collapse[i]
+				then
+					local label = self.cat_labels and self.cat_labels[i]
+					if label then
+						collapsed_sections[label] = not collapsed_sections[label] or nil
+						self.cat_last_signature = nil
+						self.cat_quick_hash = nil
+						self:Scroll_Reinit(true)
+					end
+					break
+				end
+			end
+		end
+
+		-- Always fall through to the base handler. It clears
+		-- self.scroll_pause on MOUSE_1 release (it sets it on press),
+		-- so returning early here left scrolling stuck until the next
+		-- click landed somewhere else.
+		return base_OnKeyboard(self, dik, keyboard_action)
+	end
+
+	local base_Update = utils_ui.UICellContainer.Update
+
+	function utils_ui.UICellContainer:Update(item_info, no_info, hide)
+		if not container_allowed(self.ID) then return base_Update(self, item_info, no_info, hide) end
+		local tostr = tostring
+		local res = base_Update(self, item_info, no_info, hide)
+
+		if HEADERS_ENABLED and self.sort_method == "kind" and container_allowed(self.ID) and self:IsShown() then
+			-- Catch changes that never reached Scroll_Reinit (item
+			-- transfers between containers don't reliably trigger it on
+			-- both sides). layout_hash is allocation-free, so this is
+			-- safe to run every frame.
+			-- Two guards on the per-frame probe:
+			--
+			-- 1. Never rebuild while the mouse is held (scroll_pause is
+			--    set by the base OnKeyboard on MOUSE_1 press). Rebuilding
+			--    mid-drag fights the user's input.
+			-- 2. Throttle to a few times per second. If anything on a
+			--    given setup makes the layout hash differ every frame,
+			--    an unthrottled probe rebuilds continuously, which resets
+			--    the scroll position and makes the list feel frozen and
+			--    unclickable even though it still draws correctly.
+			--
+			-- The delay is imperceptible for weight/header updates.
+			local tg = time_global()
+			if self.cat_dirty and not self.scroll_pause
+				and (tg - (self.cat_dirty_tg or 0)) >= BUILD_SETTLE
+			then
+				-- A rebuild was deferred out of a burst (see the Scroll_Reinit
+				-- hook) and the burst has now been quiet for BUILD_SETTLE, so
+				-- this is the closing rebuild that shows the finished
+				-- contents. Serviced here rather than through the throttled
+				-- probe below, because this is not a poll for changes nobody
+				-- reported - the change is known, and it is the one the player
+				-- is waiting to see. Running now, before the frame is drawn,
+				-- is what keeps the deferral invisible.
+				self.cat_dirty = nil
+				self.cat_dirty_tg = nil
+				self.cat_next_probe = tg + 200
+				self.cat_last_signature = nil
+
+				-- Clear the pacing latch first: this call IS the rebuild the
+				-- burst was pacing towards, so it must not be paced away in
+				-- turn and handed back to the 200 ms probe.
+				self.cat_last_build = nil
+				self:Scroll_Reinit(true)
+			elseif not self.scroll_pause and (not self.cat_next_probe or tg >= self.cat_next_probe) then
+				self.cat_next_probe = tg + 200
+
+				local qh = layout_hash(self)
+				if qh ~= self.cat_quick_hash or self.cat_settings_gen ~= settings_gen then
+					self.cat_quick_hash = qh
+					self.cat_last_signature = nil
+					self:Scroll_Reinit(true)
+				end
+			end
+
+			-- Re-assert a scroll position saved by a category reorder.
+			-- This must run AFTER the probe above, because the rebuild it
+			-- triggers is one of the things that can undo it.
+			--
+			-- Restoring once, straight after On_Sort, does not work: at
+			-- that moment the container has been emptied and not yet
+			-- refilled (logged as row_end=0, max=1), so the target clamps
+			-- to zero. The bag is repopulated afterwards one item at a
+			-- time, each AddItem growing row_end and the scroll range with
+			-- it, so the target only becomes reachable partway through.
+			--
+			-- So: keep retrying every frame. Each attempt gets closer as
+			-- more rows arrive, and clamping does the rest. Stop as soon
+			-- as the target is actually reached - anything that knocks it
+			-- back later comes via Scroll_Reinit(true), which preserves
+			-- position on its own.
+			--
+			-- A clamped result must NOT be read as user input, which is
+			-- what an earlier version of this did: the first attempt
+			-- landed short, that was mistaken for a deliberate scroll, and
+			-- the latch gave up there - leaving the view parked just below
+			-- the top every time. Only a position we did not put there
+			-- counts as the user taking over.
+			if self.cat_scroll_restore then
+				local target = self.cat_scroll_restore
+				local now = self.scroll:GetCurrentScrollPos() or 0
+				local ours = self.cat_scroll_last_set
+
+				local done = (now == target)
+				local hijacked = (ours ~= nil and now ~= ours and now ~= 0)
+
+				if done or hijacked or tg > (self.cat_scroll_restore_until or 0) then
+					if CATHDR_DEBUG_RUNS then
+						printf("[CATHDR] reorder-restore | ID=%s target=%s now=%s done=%s hijacked=%s",
+							tostr(self.ID), tostr(target), tostr(now),
+							tostr(done), tostr(hijacked))
+					end
+					self.cat_scroll_restore = nil
+					self.cat_scroll_restore_until = nil
+					self.cat_scroll_last_set = nil
+				else
+					self:Scroll_SetPos(target, true)
+					self.cat_scroll_last_set = self.scroll:GetCurrentScrollPos() or 0
+				end
+			end
+		end
+
+		if SHOW_SECTION_WEIGHT and not hide and self.cat_weights and self:IsCursorOverWindow() then
+			local hovered = nil
+			for i = 1, (self.cat_header_cnt or 0) do
+				local wl = self.cat_weights[i]
+				if wl and wl:IsShown() and wl:IsCursorOverWindow() then
+					hovered = i
+					break
+				end
+			end
+
+			if hovered then
+				self:ShowWeightTip(hovered)
+			else
+				self:HideWeightTip()
+			end
+		else
+			self:HideWeightTip()
+		end
+
+		return res
+	end
+
+	-- ============================================================
+	-- Hook Reset: hide all headers immediately so nothing stale is
+	-- visible for the brief moment before the next rebuild happens.
+	-- ============================================================
+	local base_Reset = utils_ui.UICellContainer.Reset
+
+	function utils_ui.UICellContainer:Reset()
+		if self.ID ~= "npc_bag" then return base_Reset(self) end
+		-- A pending reorder restore is scoped to the rebuild that armed
+		-- it. Reset means the container is being torn down for something
+		-- else entirely (closing the window, switching mode), and the
+		-- saved offset no longer refers to anything - drop it rather than
+		-- let it fire against unrelated contents.
+		--
+		-- Safe with respect to reordering: On_Sort calls Reset before
+		-- move_category arms the latch, never after.
+		local pairs_ = pairs
+		self.cat_scroll_restore = nil
+		self.cat_scroll_restore_until = nil
+		self.cat_scroll_last_set = nil
+
+		if self.cat_headers then
+			for _, h in pairs_(self.cat_headers) do
+				h:Show(false)
+			end
+		end
+		if self.cat_tints then
+			for _, t in pairs_(self.cat_tints) do
+				t:Show(false)
+			end
+		end
+		if self.cat_weights then
+			for _, wl in pairs_(self.cat_weights) do
+				wl:Show(false)
+			end
+		end
+		-- arrows were missed here, which is why a stale [-]/[+] stayed on
+		-- screen after switching sort tabs. The reorder arrows are the
+		-- same story and need the same treatment.
+		if self.cat_arrows then
+			for _, ar in pairs_(self.cat_arrows) do
+				ar:Show(false)
+			end
+		end
+		if self.cat_up then
+			for _, a in pairs_(self.cat_up) do
+				a:Show(false)
+			end
+		end
+		if self.cat_dn then
+			for _, a in pairs_(self.cat_dn) do
+				a:Show(false)
+			end
+		end
+		self:HideWeightTip()
+		self.cat_header_cnt = 0
+		self.cat_tint_cnt = 0
+		self.cat_last_signature = nil
+
+		-- The remembered layout describes contents that are about to be
+		-- thrown away, so a category kept alive by the sticky pass survives
+		-- only until the container is refilled. Reopening the window (or
+		-- switching sort mode, which also comes through here) is the reset
+		-- the "until I reopen it" behaviour is built on.
+		self.cat_sticky = nil
+		self.cat_freeze = nil
+
+		-- The container is about to be refilled, so let the first
+		-- Scroll_Reinit of that fill rebuild immediately rather than
+		-- pacing it against the previous fill's timings.
+		self.cat_last_build = nil
+		self.cat_dirty = nil
+		self.cat_dirty_tg = nil
+
+		base_Reset(self)
+	end
+
+
+else
+	printf("[CATHDR] SCRIPT RE-EXECUTED - hooks already installed, skipping")
+end
+
+

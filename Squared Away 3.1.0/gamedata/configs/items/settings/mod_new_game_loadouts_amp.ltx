@@ -1,0 +1,89 @@
+; ============================================================
+;  ARMOR MAG POUCHES - the rig every new stalker starts with
+;
+;  WHERE THIS PLUGS IN
+;  -------------------
+;  `G.A.M.M.A. Starting Loadouts` owns the new game kit, in
+;  configs/items/settings/new_game_loadouts.ltx. Its shape is:
+;
+;      [points]                 the budget
+;      [custom]                 always offered to pick from
+;      [shared]:custom          everybody gets these
+;      [<faction>_loadout]:shared
+;
+;      item_section = <pick>, <amount>, <points> [, <difficulty>]
+;
+;  <pick> false means the item is simply IN the new character's
+;  inventory; true means it appears in the pick list at that cost in
+;  points. Zero points and false is a free item, which is what the
+;  starting bandage and knife are.
+;
+;  WHY FREE, AND WHY THIS RIG
+;  --------------------------
+;  With this mod on, an armour grants no magazine pockets at all - they
+;  all come from a chest rig. A new character with no rig therefore has
+;  NOWHERE to put a loadout magazine, which is not a difficulty choice,
+;  it is a broken start. The bandolier is the smallest rig in the table
+;  (2 small, 1 medium) and the cheapest to craft, so it is the honest
+;  floor rather than a gift.
+;
+;  WHY EVERY FACTION AND NOT JUST [shared]
+;  ---------------------------------------
+;  [shared] would be one line instead of thirteen, and it is the wrong
+;  one. A section written `[child]:parent` is filled in when the engine
+;  READS that header - it copies the parent's lines as they stand at
+;  that moment - so a line this file adds to [shared] afterwards never
+;  reaches the faction sections that inherited from it. Both mods in
+;  this install that add to the new game kit (Body Health System
+;  Realistic Overhaul, and the UDP-9 file the Starting Loadouts mod
+;  ships itself) write out every faction for exactly this reason. The
+;  list below is the thirteen sections in the file as it stands; if a
+;  future GAMMA adds a faction, its new stalkers start rigless and the
+;  fix is one more block here.
+;
+;  ! IS THE OVERRIDE MARKER. These are the Starting Loadouts mod's
+;  sections, not ours, and a second plain declaration of a foreign
+;  section is a FATAL error at startup - the same rule the loot tables
+;  learned the hard way. The file name matters too: DLTX only merges a
+;  file called mod_<original name>_<tag>.ltx, sitting beside the
+;  original.
+; ============================================================
+
+![stalker_loadout]
+amprig_bandolier               = false, 1, 0
+
+![bandit_loadout]
+amprig_bandolier               = false, 1, 0
+
+![ecolog_loadout]
+amprig_bandolier               = false, 1, 0
+
+![dolg_loadout]
+amprig_bandolier               = false, 1, 0
+
+![freedom_loadout]
+amprig_bandolier               = false, 1, 0
+
+![killer_loadout]
+amprig_bandolier               = false, 1, 0
+
+![army_loadout]
+amprig_bandolier               = false, 1, 0
+
+![monolith_loadout]
+amprig_bandolier               = false, 1, 0
+
+![csky_loadout]
+amprig_bandolier               = false, 1, 0
+
+![renegade_loadout]
+amprig_bandolier               = false, 1, 0
+
+![greh_loadout]
+amprig_bandolier               = false, 1, 0
+
+![isg_loadout]
+amprig_bandolier               = false, 1, 0
+
+![zombied_loadout]
+amprig_bandolier               = false, 1, 0

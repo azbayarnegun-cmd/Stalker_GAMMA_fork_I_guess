@@ -1,0 +1,65 @@
+; ============================================================
+;  ARMOR MAG POUCHES - the medium pouch, off the advanced bench
+;
+;    "rigs are hard to get, as you need mag pouches to craft them but
+;     to craft those you need advanced tools so even shit rigs are
+;     locked behind advanced tools. so make medium mag pouch craftable
+;     with basic tools"
+;
+;  Exactly right, and it is worth writing down how it happened, because
+;  nothing in this mod is wrong on its own.
+;
+;  The magazine mod ships three pouches:
+;
+;      af_magpouch_s   tier 1, recipe_basic_0     basic tools
+;      af_magpouch_m   tier 2, recipe_basic_1     ADVANCED tools
+;      af_magpouch_l   tier 2, recipe_advanced_1  advanced tools
+;
+;  and a rig is bought in pouches, because a rig's pockets ARE pouches
+;  sewn onto webbing. So the Cordon Rig - a tier two rig, four medium
+;  pockets, the first thing a new stalker would sew for himself - needs
+;  a medium pouch, and a medium pouch needs a bench he will not see for
+;  twenty hours. The rig ladder's bottom rung was standing on the
+;  magazine mod's second rung.
+;
+;  THE FIRST NUMBER IS THE TOOLKIT TIER. Only that changes here: the
+;  recipe book, the materials and the small pouch it is built from are
+;  the magazine mod's own and are repeated verbatim, because this is a
+;  change to WHERE you can make one and not to what it costs.
+;
+;  THE LARGE POUCH IS LEFT ALONE. It is the one that buys a drum pocket,
+;  every rig that needs one is tier four or five, and those are meant to
+;  be a project. The gate was only ever wrong at the bottom.
+;
+;  THERE IS NO ADVANCED BENCH IN GAMMA. The toolkits are ITEMS you carry:
+;  ui_workshop's workshop_toolkits is { itm_basickit, itm_advancedkit,
+;  itm_expertkit, ... } and a recipe's FIRST field is an index into that
+;  list. So this is not a bench, it is which kit has to be in your
+;  rucksack, and 1 is the basic one.
+;
+;  THE RECIPE BOOK IS LEFT AS IT WAS. recipe_basic_1 is the second field
+;  and a different gate entirely - what you have learned, not what you
+;  are carrying. Only the kit changes here.
+;
+; ------------------------------------------------------------
+;  AND THE FILE NAME IS PART OF THE FIX
+;
+;    "medium mag pouches are still an advanced tools crafting"
+;
+;  The first attempt at this was called mod_craft_amp_magpouch.ltx and
+;  changed nothing at all. Both files write the key x_af_magpouch_m into
+;  section [2]; the merge takes them in NAME order and the last one
+;  wins, and "mod_craft_amp_magpouch" sorts BEFORE
+;  "mod_craft_magpouches". We were overriding them and then being
+;  overridden back, silently, with a file that looked right in every
+;  other way.
+;
+;  The zzz is not decoration. It is the whole change.
+;
+;  ! IS THE OVERRIDE MARKER. [2] is the workshop's own section - the
+;  magazine mod's mod_craft_magpouches.ltx declares it - and a second
+;  plain declaration of a foreign section is a fatal error at startup.
+; ============================================================
+
+![2]
+x_af_magpouch_m          = 1, recipe_basic_1,af_magpouch_s,1,sewing_thread,8,prt_o_fabrics_2,10,prt_o_fabrics_3,10

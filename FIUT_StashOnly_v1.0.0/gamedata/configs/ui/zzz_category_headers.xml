@@ -1,0 +1,28 @@
+<w>
+	<header x="0" y="0" width="10" height="18" stretch="1">
+		<texture>ui_inGame2_white_rect</texture>
+		<text align="c" font="letterica16"/>
+	</header>
+	<header_weight x="0" y="0" width="10" height="18" stretch="1">
+		<text align="r" vert_align="c" font="letterica16"/>
+	</header_weight>
+	<header_arrow x="0" y="0" width="10" height="18" stretch="1">
+		<text align="l" vert_align="c" font="letterica16"/>
+	</header_arrow>
+	<!-- Item rules: translucent overlay pulsed over a header while an
+	     item is being dragged, to show it will accept the drop. White
+	     rect, no text - the script sets position, size and texture
+	     colour, and the alpha in that colour does the brightening. -->
+	<drop_glow x="0" y="0" width="10" height="18" stretch="1">
+		<texture>ui_inGame2_white_rect</texture>
+	</drop_glow>
+	<tip_bg x="0" y="0" width="10" height="10" stretch="1">
+		<texture>ui_inGame2_white_rect</texture>
+	</tip_bg>
+	<tip_line x="0" y="0" width="10" height="16">
+		<text align="l" font="letterica16"/>
+	</tip_line>
+	<order_arrow x="0" y="0" width="10" height="16" stretch="1">
+		<text align="c" vert_align="c" font="letterica16"/>
+	</order_arrow>
+</w>

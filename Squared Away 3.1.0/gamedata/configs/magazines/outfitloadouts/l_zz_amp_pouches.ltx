@@ -1,0 +1,43 @@
+; ============================================================
+;  ARMOR MAG POUCHES - the magazine mod's pouches, rebalanced
+;
+;  The stock af_magpouch_s/m/l grant enough on their own to make a
+;  chest rig pointless, and they install onto an armour by the same
+;  mechanism a rig does - so a player who found one had most of the
+;  progression already. Cut down to a small fixed amount each, they
+;  become what they are named after: a single pouch.
+;
+;      small pouch  -> 2 small slots
+;      medium pouch -> 2 medium slots
+;      large pouch  -> 1 large slot
+;
+;  These are also the rates the rig recipes buy slots at - see
+;  items/settings/mod_craft_amp_rigs.ltx, which is generated from those
+;  numbers. Change them here and re-run art/mkcraft.py.
+;
+;  THE ! PREFIX IS NOT OPTIONAL. DLTX - the ltx system in the modded
+;  exe - treats a second plain [section] as a mistake and stops the
+;  game with a fatal error naming both files, rather than silently
+;  picking one. ![section] is how you say "override the existing one",
+;  and it is the same marker mod_craft_amp_rigs.ltx uses for ![2] and
+;  mod_parts_amp_rigs.ltx for ![nor_parts_list].
+;
+;  The l_zz_ name still matters: outfitloadouts/importer.ltx does
+;  #include "l_*.ltx", so this is read after l_magpouches.ltx, and an
+;  override has to come after the thing it overrides.
+; ============================================================
+
+![af_magpouch_s]
+mag_limit_small				= 2
+mag_limit_medium			= 0
+mag_limit_large				= 0
+
+![af_magpouch_m]
+mag_limit_small				= 0
+mag_limit_medium			= 2
+mag_limit_large				= 0
+
+![af_magpouch_l]
+mag_limit_small				= 0
+mag_limit_medium			= 0
+mag_limit_large				= 1

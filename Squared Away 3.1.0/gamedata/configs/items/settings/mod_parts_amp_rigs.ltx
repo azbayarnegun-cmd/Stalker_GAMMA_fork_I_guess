@@ -1,0 +1,157 @@
+; ============================================================
+;  ARMOR MAG POUCHES - what a chest rig breaks down into
+;
+;  Format from mod_parts_magpouches.ltx in the installed Mags Reloaded
+;  fork, which lists part TYPES and nothing else:
+;
+;      ![nor_parts_list]
+;      af_magpouch_s = prt_o_fabrics_4, prt_o_fabrics_3, prt_o_fabrics_1
+;
+;  EVERY LISTED PART IS GIVEN, EVERY TIME.
+;  --------------------------------------
+;  This file used to say the dismantler rolled the amounts itself. It
+;  does not - that is the WEAPON path. item_parts.timer_disassembly_item
+;  walks the list and creates one of each, unconditionally:
+;
+;      for i=1,#parts_tbl do
+;          if ini_sys:section_exist(parts_tbl[i]) then ...
+;
+;  (The only variation is the "recycler" achievement, which duplicates
+;  one entry a third of the time.) So the list is not a pool to draw
+;  from, it IS the yield: five entries means five items. What varies is
+;  how much a rig is worth breaking, and that is set by the mix below.
+;
+;  WHAT A RIG IS MADE OF
+;  ---------------------
+;  Cloth in grades 1-4, plus the hardware the icons actually show:
+;  buckles and clips (prt_i_fasteners), moulded plastic (prt_i_plastic)
+;  and, on the rigs hung with metal furniture, scrap (prt_i_scrap). A
+;  bandolier is webbing and a clip; a plate carrier is a bench full of
+;  parts. That spread is what makes the endgame rigs worth stripping and
+;  the early ones worth keeping.
+;
+;  AND NEVER A POUCH.
+;  ------------------
+;  No af_magpouch_* appears here, deliberately. Expansion pouches are
+;  bought, found and crafted; if a rig broke down into them, "craft rig
+;  -> break rig -> keep pouches" would be the cheapest source in the
+;  game and the pouch economy would be over. Pouches ALREADY FITTED to
+;  the rig are a different question - those are handed back when it is
+;  dismantled, which is conservation rather than a source. See
+;  A.give_back_pouches in the script.
+;
+;  THE LEGACY NAMES at the bottom are the pre-1.20.0 sections, kept so a
+;  rig in an old save can still be broken down. See the tail of
+;  mod_system_amp_rigs.ltx for why they exist at all.
+; ============================================================
+
+![nor_parts_list]
+
+; tier 1 - webbing and a clip. Barely worth the tool.
+amprig_bandolier  = prt_o_fabrics_1, prt_i_fasteners
+amprig_scout      = prt_o_fabrics_1, prt_o_fabrics_2, prt_i_fasteners
+amprig_barakholka = prt_o_fabrics_1, prt_o_fabrics_2, prt_i_scrap
+
+; tier 2 - proper nylon, and the plastic hardware that comes with it
+amprig_harness    = prt_o_fabrics_2, prt_o_fabrics_1, prt_i_fasteners, prt_i_plastic
+amprig_nylon      = prt_o_fabrics_3, prt_o_fabrics_2, prt_o_fabrics_1, prt_i_plastic
+amprig_warsaw     = prt_o_fabrics_3, prt_o_fabrics_2, prt_o_fabrics_1, prt_i_fasteners
+amprig_vydra      = prt_o_fabrics_2, prt_o_fabrics_3, prt_o_fabrics_1, prt_i_fasteners
+amprig_karkas     = prt_o_fabrics_3, prt_o_fabrics_2, prt_i_plastic, prt_i_scrap
+amprig_bastion    = prt_o_fabrics_3, prt_o_fabrics_2, prt_i_fasteners, prt_i_plastic
+amprig_smersh     = prt_o_fabrics_3, prt_o_fabrics_2, prt_o_fabrics_1, prt_i_fasteners
+
+; tier 3 - the only ones that return the top grade of cloth
+amprig_leshy      = prt_o_fabrics_4, prt_o_fabrics_2, prt_i_fasteners, prt_i_plastic, prt_i_scrap
+amprig_chicom     = prt_o_fabrics_4, prt_o_fabrics_3, prt_o_fabrics_1, prt_i_fasteners, prt_i_scrap
+amprig_volya      = prt_o_fabrics_4, prt_o_fabrics_2, prt_o_fabrics_1, prt_i_fasteners, prt_i_plastic
+amprig_tarzan     = prt_o_fabrics_4, prt_o_fabrics_3, prt_o_fabrics_2, prt_i_fasteners, prt_i_scrap
+amprig_rubezh     = prt_o_fabrics_4, prt_o_fabrics_3, prt_o_fabrics_2, prt_i_fasteners, prt_i_plastic, prt_i_scrap
+amprig_carrier    = prt_o_fabrics_4, prt_o_fabrics_3, prt_o_fabrics_2, prt_i_fasteners, prt_i_plastic, prt_i_scrap
+
+; legacy names, for a rig in a save from before 1.20.0
+amp_rig_bandolier = prt_o_fabrics_1, prt_i_fasteners
+amp_rig_scout     = prt_o_fabrics_1, prt_o_fabrics_2, prt_i_fasteners
+amp_rig_harness   = prt_o_fabrics_2, prt_o_fabrics_1, prt_i_fasteners, prt_i_plastic
+amp_rig_nylon     = prt_o_fabrics_3, prt_o_fabrics_2, prt_o_fabrics_1, prt_i_plastic
+amp_rig_warsaw    = prt_o_fabrics_3, prt_o_fabrics_2, prt_o_fabrics_1, prt_i_fasteners
+amp_rig_leshy     = prt_o_fabrics_4, prt_o_fabrics_2, prt_i_fasteners, prt_i_plastic, prt_i_scrap
+amp_rig_chicom    = prt_o_fabrics_4, prt_o_fabrics_3, prt_o_fabrics_1, prt_i_fasteners, prt_i_scrap
+amp_rig_carrier   = prt_o_fabrics_4, prt_o_fabrics_3, prt_o_fabrics_2, prt_i_fasteners, prt_i_plastic, prt_i_scrap
+
+; ============================================================
+;  AND WHAT IT IS MADE OF, FOR THE WORKBENCH
+;
+;  A DIFFERENT LIST, AND THIS IS THE ONE THE WORKBENCH READS.
+;  ---------------------------------------------------------
+;  ui_workshop's parts window fills itself from the actor's inventory
+;  with exactly one test:
+;
+;      if itms_manager.ini_parts:r_string_ex("con_parts_list",sec) then
+;
+;  No class check, no condition check - a section either has a line here
+;  or it is not in the list. Rigs had `use_condition` and a `repair_type`
+;  the kits accept, which is why sewing kits and glue already mend them,
+;  and NO line here, which is why the workbench never offered one. That
+;  was the whole of the bug.
+;
+;  IT DOES NOT CHANGE WHAT DISMANTLING GIVES BACK. item_parts's
+;  disassembly_item reads nor_parts_list and only nor_parts_list:
+;
+;      local parts = ini_parts:r_string_ex("nor_parts_list",sec)
+;      if (not parts) then return end
+;
+;  So the two lists are independent. The list above is still the yield;
+;  this one is the set of components the workbench lets you replace.
+;
+;  THE RULES OF THIS LIST (from the head of parts.ltx)
+;  --------------------------------------------------
+;  Up to six parts, and every part of one item must be DIFFERENT - a
+;  repeat is not a second component, it is the same slot written twice.
+;  Every part must itself be a conditional item, which is why these are
+;  all prt_o_* and none of the prt_i_* hardware from the yield above.
+;
+;  Count follows the tier, so a bandolier is two bolts of cloth and a
+;  plate carrier is a bench job: 2 / 3 / 4.
+;
+;  WHAT THEY ARE MADE OF: cloth in grades 1-4 for everything; coated and
+;  treated fabrics (the prt_o_retardant_* family - PVC, carbon-fibre,
+;  aluminised) once a rig is real kit rather than webbing; and a single
+;  carbon-fibre layer on the three heaviest, which is the only ballistic
+;  part any rig asks for. A rig is not armour and must never need a
+;  Kevlar plate to mend.
+; ============================================================
+
+![con_parts_list]
+
+; tier 1 - cloth, and not much of it
+amprig_scout      = prt_o_fabrics_1, prt_o_fabrics_2
+amprig_bandolier  = prt_o_fabrics_1, prt_o_fabrics_3
+amprig_barakholka = prt_o_fabrics_1, prt_o_fabrics_4
+amprig_harness    = prt_o_fabrics_2, prt_o_fabrics_3
+
+; tier 2 - proper nylon, so a coated fabric joins the cloth
+amprig_nylon      = prt_o_fabrics_2, prt_o_fabrics_3, prt_o_retardant_5
+amprig_vydra      = prt_o_fabrics_2, prt_o_fabrics_4, prt_o_retardant_3
+amprig_warsaw     = prt_o_fabrics_1, prt_o_fabrics_3, prt_o_retardant_5
+amprig_karkas     = prt_o_fabrics_3, prt_o_fabrics_4, prt_o_retardant_9, prt_o_retardant_5
+amprig_smersh     = prt_o_fabrics_2, prt_o_fabrics_3, prt_o_retardant_11, prt_o_retardant_6
+amprig_bastion    = prt_o_fabrics_3, prt_o_fabrics_4, prt_o_retardant_6, prt_o_retardant_11
+
+; tier 3 - four components, and the heaviest three want a carbon layer
+amprig_chicom     = prt_o_fabrics_2, prt_o_fabrics_3, prt_o_fabrics_4, prt_o_retardant_5
+amprig_volya      = prt_o_fabrics_2, prt_o_fabrics_4, prt_o_retardant_6, prt_o_retardant_11
+amprig_leshy      = prt_o_fabrics_3, prt_o_fabrics_4, prt_o_retardant_5, prt_o_retardant_13
+amprig_tarzan     = prt_o_fabrics_3, prt_o_fabrics_4, prt_o_retardant_6, prt_o_ballistic_19
+amprig_carrier    = prt_o_fabrics_2, prt_o_fabrics_4, prt_o_retardant_11, prt_o_ballistic_19
+amprig_rubezh     = prt_o_fabrics_4, prt_o_retardant_6, prt_o_retardant_11, prt_o_ballistic_20
+
+; legacy names, for a rig in a save from before 1.20.0
+amp_rig_scout     = prt_o_fabrics_1, prt_o_fabrics_2
+amp_rig_bandolier = prt_o_fabrics_1, prt_o_fabrics_3
+amp_rig_harness   = prt_o_fabrics_2, prt_o_fabrics_3, prt_o_retardant_3
+amp_rig_nylon     = prt_o_fabrics_2, prt_o_fabrics_3, prt_o_retardant_5
+amp_rig_warsaw    = prt_o_fabrics_1, prt_o_fabrics_3, prt_o_retardant_5
+amp_rig_chicom    = prt_o_fabrics_2, prt_o_fabrics_3, prt_o_fabrics_4, prt_o_retardant_5
+amp_rig_leshy     = prt_o_fabrics_3, prt_o_fabrics_4, prt_o_retardant_5, prt_o_retardant_13
+amp_rig_carrier   = prt_o_fabrics_2, prt_o_fabrics_4, prt_o_retardant_11, prt_o_ballistic_19

@@ -1,0 +1,29 @@
+; ============================================================
+;  SQUARED AWAY - THIS FILE IS NO LONGER READ
+;
+;  It used to hold two things, and both of them spoke in size classes:
+;
+;    A SHAPE  [amp_shape_...]   a silhouette of pockets, filled with
+;                               whatever an armour happened to carry
+;    A RIG    [<section>]       exactly these pockets, for one armour
+;
+;  Both belonged to the armour-derived rig - the mode where the outfit
+;  you were wearing granted the pockets - and to the small / medium /
+;  large / tall classes those pockets came in.
+;
+;  3.0 HAS NEITHER. A rig is an item, and its shape is four numbers
+;  stamped on its own section:
+;
+;      amp_slot_2x2   amp_slot_3x1   amp_slot_2x1   amp_slot_1x1
+;
+;  put there by art/mkloot.py out of
+;  configs/magazines/outfitloadouts/l_amp_rigs.ltx, which is the
+;  balance file and the only one a human edits. What fits a slot is
+;  decided by the item's own icon footprint and nothing else, so there
+;  is no keyword left for a per-armour override to override.
+;
+;  THE FILE IS KEPT, EMPTY, ON PURPOSE. Another mod, a load order or a
+;  leftover DLTX patch may still name it; an ini_file on a path that
+;  does not exist is not something to find out about in a player's log.
+;  Nothing in this mod opens it.
+; ============================================================
