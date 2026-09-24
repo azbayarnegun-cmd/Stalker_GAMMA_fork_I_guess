@@ -20,8 +20,11 @@ A modular "composure" (stress/nerve) system for GAMMA. **Core** owns the value, 
 
 **File conflicts:** none with GAMMA (`G.A.M.M.A/modpack_addons/*`, `modpack_patches/`), none with the other `custom_mods`, none between the Composure folders.
 
-**Composure Feedback (installed, not uploaded):** one module that merges heartbeat audio (`composure_heartbeat`), screen effects (`composure_visuals`, vignette textures `ui\composure_visuals\vignette_*`) and the HUD (`composure_hud`). Seen running in `xray_hitech.log` (22 Sep 2026). Other READMEs reference v1.1.1 / v1.2.6; loads right after Core.
+**Composure Feedback v1.2.6** (`Composure_Feedback_v1.2.6/`, uploaded 2026-09-24 via chat zip): one module that merges the heartbeat (`composure_heartbeat_*`), screen effects (`composure_visuals_*`: vignette, PPE, FOV, camera, overlay), the HUD (`composure_hud`), thoughts, and the bundled breathing script `z_saint_actor_breathing.script` with its sounds (`sounds/actor/*.ogg`, masked `m_*` variants). Loads right after Core.
+- Overlaps with **Thoughts Extended 4.1.0** by design: `composure_hud.script`, `composure_thoughts.script`, `composure_thoughts_mcm.script` and `ui_composure_thoughts.xml` are replaced by Thoughts Extended, so it must load **after** Feedback.
+- No file conflicts with GAMMA.
+- **Fix applied (my change):** `z_saint_actor_breathing.script` `num_sounds_by_kind` asked for more files than ship: `health` 12→8, `shiver` 8→6, `run_s` 7→6. The `health` mismatch caused the repeated `File not found ... actor\health_1_9..12.ogg` errors in `xray_hitech.log` (19 each, every few seconds while wounded).
 
 **Log observations (22 Sep 2026):** Composure ran without script errors. Heartbeat reported `errors=0` and tiers `medium`/`medium_low`. Cosmetic bug: Exploration logs `arrival validated with %d clock samples` without filling in the number (unformatted `printf`, same as SA addon 50).
 
-- **My changes:** none
+- **My changes:** Feedback breathing sound counts (above)
