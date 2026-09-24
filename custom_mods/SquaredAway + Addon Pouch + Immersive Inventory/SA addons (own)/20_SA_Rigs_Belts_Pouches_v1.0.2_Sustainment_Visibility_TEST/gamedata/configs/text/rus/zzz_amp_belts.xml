@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+  <string id="st_amp_belt_t1_name">
+    <text>Basic equipment belt</text>
+  </string>
+  <string id="st_amp_belt_t1_descr">
+    <text>A plain canvas load-bearing belt with one attachment point.\n\nPouch slots: 1. Takes compatible Layered addon pouches.</text>
+  </string>
+  <string id="st_amp_belt_t2_name">
+    <text>Reinforced equipment belt</text>
+  </string>
+  <string id="st_amp_belt_t2_descr">
+    <text>A stitched and taped belt carrying two attachment points.\n\nPouch slots: 2. Takes compatible Layered addon pouches.</text>
+  </string>
+  <string id="st_amp_belt_t3_name">
+    <text>Field equipment belt</text>
+  </string>
+  <string id="st_amp_belt_t3_descr">
+    <text>Nylon webbing on a padded pad, with three attachment points.\n\nPouch slots: 3. Takes compatible Layered addon pouches.</text>
+  </string>
+  <string id="st_amp_belt_t4_name">
+    <text>Assault equipment belt</text>
+  </string>
+  <string id="st_amp_belt_t4_descr">
+    <text>A military load-bearing belt with four attachment points across the hips.\n\nPouch slots: 4. Takes compatible Layered addon pouches.</text>
+  </string>
+  <string id="st_amp_belt_t5_name">
+    <text>Combat equipment belt</text>
+  </string>
+  <string id="st_amp_belt_t5_descr">
+    <text>A full combat belt on a rigid inner band. Five attachment points, and nothing carries more.\n\nPouch slots: 5. Takes compatible Layered addon pouches.</text>
+  </string>
+</string_table>

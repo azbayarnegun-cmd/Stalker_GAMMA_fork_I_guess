@@ -32,13 +32,14 @@ Squared Away needs its versions for the grid/rig UI, so it must load after those
 
 **Squared Away files replaced by your own addons (intended):** `zzz_amp_grid.script` (10, then 55), `zzz_armor_mag_pouches.script` (62), and `mod_grok_items_tier_amp.ltx`, `mod_grok_treasure_manager_amp.ltx`, `zzz_grid_stacks.ltx` (30).
 
-**Still undefined:** `amp_pouch_provisions`, `amplayer_sustainment_pouch` and `_t1`–`_t3` are modified by addon 20 but defined in no uploaded mod (not in the full Layered Pouches either). Addon 20's comments point to **Smart Loot Routing v1.0.1**, which isn't uploaded.
+**Previously 'undefined' sections, now resolved:** `amplayer_sustainment_pouch_t1`–`t3` and `amplayer_canister_carrier_t1` are defined by addon 20 (`mod_system_zzz_sa_sustainment_pouches.ltx`, `mod_system_zzz_amp_pouch_tiers.ltx`) with textures `ui_sa_tiers_pouches.dds` / `ui_sa_canister_pouches.dds`. `amplayer_sustainment_pouch` comes from Layered Pouches. `amp_pouch_provisions` is only a documentation block for **Smart Loot Routing**, which is **disabled** (inert without it).
 
 **Script override chain (confirmed by `xray_hitech.log`, 22 Sep 2026):**
 | Script | Squared Away 3.1.0 | Layered Pouches r11 | Your addons | Version running in-game |
 |---|---|---|---|---|
 | `zzz_amp_grid.script` | 0.65.0-test | +Layered-1.5.3-r11 | 10 (Consolidated-1.0.1), **55** (+ExternalNoStack-1.0.0) | **55** |
-| `zzz_armor_mag_pouches.script` | 3.1.0-test | +Layered-1.5.3-port-r9 | **62** (StableCore-1.0.1 + UBGLUtilityFix-1.0.1) | **62** |
+| `zzz_armor_mag_pouches.script` | 3.1.0-test | +Layered-1.5.3-port-r9 | 10 (StableCore-1.0.1 + UBGLReload-1.0.0), **62** (StableCore-1.0.1 + UBGLUtilityFix-1.0.1) | **62** |
+| `zzz_amp_layers.script` | — | Layered copy | **10** | 10 |
 | `haru_quick_action_wheel_mcm.script` | — | Layered copy | 40 | (also GAMMA `Quick Action Wheel Balance`) |
 Layered Pouches wants to load after SquaredAway 3.1.0, Sota UI, Quick Action Wheel and GAMMA Wheel Balance (INSTALL_R11.txt). Your addons 10–62 must stay after Layered Pouches, as they are now.
 
@@ -51,7 +52,9 @@ No path conflicts for FIUT or Seamless Sort (they use DLTX `mod_*` / `zzz_*` fil
 
 ## SA addons (own) — `SA addons (own)/`
 
-Uploaded 2026-09-24. Folder numbers are the MO2 load order (lower first; later ones override earlier ones). This upload was **also exactly 100 files** (the web limit). `10`, `20` and `30` have no README/meta.ini while the others do, so some of their files may be missing.
+Uploaded 2026-09-24. Folder numbers are the MO2 load order (lower first; later ones override earlier ones). `10`, `20` and `30` were cut off by the 100-file web limit and completed from chat zips the same day (10: 19 files, 20: 56, 30: 37). All folders are now complete.
+
+**Full load order** (from `10_…/MIGRATION_AND_LOAD_ORDER.txt`, lower wins): SquaredAway 3.1.0 → SA Layered Pouches 1.5.3 r11 → GAMMA Mags Reloaded 1.05 / AmmoCheck Enhanced (not uploaded) → 10 → 20 → 30 → 40 → 50, then 55, 62, 70, 90, 95.
 
 | # | Addon | Version / build | Purpose |
 |---|---|---|---|
@@ -73,3 +76,5 @@ Uploaded 2026-09-24. Folder numbers are the MO2 load order (lower first; later o
 **Conflicts between the addons themselves (intended overrides):**
 - `zzz_amp_grid.script`: 10 and 55 (55 overrides 10).
 - `ammo_check_onekey_mcm.script`: 10 and 62 (62 overrides 10).
+
+**BODYCAM:** only the PiP & 3DSS compatibility patch exists under that name; no separate main mod.

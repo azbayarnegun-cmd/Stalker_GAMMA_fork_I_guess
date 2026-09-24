@@ -8,7 +8,7 @@
 | `Modded exes gamedata 2026.9.2/` | `db/mods/00_modded_exes_gamedata.db0` (binary archive, MO2 version d2026.9.2) |
 | `Modded exes gamedata MT-TEST 2026.7.13/` | `db/mods/00_modded_exes_gamedata.db0` from `STALKER-Anomaly-modded-exes-MT-TEST_2026.7.13.zip` (MO2 folder was "Demorilzed 7.13") |
 
-- **Main BODYCAM PiP mod:** only the compatibility patch was uploaded. If the base mod is a separate MO2 entry, upload it too.
+- **Main BODYCAM mod:** none. The compatibility patch is the whole BODYCAM install; PiP rendering comes from the modded exes.
 - **MO2 order:** the patch overrides shaders from GAMMA's `410- 3DSS for GAMMA` (downloaded, not stored in this repo), so it must have **higher priority** than 3DSS and the base BODYCAM mod.
 - **Two engine gamedata versions:** both folders ship the *same path* (`db/mods/00_modded_exes_gamedata.db0`) with *different* contents, so only the higher one in MO2 is used. Keep only the one matching your installed exes (`bin/`). Stock GAMMA 0.9.5 uses engine MT-TEST 2026.5.5.
 - **File conflicts with this repo:** none (checked against `G.A.M.M.A/modpack_addons/*` and `modpack_patches/`). The overlap is intended and is only with the downloaded 3DSS files.

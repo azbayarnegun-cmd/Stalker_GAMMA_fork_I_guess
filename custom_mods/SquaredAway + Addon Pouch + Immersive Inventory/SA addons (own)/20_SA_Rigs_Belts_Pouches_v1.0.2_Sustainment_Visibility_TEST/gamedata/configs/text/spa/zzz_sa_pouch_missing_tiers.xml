@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<string_table>
+  <string id="st_sa_grenade_t1_name"><text>Small grenade pouch</text></string>
+  <string id="st_sa_grenade_t1_descr"><text>A compact 2x1 rig pouch for grenades, mines and compatible explosives. Tier 1.</text></string>
+  <string id="st_sa_grenade_t2_name"><text>Large grenade pouch</text></string>
+  <string id="st_sa_grenade_t2_descr"><text>A 4x1 rig pouch for grenades, mines and compatible explosives. Tier 2.</text></string>
+  <string id="st_sa_medical_t1_name"><text>Small medical pouch</text></string>
+  <string id="st_sa_medical_t1_descr"><text>A compact 2x1 pouch for medical supplies. Tier 1.</text></string>
+  <string id="st_sa_medical_t2_name"><text>Large medical pouch</text></string>
+  <string id="st_sa_medical_t2_descr"><text>A 4x1 pouch for medical supplies. Tier 2.</text></string>
+  <string id="st_sa_admin_t1_name"><text>Small administrative pouch</text></string>
+  <string id="st_sa_admin_t1_descr"><text>A compact 2x1 pouch for documents and field devices. Tier 1.</text></string>
+  <string id="st_sa_admin_t2_name"><text>Large administrative pouch</text></string>
+  <string id="st_sa_admin_t2_descr"><text>A 4x1 pouch for documents and field devices. Tier 2.</text></string>
+  <string id="st_sa_hunter_t1_name"><text>Small Hunter's Kit</text></string>
+  <string id="st_sa_hunter_t1_descr"><text>A backpack-mounted 4x2 kit for raw mutant meat and mutant parts. Cooked food belongs in a Sustainment Pouch. Tier 1.</text></string>
+  <string id="st_sa_hunter_t2_name"><text>Large Hunter's Kit</text></string>
+  <string id="st_sa_hunter_t2_descr"><text>A backpack-mounted 6x2 kit for raw mutant meat and mutant parts. Cooked food belongs in a Sustainment Pouch. Tier 2.</text></string>
+  <string id="st_sa_sustainment_t1_name_v2"><text>Sustainment Pouch T1</text></string>
+  <string id="st_sa_sustainment_t1_descr_v2"><text>A backpack-mounted 2x1 organiser for ordinary and Zone-produced food and drinks.</text></string>
+  <string id="st_sa_sustainment_t2_name_v2"><text>Sustainment Pouch T2</text></string>
+  <string id="st_sa_sustainment_t2_descr_v2"><text>A backpack-mounted 2x2 organiser for ordinary and Zone-produced food and drinks.</text></string>
+  <string id="st_sa_sustainment_t3_name_v2"><text>Sustainment Pouch T3</text></string>
+  <string id="st_sa_sustainment_t3_descr_v2"><text>A backpack-mounted 3x2 organiser for ordinary and Zone-produced food and drinks.</text></string>
+  <string id="st_sa_sustainment_t4_name_v2"><text>Sustainment Pouch T4</text></string>
+  <string id="st_sa_sustainment_t4_descr_v2"><text>A backpack-mounted 4x2 organiser for ordinary and Zone-produced food and drinks.</text></string>
+</string_table>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+  <string id="st_amp_pouch_mag_t1_name">
+    <text>Single magazine pouch</text>
+  </string>
+  <string id="st_amp_pouch_mag_t1_descr">
+    <text>2 columns x 1 row. Holds one ordinary magazine, lying on its side.</text>
+  </string>
+  <string id="st_amp_pouch_mag_t2_name">
+    <text>Extended magazine pouch</text>
+  </string>
+  <string id="st_amp_pouch_mag_t2_descr">
+    <text>3 columns x 1 row. Holds one extended magazine lying down, or an ordinary one with a cell to spare.</text>
+  </string>
+  <string id="st_amp_pouch_mag_t3_name">
+    <text>Double magazine pouch</text>
+  </string>
+  <string id="st_amp_pouch_mag_t3_descr">
+    <text>2 columns x 2 rows. Holds one drum, or two ordinary magazines side by side.</text>
+  </string>
+</string_table>

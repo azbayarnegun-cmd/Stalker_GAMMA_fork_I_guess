@@ -1,0 +1,188 @@
+; ============================================================
+;  RIG REBALANCE - NO RED SQUARES
+;
+;  OVERRIDES Squared Away's numbers with ! rather than shipping its
+;  64 KB system file again.
+;
+;  THE CHANGE THAT MATTERS: a rig has no medical pocket at all. Not
+;  one, at any tier. A red square - the only place a MEDKIT is quick -
+;  comes from a pouch you bought and from nowhere else.
+;
+;  WHY. Two reasons, and the second is the honest one.
+;
+;  The fiction: a chest rig is webbing and pockets. A medical pouch is
+;  a thing you ADD because you decided to carry medicine. Medkit speed
+;  should be a purchase, never a gift.
+;
+;  The economy: a rig recipe that names its own slots has to buy them,
+;  and a red square is priced as a scarce prize. Prizes make terrible
+;  ingredients - at the old prices, crafting a rig cost three to five
+;  times buying one. Taking red out of the rig takes it out of the
+;  recipe, and the problem disappears rather than being managed.
+;
+;  YOU ARE NOT LEFT WITHOUT FAST MEDICINE. A green square is quick for
+;  BANDAGES, and every rig has three to six of them. Only medkits and
+;  the rest of the pharmacy need red, and that is what the medic's
+;  pouches are for.
+;
+;  THE REST OF THE RULES
+;    2x2 is tier 5 only, two rigs have one
+;    3x1 is tier 2 and up
+;    magazine pockets are FEW: one at tier 1, two at tier 3, three at
+;      tier 4 and 5. A rig is not a magazine rack.
+;    green climbs 3 to 6 - supplies are what a rig gains as it grows
+;    two pouch slots on every rig, whatever its tier
+;
+;  TIER 5, one choice rather than three steps:
+;    Tarzan   two drums and a magazine
+;    Shturm   a drum, a deep row and a magazine - both, less of each
+;    Rubezh   two deep rows and a magazine, and the cheapest of the
+;             three. No drum at all, and it carries the most.
+;
+;  Yellow pockets are written TALL x WIDE, like the mod: a 2x1 is a
+;  magazine standing up. Green are single squares.
+; ============================================================
+
+; Patrontash - tier 1, 5 cells
+![amprig_bandolier]
+amp_slot_2x2 = 0
+amp_slot_3x1 = 0
+amp_slot_2x1 = 1
+amp_slot_g1 = 3
+amp_slot_1x1 = 0
+inv_weight = 0.80
+
+; Razvedka Sling - tier 1, 6 cells
+![amprig_scout]
+amp_slot_2x2 = 0
+amp_slot_3x1 = 1
+amp_slot_2x1 = 0
+amp_slot_g1 = 3
+amp_slot_1x1 = 0
+inv_weight = 0.90
+
+; Cordon Rig - tier 2, 8 cells
+![amprig_harness]
+amp_slot_2x2 = 0
+amp_slot_3x1 = 0
+amp_slot_2x1 = 2
+amp_slot_g1 = 4
+amp_slot_1x1 = 0
+inv_weight = 1.05
+
+; Barakholka - tier 2, 8 cells
+![amprig_barakholka]
+amp_slot_2x2 = 0
+amp_slot_3x1 = 1
+amp_slot_2x1 = 0
+amp_slot_g1 = 5
+amp_slot_1x1 = 0
+inv_weight = 1.05
+
+; Vepr Nylon - tier 3, 9 cells
+![amprig_nylon]
+amp_slot_2x2 = 0
+amp_slot_3x1 = 1
+amp_slot_2x1 = 1
+amp_slot_g1 = 4
+amp_slot_1x1 = 0
+inv_weight = 1.15
+
+; Vydra Swamp - tier 3, 9 cells
+![amprig_vydra]
+amp_slot_2x2 = 0
+amp_slot_3x1 = 0
+amp_slot_2x1 = 2
+amp_slot_g1 = 5
+amp_slot_1x1 = 0
+inv_weight = 1.15
+
+; 6Sh92 Surplus - tier 3, 10 cells
+![amprig_warsaw]
+amp_slot_2x2 = 0
+amp_slot_3x1 = 2
+amp_slot_2x1 = 0
+amp_slot_g1 = 4
+amp_slot_1x1 = 0
+inv_weight = 1.25
+
+; Karkas Harness - tier 4, 12 cells
+![amprig_karkas]
+amp_slot_2x2 = 0
+amp_slot_3x1 = 0
+amp_slot_2x1 = 3
+amp_slot_g1 = 6
+amp_slot_1x1 = 0
+inv_weight = 1.45
+
+; Smersh-AK - tier 4, 12 cells
+![amprig_smersh]
+amp_slot_2x2 = 0
+amp_slot_3x1 = 1
+amp_slot_2x1 = 2
+amp_slot_g1 = 5
+amp_slot_1x1 = 0
+inv_weight = 1.45
+
+; Bastion Patrol - tier 4, 13 cells
+![amprig_bastion]
+amp_slot_2x2 = 0
+amp_slot_3x1 = 1
+amp_slot_2x1 = 2
+amp_slot_g1 = 6
+amp_slot_1x1 = 0
+inv_weight = 1.50
+
+; Volya Raider - tier 4, 13 cells
+![amprig_volya]
+amp_slot_2x2 = 0
+amp_slot_3x1 = 2
+amp_slot_2x1 = 1
+amp_slot_g1 = 5
+amp_slot_1x1 = 0
+inv_weight = 1.50
+
+; Lifchik - tier 4, 15 cells
+![amprig_chicom]
+amp_slot_2x2 = 0
+amp_slot_3x1 = 3
+amp_slot_2x1 = 0
+amp_slot_g1 = 6
+amp_slot_1x1 = 0
+inv_weight = 1.70
+
+; Leshy - tier 4, 14 cells
+![amprig_leshy]
+amp_slot_2x2 = 0
+amp_slot_3x1 = 2
+amp_slot_2x1 = 1
+amp_slot_g1 = 6
+amp_slot_1x1 = 0
+inv_weight = 1.60
+
+; Rubezh Carrier - tier 5, 14 cells
+![amprig_rubezh]
+amp_slot_2x2 = 0
+amp_slot_3x1 = 2
+amp_slot_2x1 = 1
+amp_slot_g1 = 6
+amp_slot_1x1 = 0
+inv_weight = 1.60
+
+; Shturm Carrier - tier 5, 15 cells
+![amprig_carrier]
+amp_slot_2x2 = 1
+amp_slot_3x1 = 1
+amp_slot_2x1 = 1
+amp_slot_g1 = 6
+amp_slot_1x1 = 0
+inv_weight = 1.70
+
+; Tarzan-M22 - tier 5, 16 cells
+![amprig_tarzan]
+amp_slot_2x2 = 2
+amp_slot_3x1 = 0
+amp_slot_2x1 = 1
+amp_slot_g1 = 6
+amp_slot_1x1 = 0
+inv_weight = 1.80

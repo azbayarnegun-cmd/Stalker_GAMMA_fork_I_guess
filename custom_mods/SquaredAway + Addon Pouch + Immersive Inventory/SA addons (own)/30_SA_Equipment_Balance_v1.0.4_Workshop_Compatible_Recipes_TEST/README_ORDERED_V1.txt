@@ -1,0 +1,10 @@
+30_SA_Equipment_Balance_v1.0.4_Workshop_Compatible_Recipes
+
+Renamed stable V1 Equipment Balance module.
+
+Stable V1 ordered package. Load order:
+10_SA_Inventory_Framework_Core_v1.0.0
+20_SA_Rigs_Belts_Pouches_v1.0.1_Utility_Pouches
+30_SA_Equipment_Balance_v1.0.4_Workshop_Compatible_Recipes
+40_SA_Combat_Access_QuickWheel_v1.0.0
+50_SA_Immersive_Inventory_Access_v1.0.0

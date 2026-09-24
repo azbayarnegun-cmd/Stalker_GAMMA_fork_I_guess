@@ -1,0 +1,75 @@
+SA Equipment Balance v1.0.4 - Recipe Progression
+
+All 55 active crafting outputs use one of four explicit manual tiers.
+Every upgrade dependency is available at the same tier or an earlier tier.
+
+BASIC I (10)
+  amplayer_admin_pouch_t1
+  amplayer_belt_t1
+  amplayer_grenade_pouch_t1
+  amplayer_magazine_pouch_t1
+  amplayer_medical_pouch_t1
+  amplayer_sustainment_pouch_t1
+  amplayer_universal_pouch_s
+  amplayer_utility_pouch_t1
+  amppouch_g1
+  amppouch_y1
+
+BASIC II (11)
+  amplayer_admin_pouch
+  amplayer_belt_t2
+  amplayer_dump_pouch
+  amplayer_grenade_pouch
+  amplayer_magazine_pouch_t2
+  amplayer_medical_pouch
+  amplayer_sustainment_pouch_t2
+  amplayer_universal_pouch
+  amplayer_utility_pouch_t2
+  amppouch_g2
+  amppouch_y2
+
+ADVANCED I (10)
+  amplayer_belt_t3
+  amplayer_canister_carrier_t1
+  amplayer_hunter_pouch_t1
+  amplayer_magazine_pouch
+  amplayer_sustainment_pouch_t3
+  amppouch_g3
+  amppouch_r1
+  amppouch_y3
+  amprig_bandolier
+  amprig_scout
+
+ADVANCED II (24)
+  amplayer_belt_t4
+  amplayer_belt_t5
+  amplayer_canister_carrier_t2
+  amplayer_sustainment_pouch
+  amplayer_sustainment_pouch_t4
+  amplayer_universal_pouch_l
+  amppouch_g4
+  amppouch_r2
+  amppouch_y4
+  amppouch_y5
+  amprig_barakholka
+  amprig_bastion
+  amprig_carrier
+  amprig_chicom
+  amprig_harness
+  amprig_karkas
+  amprig_leshy
+  amprig_nylon
+  amprig_rubezh
+  amprig_smersh
+  amprig_tarzan
+  amprig_volya
+  amprig_vydra
+  amprig_warsaw
+
+HIDDEN COMPATIBILITY SECTIONS
+  amplayer_magazine_pouch_t3
+    Retired square magazine pouch. Kept defined only so old saves remain valid.
+
+  amplayer_canister_pouch_t1
+  amplayer_canister_pouch_t2
+    Legacy aliases. New crafting uses canister_carrier_t1/t2 to avoid duplicates.
