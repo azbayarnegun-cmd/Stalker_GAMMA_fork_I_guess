@@ -36,4 +36,7 @@ There's no size limit; upload the whole mod. Big binary files (`.dds`, `.ogg`, `
 
 | Mod | Source | Version | Enabled | Notes |
 |---|---|---|---|---|
-| _(none yet)_ | | | | |
+| [Alife Plus (+ Tactics etc.)](Alife%20Plus%20-%20damian_sirbu/NOTES.md) | [moddb](https://www.moddb.com/mods/stalker-anomaly/addons/alifeplus-v1-0-01) | ? | yes | Needs Xlib; disabled in stock GAMMA. Awaiting upload |
+| [BODYCAM: PiP & 3DSS](BODYCAM%20-%20PiP%20and%203DSS/NOTES.md) | ? | ? | yes | Needs modded exes. Awaiting upload |
+| [Composure](Composure/NOTES.md) | own mod | ? | yes | Awaiting upload |
+| [SquaredAway + Addon Pouch + Immersive Inventory](SquaredAway%20+%20Addon%20Pouch%20+%20Immersive%20Inventory/NOTES.md) | ? | ? | yes | Awaiting upload |
