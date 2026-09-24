@@ -1,0 +1,2112 @@
+; ============================================================
+;  ZONE GRID - HOW MANY OF A THING SHARE ONE SQUARE
+;
+;  WHAT CAN stack is decided in the script, not here. A section marked
+;  dont_stack never piles, and neither does anything carrying upgrades.
+;  Everything else does: a part-used medkit stacks with its own kind and
+;  the number on the square is the total uses left, and wear does not
+;  keep two things apart. FOOD AND DRINK are the exception - two of them
+;  only share a square when their freshness is within ten percent,
+;  because on a tin that bar is how rotten it is.
+;
+;  What is here is the CEILING. Without one, a stack is unlimited and a
+;  grid stops meaning anything - forty bandages in one square is not an
+;  inventory, it is a list with extra steps.
+;
+;  Everything not named below has a ceiling of one: its own square, the
+;  way it has been since the grid arrived.
+;
+;  There is an MCM slider that scales every number here at once, for
+;  players who want tighter or looser stacking without editing a file.
+;  The result is never less than one.
+;
+;  FOUR WAYS TO NAME SOMETHING, most specific first:
+;
+;    [grid_stack_section]   this exact section
+;    [grid_stack_like]      any section whose name contains this
+;    [grid_stack_flag]      anything whose section carries this key
+;    [grid_stack_kind]      anything the game gives this `kind`
+;
+;  `kind` is the game's own word for what a thing is - the same one the
+;  sorting tabs read - so a mod that adds a new bandage gets the
+;  bandage ceiling without anybody editing anything.
+; ============================================================
+
+[grid_stack_kind]
+; Medicine. A first aid kit is a box the size of your palm and you
+; carry six; they go in the same pocket.
+i_medical           = 5
+
+; Food and drink. Tins and bottles, and the same argument.
+i_food              = 5
+i_drink             = 5
+i_mutant_cooked     = 4
+i_mutant_raw        = 4
+
+; Weapon parts, and the upgrade kits that go with them. This is the
+; kind that eats a grid alive: you come home from one workshop run with
+; thirty of them.
+i_part              = 10
+i_upgrade           = 5
+
+; Mutant parts, sold by the handful.
+i_mutant_part       = 5
+i_mutant_belt       = 5
+
+; ------------------------------------------------------------
+;  AND THE KINDS THAT WERE MISSING
+;
+;    "also add other missing Item stacks in incentory like Ammo,
+;     scraps etc and you decide what ammount for each should be now"
+;
+;  Chosen by how many of a thing you actually end a run holding, not by
+;  how big it is: the ceiling is what stops a grid turning into a list,
+;  and a kind you only ever carry two of does not need one.
+; ------------------------------------------------------------
+
+; AMMUNITION, and the biggest of these by a distance. Cartridges arrive
+; a box at a time from every corpse on the map, and a full box is one
+; square whether it holds five rounds or fifty. Twenty deep is a
+; bandolier's worth and still leaves the number meaning something.
+;
+; `w_ammo` is a w_ kind and stacks anyway - see the note in the audit.
+; The w_ prefix is SortingPlus's grouping for "goes with a weapon", not
+; a claim that it IS one.
+w_ammo              = 20
+
+; Scrap, oddments and everything the game files under nothing in
+; particular: bolts, wire, tins, the stuff a workbench eats.
+i_misc              = 10
+
+; Dead artefacts. Worth carrying by the handful, worth nothing each.
+i_arty_junk         = 10
+
+; Notes, letters and documents. Paper, and weightless with it.
+i_letter            = 20
+
+; TOOLS AND KITS, deliberately shallow. These carry a condition, so the
+; window only stacks ones within a tenth of each other anyway - and
+; four spare screwdrivers in a square is help, forty is a spreadsheet.
+i_tool              = 4
+i_kit               = 4
+i_repair            = 4
+
+; NOT HERE, on purpose:
+;   i_quest    a quest item is one thing and wants its own square
+;   i_device   detectors and the PDA - few, bulky, and each one is
+;              its own state
+;   i_arty     a live artefact is never interchangeable with another
+;   i_backpack a pack you are not wearing is already an odd thing to
+;              be carrying two of
+
+[grid_stack_like]
+; ============================================================
+;  FACTION PATCHES
+;
+;  "later players can carry tens of them they super small item that
+;   weights nothing so 6 of those should not take the same ammount of
+;   space as a assult riffle"
+;
+;  Quite right. They are cloth badges. The base game gives them no kind
+;  of their own - SortingPlus names each one by hand - so they are
+;  matched on their name instead, which is how every one of them is
+;  built: csky_patch, dolg_patch, freedom_patch, and so on.
+; ============================================================
+_patch              = 20
+
+; ============================================================
+;  BY SECTION FLAG
+;
+;    "i need that magazines are unstackable in inventory only in the
+;     box"
+;
+;  Some things are best identified by a FLAG in their section rather
+;  than by their kind or their name. A magazine is the example: its
+;  `kind` is w_ammo, the same as a box of cartridges, so it inherits
+;  the ceiling meant for cartridges - and there is no name every
+;  magazine in every pack shares. What they do all carry is `is_mag`,
+;  which is the flag the magazine mod itself reads.
+;
+;  Each line is a section key that is either there or not, and the
+;  ceiling for anything that has it. This beats the kind and loses to
+;  a name pattern or an exact section.
+;
+;  THIS DOES NOT TOUCH THE MAGAZINE BOX. What stacks inside a box is
+;  that box's own amp_box_stack, in mod_system_amp_boxes.ltx, and it
+;  still holds ten magazines to a square.
+; ============================================================
+[grid_stack_flag]
+is_mag              = 1
+
+[grid_stack_section]
+; ============================================================
+;    "make so the "Bolt" item is stackable up to 40."
+;
+;  Here rather than under a kind, because a bolt is unlike everything
+;  that shares its kind: it is the one thing in the Zone you are given
+;  an endless supply of and never spend, so you end up carrying a
+;  handful you did not ask for. Forty in one square is the number that
+;  was asked for and it is the right shape of number - the point is
+;  that they stop taking up room you can see.
+; ============================================================
+bolt                                         = 40
+; ============================================================
+;  ONE THING AT A TIME
+;
+;  Anything whose ceiling should not follow its kind goes here, and
+;  this list wins over both of the above. The kinds do the work; every
+;  line here is a line somebody has to keep up to date, so there had
+;  better be a reason for it.
+;
+;  For example, to let bandages pile deeper than the rest of the
+;  medicine:
+;
+;      bandage = 10
+; ============================================================
+
+; ==========================================================
+;  EVERY ITEM IN THIS INSTALL, READY TO UNCOMMENT
+;
+;  1785 of them, grouped by the kind the game gives them and
+;  sorted by id inside each group. TAKE THE ; OFF A LINE AND
+;  CHANGE THE NUMBER - that is the whole of it.
+;
+;  Each line is already filled in with its own kind's ceiling
+;  from above, so uncommenting one on its own changes nothing.
+;  A line here beats the kind and the name rules both.
+;
+;  Left out on purpose: weapons and outfits, because the
+;  window refuses to stack them and a line here would look
+;  like a bug; anything the game marks dont_stack, for the
+;  same reason.
+;
+;  NOT EVERYTHING IS HERE. Most of the base game's items live
+;  inside Anomaly's packed .db archives, which are not files
+;  and cannot be read. A base item is below only if some mod
+;  also touches it - which in this install is most of them.
+;  Anything missing can still be typed in by hand; it works
+;  exactly the same.
+; ==========================================================
+
+; ----------------------------------------------------------
+;  i_medical - 25 items   (medicine)
+;  its kind already stacks 5 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;akvatab                                      = 5     ; Akvatabs
+;alu_splint                                   = 5     ; Alu splint
+;analgin                                      = 5     ; Analgin painkillers
+;bandage_army                                 = 5     ; Army Bandage
+;cms                                          = 5     ; CMS surgical kit
+;eft_afak                                     = 5     ; AFAK
+;eft_salewa_inj                               = 5     ; Salewa Injector (EFT)
+;etg                                          = 5     ; eTG-Change
+;ibs_blood_bag_filled                         = 5     ; Blood Bag
+;ibs_blood_bag_kit                            = 5     ; Blood Collection Bag
+;ibs_folic_acid_pills                         = 5     ; Folic Acid
+;ibs_intravenous_blood_bag                    = 5     ; IV Blood Bag
+;ibs_intravenous_saline_bag                   = 5     ; IV Saline Bag
+;ibs_intravenous_start_kit                    = 5     ; IV Starter Kit
+;ibs_saline_bag                               = 5     ; Saline Bag
+;joint                                        = 5     ; Cannabis joint
+;marijuana                                    = 5     ; Marijuana
+;mint                                         = 5     ; Akvatabs
+;propital                                     = 5     ; Propital
+;sj1                                          = 5     ; SJ1 Labs Combat Stimulant Injector
+;sj6                                          = 5     ; SJ6 Labs Combat Stimulant Injector
+;splint                                       = 5     ; Splint
+;surginst                                     = 5     ; Surgical Instruments
+;yadylin                                      = 5     ; Akvatabs
+;zagustin                                     = 5     ; Zagustin
+
+; ----------------------------------------------------------
+;  i_food - 6 items   (food)
+;  its kind already stacks 5 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;items_anm_dummy                              = 5
+;itm_xcvb_1                                   = 5     ; Bread Loaf
+;itm_xcvb_2                                   = 5     ; Bread Loaf
+;itm_xcvb_3                                   = 5     ; Bread Loaf
+;sguha                                        = 5     ; Condensed Milk
+;spoiled_tushonka                             = 5     ; Spoiled canned food
+
+; ----------------------------------------------------------
+;  i_drink - 35 items   (drink)
+;  its kind already stacks 5 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;at_baloon_lead_box                           = 5     ; Vodka
+;beer                                         = 5     ; Beer
+;beer_can_2                                   = 5     ; Energy Drink
+;bottle_metal                                 = 5     ; Vodka
+;brewed_coffee                                = 5     ; Brewed coffee
+;cigar                                        = 5     ; Cuban Cigar
+;cigar1                                       = 5     ; Cigarettes (Soviet)
+;cigar2                                       = 5     ; Cigarettes (Soviet)
+;cigar3                                       = 5     ; Cigarettes (Soviet)
+;cigarettes                                   = 5     ; Cigarettes (Marlboro)
+;cigarettes_lucky                             = 5     ; Cigarettes (Lucky Strike)
+;cigarettes_russian                           = 5     ; Cigarettes (Russian)
+;coffee_drink                                 = 5     ; UCC Cold Brew Ready To Drink Coffee
+;drink_crow                                   = 5     ; Tea "The Beak"
+;drug_booster                                 = 5     ; Vodka (Nemiroff)
+;energy_drink                                 = 5     ; Energy Drink
+;flask                                        = 5     ; Flask (Clean Water)
+;ground_coffee                                = 5     ; Ground coffee
+;hand_rolling_tobacco                         = 5     ; Hand-rolling Tobacco
+;limited_energy                               = 5     ; Limited Edition energy drink
+;mineral_water                                = 5     ; Mineral Water
+;tea                                          = 5     ; Beard's Tea
+;tobacco                                      = 5     ; Russian Tobacco
+;vodka                                        = 5     ; Vodka (Nemiroff)
+;vodka2                                       = 5     ; Vodka (Putinka)
+;vodka_quality                                = 5     ; Vodka (Stolichnaya)
+;vodka_script                                 = 5     ; Vodka (Nemiroff)
+;water_drink                                  = 5     ; Sparkling Water
+;xp_experience_potion_10                      = 5     ; The Scientist's Potion
+;xp_experience_potion_100                     = 5     ; The Scientist's Potion
+;xp_experience_potion_150                     = 5     ; The Scientist's Potion
+;xp_experience_potion_25                      = 5     ; The Scientist's Potion
+;xp_experience_potion_50                      = 5     ; The Scientist's Potion
+;xp_experience_potion_75                      = 5     ; The Scientist's Potion
+;xp_oblivion_potion                           = 5     ; Oblivion Potion
+
+; ----------------------------------------------------------
+;  i_mutant_cooked - 30 items   (cooked mutant meat)
+;  its kind already stacks 4 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;meat_bloodsucker                             = 4     ; Bloodsucker Goulash
+;meat_bloodsucker_a                           = 4     ; Bloodsucker Goulash
+;meat_bloodsucker_b                           = 4     ; Bloodsucker Goulash
+;meat_boar                                    = 4     ; Boar Chops
+;meat_boar_a                                  = 4     ; Boar Chops
+;meat_boar_b                                  = 4     ; Boar Chops
+;meat_chimera                                 = 4     ; Chimera Goulash
+;meat_chimera_a                               = 4     ; Chimera Goulash
+;meat_chimera_b                               = 4     ; Chimera Goulash
+;meat_dog                                     = 4     ; Dog Chops
+;meat_dog_a                                   = 4     ; Dog Chops
+;meat_dog_b                                   = 4     ; Dog Chops
+;meat_flesh                                   = 4     ; Flesh Bacon
+;meat_flesh_a                                 = 4     ; Flesh Bacon
+;meat_flesh_b                                 = 4     ; Flesh Bacon
+;meat_lurker                                  = 4     ; Lurker Chops
+;meat_lurker_a                                = 4     ; Lurker Chops
+;meat_lurker_b                                = 4     ; Lurker Chops
+;meat_pseudodog                               = 4     ; Pseudodog Chops
+;meat_pseudodog_a                             = 4     ; Pseudodog Chops
+;meat_pseudodog_b                             = 4     ; Pseudodog Chops
+;meat_psysucker                               = 4     ; Psysucker Goulash
+;meat_psysucker_a                             = 4     ; Psysucker Goulash
+;meat_psysucker_b                             = 4     ; Psysucker Goulash
+;meat_snork                                   = 4     ; Cooked Snork Hand
+;meat_snork_a                                 = 4     ; Cooked Snork Hand
+;meat_snork_b                                 = 4     ; Cooked Snork Hand
+;meat_tushkano                                = 4     ; Rat Skewers
+;meat_tushkano_a                              = 4     ; Rat Skewers
+;meat_tushkano_b                              = 4     ; Rat Skewers
+
+; ----------------------------------------------------------
+;  i_mutant_raw - 11 items   (raw mutant meat)
+;  its kind already stacks 4 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;mutant_part_boar_chop                        = 4     ; Boar Chop
+;mutant_part_chimera_meat                     = 4     ; Chimera Meat
+;mutant_part_dog_meat                         = 4     ; Dog Meat
+;mutant_part_flesh_meat                       = 4     ; Flesh Meat
+;mutant_part_general_meat                     = 4
+;mutant_part_krovosos_meat                    = 4     ; Bloodsucker Meat
+;mutant_part_lurker_meat                      = 4     ; Lurker Meat
+;mutant_part_psevdodog_meat                   = 4     ; Pseudodog Meat
+;mutant_part_psysucker_meat                   = 4     ; Psysucker Meat
+;mutant_part_snork_hand                       = 4     ; Snork Hand
+;mutant_part_tushkano_meat                    = 4     ; Tushkano Meat
+
+; ----------------------------------------------------------
+;  i_mutant_part - 33 items   (mutant parts)
+;  its kind already stacks 5 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;mutant_part_boar_leg                         = 5     ; Boar Leg
+;mutant_part_brain_burer                      = 5     ; Burer Brain
+;mutant_part_burer_hand                       = 5     ; Burer Hand
+;mutant_part_cat_claw                         = 5     ; Cat Claw
+;mutant_part_cat_tail                         = 5     ; Cat Tail
+;mutant_part_cat_thyroid                      = 5     ; Cat Thyroid
+;mutant_part_chimera_claw                     = 5     ; Chimera Claw
+;mutant_part_chimera_kogot                    = 5     ; Chimera Horn
+;mutant_part_controller_glass                 = 5     ; Controller Brain Tissue
+;mutant_part_controller_hand                  = 5     ; Controller Hand
+;mutant_part_crow_beak                        = 5     ; Mutated Crow Beak
+;mutant_part_dog_heart                        = 5     ; Dog Heart
+;mutant_part_dog_liver                        = 5     ; Dog Liver
+;mutant_part_dog_tail                         = 5     ; Dog Tail
+;mutant_part_fang_psevdodog                   = 5     ; Pseudodog Fang
+;mutant_part_flesh_eye                        = 5     ; Flesh Eye
+;mutant_part_fracture_hand                    = 5     ; Fracture Hand
+;mutant_part_general                          = 5
+;mutant_part_general_add                      = 5
+;mutant_part_heart_bloodsucker                = 5     ; Bloodsucker Heart
+;mutant_part_heart_chimera                    = 5     ; Chimera Heart
+;mutant_part_krovosos_jaw                     = 5     ; Bloodsucker Jaw
+;mutant_part_lurker_eye                       = 5     ; Lurker Eye
+;mutant_part_lurker_tail                      = 5     ; Lurker Tail
+;mutant_part_pseudogigant_eye                 = 5     ; Pseudogiant Eye
+;mutant_part_pseudogigant_hand                = 5     ; Pseudogiant Hand
+;mutant_part_psevdodog_tail                   = 5     ; Pseudodog Tail
+;mutant_part_psysucker_hand                   = 5     ; Psysucker Hand
+;mutant_part_snork_leg                        = 5     ; Snork Tendons
+;mutant_part_snork_mask                       = 5     ; Snork Mask
+;mutant_part_tushkano_head                    = 5     ; Tushkano Head
+;mutant_part_tusk_boar                        = 5     ; Boar Fang
+;mutant_part_zombi_hand                       = 5     ; Zombie Hand
+
+; ----------------------------------------------------------
+;  i_mutant_belt - 13 items   (mutant belts)
+;  its kind already stacks 5 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;hide_bloodsucjer                             = 5     ; Lurker Hide
+;hide_bloodsucker                             = 5     ; Bloodsucker Skin
+;hide_boar                                    = 5     ; Boar Pelt
+;hide_burer                                   = 5     ; Burer Skin
+;hide_chimera                                 = 5     ; Chimera Hide
+;hide_controller                              = 5     ; Controller Scalp
+;hide_flesh                                   = 5     ; Flesh Hide
+;hide_lurker                                  = 5     ; Lurker Hide
+;hide_pseudodog                               = 5     ; Pseudodog Fur
+;hide_pseudogiant                             = 5     ; Pseudogiant Hide
+;hide_psy_dog                                 = 5     ; Psy-dog Fur
+;hide_psysucker                               = 5     ; Psysucker Skin
+;powder_poltergeist                           = 5     ; 'Diamond Powder'
+
+; ----------------------------------------------------------
+;  i_part - 4 items   (weapon and armour parts)
+;  its kind already stacks 10 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;arcade_tokens                                = 10    ; Strange Tokens
+;bundle_lockpick                              = 10    ; Lockpick bundle
+;skeleton_key                                 = 10    ; Skeleton key
+;snapgun                                      = 10    ; Snap Gun
+
+; ----------------------------------------------------------
+;  i_upgrade - 106 items   (upgrade kits)
+;  its kind already stacks 5 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;tch_upgr                                     = 5
+;upgr_o_1_armor                               = 5     ; Ballistic Materials Package 'BRna'
+;upgr_o_1_arty                                = 5     ; Suit Utility Package 'APTe'
+;upgr_o_1_bleed                               = 5     ; Suit Utility Package 'KrV'
+;upgr_o_1_burn                                = 5     ; CBRN Material Package 'KHMy'
+;upgr_o_1_carry                               = 5     ; Suit Utility Package 'OSEL'
+;upgr_o_1_chem                                = 5     ; CBRN Materials Package 'CHM-1'
+;upgr_o_1_damage                              = 5     ; Ballistic Materials Package 'PzDH'
+;upgr_o_1_durability                          = 5     ; Ballistic Materials Package 'PRCh'
+;upgr_o_1_health                              = 5     ; Suit Utility Package 'HPs-1'
+;upgr_o_1_magical                             = 5     ; Suit Environmental protection upgrade kit
+;upgr_o_1_physical                            = 5     ; Suit Armor upgrade kit
+;upgr_o_1_power                               = 5     ; Suit Utility Package 'UPRz'
+;upgr_o_1_psi                                 = 5     ; CBRN Material Package 'MZg'
+;upgr_o_1_rad                                 = 5     ; CBRN Material Package 'CHst'
+;upgr_o_1_run                                 = 5     ; Suit Utility Package 'DVgt'
+;upgr_o_1_shock                               = 5     ; CBRN Material Package 'MSCh'
+;upgr_o_1_utility                             = 5     ; Suit utility upgrade kit
+;upgr_o_1_weight                              = 5     ; Ballistic Materials Package 'LGkY'
+;upgr_o_2_armor                               = 5     ; Ballistic Materials Package 'BRna'
+;upgr_o_2_arty                                = 5     ; Suit Utility Package 'APTe'
+;upgr_o_2_bleed                               = 5     ; Suit Utility Package 'KrV'
+;upgr_o_2_burn                                = 5     ; CBRN Material Package 'KHMy'
+;upgr_o_2_carry                               = 5     ; Suit Utility Package 'OSEL'
+;upgr_o_2_chem                                = 5     ; CBRN Materials Package 'CHM-1'
+;upgr_o_2_damage                              = 5     ; Ballistic Materials Package 'PzDH'
+;upgr_o_2_durability                          = 5     ; Ballistic Materials Package 'PRCh'
+;upgr_o_2_health                              = 5     ; Suit Utility Package 'HPs-1'
+;upgr_o_2_magical                             = 5     ; Suit Environmental protection upgrade kit
+;upgr_o_2_physical                            = 5     ; Suit Armor upgrade kit
+;upgr_o_2_power                               = 5     ; Suit Utility Package 'UPRz'
+;upgr_o_2_psi                                 = 5     ; CBRN Material Package 'MZg'
+;upgr_o_2_rad                                 = 5     ; CBRN Material Package 'CHst'
+;upgr_o_2_run                                 = 5     ; Suit Utility Package 'DVgt'
+;upgr_o_2_shock                               = 5     ; CBRN Material Package 'MSCh'
+;upgr_o_2_utility                             = 5     ; Suit utility upgrade kit
+;upgr_o_2_weight                              = 5     ; Ballistic Materials Package 'LGkY'
+;upgr_o_3_armor                               = 5     ; Ballistic Materials Package 'BRna'
+;upgr_o_3_arty                                = 5     ; Suit Utility Package 'APTe'
+;upgr_o_3_bleed                               = 5     ; Suit Utility Package 'KrV'
+;upgr_o_3_burn                                = 5     ; CBRN Material Package 'KHMy'
+;upgr_o_3_carry                               = 5     ; Suit Utility Package 'OSEL'
+;upgr_o_3_chem                                = 5     ; CBRN Materials Package 'CHM-1'
+;upgr_o_3_damage                              = 5     ; Ballistic Materials Package 'PzDH'
+;upgr_o_3_durability                          = 5     ; Ballistic Materials Package 'PRCh'
+;upgr_o_3_health                              = 5     ; Suit Utility Package 'HPs-1'
+;upgr_o_3_magical                             = 5     ; Suit Environmental protection upgrade kit
+;upgr_o_3_physical                            = 5     ; Suit Armor upgrade kit
+;upgr_o_3_power                               = 5     ; Suit Utility Package 'UPRz'
+;upgr_o_3_psi                                 = 5     ; CBRN Material Package 'MZg'
+;upgr_o_3_rad                                 = 5     ; CBRN Material Package 'CHst'
+;upgr_o_3_run                                 = 5     ; Suit Utility Package 'DVgt'
+;upgr_o_3_shock                               = 5     ; CBRN Material Package 'MSCh'
+;upgr_o_3_utility                             = 5     ; Suit utility upgrade kit
+;upgr_o_3_weight                              = 5     ; Ballistic Materials Package 'LGkY'
+;upgr_w_1_calibre                             = 5     ; Small arms tuning package 'C-22'
+;upgr_w_1_dispersion                          = 5     ; Aftermarket parts package 'D-19'
+;upgr_w_1_external                            = 5     ; Weapon body upgrade kit
+;upgr_w_1_firemode                            = 5     ; Small arms tuning package 'F-23'
+;upgr_w_1_grenade_mount                       = 5     ; Firearm optics and mounts package 'Gzh-L'
+;upgr_w_1_inertion                            = 5     ; Small arms tuning package 'H-7'
+;upgr_w_1_internal                            = 5     ; Weapon mechanism upgrade kit
+;upgr_w_1_magazine                            = 5     ; Small arms tuning package 'M-45'
+;upgr_w_1_muffle                              = 5     ; Firearm optics and mounts package 'SPS'
+;upgr_w_1_optical                             = 5     ; Optical scope upgrade kit
+;upgr_w_1_recoil                              = 5     ; Small arms tuning package 'K-01'
+;upgr_w_1_reliability                         = 5     ; Small arms tuning package 'D-11'
+;upgr_w_1_rpm                                 = 5     ; Small arms tuning package 'R-39'
+;upgr_w_1_scope                               = 5     ; Firearm optics and mounts package 'OByE'
+;upgr_w_1_scope_mount                         = 5     ; Firearm optics and mounts package 'MTt'
+;upgr_w_1_speed                               = 5     ; Small arms tuning package 'V-99'
+;upgr_w_1_weight                              = 5     ; Small arms tuning package 'W-02'
+;upgr_w_2_calibre                             = 5     ; Small arms tuning package 'C-22'
+;upgr_w_2_dispersion                          = 5     ; Aftermarket parts package 'D-19'
+;upgr_w_2_external                            = 5     ; Weapon body upgrade kit
+;upgr_w_2_firemode                            = 5     ; Small arms tuning package 'F-23'
+;upgr_w_2_grenade_mount                       = 5     ; Firearm optics and mounts package 'Gzh-L'
+;upgr_w_2_inertion                            = 5     ; Small arms tuning package 'H-7'
+;upgr_w_2_internal                            = 5     ; Weapon mechanism upgrade kit
+;upgr_w_2_magazine                            = 5     ; Small arms tuning package 'M-45'
+;upgr_w_2_muffle                              = 5     ; Firearm optics and mounts package 'SPS'
+;upgr_w_2_optical                             = 5     ; Optical scope upgrade kit
+;upgr_w_2_recoil                              = 5     ; Small arms tuning package 'K-01'
+;upgr_w_2_reliability                         = 5     ; Small arms tuning package 'D-11'
+;upgr_w_2_rpm                                 = 5     ; Small arms tuning package 'R-39'
+;upgr_w_2_scope                               = 5     ; Firearm optics and mounts package 'OByE'
+;upgr_w_2_scope_mount                         = 5     ; Firearm optics and mounts package 'MTt'
+;upgr_w_2_speed                               = 5     ; Small arms tuning package 'V-99'
+;upgr_w_2_weight                              = 5     ; Small arms tuning package 'W-02'
+;upgr_w_3_calibre                             = 5     ; Small arms tuning package 'C-22'
+;upgr_w_3_dispersion                          = 5     ; Aftermarket parts package 'D-19'
+;upgr_w_3_external                            = 5     ; Weapon body upgrade kit
+;upgr_w_3_firemode                            = 5     ; Small arms tuning package 'F-23'
+;upgr_w_3_grenade_mount                       = 5     ; Firearm optics and mounts package 'Gzh-L'
+;upgr_w_3_inertion                            = 5     ; Small arms tuning package 'H-7'
+;upgr_w_3_internal                            = 5     ; Weapon mechanism upgrade kit
+;upgr_w_3_magazine                            = 5     ; Small arms tuning package 'M-45'
+;upgr_w_3_muffle                              = 5     ; Firearm optics and mounts package 'SPS'
+;upgr_w_3_optical                             = 5     ; Optical scope upgrade kit
+;upgr_w_3_recoil                              = 5     ; Small arms tuning package 'K-01'
+;upgr_w_3_reliability                         = 5     ; Small arms tuning package 'D-11'
+;upgr_w_3_rpm                                 = 5     ; Small arms tuning package 'R-39'
+;upgr_w_3_scope                               = 5     ; Firearm optics and mounts package 'OByE'
+;upgr_w_3_scope_mount                         = 5     ; Firearm optics and mounts package 'MTt'
+;upgr_w_3_speed                               = 5     ; Small arms tuning package 'V-99'
+;upgr_w_3_weight                              = 5     ; Small arms tuning package 'W-02'
+
+; ----------------------------------------------------------
+;  i_tool - 188 items   (tools)
+;  its kind already stacks 4 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;alarm_system                                 = 4     ; Alarm System
+;ammo_box                                     = 4     ; Box of Ammo
+;artifact_harvester                           = 4     ; Artifact Harvester
+;batteries_dead                               = 4     ; Battery Pack
+;batteries_exo                                = 4     ; Military Battery Unit
+;blue_box_item                                = 4     ; Metal Box
+;bolts_pack                                   = 4     ; Pack of Throwables
+;box_matches                                  = 4     ; Matchbox
+;case_item                                    = 4     ; Gun Case
+;charcoal                                     = 4     ; Charcoal
+;decor_arti_display                           = 4     ; Artefact Display
+;decor_ashtray                                = 4     ; Ash Tray
+;decor_barrel_metal                           = 4     ; Metal Barrel
+;decor_bidon                                  = 4     ; Milk Can
+;decor_biliard                                = 4     ; Biliard Table
+;decor_box_paper                              = 4     ; Cardboard Box
+;decor_box_wood                               = 4     ; Reinforced Wooden Crate
+;decor_cabinet                                = 4     ; Kitchen Cabinets
+;decor_clinic_equipments                      = 4     ; Clinical Equipment
+;decor_countertop                             = 4     ; Countertop
+;decor_cuttingboard                           = 4     ; Cutting Board
+;decor_dev_guitar                             = 4     ; Decorative Guitar
+;decor_documents_1                            = 4     ; Paper Bundle
+;decor_documents_2                            = 4     ; Documents
+;decor_door                                   = 4     ; Wooden Door
+;decor_door02                                 = 4     ; Metal Door
+;decor_door03                                 = 4     ; Wooden Door
+;decor_door04                                 = 4     ; Wooden Door
+;decor_door05                                 = 4     ; Heavy Door
+;decor_exoskelet                              = 4     ; Exoskeleton Bundle
+;decor_fchair                                 = 4     ; Modern Chair
+;decor_fuel                                   = 4     ; Jerrycan
+;decor_game                                   = 4     ; Board Game
+;decor_gaz_balon                              = 4     ; Old Gas Tank
+;decor_grave1                                 = 4     ; Stalker's Grave Marker
+;decor_grave2                                 = 4     ; Cross Grave Marker
+;decor_guidebook1                             = 4     ; Weapons Design Guide
+;decor_guidebook2                             = 4     ; Machinist's Guide
+;decor_gun_parts                              = 4     ; Gun Parts
+;decor_junk                                   = 4     ; Electrical Project
+;decor_kartina03                              = 4     ; Picture Frame
+;decor_lead_box_open                          = 4     ; Decorative Lead-lined Metal Container
+;decor_light1                                 = 4     ; Wall Sconce
+;decor_light2                                 = 4     ; Theater Light
+;decor_light3                                 = 4     ; Hanging Lamp
+;decor_light4                                 = 4     ; Hanging Light Bulb
+;decor_light5                                 = 4     ; Triple-Tube Light
+;decor_light6                                 = 4     ; Wall-Mounted Bulb
+;decor_light7                                 = 4     ; Yellow Wall-Mounted Bulb
+;decor_light8                                 = 4     ; Tube Light
+;decor_map1                                   = 4     ; Great Swamps Map
+;decor_map2                                   = 4     ; Exclusion Zone Map
+;decor_merc_outfit                            = 4     ; Mercenary Outfit Bundle
+;decor_metal_plate                            = 4     ; Metal Sheet
+;decor_metal_table1                           = 4     ; Metal Table
+;decor_metal_table2                           = 4     ; Large Metal Table
+;decor_microscope                             = 4     ; Microscope
+;decor_money_5000                             = 4     ; Pile of Money
+;decor_notes_writing_book                     = 4     ; Spiral Notebook
+;decor_plant2                                 = 4     ; "Anomalous Plant"
+;decor_plant3                                 = 4     ; Potted Plant
+;decor_plant4                                 = 4     ; Large Potted Plant
+;decor_poster1                                = 4     ; Soviet Propaganda Poster
+;decor_poster2                                = 4     ; "Humanity: Degraded" Poster
+;decor_poster3                                = 4     ; "Machine Gun" Poster
+;decor_poster4                                = 4     ; Soviet Propaganda Poster
+;decor_poster5                                = 4     ; "Infected" Poster
+;decor_poster6                                = 4     ; "Infested Thoughts" Poster
+;decor_poster7                                = 4     ; "You Can't Run from Heaven" Poster
+;decor_pot                                    = 4     ; Cooking Pot
+;decor_psi_helmet                             = 4     ; Psi-helmet
+;decor_radiola                                = 4     ; Radio
+;decor_rug                                    = 4     ; Rug
+;decor_shelves                                = 4     ; Metal Shelves
+;decor_shelves_b                              = 4     ; Bathroom Shelves
+;decor_shield                                 = 4     ; Metal Barrier
+;decor_shooting_target_1                      = 4     ; Target
+;decor_shower                                 = 4     ; Shower
+;decor_sidetable1                             = 4     ; Tall Side Table
+;decor_sidetable2                             = 4     ; Short Side Table
+;decor_sink                                   = 4     ; Sink
+;decor_stalker_outfit                         = 4     ; Stalker Outfit Bundle
+;decor_stool                                  = 4     ; Stool
+;decor_storage01                              = 4     ; Metal Storage Container
+;decor_storage02                              = 4     ; Large Metal Storage Container
+;decor_storage03                              = 4     ; Green Metal Box
+;decor_storage04                              = 4     ; Small Safe
+;decor_storage05                              = 4     ; Toolbox
+;decor_storage06                              = 4     ; Green Chest
+;decor_storage07                              = 4     ; Locker
+;decor_storage08                              = 4     ; Large Safe
+;decor_stretcher                              = 4     ; Stretcher
+;decor_suit                                   = 4     ; SSP-99M Suit Display
+;decor_survivalguide                          = 4     ; Survival Guide
+;decor_teapot                                 = 4     ; Teapot
+;decor_toilet                                 = 4     ; Toilet
+;decor_trophie1                               = 4     ; Trophy (Boar Head)
+;decor_trophie2                               = 4     ; Trophy (Chimera)
+;decor_trophie3                               = 4     ; Trophy (Pseudodog)
+;decor_trophie4                               = 4     ; Trophy (Cat)
+;decor_trophie5                               = 4     ; Trophy (Bloodsucker Head)
+;decor_trophie6                               = 4     ; Trophy (Bloodsucker)
+;decor_trophie7                               = 4     ; Trophy (Blind Dog)
+;decor_trophie8                               = 4     ; Trophy (Flesh)
+;decor_trophie9                               = 4     ; Trophy (Boar)
+;decor_tv_box                                 = 4     ; Box Television
+;decor_wall                                   = 4     ; Wooden Wall
+;decor_wall02                                 = 4     ; Wooden Wall
+;decor_wall02_metal                           = 4     ; Metal Sheet Wall
+;decor_wall_divider                           = 4     ; 2x2m Room Divider
+;decor_wall_doorway                           = 4     ; Wooden Wall w\ Doorway
+;decor_wall_doorway_metal                     = 4     ; Metal Sheet Wall w\ Doorway
+;decor_wall_metal                             = 4     ; Metal Sheet Wall
+;decor_wooden_board                           = 4     ; Wooden Panel
+;decor_wooden_plank                           = 4     ; Wooden Plank
+;device_gas_lamp                              = 4     ; Gas Lamp
+;device_gas_lamp_gamma                        = 4     ; Gas Lamp
+;device_light_altar                           = 4     ; Compact Psi Light
+;device_metal_torch                           = 4     ; Metal Torch
+;equ_military_pack                            = 4     ; Combat Backpack
+;equ_small_military_pack                      = 4     ; Travel Backpack
+;equ_small_pack                               = 4     ; Camping Backpack
+;equ_tourist_pack                             = 4     ; Tourist Backpack
+;exo_repair_kit_item                          = 4     ; Empty Exoskeleton Repair Kit
+;explo_balon_gas                              = 4     ; Gas Balloon
+;explo_jerrycan_fuel                          = 4     ; Jerrycan
+;grooming                                     = 4     ; Grooming Kit
+;guitar_b                                     = 4     ; Guitar
+;headgear_display                             = 4     ; Headgear display
+;hideout_cat                                  = 4     ; Hideout cat
+;hideout_cat_bed                              = 4     ; Cat Bed
+;itm_actor_backpack                           = 4     ; Quick Release System
+;itm_mapkit_1                                 = 4     ; Anomaly Map (Army Warehouses)
+;itm_mapkit_2                                 = 4     ; Anomaly Map (Yantar)
+;itm_mapkit_3                                 = 4     ; Anomaly Map (Red Forest)
+;itm_mapkit_4                                 = 4     ; Anomaly Map (Dead City)
+;itm_mapkit_5                                 = 4     ; Anomaly Map (Truck Cemetery)
+;itm_mapkit_6                                 = 4     ; Anomaly Map (Jupiter)
+;itm_mapkit_7                                 = 4     ; Anomaly Map (Zaton)
+;itm_mapkit_8                                 = 4     ; Anomaly Map (Garbage)
+;itm_mapkit_9                                 = 4     ; Anomaly Map (Agroprom)
+;journal                                      = 4     ; Personal journal
+;kit_hunt                                     = 4     ; Hunter's Kit
+;leatherman_tool                              = 4     ; Multitool
+;matches                                      = 4     ; Firestarter Set
+;pegboard                                     = 4     ; Weapon pegboard
+;pegboard_pistol                              = 4     ; Pistol pegboard
+;piano_item                                   = 4     ; Portable Keyboard
+;pistol_shelf_item                            = 4     ; Pistol Display Shelf
+;prop_ammo_box                                = 4     ; Ammo Box
+;prop_bed_1                                   = 4     ; Rollable Bed
+;prop_bed_2                                   = 4     ; Metal Bed
+;prop_bed_3                                   = 4     ; Wooden Bed
+;prop_board_map                               = 4     ; Zone Map
+;prop_bong                                    = 4     ; Hookah
+;prop_cans_tuna                               = 4     ; Canned Food Crate
+;prop_chair                                   = 4     ; Wooden Chair
+;prop_clock_1                                 = 4     ; Digital Clock
+;prop_couch_1                                 = 4     ; Old Sofa
+;prop_counter_1                               = 4     ; Wooden Counter
+;prop_dish1                                   = 4     ; Ceramic Plate
+;prop_dish2                                   = 4     ; Ceramic Bowl
+;prop_fan                                     = 4     ; Small Fan
+;prop_fridge                                  = 4     ; Old Fridge
+;prop_keyboard                                = 4     ; Keyboard
+;prop_lamp1                                   = 4     ; Desk Lamp
+;prop_lamp2                                   = 4     ; Desk Lamp (Large)
+;prop_laptop_item                             = 4     ; Laptop
+;prop_med_case_1                              = 4     ; Medical Case
+;prop_mice_pad                                = 4     ; Mouse with Mouse Pad
+;prop_monitor                                 = 4     ; Monitor
+;prop_mug                                     = 4     ; Mug
+;prop_pccase                                  = 4     ; PC Case
+;prop_poster_vertical_item                    = 4     ; Poster (Vertical)
+;prop_shelf_1                                 = 4     ; Wooden Shelf
+;prop_shelf_2                                 = 4     ; Wooden Shelf (Large)
+;prop_stove1                                  = 4     ; Stove (Small)
+;prop_stove2                                  = 4     ; Stove (Large)
+;prop_table_1                                 = 4     ; Wooden Desk
+;prop_table_2                                 = 4     ; Wooden Table
+;prop_tv                                      = 4     ; TV
+;radio_item                                   = 4     ; Radio
+;sumka6_item                                  = 4     ; Small Backpack
+;swiss_knife                                  = 4     ; Swiss Knife
+;tch_mapkit                                   = 4     ; Anomaly Map
+;trading_computer                             = 4     ; Trading computer
+;weapon_rack_item                             = 4     ; Gun Display Rack
+;workshop_item                                = 4     ; Portable Workshop
+
+; ----------------------------------------------------------
+;  i_kit - 14 items   (kits)
+;  its kind already stacks 4 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;army_bowler                                  = 4     ; Army Kettle
+;compression_bag                              = 4     ; Sleeping Bag (Empty)
+;cooking                                      = 4     ; Field Cooking Kit
+;fieldcooker                                  = 4     ; Gas Stove
+;itm_advancedkit                              = 4     ; Advanced Tools
+;itm_ammokit                                  = 4     ; Gunsmithing Tools
+;itm_artefactskit                             = 4     ; Artefact Melter
+;itm_basickit                                 = 4     ; Basic Tools
+;itm_campfire                                 = 4     ; Firewood
+;itm_drugkit                                  = 4     ; Drug-making Kit
+;itm_expertkit                                = 4     ; Expert Tools
+;itm_sleepbag                                 = 4     ; Sleeping Bag (Full)
+;itm_tent                                     = 4     ; Camping Tent (Full)
+;itm_tent_bag                                 = 4     ; Camping Tent (Empty)
+
+; ----------------------------------------------------------
+;  i_repair - 33 items   (repair kits)
+;  its kind already stacks 4 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;armor_repair_fa                              = 4     ; Armor Repair Kit (Emergency)
+;cleaning_kit_p                               = 4     ; "Progress" Handgun Cleaning Kit
+;cleaning_kit_r5                              = 4     ; "ValuPro III" Smallbore Rifle Cleaning Kit
+;cleaning_kit_r7                              = 4     ; Medium &amp; Large Caliber Rifle Cleaning Kit
+;cleaning_kit_s                               = 4     ; "Aurora A108/12" 12 Gauge Cleaning Kit
+;cleaning_kit_u                               = 4     ; Universal Weapon Part Cleaning Kit
+;exo_repair_kit                               = 4     ; Armor Repair Kit (Exoskeleton)
+;glue_a                                       = 4     ; Glue Tube "Tur"
+;glue_b                                       = 4     ; Glue Tube "Zviezda"
+;glue_e                                       = 4     ; Glue Tube "M17"
+;gun_oil                                      = 4     ; Spray Lubricant "Brunox Gun Care"
+;gun_oil_ru                                   = 4     ; Gun Oil "Rusak"
+;gun_oil_ru_d                                 = 4     ; Cleaning Solvent "Dvojka"
+;heavy_repair_kit                             = 4     ; Armor Repair Kit (Heavy Armor)
+;heavy_sewing_thread                          = 4     ; Field Armor Toolkit
+;helmet_repair_kit                            = 4     ; Repair Kit (Headgear)
+;light_repair_kit                             = 4     ; Armor Repair Kit (Light Armor)
+;medium_repair_kit                            = 4     ; Armor Repair Kit (Medium Armor)
+;partskit_tool                                = 4     ; Part repair kit
+;ramrod_tool                                  = 4     ; Ramrod
+;rasp_tool                                    = 4     ; File
+;sewing_kit_a                                 = 4     ; Sewing Kit (Advanced)
+;sewing_kit_b                                 = 4     ; Sewing Kit (Basic)
+;sewing_kit_h                                 = 4     ; Sewing Kit (Heavy)
+;sewing_thread                                = 4     ; Sewing Thread
+;sharpening_stones                            = 4     ; Sharpening Stone Set
+;solvent                                      = 4     ; Cleaning Solvent "Hoppe's No. 9"
+;tch_repair                                   = 4
+;tch_repair0                                  = 4
+;toolkit_p                                    = 4     ; Handgun Repair Kit
+;toolkit_r5                                   = 4     ; Smallbore Rifle Repair Kit
+;toolkit_r7                                   = 4     ; Medium and large caliber rifle fixing kit
+;toolkit_s                                    = 4     ; Shotgun Repair Kit
+
+; ----------------------------------------------------------
+;  i_misc - 20 items   (oddments)
+;  its kind already stacks 10 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;explo_balon_gas_empty                        = 10    ; Gas Balloon (Empty)
+;explo_jerrycan_fuel_empty                    = 10    ; Jerrycan (Empty)
+;explo_metalcan_powder                        = 10    ; Powder Can
+;hand_watch                                   = 10    ; Hand watch
+;kerosene                                     = 10    ; Kerosene
+;lockpick_set                                 = 10    ; Locksmith's tools
+;picture_woman                                = 10
+;tch_loot                                     = 10
+;xp_experience_potion                         = 10    ; The Scientist's Potion
+;xp_trait_agate                               = 10    ; Agate shard
+;xp_trait_alexandrite                         = 10    ; Alexandrite shard
+;xp_trait_amethyst                            = 10    ; Amethyst shard
+;xp_trait_aqua                                = 10    ; Aquamarine shard
+;xp_trait_diamond                             = 10    ; Diamond shard
+;xp_trait_emerald                             = 10    ; Emerald shard
+;xp_trait_lazurite                            = 10    ; Lazurite shard
+;xp_trait_nephrite                            = 10    ; Nephrite shard
+;xp_trait_topaz                               = 10    ; Topaz shard
+;xp_trait_tsavorite                           = 10    ; Tsavorite shard
+;xp_trait_turquoise                           = 10    ; Turquoise shard
+
+; ----------------------------------------------------------
+;  i_letter - 44 items   (notes and documents)
+;  its kind already stacks 20 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;letter_rf_tip_af_black_spray                 = 20    ; Anomalous RF Signal: Black Spray (Artefact)
+;letter_rf_tip_af_compass                     = 20    ; Anomalous RF Signal: Compass (Artefact)
+;letter_rf_tip_af_death_lamp                  = 20    ; Anomalous RF Signal: Death Lamp (Artefact)
+;letter_rf_tip_af_electra_flash               = 20    ; Anomalous RF Signal: Flash (Artefact)
+;letter_rf_tip_af_electra_moonlight           = 20    ; Anomalous RF Signal: Moonlight (Artefact)
+;letter_rf_tip_af_full_empty                  = 20    ; Anomalous RF Signal: Full Empty (Artefact)
+;letter_rf_tip_af_ice                         = 20    ; Anomalous RF Signal: Ice (Artefact)
+;letter_rf_tip_af_ring                        = 20    ; Anomalous RF Signal: Ring (Artefact)
+;letter_rf_tip_af_soul                        = 20    ; Anomalous RF Signal: Soul (Artefact)
+;letter_rf_tip_burer                          = 20    ; Anomalous RF Signal: Burer
+;letter_rf_tip_controller                     = 20    ; Anomalous RF Signal: Controller
+;letter_rf_tip_poltergeist                    = 20    ; Anomalous RF Signal: Poltergeist
+;letter_rf_tip_psydog                         = 20    ; Anomalous RF Signal: Psydog
+;lootbox_docs_case                            = 20    ; Flash Drive
+;lootbox_docs_folder                          = 20    ; Folder with Documents (Level 3)
+;lootbox_docs_notebook_1                      = 20    ; Notebook (Level 2)
+;lootbox_docs_notebook_2                      = 20    ; Notebook (Level 1)
+;lootbox_docs_notebook_3                      = 20    ; Notebook (Level 2)
+;lootbox_docs_notebook_4                      = 20    ; Notebook (Level 2)
+;lootbox_docs_sheet_1                         = 20    ; Loose Document (Level 1)
+;lootbox_docs_sheet_2                         = 20    ; Loose Document (Level 1)
+;lootbox_docs_sheet_3                         = 20    ; Loose Document (Level 1)
+;lootbox_docs_sheet_4                         = 20    ; Loose Document (Level 2)
+;lootbox_docs_sheet_5                         = 20    ; Loose Document (Level 2)
+;lootbox_docs_usb_1                           = 20    ; Flash Drive (Level 3)
+;lootbox_docs_usb_2                           = 20    ; Flash Drive (Level 3)
+;lootbox_lore                                 = 20    ; A Stalker's Journal (Part 2 of 2)
+;lootbox_note_bandit                          = 20    ; Note in a briefcase
+;lootbox_note_birthday                        = 20    ; Note in a rifle case
+;lootbox_note_chuckecheese                    = 20    ; Note in a strange box
+;lootbox_note_dad                             = 20    ; Note in a lockbox
+;lootbox_note_deathlamp                       = 20    ; Note in a Monolith Cache
+;lootbox_note_digger                          = 20    ; Note in a case
+;lootbox_note_grenade                         = 20    ; Note in a munitions box
+;lootbox_note_mikhail                         = 20    ; Note in a toolbox
+;lootbox_note_orders                          = 20    ; Note in a survival cache
+;lootbox_note_sniper                          = 20    ; Note in a rifle case
+;lootbox_note_spankbank                       = 20    ; Note in a briefcase
+;lootbox_note_spooky                          = 20    ; Note in an artifact case
+;lootbox_note_tarkov                          = 20    ; Note in a secure case
+;lootbox_note_tourist                         = 20    ; Note in a shotgun locker
+;lootbox_note_transmute                       = 20    ; Note in an artifact case
+;lootbox_note_vodka                           = 20    ; Note in a survival cache
+;soulslike_rescuers_radio_frequency_note      = 20    ; Rescuer's Note
+
+; ----------------------------------------------------------
+;  i_arty - 171 items   (live artefacts)
+;  no ceiling for this kind, so these are filled in with
+;  1 - one per square, which is what they do today.
+; ----------------------------------------------------------
+;af_ah_e1                                     = 1     ; Anomalous Sample "Souvenir"
+;af_ah_e2                                     = 1     ; Anomalous Sample "Souvenir"
+;af_ah_f1                                     = 1     ; Talking Stone
+;af_ah_g1                                     = 1     ; Anomalous Sample "Easy"
+;af_ah_g2                                     = 1     ; Anomalous Sample "Easy"
+;af_ah_h1                                     = 1     ; Anomalous Sample "Sponge"
+;af_ah_h2                                     = 1     ; Anomalous Sample "Sponge"
+;af_ah_o1                                     = 1     ; Anomalous Sample "Magnet"
+;af_ah_o2                                     = 1     ; Anomalous Sample "Magnet"
+;af_ah_r1                                     = 1     ; Anomalous Sample "Mushroom"
+;af_ah_r2                                     = 1     ; Anomalous Sample "Mushroom"
+;af_ah_r3                                     = 1     ; Anomalous Sample "Mushroom"
+;af_ah_r4                                     = 1     ; Anomalous Sample "Mushroom"
+;af_ah_r5                                     = 1     ; Anomalous Sample "Mushroom"
+;af_ah_s1                                     = 1     ; Artificial Artifact "Aroth-8"
+;af_baloon                                    = 1     ; Bubble
+;af_baloon_af_aac                             = 1     ; AAC w/ Bubble
+;af_baloon_af_aam                             = 1     ; AAM w/ Bubble
+;af_baloon_af_iam                             = 1     ; IAM w/ Bubble
+;af_black_spray                               = 1     ; Black Spray
+;af_black_spray_af_aac                        = 1     ; AAC w/ Black Spray
+;af_black_spray_af_aam                        = 1     ; AAM w/ Black Spray
+;af_black_spray_af_iam                        = 1     ; IAM w/ Black Spray
+;af_blood                                     = 1     ; Stone Blood
+;af_blood_af_aac                              = 1     ; AAC w/ Stone Blood
+;af_blood_af_aam                              = 1     ; AAM w/ Stone Blood
+;af_blood_af_iam                              = 1     ; IAM w/ Stone Blood
+;af_bracelet                                  = 1     ; Bracelet
+;af_bracelet_af_aac                           = 1     ; AAC w/ Bracelet
+;af_bracelet_af_aam                           = 1     ; AAM w/ Bracelet
+;af_bracelet_af_iam                           = 1     ; IAM w/ Bracelet
+;af_compass                                   = 1     ; Compass
+;af_compass_af_aac                            = 1     ; AAC w/ Compass
+;af_compass_af_aam                            = 1     ; AAM w/ Compass
+;af_compass_af_iam                            = 1     ; IAM w/ Compass
+;af_cristall                                  = 1     ; Crystal
+;af_cristall_af_aac                           = 1     ; AAC w/ Crystal
+;af_cristall_af_aam                           = 1     ; AAM w/ Crystal
+;af_cristall_af_iam                           = 1     ; IAM w/ Crystal
+;af_cristall_flower                           = 1     ; Stone Flower
+;af_cristall_flower_af_aac                    = 1     ; AAC w/ Stone Flower
+;af_cristall_flower_af_aam                    = 1     ; AAM w/ Stone Flower
+;af_cristall_flower_af_iam                    = 1     ; IAM w/ Stone Flower
+;af_death_lamp                                = 1     ; Death Lamp
+;af_death_lamp_af_aac                         = 1     ; AAC w/ Death Lamp
+;af_death_lamp_af_aam                         = 1     ; AAM w/ Death Lamp
+;af_death_lamp_af_iam                         = 1     ; IAM w/ Death Lamp
+;af_death_lamp_lead_box                       = 1     ; LLMC w/ Death Lamp
+;af_dummy_battery                             = 1     ; Battery
+;af_dummy_battery_af_aac                      = 1     ; AAC w/ Battery
+;af_dummy_battery_af_aam                      = 1     ; AAM w/ Battery
+;af_dummy_battery_af_iam                      = 1     ; IAM w/ Battery
+;af_dummy_dummy                               = 1     ; Shell
+;af_dummy_dummy_af_aac                        = 1     ; AAC w/ Shell
+;af_dummy_dummy_af_aam                        = 1     ; AAM w/ Shell
+;af_dummy_dummy_af_iam                        = 1     ; IAM w/ Shell
+;af_dummy_glassbeads                          = 1     ; Mama's Beads
+;af_dummy_glassbeads_af_aac                   = 1     ; AAC w/ Mama's Beads
+;af_dummy_glassbeads_af_aam                   = 1     ; AAM w/ Mama's Beads
+;af_dummy_glassbeads_af_iam                   = 1     ; IAM w/ Mama's Beads
+;af_electra_flash                             = 1     ; Flash
+;af_electra_flash_af_aac                      = 1     ; AAC w/ Flash
+;af_electra_flash_af_aam                      = 1     ; AAM w/ Flash
+;af_electra_flash_af_iam                      = 1     ; IAM w/ Flash
+;af_electra_moonlight                         = 1     ; Moonlight
+;af_electra_moonlight_af_aac                  = 1     ; AAC w/ Moonlight
+;af_electra_moonlight_af_aam                  = 1     ; AAM w/ Moonlight
+;af_electra_moonlight_af_iam                  = 1     ; IAM w/ Moonlight
+;af_electra_sparkler                          = 1     ; Sparkler
+;af_electra_sparkler_af_aac                   = 1     ; AAC w/ Sparkler
+;af_electra_sparkler_af_aam                   = 1     ; AAM w/ Sparkler
+;af_electra_sparkler_af_iam                   = 1     ; IAM w/ Sparkler
+;af_empty                                     = 1     ; Empty
+;af_empty_af_aac                              = 1     ; AAC w/ Empty
+;af_empty_af_aam                              = 1     ; AAM w/ Empty
+;af_empty_af_iam                              = 1     ; IAM w/ Empty
+;af_eye                                       = 1     ; Eye
+;af_eye_af_aac                                = 1     ; AAC w/ Eye
+;af_eye_af_aam                                = 1     ; AAM w/ Eye
+;af_eye_af_iam                                = 1     ; IAM w/ Eye
+;af_fire                                      = 1     ; Flame
+;af_fire_af_aac                               = 1     ; AAC w/ Flame
+;af_fire_af_aam                               = 1     ; AAM w/ Flame
+;af_fire_af_iam                               = 1     ; IAM w/ Flame
+;af_fireball                                  = 1     ; Fireball
+;af_fireball_af_aac                           = 1     ; AAC w/ Fireball
+;af_fireball_af_aam                           = 1     ; AAM w/ Fireball
+;af_fireball_af_iam                           = 1     ; IAM w/ Fireball
+;af_full_empty                                = 1     ; Full Empty
+;af_full_empty_af_aac                         = 1     ; AAC w/ Full Empty
+;af_full_empty_af_aam                         = 1     ; AAM w/ Full Empty
+;af_full_empty_af_iam                         = 1     ; IAM w/ Full Empty
+;af_fuzz_kolobok                              = 1     ; Kolobok
+;af_fuzz_kolobok_af_aac                       = 1     ; AAC w/ Kolobok
+;af_fuzz_kolobok_af_aam                       = 1     ; AAM w/ Kolobok
+;af_fuzz_kolobok_af_iam                       = 1     ; IAM w/ Kolobok
+;af_geliy                                     = 1     ; Helium
+;af_gimlet                                    = 1     ; Gimlet
+;af_glass                                     = 1     ; Firefly
+;af_glass_af_aac                              = 1     ; AAC w/ Firefly
+;af_glass_af_aam                              = 1     ; AAM w/ Firefly
+;af_glass_af_iam                              = 1     ; IAM w/ Firefly
+;af_gold_fish                                 = 1     ; Goldfish
+;af_gold_fish_af_aac                          = 1     ; AAC w/ Goldfish
+;af_gold_fish_af_aam                          = 1     ; AAM w/ Goldfish
+;af_gold_fish_af_iam                          = 1     ; IAM w/ Goldfish
+;af_gravi                                     = 1     ; Gravi
+;af_gravi_af_aac                              = 1     ; AAC w/ Gravi
+;af_gravi_af_aam                              = 1     ; AAM w/ Gravi
+;af_gravi_af_iam                              = 1     ; IAM w/ Gravi
+;af_ice                                       = 1     ; Snowflake
+;af_ice_af_aac                                = 1     ; AAC w/ Snowflake
+;af_ice_af_aam                                = 1     ; AAM w/ Snowflake
+;af_ice_af_iam                                = 1     ; IAM w/ Snowflake
+;af_itcher                                    = 1     ; Itcher
+;af_itcher_af_aac                             = 1     ; AAC w/ Itcher
+;af_itcher_af_aam                             = 1     ; AAM w/ Itcher
+;af_itcher_af_iam                             = 1     ; IAM w/ Itcher
+;af_lobster_eyes                              = 1     ; Lobster Eyes
+;af_lobster_eyes_af_aac                       = 1     ; AAC w/ Lobster Eyes
+;af_lobster_eyes_af_aam                       = 1     ; AAM w/ Lobster Eyes
+;af_lobster_eyes_af_iam                       = 1     ; IAM w/ Lobster Eyes
+;af_medusa                                    = 1     ; Jellyfish
+;af_medusa_af_aac                             = 1     ; AAC w/ Jellyfish
+;af_medusa_af_aam                             = 1     ; AAM w/ Jellyfish
+;af_medusa_af_iam                             = 1     ; IAM w/ Jellyfish
+;af_mincer_meat                               = 1     ; Meat Chunk
+;af_mincer_meat_af_aac                        = 1     ; AAC w/ Meat Chunk
+;af_mincer_meat_af_aam                        = 1     ; AAM w/ Meat Chunk
+;af_mincer_meat_af_iam                        = 1     ; IAM w/ Meat Chunk
+;af_monolith                                  = 1     ; Volat Emerald
+;af_night_star                                = 1     ; Nightstar
+;af_night_star_af_aac                         = 1     ; AAC w/ Nightstar
+;af_night_star_af_aam                         = 1     ; AAM w/ Nightstar
+;af_night_star_af_iam                         = 1     ; IAM w/ Nightstar
+;af_oasis_heart                               = 1     ; Heart of the Oasis
+;af_oasis_heart_af_aac                        = 1     ; AAC w/ Heart of the Oasis
+;af_oasis_heart_af_aam                        = 1     ; AAM w/ Heart of the Oasis
+;af_oasis_heart_af_iam                        = 1     ; IAM w/ Heart of the Oasis
+;af_pin                                       = 1     ; Pin
+;af_pin_af_aac                                = 1     ; AAC w/ Pin
+;af_pin_af_aam                                = 1     ; AAM w/ Pin
+;af_pin_af_iam                                = 1     ; IAM w/ Pin
+;af_quest_b14_twisted                         = 1
+;af_quest_b14_twisted_af_aac                  = 1
+;af_quest_b14_twisted_af_aam                  = 1
+;af_quest_b14_twisted_af_iam                  = 1
+;af_ring                                      = 1     ; Ring
+;af_ring_af_aac                               = 1     ; AAC w/ Ring
+;af_ring_af_aam                               = 1     ; AAM w/ Ring
+;af_ring_af_iam                               = 1     ; IAM w/ Ring
+;af_soul                                      = 1     ; Soul
+;af_soul_af_aac                               = 1     ; AAC w/ Soul
+;af_soul_af_aam                               = 1     ; AAM w/ Soul
+;af_soul_af_iam                               = 1     ; IAM w/ Soul
+;af_sponge                                    = 1     ; Sponge
+;af_sponge_af_aac                             = 1     ; AAC w/ Sponge
+;af_sponge_af_aam                             = 1     ; AAM w/ Sponge
+;af_sponge_af_iam                             = 1     ; IAM w/ Sponge
+;af_tlf_lost_soul                             = 1     ; Lost Soul
+;af_tlf_prometheus                            = 1     ; Prometheus
+;af_vaselisk                                  = 1     ; Basilisk
+;af_vyvert                                    = 1     ; Wrenched
+;af_vyvert_af_aac                             = 1     ; AAC w/ Wrenched
+;af_vyvert_af_aam                             = 1     ; AAM w/ Wrenched
+;af_vyvert_af_iam                             = 1     ; IAM w/ Wrenched
+;jup_b1_half_artifact                         = 1
+;jup_b1_half_artifact_af_aac                  = 1
+;jup_b1_half_artifact_af_aam                  = 1
+;jup_b1_half_artifact_af_iam                  = 1
+;marker                                       = 1     ; Flash
+
+; ----------------------------------------------------------
+;  i_arty_junk - 42 items   (dead artefacts)
+;  its kind already stacks 10 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;af_atom                                      = 10    ; Atom
+;af_ball                                      = 10    ; Ball
+;af_bat                                       = 10    ; Bat
+;af_black                                     = 10    ; Black Stone
+;af_black_angel                               = 10    ; Black Angel
+;af_cell                                      = 10    ; Cell
+;af_chelust                                   = 10    ; Chain
+;af_cocoon                                    = 10    ; Cocoon
+;af_dragon_eye                                = 10    ; Dragon's Eye
+;af_ear                                       = 10    ; Heart
+;af_elektron                                  = 10    ; Electron
+;af_fire_loop                                 = 10    ; Knot
+;af_fonar                                     = 10    ; Lamp
+;af_fountain                                  = 10    ; Fountain
+;af_generator                                 = 10    ; Generator
+;af_grapes                                    = 10    ; Grapes
+;af_kislushka                                 = 10    ; Sourpuss
+;af_kogot                                     = 10    ; Claw
+;af_lighthouse                                = 10    ; Beacon
+;af_medallion                                 = 10    ; Medal
+;af_moh                                       = 10    ; Moss
+;af_peas                                      = 10    ; Moon
+;af_repei                                     = 10    ; Thistle
+;af_sandstone                                 = 10    ; Sandstone
+;af_serofim                                   = 10    ; Seraphim
+;af_signet                                    = 10    ; Signet
+;af_skull_miser                               = 10    ; Miser's Skull
+;af_spaika                                    = 10    ; Spike
+;af_star_phantom                              = 10    ; Phantom Star
+;af_sun                                       = 10    ; Sun
+;af_tapeworm                                  = 10    ; Tapeworm
+;af_zhelch                                    = 10    ; Scar
+;inter_pda_artefact_1                         = 10    ; RS-61
+;inter_pda_artefact_10                        = 10    ; WRT-441
+;inter_pda_artefact_2                         = 10    ; EP-255
+;inter_pda_artefact_3                         = 10    ; FDS-927
+;inter_pda_artefact_4                         = 10    ; AEX-89
+;inter_pda_artefact_5                         = 10    ; NCD-23
+;inter_pda_artefact_6                         = 10    ; ML-722
+;inter_pda_artefact_7                         = 10    ; O-429
+;inter_pda_artefact_8                         = 10    ; F-79
+;inter_pda_artefact_9                         = 10    ; CN-486
+
+; ----------------------------------------------------------
+;  i_arty_cont - 49 items   (artefact containers)
+;  no ceiling for this kind, so these are filled in with
+;  1 - one per square, which is what they do today.
+; ----------------------------------------------------------
+;af_aac                                       = 1     ; Artefact Application Container (Empty)
+;af_aam                                       = 1     ; Artefact Application Module (Empty)
+;af_baloon_lead_box                           = 1     ; LLMC w/ Bubble
+;af_black_spray_lead_box                      = 1     ; LLMC w/ Black Spray
+;af_blood_lead_box                            = 1     ; LLMC w/ Stone Blood
+;af_bracelet_lead_box                         = 1     ; LLMC w/ Bracelet
+;af_compass_lead_box                          = 1     ; LLMC w/ Compass
+;af_cristall_flower_lead_box                  = 1     ; LLMC w/ Stone Flower
+;af_cristall_lead_box                         = 1     ; LLMC w/ Crystal
+;af_dummy_battery_lead_box                    = 1     ; LLMC w/ Battery
+;af_dummy_dummy_lead_box                      = 1     ; LLMC w/ Shell
+;af_dummy_glassbeads_lead_box                 = 1     ; LLMC w/ Mama's Beads
+;af_electra_flash_lead_box                    = 1     ; LLMC w/ Flash
+;af_electra_moonlight_lead_box                = 1     ; LLMC w/ Moonlight
+;af_electra_sparkler_lead_box                 = 1     ; LLMC w/ Sparkler
+;af_empty_lead_box                            = 1     ; LLMC w/ Empty
+;af_eye_lead_box                              = 1     ; LLMC w/ Eye
+;af_fire_lead_box                             = 1     ; LLMC w/ Flame
+;af_fireball_lead_box                         = 1     ; LLMC w/ Fireball
+;af_full_empty_lead_box                       = 1     ; LLMC w/ Full Empty
+;af_fuzz_kolobok_lead_box                     = 1     ; LLMC w/ Kolobok
+;af_glass_lead_box                            = 1     ; LLMC w/ Firefly
+;af_gold_fish_lead_box                        = 1     ; LLMC w/ Goldfish
+;af_gravi_lead_box                            = 1     ; LLMC w/ Gravi
+;af_iam                                       = 1     ; Improvised Application Module (Empty)
+;af_ice_lead_box                              = 1     ; LLMC w/ Snowflake
+;af_itcher_lead_box                           = 1     ; LLMC w/ Itcher
+;af_lobster_eyes_lead_box                     = 1     ; LLMC w/ Lobster Eyes
+;af_medusa_lead_box                           = 1     ; LLMC w/ Jellyfish
+;af_mincer_meat_lead_box                      = 1     ; LLMC w/ Meat Chunk
+;af_misery_bread_af_aac                       = 1     ; AAC w/ anomalous bread
+;af_misery_bread_af_aam                       = 1     ; AAM w/ anomalous bread
+;af_misery_bread_af_iam                       = 1     ; IAM w/ anomalous bread
+;af_misery_bread_lead_box                     = 1     ; LLMC w/ anomalous bread
+;af_night_star_lead_box                       = 1     ; LLMC w/ Nightstar
+;af_oasis_heart_lead_box                      = 1     ; LLMC w/ Heart of the Oasis
+;af_pin_lead_box                              = 1     ; LLMC w/ Pin
+;af_quest_b14_twisted_lead_box                = 1
+;af_ring_lead_box                             = 1     ; LLMC w/ Ring
+;af_soul_lead_box                             = 1     ; LLMC w/ Soul
+;af_sponge_lead_box                           = 1     ; LLMC w/ Sponge
+;af_vyvert_lead_box                           = 1     ; LLMC w/ Wrenched
+;jup_b1_half_artifact_lead_box                = 1
+;lead_box                                     = 1     ; Lead-lined Metal Container (Empty)
+;lead_box_closed                              = 1     ; Lead-lined Metal Container (Full)
+;lead_box_closed_dummy                        = 1     ; Lead-lined Metal Container (Full)
+;lead_box_dummy                               = 1     ; Lead-lined Metal Container (Empty)
+;lead_box_half                                = 1     ; Lead-lined Metal Container (Half-filled)
+;lead_box_half_dummy                          = 1     ; Lead-lined Metal Container (Half-filled)
+
+; ----------------------------------------------------------
+;  i_attach - 46 items   (scopes and attachments)
+;  no ceiling for this kind, so these are filled in with
+;  1 - one per square, which is what they do today.
+; ----------------------------------------------------------
+;af_camelbak                                  = 1     ; Camelbak
+;af_camelbak_up                               = 1     ; Improved Camelbak
+;af_cooler                                    = 1     ; Body Cooler
+;af_cooler_up                                 = 1     ; Improved Body Cooler
+;af_frames                                    = 1     ; Aluminium Frames
+;af_frames_up                                 = 1     ; Improved Aluminium Frames
+;af_freon                                     = 1     ; Freon Emission Module
+;af_freon_up                                  = 1     ; Improved Freon Emission Module
+;af_grid                                      = 1     ; Titanium Grid
+;af_grid_up                                   = 1     ; Improved Titanium Grid
+;af_kevlar                                    = 1     ; Kevlar Plates and Attachments
+;af_kevlar_up                                 = 1     ; Improved Kevlar Plates and Attachments
+;af_magpouch_l                                = 1     ; Large Magazine Pouch
+;af_magpouch_m                                = 1     ; Medium Magazine Pouch
+;af_magpouch_s                                = 1     ; Small Magazine Pouch
+;af_plates                                    = 1     ; Carbon Steel Plates
+;af_plates_up                                 = 1     ; Improved Carbon Steel Plates
+;af_surge                                     = 1     ; Surge Suppressor
+;af_surge_up                                  = 1     ; Improved Surge Regenerator
+;amp_rig_bandolier                            = 1     ; Patrontash
+;amp_rig_carrier                              = 1     ; Shturm Carrier
+;amp_rig_chicom                               = 1     ; Lifchik
+;amp_rig_harness                              = 1     ; Cordon Rig
+;amp_rig_leshy                                = 1     ; Leshy
+;amp_rig_nylon                                = 1     ; Vepr Nylon Rig
+;amp_rig_scout                                = 1     ; Razvedka Sling
+;amp_rig_warsaw                               = 1     ; 6Sh92 Surplus Rig
+;amprig_bandolier                             = 1     ; Patrontash
+;amprig_barakholka                            = 1     ; Barakholka Rig
+;amprig_bastion                               = 1     ; Bastion Patrol Rig
+;amprig_carrier                               = 1     ; Shturm Carrier
+;amprig_chicom                                = 1     ; Lifchik
+;amprig_harness                               = 1     ; Cordon Rig
+;amprig_karkas                                = 1     ; Karkas Field Harness
+;amprig_leshy                                 = 1     ; Leshy
+;amprig_nylon                                 = 1     ; Vepr Nylon Rig
+;amprig_rubezh                                = 1     ; Rubezh Carrier
+;amprig_scout                                 = 1     ; Razvedka Sling
+;amprig_smersh                                = 1     ; Smersh-AK
+;amprig_tarzan                                = 1     ; Tarzan-M22
+;amprig_volya                                 = 1     ; Volya Raider Rig
+;amprig_vydra                                 = 1     ; Vydra Swamp Rig
+;amprig_warsaw                                = 1     ; 6Sh92 Surplus Rig
+;fieldcraft_plate_attch                       = 1
+;side_saddle_rifle                            = 1     ; Rifle Side Saddle
+;side_saddle_shotgun                          = 1     ; Shotgun Side Saddle
+
+; ----------------------------------------------------------
+;  i_device - 36 items   (detectors, torches, the PDA)
+;  no ceiling for this kind, so these are filled in with
+;  1 - one per square, which is what they do today.
+; ----------------------------------------------------------
+;detector_advanced                            = 1     ; Bear Detector
+;detector_anomaly                             = 1     ; Anomalous Measurement Device
+;detector_elite                               = 1     ; Veles Detector
+;detector_geiger                              = 1     ; Geiger Counter
+;detector_grizzly                             = 1     ; Grizzly Detector
+;detector_radio                               = 1     ; RF Receiver
+;detector_scientific                          = 1     ; Svarog Detector
+;detector_simple                              = 1     ; Echo Detector
+;device_flashlight                            = 1     ; Flashlight
+;device_glowstick                             = 1     ; Glowstick (Green)
+;device_glowstick_blue                        = 1     ; Glowstick (Cyan)
+;device_glowstick_orange                      = 1     ; Glowstick (Orange)
+;device_glowstick_red                         = 1     ; Glowstick (Red)
+;device_pda_1                                 = 1     ; PDA
+;device_pda_2                                 = 1     ; PDA v2.0 KilTrak�
+;device_pda_3                                 = 1     ; PDA v3.1
+;device_pda_milspec                           = 1     ; MilSpec PDA
+;device_torch_dummy                           = 1     ; Headlamp
+;device_torch_nv_1                            = 1     ; Headlamp w/ 1PN93-1 Night Vision
+;device_torch_nv_2                            = 1     ; Headlamp w/ PN21KL Night Vision
+;device_torch_nv_3                            = 1     ; Headlamp w/ Oracle Psi-stimulator
+;device_weather_radar                         = 1     ; Doppler Weather Radar Kit
+;exo_power_supply                             = 1     ; Jury-rigged Exoskeleton power supply
+;exo_power_supply_military                    = 1     ; Mil-spec Exoskeleton power supply
+;exo_power_supply_proto                       = 1     ; Experimental PSU "Reactor"
+;exo_power_supply_sprint                      = 1     ; Experimental PSU "Engine"
+;exo_power_supply_tank                        = 1     ; Experimental PSU "Stronghold"
+;itm_guide_usb_1                              = 1
+;itm_guide_usb_2                              = 1
+;itm_pda_common                               = 1     ; PDA
+;itm_pda_rare                                 = 1     ; PDA
+;itm_pda_uncommon                             = 1     ; PDA
+;medik                                        = 1     ; Medik
+;mgs_codec                                    = 1     ; Codec
+;tch_detector                                 = 1     ; Echo Detector
+;tch_device                                   = 1
+
+; ----------------------------------------------------------
+;  i_quest - 40 items   (quest items)
+;  no ceiling for this kind, so these are filled in with
+;  1 - one per square, which is what they do today.
+; ----------------------------------------------------------
+;af_lucifer                                   = 1     ; Lucifer
+;ah_gramota                                   = 1     ; Letter of Commendation
+;bar_case                                     = 1     ; Heavy briefcase
+;case_jaba                                    = 1
+;chernov_pda_item                             = 1     ; Operation "Rainbow" Research Report No. 9: "About the formation of artifacts"
+;crazy_stalker_flash                          = 1     ; Flash drive of the madman.
+;cs_anom_pribor                               = 1     ; Anomalous activity scanner
+;cs_deshefrator                               = 1     ; Decoder
+;cs_informer_pda                              = 1     ; Crutch's PDA
+;inter_pda_package_1                          = 1     ; Package
+;inter_pda_package_2                          = 1     ; Package
+;inter_pda_package_3                          = 1     ; Package
+;inter_pda_package_4                          = 1     ; Package
+;inter_pda_package_5                          = 1     ; Package
+;inter_pda_package_6                          = 1     ; Package
+;inter_pda_package_7                          = 1     ; Package
+;inter_pda_package_8                          = 1     ; Package
+;inter_pda_steal_1                            = 1     ; Heavily Encrypted Documents
+;inter_pda_steal_2                            = 1     ; Locked Case
+;inter_pda_steal_3                            = 1     ; Encrypted PDA
+;kovalev_pda_item                             = 1     ; Kovalev's Laptop
+;military_escape_docs                         = 1     ; Documents from the roadblock
+;nta_quest_documents                          = 1     ; Encrypted Documents
+;nta_quest_pda                                = 1     ; Encrypted PDA
+;pda_barbos                                   = 1
+;pda_dragun                                   = 1     ; Scar's PDA.
+;pda_flibuster                                = 1
+;pda_freon                                    = 1
+;pda_pinya                                    = 1
+;pda_shmatko                                  = 1
+;pda_tango                                    = 1
+;pda_tribun                                   = 1
+;pirogov_pda_item                             = 1     ; Research Assistant's PDA
+;sl_ht_case_quest_task_5                      = 1     ; SSU agent's briefcase
+;sl_ht_pda_isg_leader                         = 1     ; PDA of the ISG commander
+;sl_ht_spooner_quest_package                  = 1     ; Parcel
+;sl_ht_usb_quest_task_4                       = 1     ; USB memory stick.
+;sl_ht_voice_recorder_task_6                  = 1     ; Voice recorder
+;strelok_pda_item                             = 1     ; Deceased Stalker's PDA
+;vorobushkin_pda_item                         = 1     ; Memory Module VNZ "Circle"
+
+; ----------------------------------------------------------
+;  i_backpack - 3 items   (backpacks)
+;  no ceiling for this kind, so these are filled in with
+;  1 - one per square, which is what they do today.
+; ----------------------------------------------------------
+;artefact_container                           = 1     ; Artefact Container
+;itm_backpack                                 = 1     ; Backpack
+;test_container                               = 1     ; Backpack
+
+; ----------------------------------------------------------
+;  w_ammo - 324 items   (ammunition)
+;  its kind already stacks 20 deep, which is what these
+;  are filled in with.
+; ----------------------------------------------------------
+;ammo_12x76_bull                              = 20    ; 12x76 Bull shells
+;ammo_4.6x30_fmj                              = 20    ; 4.6x30 mm FMJ rounds
+;ammo_4.6x30_fmj_bad                          = 20    ; 4.6x30 mm FMJ rounds
+;ammo_4.6x30_fmj_verybad                      = 20    ; 4.6x30 mm FMJ rounds
+;ammo_50_bmg                                  = 20    ; .50 BMG rounds
+;ammo_50_bmg_bad                              = 20    ; .50 BMG rounds
+;ammo_50_bmg_verybad                          = 20    ; .50 BMG rounds
+;ammo_batteries                               = 20    ; none
+;ammo_batteries_ccell                         = 20    ; none
+;ammo_batteries_dead                          = 20    ; none
+;ammo_binoc                                   = 20
+;ammo_dyno                                    = 20
+;ammo_gauss                                   = 20    ; Batteries
+;ammo_gauss_bad                               = 20    ; Batteries
+;ammo_gauss_cardan                            = 20    ; Home-made batteries
+;ammo_gauss_verybad                           = 20    ; Batteries
+;ammo_knife                                   = 20
+;ammo_knife_2                                 = 20
+;ammo_knife_3                                 = 20
+;ammo_knife_4                                 = 20
+;ammo_knife_5                                 = 20
+;ammo_knife_6                                 = 20
+;ammo_m209                                    = 20    ; M203 grenade
+;ammo_m209_bad                                = 20    ; M203 grenade
+;ammo_m209_verybad                            = 20    ; M203 grenade
+;ammo_og-7b                                   = 20    ; OG-7V warhead
+;ammo_og-7b_bad                               = 20    ; OG-7V warhead
+;ammo_og-7b_verybad                           = 20    ; OG-7V warhead
+;ammo_vog-25                                  = 20    ; VOG-25 grenade
+;ammo_vog-25_bad                              = 20    ; VOG-25 grenade
+;ammo_vog-25_verybad                          = 20    ; VOG-25 grenade
+;ammo_vog-30                                  = 20    ; VOG-30 Grenade
+;bullet_pistol                                = 20    ; Handgun bullets
+;bullet_pistol_ap                             = 20    ; Handgun bullets, Armor piercing
+;bullet_r5                                    = 20    ; Smallbore rifle bullets
+;bullet_r5_ap                                 = 20    ; Smallbore rifle bullets, Armor piercing
+;bullet_r7                                    = 20    ; Rifle bullets
+;bullet_r7_ap                                 = 20    ; Rifle bullets, Armor piercing
+;bullet_shotgun                               = 20    ; Lead shot
+;bullet_shotgun_ap                            = 20    ; Saboted dart
+;casing_p                                     = 20    ; Casing, handgun
+;casing_r5                                    = 20    ; Casing, small rifle
+;casing_r7                                    = 20    ; Casing, large rifle
+;casing_s                                     = 20    ; Casing, shotgun
+;mag_1921_11.43x23_default                    = 20    ; .45 ACP 1921 Drum Magazine
+;mag_196a1_7.62x54_alt                        = 20    ; Modified 10-round 7.62x54 L96A1 Magazine
+;mag_50_762x51_drum                           = 20    ; 7.62x51 SA58 Drum Magazine
+;mag_50_762x51_drum_hinge                     = 20    ; 7.62x51 STANAG Drum Magazine
+;mag_7.62x39_ar15                             = 20    ; Standard 7.62x39 STANAG Magazine
+;mag_75_762x39_drum                           = 20    ; 7.62x39 AK Drum Magazine
+;mag_95_5.56x45_drum                          = 20    ; 5.56x45 RPK-16 Drum Magazine
+;mag_95_545x39_drum                           = 20    ; 5.45x39 RPK-16 Drum Magazine
+;mag_ace21_5.56x45_default                    = 20    ; Standard 5.56x45 Galil ACE-21 Magazine
+;mag_ak_5.45x39_default                       = 20    ; Standard 5.45x39 AK-74 Magazine
+;mag_ak_5.45x39_extended                      = 20    ; 60-round 5.45x39 AK-74 Magazine
+;mag_ak_5.45x39_fast                          = 20    ; Fast-loading 5.45x39 AK-74M Magazine
+;mag_ak_5.45x39_modern                        = 20    ; Standard 5.45x39 AK-74M Magazine
+;mag_ak_5.45x39_pufgun60blk_fast              = 20    ; AK 5.45x39 pufgun60blk 60-round magazine (fast loading)
+;mag_ak_5.45x39_pufgun60fde_fast              = 20    ; AK 5.45x39 pufgun60fde 60-round magazine (fast loading)
+;mag_ak_5.56x45_default                       = 20    ; Standard 5.56x45 AK-101 Magazine
+;mag_ak_5.56x45_modern                        = 20    ; Standard 5.56x45 AK-101 Magazine
+;mag_ak_5.56x45_pufgun_blk                    = 20    ; AK 5.56x45 pufgun_blk 30-round magazine
+;mag_ak_5.56x45_pufgun_fde                    = 20    ; AK 5.56x45 pufgun_fde 30-round magazine
+;mag_ak_7.62x39_default                       = 20    ; Standard 7.62x39 AKM Magazine
+;mag_ak_7.62x39_fast                          = 20    ; Fast-loading 7.62x39 AK-103 Magazine
+;mag_ak_7.62x39_modern                        = 20    ; Standard 7.62x39 AK-103 Magazine
+;mag_akalfa_5.56x45_bas                       = 20    ; Standard 5.56x45 AK Alfa Magazine
+;mag_akalfa_7.62x39_bas                       = 20    ; Standard 7.62x39 AK Alfa Magazine
+;mag_aps_9x18_default                         = 20    ; Standard 9x18 APS Magazine
+;mag_aps_9x19_alt                             = 20    ; Modified 9x19 APS Magazine
+;mag_ash_12.7x55_default                      = 20    ; Standard 12.7x55 ASh-12 Magazine
+;mag_ash_12.7x55_extended                     = 20    ; Extended 12.7x55 ASh-12 Magazine
+;mag_aug_5.56x45_default                      = 20    ; Standard 5.56x45 AUG Magazine
+;mag_aug_5.56x45_extended                     = 20    ; Extended 5,56x45 AUG Magazine
+;mag_aug_9x19_default                         = 20    ; Standard 9x19 Aug Magazine
+;mag_bas_pl15_9x19                            = 20    ; Standard 9x19 PL15 Magazine
+;mag_bas_pl15_9x19_extended                   = 20    ; Extended 9x19 PL15 Magazine
+;mag_bas_sig226_9x19                          = 20    ; Standard 9x19 SigP226 Magazine
+;mag_bas_sig226_9x19_extended                 = 20    ; Extended 9x19 SigP226 Magazine
+;mag_bas_toz106                               = 20    ; Standard 20x70 TOZ 106 Magazine
+;mag_bas_toz106_zhekan                        = 20    ; Standard 20x70 TOZ 106 Magazine
+;mag_bas_toz106m1                             = 20    ; Extended 20x70 TOZ 106 Magazine
+;mag_bas_toz106m1_zhekan                      = 20    ; Extended 20x70 TOZ 106 Magazine
+;mag_baskiparis_9x18_20                       = 20    ; Small 9x18 Kiparis Magazine
+;mag_baskiparis_9x18_40                       = 20    ; Standard 9x18 Kiparis Magazine
+;mag_baskiparis_9x18_81                       = 20    ; Extended 9x18 Kiparis Magazine
+;mag_baskiparis_9x19_20                       = 20    ; Small 9x19 Kiparis Magazine
+;mag_baskiparis_9x19_40                       = 20    ; Standard 9x19 Kiparis Magazine
+;mag_baskiparis_9x19_81                       = 20    ; Extended 9x19 Kiparis Magazine
+;mag_basvz61_9x18_30                          = 20    ; Standard 9x18 VZ. 61 Magazine
+;mag_basvz61_9x18_60                          = 20    ; Extended 9x18 VZ. 61 Magazine
+;mag_basvz61_9x19_30                          = 20    ; Standard 9x19 VZ. 61 Magazine
+;mag_basvz61_9x19_60                          = 20    ; Extended 9x19 VZ. 61 Magazine
+;mag_beretta_9x18_alt                         = 20    ; Modified 9x18 Beretta 92F Magazine
+;mag_beretta_9x18_alt_extended                = 20    ; Extended Beretta 92F 9x18 magazine
+;mag_beretta_9x19_default                     = 20    ; Standard 9x19 Beretta 92F Magazine
+;mag_beretta_9x19_extended                    = 20    ; Extended 9x19 Beretta 92F Magazine
+;mag_bizon_7.62x25_alt                        = 20    ; Modified 7.62x25 PP-19 Magazine
+;mag_bizon_9x18_defalt                        = 20    ; Standard 9x18 PP-19 Magazine
+;mag_bizon_9x19_alt                           = 20    ; Modified 9x19 PP-19 Magazine
+;mag_bolt_300_default                         = 20    ; Standard .338 LM Magazine
+;mag_colt1911_762x25                          = 20    ; Modified 7.62x25mm Colt Magazine
+;mag_colt1911_default                         = 20    ; Standard .45 ACP Colt 1911 Magazine
+;mag_colt1911_extended                        = 20    ; Extended .45 ACP Colt 1911 Magazine
+;mag_coonan_357_default                       = 20    ; Coonan .357 Magazine
+;mag_coonan_357_ext                           = 20    ; Extended Coonan .357 Magazine
+;mag_cz52_default                             = 20    ; Standard 7.62x25 CZ-52 Magazine
+;mag_cz75_9x18_alt                            = 20    ; Modified 9x18 CZ-75 Magazine
+;mag_cz75_9x19_default                        = 20    ; Standard 9x19 CZ-75 Magazine
+;mag_deserteagal_default                      = 20    ; Standard .357 Desert Eagle Magazine
+;mag_dvl_338fed                               = 20    ; Standard .338 Federal DVL10 Magazine
+;mag_dvl_7.62x51                              = 20    ; Standard 7.62x51 DVL10 Magazine
+;mag_fn57_default                             = 20    ; Standard 5.7x28 Five-seveN Magazine
+;mag_fnp45_default                            = 20    ; Standard .45 ACP FNP-45 Magazine
+;mag_fnx45_default                            = 20    ; Standard .45 ACP FNX-45 Magazine
+;mag_fort_9x18_default                        = 20    ; Standard 9x18 Fort-17 Magazine
+;mag_fort_9x19_alt                            = 20    ; Modified 9x19 Fort-17 Magazine
+;mag_frasier_11.43x23_default                 = 20    ; .45 ACP "Frasier" MP5 Magazine
+;mag_g36_5.56x45_default                      = 20    ; Standard 5.56x45 G36 Magazine
+;mag_g43_7.92x33_default                      = 20    ; Standard 7.92x57 G43 Magazine
+;mag_galil_7.62x51_default                    = 20    ; Standard 7.62x51 Galil Magazine
+;mag_galil_7.62x54_7h1_default                = 20    ; Modified 7.62x54 Galil Magazine
+;mag_garand_7.62x51                           = 20    ; M1 Garand En-bloc Clip (8-Round)
+;mag_glock_9x18_alt                           = 20    ; Modified 9x18 Glock Magazine
+;mag_glock_9x19_default                       = 20    ; Standard 9x19 Glock Magazine
+;mag_grot                                     = 20    ; Polymer MSBS Grot Magazine
+;mag_gsh18_9x19_default                       = 20    ; Standard 9x19 Gsh-18 Magazine
+;mag_hinge_7.62x51_default                    = 20    ; Standard 7.62x51 Magazine
+;mag_hinge_7.62x51_extended                   = 20    ; Extended 7.62x51 Magazine
+;mag_hk21_7.62x51_default                     = 20    ; Standard 7.62x51 HK21 Box
+;mag_hpsa_9x18_alt                            = 20    ; Modified 9x18 Browning Hi-Power Magazine
+;mag_hpsa_9x19_default                        = 20    ; Standard 9x19 Browning Hi-Power Magazine
+;mag_k98_7.62x39                              = 20    ; Modified 7.62x39 Kar 98 Magazine
+;mag_k98_7.62x51                              = 20    ; Modified 7.62x51 Kar 98 Magazine
+;mag_k98_7.62x54                              = 20    ; Modified 7.62x54 Kar 98 Magazine
+;mag_k98_7.92x33                              = 20    ; Standard 7.92x33 Kar 98 Magazine
+;mag_kiparis_9x18_50                          = 20    ; Extended 9x18 Kiparis Magazine
+;mag_kiparis_9x18_default                     = 20    ; Standard 9x18 Kiparis Magazine
+;mag_kiparis_9x19_50                          = 20    ; Extended 9x19 Kiparis Magazine
+;mag_kiparis_9x19_alt                         = 20    ; Modified 9x19 Kiparis Magazine
+;mag_kriss_11.43x23_default                   = 20    ; Standard .45 ACP Vector Magazine
+;mag_kriss_11.43x23_ext                       = 20    ; .45 ACP Vector Drum Magazine
+;mag_kriss_9x19_default                       = 20    ; Modified 9x19 Vector Magazine
+;mag_kriss_9x19_ext                           = 20    ; Modified 9x19 Vector Drum Magazine
+;mag_l96a1_7.62x51_default                    = 20    ; 10-round 7.62x51 L96A1 Magazine
+;mag_lancer                                   = 20    ; 7.62x51 Lancer L7AWM 25-round magazine
+;mag_legion_9x19                              = 20    ; 9x19mm SIG P229 Magazine
+;mag_m1a1_11.43x23_default                    = 20    ; .45 ACP M1A1 Stick Magazine
+;mag_m249_5.56x45_default                     = 20    ; Standard 5.56x45 M249 Box
+;mag_m82_12.7x55_default                      = 20    ; 10-round 12.7x55 M82 Magazine
+;mag_m98b_300_default                         = 20    ; Standard .338 LM M98B Magazine
+;mag_mac10_11.43x23_alt                       = 20    ; Modified 11.43x23 M3 Magazine
+;mag_mac10_11.43x23_ext_alt                   = 20    ; Modified Extended 11.43x23 M3 Magazine
+;mag_mac10_9x18_alt                           = 20    ; Standard 9x18 M3 Magazine
+;mag_mac10_9x18_ext_alt                       = 20    ; Extended 9x18 M3 Magazine
+;mag_mac10_9x19_ext                           = 20    ; MAC-10 50-round Magazine
+;mag_mac10_9x19_standard                      = 20    ; MAC-10 32-round Magazine
+;mag_mk23_45                                  = 20    ; .45 Mark 23 Magazine
+;mag_mp443_9x18_alt                           = 20    ; Modified 9x18 MP-443 Magazine
+;mag_mp443_9x19_default                       = 20    ; Standard 9x19 MP-443 Magazine
+;mag_mp5_9x18_alt                             = 20    ; Modified 9x18 MP5 Magazine
+;mag_mp5_9x18_extended                        = 20    ; Modified Extended 9x18 MP5 Magazine
+;mag_mp5_9x18_extended50                      = 20    ; Modified Drum 9x18 MP5 Magazine
+;mag_mp5_9x19_default                         = 20    ; Standard 9x19 MP5 Magazine
+;mag_mp5_9x19_extended                        = 20    ; Extended 9x19 MP5 Magazine
+;mag_mp5_9x19_extended50                      = 20    ; Drum 9x19 MP5 Magazine
+;mag_mp7_5.7x28_default                       = 20    ; Modified 5.7x28 MP7 Magazine
+;mag_mp7_5.7x28_small                         = 20    ; Modified 5.7x28 MP7 Magazine
+;mag_mp7_9x18_alt                             = 20    ; Modified 9x18 MP7 Magazine
+;mag_mp7_9x19_default                         = 20    ; Modified 9x19 MP7 Magazine
+;mag_mp9iwp                                   = 20    ; 9x19 Magazine
+;mag_mp9iwp_9x18                              = 20    ; 9x18 30-Round Magazine
+;mag_mp9iwp_9x18_ext                          = 20    ; Extended 9x18 40-Round Magazine
+;mag_mp9iwp_ext                               = 20    ; Extended 9x19 40-Round Magazine
+;mag_nato_5.45x39_alt                         = 20    ; Modified 5.45x39 STANAG Magazine
+;mag_nato_5.56x45_casket                      = 20    ; 60-round 5.56x45 STANAG Magazine
+;mag_nato_5.56x45_dd33_fast                   = 20    ; STANAG 5.56x45 dd33 33-round magazine (fast loading)
+;mag_nato_5.56x45_dd_tti38_fast               = 20    ; STANAG 5.56x45 dd_tti38 38-round magazine (fast loading)
+;mag_nato_5.56x45_default                     = 20    ; Standard 5.56x45 STANAG magazine
+;mag_nato_5.56x45_drum                        = 20    ; MAGPUL PMAG D-60
+;mag_nato_5.56x45_drum_ext                    = 20    ; KCI Gen 2 Drum Magazine
+;mag_nato_5.56x45_extended                    = 20    ; Extended 5.56x45 STANAG Magazine
+;mag_nato_5.56x45_extended100                 = 20    ; STANAG 5.56x45 extended100 100-round magazine
+;mag_nato_5.56x45_extended40                  = 20    ; STANAG 5.56x45 extended40 40-round magazine
+;mag_nato_5.56x45_fast                        = 20    ; Fast-loading 5.56x45 STANAG magazine
+;mag_nato_5.56x45_hexmag30fde_fast            = 20    ; STANAG 5.56x45 hexmag30fde 30-round magazine (fast loading)
+;mag_nato_5.56x45_hkmr556                     = 20    ; STANAG 5.56x45 hkmr556 30-round magazine
+;mag_nato_5.56x45_lancer20_fast               = 20    ; STANAG 5.56x45 lancer20 20-round magazine (fast loading)
+;mag_nato_5.56x45_lancer30blk_fast            = 20    ; STANAG 5.56x45 lancer30blk 30-round magazine (fast loading)
+;mag_nato_5.56x45_lancer30fde_fast            = 20    ; STANAG 5.56x45 lancer30fde 30-round magazine (fast loading)
+;mag_nato_5.56x45_magpul_tti35fde_fast        = 20    ; STANAG 5.56x45 magpul_tti35fde 35-round magazine (fast loading)
+;mag_nato_5.56x45_magpul_tti46fde_fast        = 20    ; STANAG 5.56x45 magpul_tti46fde 46-round magazine (fast loading)
+;mag_nato_5.56x45_short                       = 20    ; Short 5.56x45 Magazine
+;mag_nato_5.56x45_strike33blk_fast            = 20    ; STANAG 5.56x45 strike33blk 33-round magazine (fast loading)
+;mag_nato_5.56x45_torkmag50_fast              = 20    ; STANAG 5.56x45 torkmag50 50-round magazine (fast loading)
+;mag_nato_5.56x45_xproduct50blk_fast          = 20    ; STANAG 5.56x45 xproduct50blk 50-round magazine (fast loading)
+;mag_nato_5.56x45_xproduct50fde_fast          = 20    ; STANAG 5.56x45 xproduct50fde 50-round magazine (fast loading)
+;mag_oc_9x18_default                          = 20    ; Standard 9x18 OTs-33 Pernach Magazine
+;mag_oc_9x19_alt                              = 20    ; Modified 9x19 OTs-33 Pernach Magazine
+;mag_ots_9x39_default                         = 20    ; 20 round 9x39 Groza Magazine
+;mag_overlylarge_50_762x51_drum               = 20    ; 7.62x51 SA58 Drum Magazine
+;mag_overlylarge_50_762x51_drum2              = 20    ; 7.62x51 STANAG Drum Magazine
+;mag_overlylarge_75_762x39_drum               = 20    ; 7.62x39 AK Drum Magazine
+;mag_overlylarge_95_5.56x45_drum              = 20    ; 5.56x45 RPK-16 Drum Magazine
+;mag_overlylarge_95_545x39_drum               = 20    ; 5.45x39 RPK-16 Drum Magazine
+;mag_p220_9x19_u2p2bas                        = 20    ; Standard 9x19 P220 Custom Nine Magazine
+;mag_p90_5.7x28_default                       = 20    ; Standard 5.7x28 P90 Magazine
+;mag_p90_5.7x28_ext                           = 20    ; Extended P90 Magazine
+;mag_pkp_pkm_default                          = 20    ; 100-round 7.62x54 PKM Box
+;mag_pm_9x18_default                          = 20    ; Standard 9x18 PM Magazine
+;mag_pm_9x19_alt                              = 20    ; Modified 9x19 PM Magazine
+;mag_pmm_9x18_default                         = 20    ; Standard 9x18 PMM magazine
+;mag_pmm_9x19_alt                             = 20    ; Modified 9x19 PMM Magazine
+;mag_pp2000_9x18_alt                          = 20    ; Modified 9x18 PP-2000 Magazine
+;mag_pp2000_9x18_ext_alt                      = 20    ; Modified Extended 9x18 PP-2000 Magazine
+;mag_pp2000_9x19_default                      = 20    ; Standard 9x19 PP-2000 Magazine
+;mag_pp2000_9x19_ext                          = 20    ; Extended 9x19 PP-2000 Magazine
+;mag_ppp_glock_45_default                     = 20    ; Standard .45 Glock 21 Magazine
+;mag_ppsh_7.62x25_default                     = 20    ; Standard PPSh41 Drum calibre 7.62x25
+;mag_ppsh_7.62x25_stick                       = 20    ; Standard 7.62x25 PPSh41 Stick Magazine
+;mag_ppshtac41_7.62x25_stick                  = 20    ; PPSH-41 Tactical 40rng Mag
+;mag_px4_45_default                           = 20    ; Standard 10-round .45 PX4 Magazine
+;mag_px4_45_extended                          = 20    ; PX4 .45 ACP 15-round magazine
+;mag_px4_45_extended_30                       = 20    ; PX4 .45 ACP 20-round magazine
+;mag_px4_9x19_default                         = 20    ; Standard 17-round 9x19mm PX4 Magazine
+;mag_px4_9x19_extended                        = 20    ; PX4 9x19 30-round magazine
+;mag_px4_9x19_extended_30                     = 20    ; PX4 9x19 40-round magazine
+;mag_raptr_12x76                              = 20    ; RAPTR Drum Magazine
+;mag_raptr_12x76_default                      = 20    ; RAPTR Drum Magazine
+;mag_rem_7.62x51_default                      = 20    ; Standard 7.62x51 Remington 700 Magazine
+;mag_remington700_7.62x51                     = 20    ; Extended Remington 700 Magazine with a capacity of 12 rounds.
+;mag_remingtonarchangel_7.62x51               = 20    ; Extended 7.62x51 Remington Archangel Kit Magazine
+;mag_remingtonla_300                          = 20    ; Standard Remington 700 Magazine with a capacity of 5 rounds.
+;mag_remingtonla_300_gamma                    = 20    ; Standard Remington 700 Magazine with a capacity of 5 rounds.
+;mag_rpd_7.62x39_default                      = 20    ; Standard 7.62x39 RPD Drum
+;mag_rpk_5.45x39_default                      = 20    ; Standard 5.45x39 RPK-74 Magazine
+;mag_rpk_5.56x45_default                      = 20    ; Modified 5.56x45 RPK-74 Magazine
+;mag_rpk_7.62x39_default                      = 20    ; Standard 7.62x39 RPK Magazine
+;mag_rxp_45                                   = 20    ; .45 SIG P320 Magazine
+;mag_rxp_9x19                                 = 20    ; 9x19mm SIG P320 Magazine
+;mag_saiga12_drum                             = 20    ; Saiga-12 Drum Magazine
+;mag_saiga12s_12x70_default                   = 20    ; Standard 12x70 Saiga-12S Magazine
+;mag_saiga12s_12x70_extended                  = 20    ; Extended 12x70 Saiga-12S Magazine
+;mag_scorp_9x19_default                       = 20    ; Standard 9x19 Magpul PMAG 35 EV9 Magazine
+;mag_scorp_9x19_extended                      = 20    ; Extended 9x19 Magpul PMAG 35 EV9 Magazine
+;mag_scorp_9x19_small                         = 20    ; Standard 9x19 CZ MAG SCORP 3P 9MM 20RD BLK
+;mag_sig_11.43x23_default                     = 20    ; Standard .45 ACP SIG Sauer P220 Magazine
+;mag_sig_5.56x45_default                      = 20    ; Standard 5.56x45 SG550 Magazine
+;mag_sig_5.56x45_sniper                       = 20    ; 20-round 5.56x45 SG550-1 Magazine
+;mag_sigp220_default                          = 20    ; Standard .45 SigP220 Magazine
+;mag_sigp220_extended                         = 20    ; Extended .45 SigP220 Magazine
+;mag_sks_7.62x39                              = 20    ; Standard 7.62x39 SKS Magazine
+;mag_sks_7.62x39_extended                     = 20    ; Extended 7.62x39 SKS Magazine
+;mag_sks_7.62x54                              = 20    ; Standard 7.62x54 SKS Magazine
+;mag_sks_7.62x54_extended                     = 20    ; Extended 7.62x54 SKS Magazine
+;mag_sr1m_9x21_default                        = 20    ; Standard 9x21 SR1M Magazine
+;mag_sr1m_9x21_extended                       = 20    ; Extended 9x21 SR1M Magazine
+;mag_sr2m_9x18_veresk                         = 20    ; Standard SR-2M 9x18 Veresk Magazine
+;mag_sr2m_9x21_veresk                         = 20    ; Standard 9x21 SR-2M Veresk Magazine
+;mag_stanag_7.62x51_default                   = 20    ; Standard 7.62x51 STANAG Magazine
+;mag_stanag_7.62x51_extended                  = 20    ; Extended 7.62x51 STANAG Magazine
+;mag_stanag_7.62x51_fast                      = 20    ; Fast-loading 7.62x51 STANAG Magazine
+;mag_stanag_7.62x51_short                     = 20    ; 10-round 7.62x51 STANAG Magazine
+;mag_steyr_556                                = 20    ; 5.56x45 Steyr Scout Magazine
+;mag_steyr_762                                = 20    ; 7.62x51 Steyr Scout Magazine
+;mag_sv98_7.62x54_default                     = 20    ; Standard 7.62x54 SV98 Magazine
+;mag_svd_5.56_default                         = 20    ; Standard 5.56x45 SVD Magazine
+;mag_svd_5.56_extended                        = 20    ; Extended 5.56x45 SVD Magazine
+;mag_svd_7.62x54_default                      = 20    ; Standard 7.62x54 SVD Magazine
+;mag_svd_7.62x54_extended                     = 20    ; 20-round 7.62x54 SVD Magazine
+;mag_svdbas_5.56_default                      = 20    ; Standard 5.56x45 SVD Magazine
+;mag_svdbas_5.56_extended                     = 20    ; Extended 5.56x45 SVD Magazine
+;mag_svdbas_7.62x54_default                   = 20    ; Standard 7.62x54 SVD Magazine
+;mag_svdbas_7.62x54_extended                  = 20    ; 20-round 7.62x54 SVD Magazine
+;mag_svi_45                                   = 20    ; Standard 15-round Strayer-Voight Magazine
+;mag_svt_7.62x39_alt                          = 20    ; Modified 7.62x39 SVT-40 Magazine
+;mag_svt_7.62x54_default                      = 20    ; Standard 7.62x54 SVT-40 Magazine
+;mag_sw_45_default                            = 20    ; Standard .45 S&amp;W Magazine
+;mag_sw_919_default                           = 20    ; Standard 9x19mm S&amp;W Magazine
+;mag_t63_7.62x39_default                      = 20    ; Standard 7.62x39 Type 63 Magazine
+;mag_t63_7.62x54_alt                          = 20    ; Modified 7.62x54 Type 63 Magazine
+;mag_tt33_7.62x25_default                     = 20    ; Standard 7.62x25 TT-33 Magazine
+;mag_tt33_7.62x25_ext                         = 20    ; Standard 7.62x25 TT-33 Magazine
+;mag_ump45_11.43x23_default                   = 20    ; Standard .45 ACP UMP Magazine
+;mag_usas12_12x70_default                     = 20    ; Standard 12x70 USAS-12 Drum
+;mag_usp_11.43x23_default                     = 20    ; Standard .45 ACP USP Magazine
+;mag_usp_9x19_default                         = 20    ; Standard 9x19 USP Magazine
+;mag_usptac_9x19                              = 20    ; Standard 9x19 USP Magazine
+;mag_usptac_9x19_extended                     = 20    ; Extended 9x19 USP Magazine
+;mag_uzi_11.43x23_alt                         = 20    ; 12-round .45 ACP Uzi Magazine
+;mag_uzi_11.43x23_extended                    = 20    ; 16-round .45 ACP Uzi Magazine
+;mag_uzi_9x19_default                         = 20    ; 20-round 9x19 Uzi Magazine
+;mag_uzi_9x19_extended                        = 20    ; 32-round 9x19 Uzi Magazine
+;mag_val_9x39_default                         = 20    ; 20-round 9x39 AS VAL Magazine
+;mag_valbas_9x39_default                      = 20    ; 20-round 9x39 AS VAL Magazine
+;mag_valbas_9x39_extended                     = 20    ; Extended 9x39 AS VAL Magazine
+;mag_vepr_12x70_compact                       = 20    ; Compact 12x70 Vepr-12 Magazine
+;mag_vepr_12x70_default                       = 20    ; Standard 12x70 Vepr-12 Magazine
+;mag_vihr_9x39_default                        = 20    ; 30-round 9x39 SR-3M Magazine
+;mag_vityaz_9x18_alt                          = 20    ; Modified 9x18 Vityaz-SN Magazine
+;mag_vityaz_9x18_alt_PUFGUN20                 = 20    ; Vityaz 9x18 PUFGUN20 (fast loading)
+;mag_vityaz_9x18_alt_PUFGUN30                 = 20    ; Vityaz 9x18 PUFGUN30 (fast loading)
+;mag_vityaz_9x18_alt_extended50               = 20    ; Vityaz 9x18 50-round magazine
+;mag_vityaz_9x19_PUFGUN20                     = 20    ; Vityaz 9x19 PUFGUN20 (fast loading)
+;mag_vityaz_9x19_PUFGUN30                     = 20    ; Vityaz 9x19 PUFGUN30 (fast loading)
+;mag_vityaz_9x19_default                      = 20    ; Standard 9x19 Vityaz-SN Magazine
+;mag_vityaz_9x19_extended50                   = 20    ; Vityaz 9x19 50-round magazine
+;mag_vsk_12.7x55_default                      = 20    ; Standard 12.7x55 VSSK Magazine
+;mag_vsk_9x39_default                         = 20    ; Standard 9x39 Box Magazine
+;mag_vss_9x39_default                         = 20    ; 10-round 9x39 VSS Magazine
+;mag_vssbas_9x39_default                      = 20    ; 10-round 9x39 VSS Magazine
+;mag_vssbas_9x39_extended1                    = 20    ; Extended 9x39 VSS Magazine
+;mag_vssbas_9x39_extended2                    = 20    ; Extended 9x39 VSS Magazine
+;mag_vz61_9x18_alt                            = 20    ; Modified 9x18 vz.61 Magazine
+;mag_vz61_9x19_default                        = 20    ; Standard 9x19 vz.61 Magazine
+;mag_wa_7.62x51_default                       = 20    ; Standard Walther WA 2000 Magazine calibre 7.62x51
+;mag_walther_9x19_default                     = 20    ; Standard 9x19 Walther P99 Magazine
+;mag_wp99_9x19                                = 20    ; Standard 9x19 Walther P99 Magazine
+;mag_wp99_9x19_extended                       = 20    ; Extended 9x19 Walther P99 Magazine
+;mag_xd9_9x19_default                         = 20    ; Standard 9x19 XD9 Magazine
+;powder_1                                     = 20    ; Propellant, pistol/shotgun
+;powder_2                                     = 20    ; Propellant, small rifle
+;powder_3                                     = 20    ; Propellant, rifle
+;weapon_ammo_parts                            = 20
+
+; ----------------------------------------------------------
+;  zz_unclassified - 512 items   (the game's own kind is inside a .db archive)
+;  no ceiling for this kind, so these are filled in with
+;  1 - one per square, which is what they do today.
+; ----------------------------------------------------------
+;adrenalin                                    = 1
+;af_base_mlr                                  = 1
+;af_misery_bread                              = 1     ; Anomalous bread
+;ammo_11.43x23_fmj                            = 1     ; .45 ACP FMJ rounds
+;ammo_11.43x23_fmj_bad                        = 1     ; .45 ACP FMJ rounds
+;ammo_11.43x23_fmj_verybad                    = 1     ; .45 ACP FMJ rounds
+;ammo_11.43x23_hydro                          = 1     ; .45 ACP Hydra-shock HP rounds
+;ammo_11.43x23_hydro_bad                      = 1     ; .45 ACP Hydra-shock HP rounds
+;ammo_11.43x23_hydro_verybad                  = 1     ; .45 ACP Hydra-shock HP rounds
+;ammo_12.7x55_ap                              = 1     ; 12.7x55 mm STs-130 VPS rounds
+;ammo_12.7x55_ap_bad                          = 1     ; 7.62x51 mm NATO AP rounds
+;ammo_12.7x55_ap_verybad                      = 1     ; 12.7x55 mm STs-130 VPS rounds
+;ammo_12.7x55_fmj                             = 1     ; 12.7x55mm STs-130 rounds
+;ammo_12.7x55_fmj_bad                         = 1     ; 7.62x51 mm NATO ball rounds
+;ammo_12.7x55_fmj_verybad                     = 1     ; 12.7x55mm STs-130 rounds
+;ammo_12x70_buck                              = 1     ; 12x70 buckshot shells
+;ammo_12x70_buck_bad                          = 1     ; 12x70 buckshot shells
+;ammo_12x70_buck_self                         = 1     ; Home-made 12x70 shot shells
+;ammo_12x70_buck_verybad                      = 1     ; 12x70 buckshot shells
+;ammo_12x76_dart                              = 1     ; 12x76 AP slugs
+;ammo_12x76_dart_bad                          = 1     ; 12x76 AP slugs
+;ammo_12x76_dart_verybad                      = 1     ; 12x76 AP slugs
+;ammo_12x76_zhekan                            = 1     ; 12x76 slug shells
+;ammo_12x76_zhekan_bad                        = 1     ; 12x70 buckshot shells
+;ammo_12x76_zhekan_heli                       = 1     ; 12x76 slug shells
+;ammo_12x76_zhekan_verybad                    = 1     ; 12x76 slug shells
+;ammo_20x70_buck                              = 1     ; 20x70 buckshot round
+;ammo_23_eco                                  = 1     ; Ecolog-23 cartridge
+;ammo_23x75_barrikada                         = 1     ; "Barrikada" 23x75mm
+;ammo_23x75_barrikada_bad                     = 1     ; "Barrikada" 23x75mm
+;ammo_23x75_barrikada_verybad                 = 1     ; "Barrikada" 23x75mm
+;ammo_23x75_shrapnel                          = 1     ; "Shrapnel-25" 23x75mm
+;ammo_23x75_shrapnel_bad                      = 1     ; "Shrapnel-25" 23x75mm
+;ammo_23x75_shrapnel_verybad                  = 1     ; "Shrapnel-25" 23x75mm
+;ammo_338_federal                             = 1     ; .338 Federal
+;ammo_357_hp_mag                              = 1     ; .357 HP rounds
+;ammo_357_hp_mag_bad                          = 1     ; .357 HP rounds
+;ammo_357_hp_mag_verybad                      = 1     ; .357 HP rounds
+;ammo_5.45x39_ap                              = 1     ; 5.45x39 mm AP rounds
+;ammo_5.45x39_ap_bad                          = 1     ; 5.45x39 mm AP rounds
+;ammo_5.45x39_ap_verybad                      = 1     ; 5.45x39 mm AP rounds
+;ammo_5.45x39_ep                              = 1     ; 5.45x39 mm HP rounds
+;ammo_5.45x39_ep_bad                          = 1     ; 5.45x39 mm FMJ rounds
+;ammo_5.45x39_ep_verybad                      = 1     ; 5.45x39 mm HP rounds
+;ammo_5.45x39_fmj                             = 1     ; 5.45x39 mm FMJ rounds
+;ammo_5.45x39_fmj_bad                         = 1     ; 5.45x39 mm FMJ rounds
+;ammo_5.45x39_fmj_verybad                     = 1     ; 5.45x39 mm FMJ rounds
+;ammo_5.56x45_ap                              = 1     ; 5.56x45 mm AP rounds
+;ammo_5.56x45_ap_bad                          = 1     ; 5.45x39 mm AP rounds
+;ammo_5.56x45_ap_verybad                      = 1     ; 5.56x45 mm AP rounds
+;ammo_5.56x45_fmj                             = 1     ; 5.56x45 mm FMJ rounds
+;ammo_5.56x45_fmj_bad                         = 1     ; 5.45x39 mm FMJ rounds
+;ammo_5.56x45_fmj_verybad                     = 1     ; 5.56x45 mm FMJ rounds
+;ammo_5.56x45_ss190                           = 1     ; 5.56x45 mm HP rounds
+;ammo_5.56x45_ss190_bad                       = 1     ; 5.45x39 mm FMJ rounds
+;ammo_5.56x45_ss190_verybad                   = 1     ; 5.56x45 mm HP rounds
+;ammo_5.7x28_ss190                            = 1     ; 5.7x28 SS190 rounds
+;ammo_5.7x28_ss190_bad                        = 1     ; 9x18 mm AP rounds
+;ammo_5.7x28_ss190_verybad                    = 1     ; 5.7x28 SS190 rounds
+;ammo_5.7x28_ss195                            = 1     ; 5.7x28 mm SS195 rounds
+;ammo_5.7x28_ss195_bad                        = 1     ; 9x18 mm FMJ rounds
+;ammo_5.7x28_ss195_verybad                    = 1     ; 5.7x28 mm SS195 rounds
+;ammo_7.62x25_p                               = 1     ; 7.62x25 mm P rounds
+;ammo_7.62x25_p_bad                           = 1     ; 9x18 mm FMJ rounds
+;ammo_7.62x25_p_verybad                       = 1     ; 7.62x25 mm P rounds
+;ammo_7.62x25_ps                              = 1     ; 7.62x25 mm Pst rounds
+;ammo_7.62x25_ps_bad                          = 1     ; 9x18 mm FMJ rounds
+;ammo_7.62x25_ps_verybad                      = 1     ; 7.62x25 mm Pst rounds
+;ammo_7.62x39_ap                              = 1     ; 7.62x39 mm M43 rounds
+;ammo_7.62x39_ap_bad                          = 1     ; 5.45x39 mm AP rounds
+;ammo_7.62x39_ap_verybad                      = 1     ; 7.62x39 mm M43 rounds
+;ammo_7.62x39_fmj                             = 1     ; 7.62x39 mm FMJ rounds
+;ammo_7.62x39_fmj_bad                         = 1     ; 5.45x39 mm FMJ rounds
+;ammo_7.62x39_fmj_verybad                     = 1     ; 7.62x39 mm FMJ rounds
+;ammo_7.62x51_ap                              = 1     ; 7.62x51 mm NATO AP rounds
+;ammo_7.62x51_ap_bad                          = 1     ; 7.62x51 mm NATO AP rounds
+;ammo_7.62x51_ap_verybad                      = 1     ; 7.62x51 mm NATO AP rounds
+;ammo_7.62x51_fmj                             = 1     ; 7.62x51 mm NATO ball rounds
+;ammo_7.62x51_fmj_bad                         = 1     ; 7.62x51 mm NATO ball rounds
+;ammo_7.62x51_fmj_verybad                     = 1     ; 7.62x51 mm NATO ball rounds
+;ammo_7.62x54_7h1                             = 1     ; 7.62x54 mm 7N1 rounds
+;ammo_7.62x54_7h14                            = 1     ; 7.62x54 mm 7N14 rounds
+;ammo_7.62x54_7h14_bad                        = 1     ; 7.62x51 mm NATO ball rounds
+;ammo_7.62x54_7h14_verybad                    = 1     ; 7.62x54 mm 7N14 rounds
+;ammo_7.62x54_7h1_bad                         = 1     ; 7.62x51 mm NATO ball rounds
+;ammo_7.62x54_7h1_verybad                     = 1     ; 7.62x54 mm 7N1 rounds
+;ammo_7.62x54_ap                              = 1     ; 7.62x54 mm AP rounds
+;ammo_7.62x54_ap_bad                          = 1     ; 7.62x51 mm NATO AP rounds
+;ammo_7.62x54_ap_verybad                      = 1     ; 7.62x54 mm AP rounds
+;ammo_7.92x33_ap                              = 1     ; 7.92x57 mm AP rounds
+;ammo_7.92x33_ap_bad                          = 1     ; 7.62x51 mm NATO AP rounds
+;ammo_7.92x33_ap_verybad                      = 1     ; 7.92x57 mm AP rounds
+;ammo_7.92x33_fmj                             = 1     ; 7.92x57 mm FMJ rounds
+;ammo_7.92x33_fmj_bad                         = 1     ; 7.62x51 mm NATO ball rounds
+;ammo_7.92x33_fmj_verybad                     = 1     ; 7.92x57 mm FMJ rounds
+;ammo_9x18_ap                                 = 1     ; 9x18 mm AP rounds
+;ammo_9x18_ap_bad                             = 1     ; 9x18 mm AP rounds
+;ammo_9x18_ap_verybad                         = 1     ; 9x18 mm AP rounds
+;ammo_9x18_fmj                                = 1     ; 9x18 mm FMJ rounds
+;ammo_9x18_fmj_bad                            = 1     ; 9x18 mm FMJ rounds
+;ammo_9x18_fmj_verybad                        = 1     ; 9x18 mm FMJ rounds
+;ammo_9x18_pmm                                = 1     ; 9x18 mm HP rounds
+;ammo_9x18_pmm_bad                            = 1     ; 9x18 mm FMJ rounds
+;ammo_9x18_pmm_verybad                        = 1     ; 9x18 mm HP rounds
+;ammo_9x19_ap                                 = 1     ; 9x19 mm AP rounds
+;ammo_9x19_ap_bad                             = 1     ; 9x18 mm AP rounds
+;ammo_9x19_ap_verybad                         = 1     ; 9x19 mm AP rounds
+;ammo_9x19_fmj                                = 1     ; 9x19 mm FMJ rounds
+;ammo_9x19_fmj_bad                            = 1     ; 9x18 mm FMJ rounds
+;ammo_9x19_fmj_verybad                        = 1     ; 9x19 mm FMJ rounds
+;ammo_9x19_pbp                                = 1     ; 9x19 mm HP rounds
+;ammo_9x19_pbp_bad                            = 1     ; 9x18 mm FMJ rounds
+;ammo_9x19_pbp_verybad                        = 1     ; 9x19 mm HP rounds
+;ammo_9x21_sp10                               = 1     ; 9x21 mm SP10
+;ammo_9x39_ap                                 = 1     ; 9x39 mm SP-6 rounds
+;ammo_9x39_ap_bad                             = 1     ; 9x39 mm SP-6 rounds
+;ammo_9x39_ap_verybad                         = 1     ; 9x39 mm SP-6 rounds
+;ammo_9x39_pab9                               = 1     ; 9x39 mm SP-5 rounds
+;ammo_9x39_pab9_bad                           = 1     ; 9x39 mm SP-5 rounds
+;ammo_9x39_pab9_verybad                       = 1     ; 9x39 mm SP-5 rounds
+;ammo_magnum_300                              = 1     ; .338 Lapua Magnum rounds
+;ammo_magnum_300_bad                          = 1     ; 7.62x51 mm NATO AP rounds
+;ammo_magnum_300_verybad                      = 1     ; .338 Lapua Magnum rounds
+;ammo_pkm_100                                 = 1     ; 7.62x54 mm PP rounds
+;ammo_pkm_100_bad                             = 1     ; 7.62x51 mm NATO ball rounds
+;ammo_pkm_100_verybad                         = 1     ; 7.62x54 mm PP rounds
+;analgetic                                    = 1
+;antibio_chlor                                = 1
+;antibio_sulfad                               = 1
+;antiemetic                                   = 1
+;antirad                                      = 1
+;antirad_cystamine                            = 1
+;antirad_kalium                               = 1
+;army_isg_spy_pendrive                        = 1
+;army_patch                                   = 1
+;attachable_item                              = 1
+;attackers_pda                                = 1
+;bad_psy_helmet                               = 1
+;ball_hammer                                  = 1
+;bandage                                      = 1
+;bandage_israeli                              = 1
+;bandit_patch                                 = 1
+;beadspread                                   = 1
+;beans                                        = 1
+;bio_bandage                                  = 1
+;blackbox_mlr                                 = 1
+;booster                                      = 1
+;booster_multi                                = 1
+;booster_script                               = 1
+;boots                                        = 1
+;bread                                        = 1
+;breadold                                     = 1     ; Bread Loaf (Stale)
+;broken_detector                              = 1
+;broken_pda                                   = 1
+;caffeine                                     = 1
+;cards                                        = 1
+;cash                                         = 1
+;chernobog_notes                              = 1
+;chili                                        = 1
+;chimera_scan_device                          = 1
+;chocolate                                    = 1
+;chocolate_p                                  = 1
+;cit_doctors_key                              = 1
+;cit_doctors_pda                              = 1
+;cocaine                                      = 1
+;conserva                                     = 1
+;contact_lost_pda                             = 1
+;corn                                         = 1
+;csky_patch                                   = 1
+;custom_script_object                         = 1
+;cutlery                                      = 1
+;decoder                                      = 1
+;decryption_radio                             = 1
+;device_pda_zat_b5_dealer                     = 1
+;document                                     = 1
+;dolg_patch                                   = 1
+;drug_anabiotic                               = 1
+;drug_antidot                                 = 1
+;drug_coagulant                               = 1
+;drug_psy_blockade                            = 1
+;drug_radioprotector                          = 1
+;drug_sleepingpills                           = 1
+;drx_agr_u_documents                          = 1
+;drx_jup_u_documents                          = 1
+;drx_sl_quest_item_1                          = 1
+;drx_sl_quest_item_2                          = 1
+;drx_sl_quest_item_3                          = 1
+;drx_x16_documents                            = 1
+;drx_x18_documents                            = 1
+;drx_x19_documents                            = 1
+;drx_x8_documents                             = 1
+;duct_tape                                    = 1
+;e_syringe                                    = 1
+;ecolog_patch                                 = 1
+;elixir                                       = 1
+;flashlight_broken                            = 1
+;freedom_patch                                = 1
+;garand_scope                                 = 1
+;gl_fake_missile                              = 1
+;gloves                                       = 1
+;glucose                                      = 1
+;glucose_s                                    = 1
+;good_psy_helmet                              = 1
+;grease                                       = 1
+;greh_patch                                   = 1
+;guitar_a                                     = 1
+;hand_radio                                   = 1
+;hand_radio_r                                 = 1
+;harmonica_a                                  = 1
+;hb_isg_dushman_intel                         = 1
+;headlamp                                     = 1
+;ibs_folic_acid                               = 1
+;isg_patch                                    = 1
+;item_pda_map_mlr                             = 1
+;itm_gunsmith_toolkit                         = 1     ; Gunsmith Kit
+;itm_outfit_toolkit                           = 1     ; Gunsmith Kit
+;itm_repairkit_tier_1                         = 1     ; Gunsmith Kit
+;itm_repairkit_tier_2                         = 1     ; Gunsmith Kit
+;itm_repairkit_tier_3                         = 1     ; Gunsmith Kit
+;jar                                          = 1
+;jewelry_box                                  = 1
+;jgut                                         = 1
+;jupiter_documents                            = 1
+;killer_patch                                 = 1
+;kolbasa                                      = 1
+;letter_ecologist_report_1_of_3               = 1
+;letter_ecologist_report_2_of_3               = 1
+;letter_ecologist_report_3_of_3               = 1
+;letter_freedom_manual_1_of_2                 = 1
+;letter_freedom_manual_2_of_2                 = 1
+;letter_letter_to_outside                     = 1
+;letter_memoirs_1_of_2                        = 1
+;letter_memoirs_2_of_2                        = 1
+;letter_mercenary                             = 1
+;letter_military_log                          = 1
+;letter_military_stalker                      = 1
+;letter_monolith_prayer_1_of_3                = 1
+;letter_monolith_prayer_2_of_3                = 1
+;letter_monolith_prayer_3_of_3                = 1
+;letter_monolithian_thoughts                  = 1
+;letter_stalker_letter_1_of_2                 = 1
+;letter_stalker_letter_2_of_2                 = 1
+;letter_stalker_letter_3                      = 1
+;lx8_history_2_documents                      = 1
+;lx8_history_3_documents                      = 1
+;lx8_history_documents                        = 1
+;lx8_service_instruction                      = 1
+;mag_ak12_default                             = 1
+;mag_ak_5.45x39_short                         = 1
+;mag_ak_5.56x45_cwp                           = 1
+;mag_ak_5.56x45_ext45                         = 1
+;mag_ak_7.62x39_ak30_blk                      = 1
+;mag_ak_7.62x39_ak30_fde                      = 1
+;mag_ak_7.62x39_bake                          = 1
+;mag_ak_7.62x39_bake_40                       = 1
+;mag_ak_7.62x39_drum_50                       = 1
+;mag_ak_7.62x39_drum_73                       = 1
+;mag_ak_7.62x39_pmag                          = 1
+;mag_ak_7.62x39_pmag_20                       = 1
+;mag_rpk_5.45x39_modern                       = 1
+;mag_sks_7.62x39_drum                         = 1
+;main_story_1_quest_case                      = 1
+;main_story_2_lab_x18_documents               = 1
+;main_story_3_lab_x16_documents               = 1
+;main_story_4_lab_x10_documents               = 1
+;main_story_5_lab_x8_documents                = 1
+;main_story_6_jup_ug_documents                = 1
+;main_story_7_mon_con_documents               = 1
+;medkit                                       = 1
+;medkit_ai1                                   = 1
+;medkit_ai2                                   = 1
+;medkit_ai3                                   = 1
+;medkit_army                                  = 1
+;medkit_elite                                 = 1
+;medkit_scientic                              = 1
+;mirror                                       = 1
+;mlr_strelok_item_01                          = 1
+;mlr_x8_copybook                              = 1
+;mlr_x8_copybook_2                            = 1
+;mlr_x8_documents                             = 1
+;monolith_patch                               = 1
+;monolith_shard                               = 1
+;morphine                                     = 1
+;mre                                          = 1
+;new_attachable_item                          = 1
+;nuts                                         = 1
+;p4x34_x                                      = 1
+;package_content                              = 1
+;pn23f_x                                      = 1
+;po4x34_x                                     = 1
+;porn                                         = 1
+;porn2                                        = 1
+;protein                                      = 1
+;proto_scope                                  = 1
+;prt_i_capacitors                             = 1
+;prt_i_copper                                 = 1
+;prt_i_fasteners                              = 1
+;prt_i_paper                                  = 1
+;prt_i_plastic                                = 1
+;prt_i_resistors                              = 1
+;prt_i_scrap                                  = 1
+;prt_i_textolite                              = 1
+;prt_i_transistors                            = 1
+;prt_i_wood                                   = 1
+;prt_o_ballistic_1                            = 1
+;prt_o_ballistic_10                           = 1
+;prt_o_ballistic_11                           = 1
+;prt_o_ballistic_12                           = 1
+;prt_o_ballistic_13                           = 1
+;prt_o_ballistic_14                           = 1
+;prt_o_ballistic_15                           = 1
+;prt_o_ballistic_16                           = 1
+;prt_o_ballistic_17                           = 1
+;prt_o_ballistic_18                           = 1
+;prt_o_ballistic_19                           = 1
+;prt_o_ballistic_2                            = 1
+;prt_o_ballistic_20                           = 1
+;prt_o_ballistic_3                            = 1
+;prt_o_ballistic_4                            = 1
+;prt_o_ballistic_5                            = 1
+;prt_o_ballistic_6                            = 1
+;prt_o_ballistic_7                            = 1
+;prt_o_ballistic_8                            = 1
+;prt_o_ballistic_9                            = 1
+;prt_o_fabrics_1                              = 1
+;prt_o_fabrics_2                              = 1
+;prt_o_fabrics_3                              = 1
+;prt_o_fabrics_4                              = 1
+;prt_o_retardant_1                            = 1
+;prt_o_retardant_10                           = 1
+;prt_o_retardant_11                           = 1
+;prt_o_retardant_12                           = 1
+;prt_o_retardant_13                           = 1
+;prt_o_retardant_14                           = 1
+;prt_o_retardant_15                           = 1
+;prt_o_retardant_16                           = 1
+;prt_o_retardant_17                           = 1
+;prt_o_retardant_18                           = 1
+;prt_o_retardant_19                           = 1
+;prt_o_retardant_2                            = 1
+;prt_o_retardant_20                           = 1
+;prt_o_retardant_3                            = 1
+;prt_o_retardant_4                            = 1
+;prt_o_retardant_5                            = 1
+;prt_o_retardant_6                            = 1
+;prt_o_retardant_7                            = 1
+;prt_o_retardant_8                            = 1
+;prt_o_retardant_9                            = 1
+;prt_o_support_1                              = 1
+;prt_w_barrel_1                               = 1
+;prt_w_barrel_10                              = 1
+;prt_w_barrel_11                              = 1
+;prt_w_barrel_12                              = 1
+;prt_w_barrel_13                              = 1
+;prt_w_barrel_2                               = 1
+;prt_w_barrel_3                               = 1
+;prt_w_barrel_4                               = 1
+;prt_w_barrel_5                               = 1
+;prt_w_barrel_6                               = 1
+;prt_w_barrel_7                               = 1
+;prt_w_barrel_8                               = 1
+;prt_w_barrel_9                               = 1
+;prt_w_bolt_1                                 = 1
+;prt_w_bolt_10                                = 1
+;prt_w_bolt_11                                = 1
+;prt_w_bolt_12                                = 1
+;prt_w_bolt_13                                = 1
+;prt_w_bolt_14                                = 1
+;prt_w_bolt_15                                = 1
+;prt_w_bolt_16                                = 1
+;prt_w_bolt_17                                = 1
+;prt_w_bolt_2                                 = 1
+;prt_w_bolt_3                                 = 1
+;prt_w_bolt_4                                 = 1
+;prt_w_bolt_5                                 = 1
+;prt_w_bolt_6                                 = 1
+;prt_w_bolt_7                                 = 1
+;prt_w_bolt_8                                 = 1
+;prt_w_bolt_9                                 = 1
+;prt_w_bolt_carrier_1                         = 1
+;prt_w_bolt_carrier_10                        = 1
+;prt_w_bolt_carrier_11                        = 1
+;prt_w_bolt_carrier_2                         = 1
+;prt_w_bolt_carrier_3                         = 1
+;prt_w_bolt_carrier_4                         = 1
+;prt_w_bolt_carrier_5                         = 1
+;prt_w_bolt_carrier_6                         = 1
+;prt_w_bolt_carrier_7                         = 1
+;prt_w_bolt_carrier_8                         = 1
+;prt_w_bolt_carrier_9                         = 1
+;prt_w_gas_tube_1                             = 1
+;prt_w_gas_tube_10                            = 1
+;prt_w_gas_tube_11                            = 1
+;prt_w_gas_tube_2                             = 1
+;prt_w_gas_tube_3                             = 1
+;prt_w_gas_tube_4                             = 1
+;prt_w_gas_tube_5                             = 1
+;prt_w_gas_tube_6                             = 1
+;prt_w_gas_tube_7                             = 1
+;prt_w_gas_tube_8                             = 1
+;prt_w_gas_tube_9                             = 1
+;prt_w_p_barrel_1                             = 1
+;prt_w_p_barrel_2                             = 1
+;prt_w_p_barrel_3                             = 1
+;prt_w_p_barrel_4                             = 1
+;prt_w_p_barrel_5                             = 1
+;prt_w_p_barrel_6                             = 1
+;prt_w_p_barrel_7                             = 1
+;prt_w_p_spring_1                             = 1
+;prt_w_p_spring_2                             = 1
+;prt_w_p_spring_3                             = 1
+;prt_w_p_spring_4                             = 1
+;prt_w_p_spring_5                             = 1
+;prt_w_p_spring_6                             = 1
+;prt_w_p_trigger_1                            = 1
+;prt_w_p_trigger_2                            = 1
+;prt_w_p_trigger_3                            = 1
+;prt_w_p_trigger_4                            = 1
+;prt_w_trigger_components_1                   = 1
+;prt_w_trigger_components_2                   = 1
+;prt_w_trigger_components_3                   = 1
+;prt_w_trigger_components_4                   = 1
+;prt_w_trigger_components_5                   = 1
+;prt_w_trigger_components_6                   = 1
+;quest_package_1                              = 1
+;quest_package_2                              = 1
+;quest_package_3                              = 1
+;quest_package_4                              = 1
+;quest_package_5                              = 1
+;quest_package_6                              = 1
+;quest_package_7                              = 1
+;quest_package_8                              = 1
+;quest_tb_package_1                           = 1     ; Package
+;quest_tb_package_2                           = 1     ; Package
+;quest_tb_package_3                           = 1     ; Package
+;quest_tb_package_4                           = 1     ; Package
+;quest_tb_package_5                           = 1     ; Package
+;quest_tb_package_6                           = 1     ; Package
+;quest_tb_package_7                           = 1     ; Package
+;quest_tb_package_8                           = 1     ; Package
+;radio                                        = 1
+;radio2                                       = 1
+;radio_connections_pda                        = 1
+;raisins                                      = 1
+;ration_ru                                    = 1
+;ration_ukr                                   = 1
+;rebirth                                      = 1
+;recipe_advanced_1                            = 1     ; Survival Guide Vol. 2
+;recipe_advanced_2                            = 1     ; Electronics Handbook Vol. 2
+;recipe_advanced_3                            = 1     ; Fundamentals of Guns and Armors Upgrades Vol. 2
+;recipe_advanced_4                            = 1     ; The Art of Artefacts Fusion Vol. 2
+;recipe_ammo_1                                = 1
+;recipe_ammo_2                                = 1
+;recipe_ammo_3                                = 1
+;recipe_ammo_4                                = 1     ; Advances in Military Applications: Exoskeletons (Confidential)
+;recipe_basic_1                               = 1     ; Survival Guide Vol. 1
+;recipe_basic_2                               = 1     ; Electronics Handbook Vol. 1
+;recipe_basic_3                               = 1     ; Fundamentals of Guns and Armors Upgrades Vol. 1
+;recipe_basic_4                               = 1     ; The Art of Artefacts Fusion Vol. 1
+;recipe_cooking_1                             = 1
+;recipe_drug_1                                = 1
+;recipe_drug_2                                = 1
+;recipe_drug_3                                = 1
+;recipe_drug_4                                = 1
+;recipe_exo_1                                 = 1     ; Behavior of "Battery" artifacts under artificial electromagnetic fields
+;recipe_exo_2                                 = 1     ; Observations and analysis of "Full Empty" artifact projected gravitational shells
+;recipe_exo_3                                 = 1     ; Application of 'Flash' artifact fields to engine power output
+;recipe_expert_1                              = 1     ; Survival Guide Vol. 3
+;recipe_expert_2                              = 1     ; Electronics Handbook Vol. 3
+;recipe_expert_3                              = 1     ; Fundamentals of Guns and Armors Upgrades Vol. 3
+;recipe_expert_4                              = 1     ; The Art of Artefacts Fusion Vol. 3
+;recipe_pda_milspec                           = 1     ; Dubious pendrive
+;recover_mutant_data_device                   = 1
+;renegade_patch                               = 1
+;rioc_duty_item                               = 1
+;rioc_ecolog_item                             = 1
+;rioc_sid_item_1                              = 1
+;rioc_sid_item_2                              = 1
+;rope                                         = 1
+;rotten_meat                                  = 1     ; Rotten Meat
+;roubles                                      = 1
+;salicidic_acid                               = 1
+;salmon                                       = 1
+;sausage                                      = 1
+;shovel_mili                                  = 1
+;shovel_old                                   = 1
+;sl_ht_accounting_report                      = 1     ; Accounting reports
+;sl_ht_walkie_talkie                          = 1     ; Army radio
+;special_delivery_case                        = 1
+;stalker_patch                                = 1
+;steel_wool                                   = 1
+;stimpack                                     = 1
+;stimpack_army                                = 1
+;stimpack_scientic                            = 1
+;strelok_notes                                = 1
+;strelok_pendrive                             = 1
+;survival_kit                                 = 1
+;synthrope                                    = 1
+;tarpaulin                                    = 1
+;tch_gear                                     = 1
+;tetanus                                      = 1
+;tomato                                       = 1
+;tushonka                                     = 1
+;uh1                                          = 1
+;uh1_x                                        = 1
+;underwear                                    = 1
+;vodnik_notes                                 = 1
+;walkie                                       = 1
+;wallet                                       = 1
+;welding_goggles                              = 1
+;without_outfit                               = 1
+;x8_documents                                 = 1

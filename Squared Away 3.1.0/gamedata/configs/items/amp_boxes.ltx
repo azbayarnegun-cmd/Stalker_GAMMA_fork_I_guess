@@ -1,0 +1,243 @@
+; ============================================================
+;  ARMOR MAG POUCHES - WHAT GOES IN WHICH BOX
+;
+;  One section per box FAMILY. A box's section in system.ltx says which
+;  family it belongs to:
+;
+;      amp_box_takes = meds     ->  [amp_box_meds]
+;
+;  so a new box needs no change to the script, and changing what an
+;  existing one accepts needs no change to anything but this file.
+;
+; ------------------------------------------------------------
+;  THE FOUR KEYS
+;
+;    kinds = i_medical, i_food     the item's `kind` in system.ltx. This
+;                                  is the main rule and usually the only
+;                                  one worth writing.
+;
+;    ammo  = true                  anything the GAME calls ammunition.
+;                                  Not a kind: ammo sections do not
+;                                  agree about `kind` and plenty leave
+;                                  it out, so the question is asked the
+;                                  way the game asks it -
+;                                  IsItem("ammo", section), which is
+;                                  class = AMMO or AMMO_S.
+;
+;    rigs  = true                  chest rigs may go in this one.
+;                                  Not a kind: a rig is i_attach, the
+;                                  same as a box and an artefact
+;                                  container, so asking by kind would
+;                                  let in things this has no business
+;                                  holding. It is asked the way the
+;                                  script asks it - is_rig_sec - and it
+;                                  is a key of its own because a rig
+;                                  costs something to store: what is
+;                                  inside it travels with it, and only
+;                                  a box that says this is written to
+;                                  carry that.
+;
+;    also  = <section>, ...        take these whatever their kind is.
+;    never = <section>, ...        refuse these whatever their kind is.
+;                                  `never` is checked FIRST, so it wins.
+;
+;    no    = <sentence>            what to say when something is refused.
+;
+;  ...and one key that is not about what goes in, written on the BOX's
+;  own section rather than here because it is about that box and not
+;  about its family:
+;
+;    amp_box_wt = false            do not write the weight of what is
+;                                  inside on the icon. For a box whose
+;                                  contents weigh nothing - the wallet
+;                                  full of patches - where the number
+;                                  would always be the same number,
+;                                  which is what that plate replaced.
+;
+;  Whitespace round the commas is ignored. An empty key is no rule at
+;  all, not a rule that matches nothing.
+;
+; ------------------------------------------------------------
+;  WHAT NO FILE CAN OVERRIDE
+;
+;  A BOX NEVER GOES INSIDE A BOX. Its contents live in a table keyed
+;  by its own object id, and a box inside a box is how those tables come
+;  apart: the outer one's entry is a promise to rebuild an object whose
+;  own contents nothing is holding. That test is in the script, above
+;  everything here, and no file can turn it off.
+;
+;  A RIG IS THE SAME SHAPE OF PROBLEM and used to be refused for the
+;  same reason - but it is a thing you own several of and want somewhere
+;  to put, so `rigs = true` turns it on for one family and the script
+;  carries the rig's magazines through the box with it. A family that
+;  does not say `rigs = true` still refuses them.
+; ============================================================
+
+[amp_box_meds]
+kinds = i_medical
+also  =
+never =
+no    = Only medical supplies go in the medical case
+
+[amp_box_ammo]
+;  Ammunition only - not magazines. A loaded magazine is a magazine,
+;  and magazines go in a rig or in the magazine box.
+;
+;  BOTH ammo cases use this family. What differs between them is how
+;  many squares they have, which is in system.ltx and not here.
+ammo  = true
+kinds =
+also  =
+never =
+no    = Only ammunition goes in an ammo case
+
+[amp_box_food]
+;  Cooked mutant meat and raw both, because both are food you carry and
+;  both are what the cooler is for.
+;
+;  BOTH food containers use this family - the big one and the small one
+;  take the same things and differ only in how much fits.
+kinds = i_food, i_drink, i_mutant_cooked, i_mutant_raw
+also  =
+never =
+no    = Only food and drink go in a food container
+
+; ============================================================
+;  AND THE THREE NEW FAMILIES
+; ============================================================
+
+[amp_box_armor]
+;  THE ARMOUR CASE.
+;
+;    "items that can be put inside are armours/helmets and masks/rigs"
+;
+;  o_light / o_medium / o_heavy / o_sci are the four outfit kinds this
+;  install uses, and o_helmet covers helmets AND gas masks - a mask is
+;  worn in the head slot and the game files it as a helmet.
+;
+;  `rigs = true` is what lets a chest rig in. See the note at the top:
+;  a rig carries its magazines with it, and a box only handles that
+;  because this line says it has to.
+kinds = o_light, o_medium, o_heavy, o_sci, o_helmet
+rigs  = true
+also  =
+never =
+no    = Only armour, helmets, masks and rigs go in the armour case
+
+[amp_box_mags]
+;  THE MAGAZINE BOX.
+;
+;  is_mag is a section flag, not a kind: magazines from different packs
+;  do not agree about `kind` and several leave it out, but every one of
+;  them carries is_mag because that is the flag the magazine mod itself
+;  reads. Same reasoning as `ammo = true` above.
+mags  = true
+kinds =
+also  =
+never =
+no    = Only magazines go in the magazine box
+
+[amp_box_parts]
+;  THE PARTS BOX.
+;
+;    "stores gunparts and armour parts"
+;
+;  Both are i_part - prt_w_* off a weapon, prt_o_* off armour, prt_i_*
+;  for the hardware that comes out of either - and i_part is the kind
+;  the sorting tabs file them under, so there is one word for all of
+;  them and this is it.
+kinds = i_part
+also  =
+never =
+no    = Only weapon and armour parts go in the parts box
+
+[amp_box_patches]
+;  THE WALLET.
+;
+;    "an user added so the faction patches can be stored in the wallet
+;     (this item cannot be removed from inventory so its good idea)"
+;
+;  And it is a good idea for exactly that reason: the wallet cannot
+;  leave your inventory, so patches kept in it cannot be left in a
+;  stash, sold with a coat or dropped in a swamp.
+;
+;  NAMED, NOT ASKED BY KIND. The disguise system makes a patch's
+;  section by convention - gameplay_disguise.get_patch does
+;  `faction .. "_patch"` and asks whether that section exists - and a
+;  patch carries no kind of its own, so there is nothing to ask for.
+;  The twelve factions are the list the hotkey addon carries, which is
+;  every faction the disguise system knows.
+;
+;  A closed list is also the right shape here: this is a wallet, not a
+;  second bag, and `also` with nothing else set means these twelve and
+;  nothing at all besides.
+kinds =
+also  = army_patch, bandit_patch, csky_patch, dolg_patch, ecolog_patch, freedom_patch, killer_patch, monolith_patch, stalker_patch, renegade_patch, greh_patch, isg_patch
+never =
+no    = Only faction patches go in the wallet
+
+[amp_box_weapon]
+;  THE WEAPON CASES, both of them.
+;
+;    "add Weapon Case ... and Big Weapon Case"
+;
+;  `guns = true` is a key of its own for the same reason `ammo` and
+;  `mags` are: there is no kind to ask for. Weapons keep their `kind`
+;  inside a .db archive - the census in zzz_grid_stacks.ltx has 512
+;  sections whose kind cannot be read at all, and every firearm in the
+;  pack is one of them - and the game's item table, which answers
+;  IsItem("ammo") and IsItem("scope"), has no entry for a weapon.
+;
+;  What every weapon does agree on is its CLASS: WP_ANYTHING. So that
+;  is the question, minus the three WP_ classes that are attachments
+;  rather than weapons - see A.is_gun_sec.
+;
+;  BOTH CASES USE THIS FAMILY. What differs between them is how many
+;  squares they have, which is in system.ltx and not here - the same
+;  arrangement the two ammo cases and the two food containers have.
+guns  = true
+kinds =
+also  =
+never =
+no    = Only weapons go in a weapon case
+
+[amp_box_docs]
+;  THE DOCUMENT CASE.
+;
+;  i_letter is the game's own word for a piece of paper you carry -
+;  notes, letters, orders, the things that pile up unread - and it is
+;  the kind the sorting system already groups them under. Asking by
+;  kind means every document any mod ever adds is accepted without a
+;  name being written here.
+kinds = i_letter
+also  =
+never =
+no    = Only documents go in the document case
+
+[amp_box_medpocket]
+;  THE MED POCKET ON THE RIG - and it is in this file, with the
+;  boxes, because it is the same question asked about a different
+;  container and there is no reason for it to have its own syntax.
+;
+;    "one 2x2 slot for every rig that is not for mags but for
+;     medical items"
+;
+;  kinds = i_medical is the whole rule, and it is wider than it
+;  looks: in this game that kind covers the medkits, the bandage,
+;  antirad, splints and tourniquets AND the drug family -
+;  adrenaline, psy blockade, coagulant, radioprotector. They are
+;  all i_medical, so "medical items and stims" is one word.
+;
+;  IF SOMETHING YOU THINK OF AS MEDICINE IS REFUSED, put its
+;  section on the `also` line and it is in - no other change
+;  anywhere. That is what this line is for.
+;
+;  A rig, a box and a magazine are refused above this file and no
+;  key here can let them in: the first two are containers whose
+;  contents are filed against an object id, and the third has a
+;  pocket of its own.
+kinds = i_medical
+also  =
+never =
+no    = Only medical supplies go in the med pocket
+

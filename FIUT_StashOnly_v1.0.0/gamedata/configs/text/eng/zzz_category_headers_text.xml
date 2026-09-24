@@ -1,0 +1,1023 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="ui_mcm_menu_CategoryHeaders">
+		<text>F.I.U.T - Fomok's Inventory Utility Tool</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders">
+		<text>F.I.U.T - Fomok's Inventory Utility Tool</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_general">
+		<text>General</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_general">
+		<text>General</text>
+	</string>
+	<string id="ui_mcm_cathdr_general">
+		<text>General</text>
+	</string>
+	<string id="ui_mcm_menu_CategoryHeaders_cathdr_general">
+		<text>General</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders_cathdr_general">
+		<text>General</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general">
+		<text>General</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_appearance">
+		<text>Header bar and background</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_appearance">
+		<text>Header bar and background</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance">
+		<text>Header bar and background</text>
+	</string>
+	<string id="ui_mcm_menu_CategoryHeaders_cathdr_appearance">
+		<text>Header bar and background</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders_cathdr_appearance">
+		<text>Header bar and background</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance">
+		<text>Header bar and background</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_text">
+		<text>Header text</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_text">
+		<text>Header text</text>
+	</string>
+	<string id="ui_mcm_cathdr_text">
+		<text>Header text</text>
+	</string>
+	<string id="ui_mcm_menu_CategoryHeaders_cathdr_text">
+		<text>Header text</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders_cathdr_text">
+		<text>Header text</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text">
+		<text>Header text</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_weight">
+		<text>Weight display</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_weight">
+		<text>Weight display</text>
+	</string>
+	<string id="ui_mcm_cathdr_weight">
+		<text>Weight display</text>
+	</string>
+	<string id="ui_mcm_menu_CategoryHeaders_cathdr_weight">
+		<text>Weight display</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders_cathdr_weight">
+		<text>Weight display</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_weight">
+		<text>Weight display</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_categories">
+		<text>Category names</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_categories">
+		<text>Category names</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories">
+		<text>Category names</text>
+	</string>
+	<string id="ui_mcm_menu_CategoryHeaders_cathdr_categories">
+		<text>Category names</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders_cathdr_categories">
+		<text>Category names</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories">
+		<text>Category names</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_enable">
+		<text>Enable category headers</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_enable">
+		<text>Enable category headers</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_enable">
+		<text>Enable category headers</text>
+	</string>
+	<string id="ui_mcm_enable">
+		<text>Enable category headers</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_in_inventory">
+		<text>Show headers in personal inventory</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_in_inventory">
+		<text>Show headers in personal inventory</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_in_inventory">
+		<text>Show headers in personal inventory</text>
+	</string>
+	<string id="ui_mcm_show_in_inventory">
+		<text>Show headers in personal inventory</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_in_containers">
+		<text>Show headers in stashes/workbench stashes/bodies</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_in_containers">
+		<text>Show headers in stashes/workbench stashes/bodies</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_in_containers">
+		<text>Show headers in stashes/workbench stashes/bodies</text>
+	</string>
+	<string id="ui_mcm_show_in_containers">
+		<text>Show headers in stashes/workbench stashes/bodies</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_in_trade">
+		<text>Show headers in trade windows</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_in_trade">
+		<text>Show headers in trade windows</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_in_trade">
+		<text>Show headers in trade windows</text>
+	</string>
+	<string id="ui_mcm_show_in_trade">
+		<text>Show headers in trade windows</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_colored_headers">
+		<text>Use per-category colors (off = one flat color for all headers)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_colored_headers">
+		<text>Use per-category colors (off = one flat color for all headers)</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_colored_headers">
+		<text>Use per-category colors (off = one flat color for all headers)</text>
+	</string>
+	<string id="ui_mcm_colored_headers">
+		<text>Use per-category colors (off = one flat color for all headers)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_bg_opacity">
+		<text>Header bar background opacity (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_bg_opacity">
+		<text>Header bar background opacity (0-255)</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_bg_opacity">
+		<text>Header bar background opacity (0-255)</text>
+	</string>
+	<string id="ui_mcm_bg_opacity">
+		<text>Header bar background opacity (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_thickness">
+		<text>Header bar thickness (% of row height, 10-100)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_thickness">
+		<text>Header bar thickness (% of row height, 10-100)</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_thickness">
+		<text>Header bar thickness (% of row height, 10-100)</text>
+	</string>
+	<string id="ui_mcm_thickness">
+		<text>Header bar thickness (% of row height, 10-100)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_section_tint">
+		<text>Tint the grid background under each category</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_section_tint">
+		<text>Tint the grid background under each category</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_section_tint">
+		<text>Tint the grid background under each category</text>
+	</string>
+	<string id="ui_mcm_section_tint">
+		<text>Tint the grid background under each category</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_section_tint_alpha">
+		<text>Category background tint opacity (0-120)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_section_tint_alpha">
+		<text>Category background tint opacity (0-120)</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_section_tint_alpha">
+		<text>Category background tint opacity (0-120)</text>
+	</string>
+	<string id="ui_mcm_section_tint_alpha">
+		<text>Category background tint opacity (0-120)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_names">
+		<text>Show category name text on headers (off = bar and weight only)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_show_names">
+		<text>Show category name text on headers (off = bar and weight only)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_show_names">
+		<text>Show category name text on headers (off = bar and weight only)</text>
+	</string>
+	<string id="ui_mcm_show_names">
+		<text>Show category name text on headers (off = bar and weight only)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_font_size">
+		<text>Header text size (1=small, 2=medium, 3=large)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_font_size">
+		<text>Header text size (1=small, 2=medium, 3=large)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_font_size">
+		<text>Header text size (1=small, 2=medium, 3=large)</text>
+	</string>
+	<string id="ui_mcm_font_size">
+		<text>Header text size (1=small, 2=medium, 3=large)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_txt_alpha">
+		<text>Header text opacity (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_txt_alpha">
+		<text>Header text opacity (0-255)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_txt_alpha">
+		<text>Header text opacity (0-255)</text>
+	</string>
+	<string id="ui_mcm_txt_alpha">
+		<text>Header text opacity (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_txt_red">
+		<text>Header text red (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_txt_red">
+		<text>Header text red (0-255)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_txt_red">
+		<text>Header text red (0-255)</text>
+	</string>
+	<string id="ui_mcm_txt_red">
+		<text>Header text red (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_txt_green">
+		<text>Header text green (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_txt_green">
+		<text>Header text green (0-255)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_txt_green">
+		<text>Header text green (0-255)</text>
+	</string>
+	<string id="ui_mcm_txt_green">
+		<text>Header text green (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_txt_blue">
+		<text>Header text blue (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_txt_blue">
+		<text>Header text blue (0-255)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_txt_blue">
+		<text>Header text blue (0-255)</text>
+	</string>
+	<string id="ui_mcm_txt_blue">
+		<text>Header text blue (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_weight">
+		<text>Show total weight per category on the header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_weight_show_weight">
+		<text>Show total weight per category on the header</text>
+	</string>
+	<string id="ui_mcm_cathdr_weight_show_weight">
+		<text>Show total weight per category on the header</text>
+	</string>
+	<string id="ui_mcm_show_weight">
+		<text>Show total weight per category on the header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_001loadout">
+		<text>Header text (Loadout) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_001loadout">
+		<text>Header text (Loadout) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_001loadout">
+		<text>Header text (Loadout) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_001loadout">
+		<text>Header text (Loadout) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_001loadout">
+		<text>Hide the "Loadout" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_001loadout">
+		<text>Hide the "Loadout" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_001loadout">
+		<text>Hide the "Loadout" header</text>
+	</string>
+	<string id="ui_mcm_hide_001loadout">
+		<text>Hide the "Loadout" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_010weapons">
+		<text>Header text (Weapons) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_010weapons">
+		<text>Header text (Weapons) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_010weapons">
+		<text>Header text (Weapons) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_010weapons">
+		<text>Header text (Weapons) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_010weapons">
+		<text>Hide the "Weapons" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_010weapons">
+		<text>Hide the "Weapons" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_010weapons">
+		<text>Hide the "Weapons" header</text>
+	</string>
+	<string id="ui_mcm_hide_010weapons">
+		<text>Hide the "Weapons" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_020outfits">
+		<text>Header text (Outfits) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_020outfits">
+		<text>Header text (Outfits) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_020outfits">
+		<text>Header text (Outfits) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_020outfits">
+		<text>Header text (Outfits) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_020outfits">
+		<text>Hide the "Outfits" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_020outfits">
+		<text>Hide the "Outfits" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_020outfits">
+		<text>Hide the "Outfits" header</text>
+	</string>
+	<string id="ui_mcm_hide_020outfits">
+		<text>Hide the "Outfits" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_030artifacts">
+		<text>Header text (Artifacts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_030artifacts">
+		<text>Header text (Artifacts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_030artifacts">
+		<text>Header text (Artifacts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_030artifacts">
+		<text>Header text (Artifacts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_030artifacts">
+		<text>Hide the "Artifacts" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_030artifacts">
+		<text>Hide the "Artifacts" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_030artifacts">
+		<text>Hide the "Artifacts" header</text>
+	</string>
+	<string id="ui_mcm_hide_030artifacts">
+		<text>Hide the "Artifacts" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_040devices">
+		<text>Header text (Devices) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_040devices">
+		<text>Header text (Devices) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_040devices">
+		<text>Header text (Devices) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_040devices">
+		<text>Header text (Devices) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_040devices">
+		<text>Hide the "Devices" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_040devices">
+		<text>Hide the "Devices" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_040devices">
+		<text>Hide the "Devices" header</text>
+	</string>
+	<string id="ui_mcm_hide_040devices">
+		<text>Hide the "Devices" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_050tools">
+		<text>Header text (Tools) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_050tools">
+		<text>Header text (Tools) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_050tools">
+		<text>Header text (Tools) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_050tools">
+		<text>Header text (Tools) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_050tools">
+		<text>Hide the "Tools" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_050tools">
+		<text>Hide the "Tools" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_050tools">
+		<text>Hide the "Tools" header</text>
+	</string>
+	<string id="ui_mcm_hide_050tools">
+		<text>Hide the "Tools" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_060medical">
+		<text>Header text (Medical) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_060medical">
+		<text>Header text (Medical) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_060medical">
+		<text>Header text (Medical) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_060medical">
+		<text>Header text (Medical) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_060medical">
+		<text>Hide the "Medical" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_060medical">
+		<text>Hide the "Medical" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_060medical">
+		<text>Hide the "Medical" header</text>
+	</string>
+	<string id="ui_mcm_hide_060medical">
+		<text>Hide the "Medical" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_070foods">
+		<text>Header text (Foods) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_070foods">
+		<text>Header text (Foods) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_070foods">
+		<text>Header text (Foods) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_070foods">
+		<text>Header text (Foods) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_070foods">
+		<text>Hide the "Foods" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_070foods">
+		<text>Hide the "Foods" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_070foods">
+		<text>Hide the "Foods" header</text>
+	</string>
+	<string id="ui_mcm_hide_070foods">
+		<text>Hide the "Foods" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_090quest">
+		<text>Header text (Quest) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_090quest">
+		<text>Header text (Quest) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_090quest">
+		<text>Header text (Quest) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_090quest">
+		<text>Header text (Quest) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_090quest">
+		<text>Hide the "Quest" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_090quest">
+		<text>Hide the "Quest" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_090quest">
+		<text>Hide the "Quest" header</text>
+	</string>
+	<string id="ui_mcm_hide_090quest">
+		<text>Hide the "Quest" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_100notes">
+		<text>Header text (Notes) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_100notes">
+		<text>Header text (Notes) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_100notes">
+		<text>Header text (Notes) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_100notes">
+		<text>Header text (Notes) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_100notes">
+		<text>Hide the "Notes" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_100notes">
+		<text>Hide the "Notes" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_100notes">
+		<text>Hide the "Notes" header</text>
+	</string>
+	<string id="ui_mcm_hide_100notes">
+		<text>Hide the "Notes" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_110ammo">
+		<text>Header text (Ammo) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_110ammo">
+		<text>Header text (Ammo) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_110ammo">
+		<text>Header text (Ammo) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_110ammo">
+		<text>Header text (Ammo) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_110ammo">
+		<text>Hide the "Ammo" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_110ammo">
+		<text>Hide the "Ammo" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_110ammo">
+		<text>Hide the "Ammo" header</text>
+	</string>
+	<string id="ui_mcm_hide_110ammo">
+		<text>Hide the "Ammo" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_120mutantparts">
+		<text>Header text (Mutantparts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_120mutantparts">
+		<text>Header text (Mutantparts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_120mutantparts">
+		<text>Header text (Mutantparts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_120mutantparts">
+		<text>Header text (Mutantparts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_120mutantparts">
+		<text>Hide the "Mutantparts" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_120mutantparts">
+		<text>Hide the "Mutantparts" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_120mutantparts">
+		<text>Hide the "Mutantparts" header</text>
+	</string>
+	<string id="ui_mcm_hide_120mutantparts">
+		<text>Hide the "Mutantparts" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_130misc">
+		<text>Header text (Misc) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_130misc">
+		<text>Header text (Misc) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_130misc">
+		<text>Header text (Misc) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_130misc">
+		<text>Header text (Misc) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_130misc">
+		<text>Hide the "Misc" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_130misc">
+		<text>Hide the "Misc" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_130misc">
+		<text>Hide the "Misc" header</text>
+	</string>
+	<string id="ui_mcm_hide_130misc">
+		<text>Hide the "Misc" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_140upgrades">
+		<text>Header text (Upgrades) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_140upgrades">
+		<text>Header text (Upgrades) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_140upgrades">
+		<text>Header text (Upgrades) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_140upgrades">
+		<text>Header text (Upgrades) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_140upgrades">
+		<text>Hide the "Upgrades" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_140upgrades">
+		<text>Hide the "Upgrades" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_140upgrades">
+		<text>Hide the "Upgrades" header</text>
+	</string>
+	<string id="ui_mcm_hide_140upgrades">
+		<text>Hide the "Upgrades" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_150parts">
+		<text>Header text (Parts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_150parts">
+		<text>Header text (Parts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_150parts">
+		<text>Header text (Parts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_150parts">
+		<text>Header text (Parts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_150parts">
+		<text>Hide the "Parts" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_150parts">
+		<text>Hide the "Parts" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_150parts">
+		<text>Hide the "Parts" header</text>
+	</string>
+	<string id="ui_mcm_hide_150parts">
+		<text>Hide the "Parts" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_zzz_pinned_favorites">
+		<text>Header text (Favorites) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_zzz_pinned_favorites">
+		<text>Header text (Favorites) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_zzz_pinned_favorites">
+		<text>Header text (Favorites) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_zzz_pinned_favorites">
+		<text>Header text (Favorites) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_zzz_pinned_favorites">
+		<text>Hide the "Favorites" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_zzz_pinned_favorites">
+		<text>Hide the "Favorites" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_zzz_pinned_favorites">
+		<text>Hide the "Favorites" header</text>
+	</string>
+	<string id="ui_mcm_hide_zzz_pinned_favorites">
+		<text>Hide the "Favorites" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_zzz_pinned_junk">
+		<text>Header text (Junk) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_zzz_pinned_junk">
+		<text>Header text (Junk) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_zzz_pinned_junk">
+		<text>Header text (Junk) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_zzz_pinned_junk">
+		<text>Header text (Junk) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_zzz_pinned_junk">
+		<text>Hide the "Junk" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_zzz_pinned_junk">
+		<text>Hide the "Junk" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_zzz_pinned_junk">
+		<text>Hide the "Junk" header</text>
+	</string>
+	<string id="ui_mcm_hide_zzz_pinned_junk">
+		<text>Hide the "Junk" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_zzz_unmapped">
+		<text>Header text (Misc) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_zzz_unmapped">
+		<text>Header text (Misc) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_zzz_unmapped">
+		<text>Header text (Misc) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_zzz_unmapped">
+		<text>Header text (Misc) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_zzz_unmapped">
+		<text>Hide the "Misc" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_zzz_unmapped">
+		<text>Hide the "Misc" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_zzz_unmapped">
+		<text>Hide the "Misc" header</text>
+	</string>
+	<string id="ui_mcm_hide_zzz_unmapped">
+		<text>Hide the "Misc" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_allow_collapse">
+		<text>Click a header to collapse/expand that category</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_allow_collapse">
+		<text>Click a header to collapse/expand that category</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_allow_collapse">
+		<text>Click a header to collapse/expand that category</text>
+	</string>
+	<string id="ui_mcm_allow_collapse">
+		<text>Click a header to collapse/expand that category</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_zzz_magazines">
+		<text>Header text (Magazines) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_zzz_magazines">
+		<text>Header text (Magazines) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_zzz_magazines">
+		<text>Header text (Magazines) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_zzz_magazines">
+		<text>Header text (Magazines) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_zzz_magazines">
+		<text>Hide the "Magazines" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_zzz_magazines">
+		<text>Hide the "Magazines" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_zzz_magazines">
+		<text>Hide the "Magazines" header</text>
+	</string>
+	<string id="ui_mcm_hide_zzz_magazines">
+		<text>Hide the "Magazines" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_debug_runs">
+		<text>Debug: log category detection to the log file</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_debug_runs">
+		<text>Debug: log category detection to the log file</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_debug_runs">
+		<text>Debug: log category detection to the log file</text>
+	</string>
+	<string id="ui_mcm_debug_runs">
+		<text>Debug: log category detection to the log file</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_zzz_ammo_parts">
+		<text>Header text (Ammo Parts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_zzz_ammo_parts">
+		<text>Header text (Ammo Parts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_zzz_ammo_parts">
+		<text>Header text (Ammo Parts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_label_zzz_ammo_parts">
+		<text>Header text (Ammo Parts) - use _ for spaces</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_zzz_ammo_parts">
+		<text>Hide the "Ammo Parts" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_zzz_ammo_parts">
+		<text>Hide the "Ammo Parts" header</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_zzz_ammo_parts">
+		<text>Hide the "Ammo Parts" header</text>
+	</string>
+	<string id="ui_mcm_hide_zzz_ammo_parts">
+		<text>Hide the "Ammo Parts" header</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_empty_inventory">
+		<text>Always show all headers: your inventory</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_empty_inventory">
+		<text>Always show all headers: your inventory</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_empty_inventory">
+		<text>Always show all headers: your inventory</text>
+	</string>
+	<string id="ui_mcm_show_empty_inventory">
+		<text>Always show all headers: your inventory</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_empty_bodies">
+		<text>Always show all headers: bodies</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_empty_bodies">
+		<text>Always show all headers: bodies</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_empty_bodies">
+		<text>Always show all headers: bodies</text>
+	</string>
+	<string id="ui_mcm_show_empty_bodies">
+		<text>Always show all headers: bodies</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_empty_stashes">
+		<text>Always show all headers: stashes and containers</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_empty_stashes">
+		<text>Always show all headers: stashes and containers</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_empty_stashes">
+		<text>Always show all headers: stashes and containers</text>
+	</string>
+	<string id="ui_mcm_show_empty_stashes">
+		<text>Always show all headers: stashes and containers</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_keep_span">
+		<text>Keep category size when items are removed</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_keep_span">
+		<text>Keep category size when items are removed</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_keep_span">
+		<text>Keep category size when items are removed</text>
+	</string>
+	<string id="ui_mcm_keep_span">
+		<text>Keep category size when items are removed</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_keep_emptied">
+		<text>Keep emptied category headers until reopen</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_keep_emptied">
+		<text>Keep emptied category headers until reopen</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_keep_emptied">
+		<text>Keep emptied category headers until reopen</text>
+	</string>
+	<string id="ui_mcm_keep_emptied">
+		<text>Keep emptied category headers until reopen</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_compact_rows">
+		<text>Compact rows (header height follows thickness)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_compact_rows">
+		<text>Compact rows (header height follows thickness)</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_compact_rows">
+		<text>Compact rows (header height follows thickness)</text>
+	</string>
+	<string id="ui_mcm_compact_rows">
+		<text>Compact rows (header height follows thickness)</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_rules">
+		<text>Item Rules</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_rules_enable">
+		<text>Enable item rules (drag to move, right-click to pin)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_rules_rules_enable">
+		<text>Enable item rules (drag to move, right-click to pin)</text>
+	</string>
+	<string id="ui_mcm_cathdr_rules_rules_enable">
+		<text>Enable item rules (drag to move, right-click to pin)</text>
+	</string>
+	<string id="ui_mcm_rules_enable">
+		<text>Enable item rules (drag to move, right-click to pin)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_rules_clear">
+		<text>Clear all item rules (ticks itself back off)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_rules_rules_clear">
+		<text>Clear all item rules (ticks itself back off)</text>
+	</string>
+	<string id="ui_mcm_cathdr_rules_rules_clear">
+		<text>Clear all item rules (ticks itself back off)</text>
+	</string>
+	<string id="ui_mcm_rules_clear">
+		<text>Clear all item rules (ticks itself back off)</text>
+	</string>
+	<string id="st_fiut_pin_open">
+		<text>Add to pins</text>
+	</string>
+	<string id="st_fiut_pin_remove">
+		<text>Remove from pins</text>
+	</string>
+	<string id="st_fiut_pin_slot_1">
+		<text>Pin to slot 1</text>
+	</string>
+	<string id="st_fiut_pin_slot_2">
+		<text>Pin to slot 2</text>
+	</string>
+	<string id="st_fiut_pin_slot_3">
+		<text>Pin to slot 3</text>
+	</string>
+	<string id="st_fiut_pin_slot_4">
+		<text>Pin to slot 4</text>
+	</string>
+	<string id="st_fiut_pin_slot_5">
+		<text>Pin to slot 5</text>
+	</string>
+	<string id="st_fiut_pin_slot_taken">
+		<text>Slot %s: %s</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_drag">
+		<text>Header Drag</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_drag">
+		<text>Header Drag</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag">
+		<text>Header Drag</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_enable">
+		<text>Drag headers to reorder categories</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_enable">
+		<text>Drag headers to reorder categories</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_enable">
+		<text>Drag headers to reorder categories</text>
+	</string>
+	<string id="ui_mcm_drag_enable">
+		<text>Drag headers to reorder categories</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_order_mode">
+		<text>Only while reorder mode is on</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_order_mode">
+		<text>Only while reorder mode is on</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_order_mode">
+		<text>Only while reorder mode is on</text>
+	</string>
+	<string id="ui_mcm_drag_order_mode">
+		<text>Only while reorder mode is on</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_on_block">
+		<text>Drop anywhere in a category (its tinted area)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_on_block">
+		<text>Drop anywhere in a category (its tinted area)</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_on_block">
+		<text>Drop anywhere in a category (its tinted area)</text>
+	</string>
+	<string id="ui_mcm_drag_on_block">
+		<text>Drop anywhere in a category (its tinted area)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_hold_ms">
+		<text>Hold before a click becomes a drag (ms)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_hold_ms">
+		<text>Hold before a click becomes a drag (ms)</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_hold_ms">
+		<text>Hold before a click becomes a drag (ms)</text>
+	</string>
+	<string id="ui_mcm_drag_hold_ms">
+		<text>Hold before a click becomes a drag (ms)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_ghost">
+		<text>Show a ghost bar on the cursor while dragging</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_ghost">
+		<text>Show a ghost bar on the cursor while dragging</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_ghost">
+		<text>Show a ghost bar on the cursor while dragging</text>
+	</string>
+	<string id="ui_mcm_drag_ghost">
+		<text>Show a ghost bar on the cursor while dragging</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_ghost_alpha">
+		<text>Ghost bar opacity</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_ghost_alpha">
+		<text>Ghost bar opacity</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_ghost_alpha">
+		<text>Ghost bar opacity</text>
+	</string>
+	<string id="ui_mcm_drag_ghost_alpha">
+		<text>Ghost bar opacity</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_debug">
+		<text>Debug: log header drags</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_debug">
+		<text>Debug: log header drags</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_debug">
+		<text>Debug: log header drags</text>
+	</string>
+	<string id="ui_mcm_drag_debug">
+		<text>Debug: log header drags</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_hide_arrows">
+		<text>Hide the up/down arrows (drag only)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_hide_arrows">
+		<text>Hide the up/down arrows (drag only)</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_hide_arrows">
+		<text>Hide the up/down arrows (drag only)</text>
+	</string>
+	<string id="ui_mcm_drag_hide_arrows">
+		<text>Hide the up/down arrows (drag only)</text>
+	</string>
+</string_table>

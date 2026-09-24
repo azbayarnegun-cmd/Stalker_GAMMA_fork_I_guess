@@ -1,0 +1,216 @@
+; ============================================================
+;  SQUARED AWAY - WHAT SHAPE EACH RIG IS
+;
+;  THIS IS THE BALANCE FILE. Change a number here and the rig changes
+;  in game - nothing else needs touching. The icons, the loot tiers,
+;  the craft recipes, the prices, the tooltips and the shape diagrams
+;  are all GENERATED from these numbers by the scripts in art/, so a
+;  rig cannot end up worth one thing and cost another.
+;
+; ------------------------------------------------------------
+;  A SLOT IS A TINY GRID, AND THAT IS THE WHOLE MODEL
+;
+;  Four geometries, and what goes in one is decided by the item's own
+;  ICON FOOTPRINT and nothing else:
+;
+;      slot   cells   holds
+;      1x1      1     one small thing - a bandage, a 1x1 ammo box
+;      2x1      2     one 2x1 magazine, or two 1x1
+;      3x1      3     one 2x1 magazine AND one 1x1, or three 1x1
+;      2x2      4     ONE 2x2 DRUM, or two 2x1 mags, or four 1x1
+;
+;  THERE ARE NO SIZE CLASSES ANY MORE. mag_limit_small/medium/large,
+;  tall_large, drum-rig-versus-stick-rig - all of it is gone. A rig
+;  that takes a drum is a rig with a 2x2 slot, because a drum is a 2x2
+;  picture. Nothing is type-restricted: a 1x1 slot holds only small
+;  things because it is one cell, not because it asks what you put in.
+;
+;  MEDS LIVE IN THESE SLOTS TOO. There is no med pocket and no med
+;  pouch; a bandage is a 1x1 item that goes in a 1x1 slot, and being in
+;  the rig at all is what makes it quick-usable.
+;
+; ------------------------------------------------------------
+;  AND TWO POUCH SLOTS, ON EVERY RIG
+;
+;  Unchanged, and the numbers here do NOT include them. A pouch fitted
+;  into a pouch slot ADDS slots:
+;
+;      small pouch    one 2x1
+;      medium pouch   two 2x1
+;      large pouch    one 2x2
+;
+;  So every rig here can grow by up to two pouches' worth, and a pouch
+;  is still the way to patch the weakness of the rig you chose. No
+;  pouch grants a 3x1 or a 1x1 - those are built in, and they are what
+;  make the better rigs better at a MIXED loadout rather than simply
+;  bigger.
+;
+; ------------------------------------------------------------
+;  THE THREE AXES, WHICH DO NOT RISE TOGETHER
+;
+;  MAGAZINES     3 -> 10 across the ladder.
+;  SMALL THINGS  3 -> 8. FOUR 1x1 SLOTS IS THE CEILING for every rig in
+;                the game, so what separates rigs here is the 3x1 slots,
+;                which leave a 1x1 space beside each magazine.
+;  DRUMS         0 -> 4, being the count of 2x2 slots.
+;
+;  The 6Sh92 is five magazines and eight small things. The Smersh-AK is
+;  nine magazines and three. Neither is the other's upgrade, and that
+;  is the choice the old drum/stick flag was reaching for - made out of
+;  geometry instead of a keyword.
+;
+; ------------------------------------------------------------
+;  WHERE THE LADDER STOPS
+;
+;  The best two here are twenty-six cells and ten magazines. An endgame
+;  faction rig is meant to be a step beyond that, and the pouch slots
+;  are meant to be worth filling, so nothing in this file is allowed to
+;  reach what a Monolith rig would be.
+; ============================================================
+
+
+; ============================================================
+;  TIER 1 - what you start in. Nine to eleven cells.
+; ============================================================
+
+; Razvedka Sling - a scout's strap. No drum pocket at all, and two 3x1
+; rows instead: fewer magazines, more room for everything else.
+[amprig_scout]
+slot_2x2                        = 0
+slot_3x1                        = 2
+slot_2x1                        = 1
+slot_1x1                        = 3
+
+; Patrontash - a rookie's cartridge harness with one deep pocket. The
+; 2x2 is what makes an early drum gun viable from the very first rig.
+[amprig_bandolier]
+slot_2x2                        = 1
+slot_3x1                        = 0
+slot_2x1                        = 1
+slot_1x1                        = 3
+
+
+; ============================================================
+;  TIER 2 - thirteen to fourteen cells.
+; ============================================================
+
+; Barakholka Rig - bandit patchwork off the flea market. Still no drum
+; pocket; it is the widest cheap rig for mixed kit.
+[amprig_barakholka]
+slot_2x2                        = 0
+slot_3x1                        = 2
+slot_2x1                        = 2
+slot_1x1                        = 4
+
+; Cordon Rig - loner-made, the first one worth wearing. Two drum
+; pockets and very little else, which is the trade.
+[amprig_harness]
+slot_2x2                        = 2
+slot_3x1                        = 0
+slot_2x1                        = 1
+slot_1x1                        = 3
+
+
+; ============================================================
+;  TIER 3 - seventeen to eighteen cells. THE TIER WHERE YOU CHOOSE.
+; ============================================================
+
+; Vepr Nylon - the all-rounder. One drum pocket, two mixed rows.
+[amprig_nylon]
+slot_2x2                        = 1
+slot_3x1                        = 2
+slot_2x1                        = 2
+slot_1x1                        = 4
+
+; 6Sh92 Surplus - four mixed rows and no drum pocket. Five magazines
+; and eight small things: the medic's rig, and the shotgunner's.
+[amprig_warsaw]
+slot_2x2                        = 0
+slot_3x1                        = 4
+slot_2x1                        = 1
+slot_1x1                        = 4
+
+; Vydra Swamp - seven magazines, two of them drums, and three small
+; slots. The other end of the same tier from the 6Sh92.
+[amprig_vydra]
+slot_2x2                        = 2
+slot_3x1                        = 0
+slot_2x1                        = 3
+slot_1x1                        = 3
+
+
+; ============================================================
+;  TIER 4 - twenty-one to twenty-two cells.
+; ============================================================
+
+; Karkas Harness - army issue. Eight magazines and still room to work.
+[amprig_karkas]
+slot_2x2                        = 1
+slot_3x1                        = 2
+slot_2x1                        = 4
+slot_1x1                        = 4
+
+; Lifchik - Duty's, and the mixed one of the tier: four 3x1 rows.
+[amprig_chicom]
+slot_2x2                        = 1
+slot_3x1                        = 4
+slot_2x1                        = 1
+slot_1x1                        = 4
+
+; Bastion Patrol - two drum pockets and two mixed rows, evenly.
+[amprig_bastion]
+slot_2x2                        = 2
+slot_3x1                        = 2
+slot_2x1                        = 2
+slot_1x1                        = 4
+
+; Smersh-AK - nine magazines, three of them drums, and the fewest small
+; slots in the tier. A shooter's rig and nothing else.
+[amprig_smersh]
+slot_2x2                        = 3
+slot_3x1                        = 0
+slot_2x1                        = 3
+slot_1x1                        = 3
+
+; Volya Raider - three drum pockets with mixed rows instead of plain
+; ones. Freedom's answer to the Smersh.
+[amprig_volya]
+slot_2x2                        = 3
+slot_3x1                        = 2
+slot_2x1                        = 0
+slot_1x1                        = 4
+
+
+; ============================================================
+;  TIER 5 - twenty-four to twenty-six cells. The top of the ladder.
+; ============================================================
+
+; Leshy - the light one. Eight magazines and eight small things.
+[amprig_leshy]
+slot_2x2                        = 1
+slot_3x1                        = 4
+slot_2x1                        = 2
+slot_1x1                        = 4
+
+; Tarzan-M22 - nine magazines, two drums, balanced.
+[amprig_tarzan]
+slot_2x2                        = 2
+slot_3x1                        = 2
+slot_2x1                        = 3
+slot_1x1                        = 4
+
+; Shturm Carrier - FOUR drum pockets. Ten magazines if every one of
+; them is a drum, and nothing in the game carries more of those.
+[amprig_carrier]
+slot_2x2                        = 4
+slot_3x1                        = 2
+slot_2x1                        = 0
+slot_1x1                        = 4
+
+; Rubezh Carrier - ten magazines the other way: four plain rows, two
+; drum pockets, two mixed. The top all-rounder.
+[amprig_rubezh]
+slot_2x2                        = 2
+slot_3x1                        = 2
+slot_2x1                        = 4
+slot_1x1                        = 4

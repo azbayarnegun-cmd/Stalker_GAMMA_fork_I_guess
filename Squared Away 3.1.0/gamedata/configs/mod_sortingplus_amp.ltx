@@ -1,0 +1,88 @@
+; ============================================================
+;  ARMOR MAG POUCHES - where the rigs sit in Sorting Plus
+;
+;  WHAT THIS FIXES
+;  ---------------
+;  A rig's `kind` is i_attach, because that is what the item genuinely is
+;  to the magazine system - an attachment. Sorting Plus does not list
+;  i_attach in [item_kind_order] at all, so every rig fell off the end of
+;  the sort and sat with whatever else it could not place, nowhere near
+;  the armour it is worn with.
+;
+;  HOW SORTING PLUS ASKS
+;  ---------------------
+;  zzz_rax_sortingplus_mcm.script, one line:
+;
+;      return magazine_binder and magazine_binder.is_magazine(sec) and "mags"
+;             or kind_overrides[sec]
+;             or SYS_GetParam(0, sec, "kind", "na")
+;
+;  [kind_overrides] is read from this file every time, MCM settings or
+;  not - the MCM page controls the ORDER of the categories, never this
+;  mapping. So one line per rig is the whole job.
+;
+;  WHY o_light AND NOT THE REAL KIND
+;  ---------------------------------
+;  o_light is in Sorting Plus's own "outfits" category, alongside
+;  o_heavy, o_sci, o_medium, o_helmet and i_backpack - so the rigs land
+;  with the gear you wear, which is where you look for them.
+;
+;  This is SORTING ONLY. The item's actual `kind` in system.ltx stays
+;  i_attach, and it must: the magazine mod, the loadout maths and the
+;  debug spawner all read that key, and telling them a chest rig is a
+;  light outfit would change what the game thinks it is. This file is
+;  read by one script, for one purpose.
+;
+;  ! IS THE OVERRIDE MARKER - [kind_overrides] belongs to Sorting Plus,
+;  and a second plain declaration of a foreign section is fatal at
+;  startup. The file sits beside the original, in configs/, and is named
+;  mod_<original>_<tag>.ltx as DLTX requires.
+;
+;  The legacy names are the pre-1.20.0 sections, so a rig in an old save
+;  sorts with the others rather than alone at the bottom.
+; ============================================================
+
+![kind_overrides]
+
+amprig_bandolier    = o_light
+amprig_scout        = o_light
+amprig_harness      = o_light
+amprig_nylon        = o_light
+amprig_warsaw       = o_light
+amprig_leshy        = o_light
+amprig_chicom       = o_light
+amprig_carrier      = o_light
+amprig_barakholka   = o_light
+amprig_vydra        = o_light
+amprig_karkas       = o_light
+amprig_bastion      = o_light
+amprig_smersh       = o_light
+amprig_volya        = o_light
+amprig_tarzan       = o_light
+amprig_rubezh       = o_light
+
+amp_rig_bandolier   = o_light
+amp_rig_scout       = o_light
+amp_rig_harness     = o_light
+amp_rig_nylon       = o_light
+amp_rig_warsaw      = o_light
+amp_rig_leshy       = o_light
+amp_rig_chicom      = o_light
+amp_rig_carrier     = o_light
+
+;  THE BOXES sort with the backpacks, which is Sorting Plus's own
+;  storage group (i_backpack sits with the tools at rank 5). Their real
+;  `kind` in system.ltx stays i_attach, the same as the rigs and for the
+;  same reason: this file is read by one script, for one purpose.
+
+ampbox_meds         = i_backpack
+ampbox_ammo         = i_backpack
+ampbox_food         = i_backpack
+ampbox_armor        = i_backpack
+ampbox_food_small   = i_backpack
+ampbox_mags         = i_backpack
+ampbox_ammo_big     = i_backpack
+ampbox_parts        = i_backpack
+ampbox_docs         = i_backpack
+ampbox_weapon       = i_backpack
+ampbox_weapon_big   = i_backpack

@@ -1,0 +1,143 @@
+; AMP layered inventory model.
+; Values are intentionally data-driven: add a pouch or change a carrier
+; without editing Lua. `kinds` uses SortingPlus kind names.
+
+[amp_layer_outfit]
+slot_count = 2
+accepts = medical,admin,parts,universal
+
+[amp_layer_rig]
+slot_count = 6
+accepts = magazine,grenade,medical,admin,parts,universal,dump
+
+[amp_layer_belt]
+slot_count = 2
+accepts = dump,medical,universal
+
+[amp_layer_backpack]
+slot_count = 3
+accepts = sustainment,parts,universal,admin,ammo
+
+; GAMMA crafting tiers: basic = 1, advanced = 2, expert = 3.
+[amp_backpack_attachment_slots]
+itm_backpack = 1
+kit_hunt = 1
+equ_small_pack = 2
+equ_small_military_pack = 2
+equ_military_pack = 3
+equ_tourist_pack = 3
+
+; AMP magazine-pocket tiers. Unknown rigs use the same thresholds in Lua:
+; <=4 pockets = 3, <=7 = 4, <=11 = 5, 12+ = 6.
+[amp_rig_attachment_slots]
+amprig_bandolier = 3
+amprig_scout = 3
+amprig_barakholka = 3
+amprig_harness = 3
+amprig_vydra = 4
+amprig_warsaw = 4
+amprig_nylon = 4
+amprig_karkas = 4
+amprig_bastion = 4
+amprig_smersh = 4
+amprig_volya = 5
+amprig_chicom = 5
+amprig_leshy = 5
+amprig_tarzan = 5
+amprig_rubezh = 5
+amprig_carrier = 5
+
+; Routing priority is lowest number first. A typed pouch is deliberately
+; preferred to a universal pouch, while the backpack grid remains fallback.
+[amp_pouch_magazine]
+kinds = mags
+also_flags = is_mag
+cells = 12
+stack = 1
+priority = 10
+
+[amp_pouch_grenade]
+; Deliberately no w_explosive kind: GAMMA also assigns it to launchers,
+; mines and IEDs. Lua accepts hand-grenade G_* classes plus this explicit list.
+kinds =
+also_sections = grenade_f1,grenade_rgd5,grenade_gd-05,grenade_smoke
+cells = 8
+stack = 1
+priority = 20
+
+[amp_pouch_medical]
+kinds = i_medical
+cells = 8
+stack = 5
+priority = 30
+
+[amp_pouch_admin]
+kinds = i_letter,i_device
+cells = 8
+stack = 10
+priority = 40
+
+[amp_pouch_ammo]
+kinds = w_ammo
+cells = 12
+stack = 20
+priority = 50
+
+[amp_pouch_sustainment]
+kinds = i_food,i_drink,i_mutant_cooked,i_mutant_raw
+cells = 12
+stack = 5
+priority = 60
+
+[amp_pouch_dump]
+kinds = mags
+also_flags = is_mag
+cells = 8
+stack = 1
+priority = 70
+
+[amp_pouch_parts]
+kinds = i_part
+also_flags = is_part
+cells = 16
+stack = 10
+priority = 45
+
+[amp_pouch_universal]
+kinds = *
+cells = 12
+stack = 5
+priority = 100
+
+; Existing AMP box sections double as the first set of mountable pouches.
+; No new art is required. More sections can be added as comma-separated keys.
+[amp_pouch_sections]
+; Dedicated aliases use the existing box atlas and meshes. Ordinary AMP carry
+; boxes remain boxes and are not silently treated as equipment pouches.
+amplayer_magazine_pouch = magazine
+amplayer_grenade_pouch = grenade
+amplayer_medical_pouch = medical
+amplayer_admin_pouch = admin
+amplayer_universal_pouch = universal
+amplayer_universal_pouch_s = universal
+amplayer_universal_pouch_l = parts
+amplayer_sustainment_pouch = sustainment
+amplayer_dump_pouch = dump
+
+[amp_pouch_layer_overrides]
+amplayer_magazine_pouch = rig
+amplayer_grenade_pouch = rig
+amplayer_sustainment_pouch = backpack
+amplayer_dump_pouch = belt
+amplayer_universal_pouch_l = rig,backpack
+
+
+; Per-section overrides are checked before SortingPlus kinds.
+[amp_kind_overrides]
+hand_watch = i_device
+wpn_binoc_inv = i_device
+good_psy_helmet = i_device
+bad_psy_helmet = i_device
+decoder = i_device
+attackers_pda = i_device
+contact_lost_pda = i_device

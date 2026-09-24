@@ -1,0 +1,66 @@
+; ============================================================
+;  ZONE GRID - HOW MUCH ROOM A BACKPACK GIVES YOU
+;
+;  Your backpack is the whole of your storage, and they are not all the
+;  same size. This is where that is decided.
+;
+;  NOBODY HAS TO WRITE A LIST. The size is worked out from the pack's
+;  OWN carry bonus - additional_inventory_weight, the number the game
+;  already uses to say how much more you can lift with it on - so every
+;  backpack in the game gets a sensible answer, including ones from
+;  mods this file has never heard of.
+;
+;  The list below is for when you disagree with the arithmetic.
+;
+;  TWO WAYS TO NAME SOMETHING, most specific first:
+;
+;    [grid_pack_section]   this exact section
+;    [grid_pack_kind]      anything the game gives this `kind`
+;
+;  ...and if neither names it, the carry bonus decides. If the pack has
+;  no carry bonus either, it falls back to the number in MCM.
+;
+;  THE NUMBERS ARE CELLS, not rows. The section is laid out at whatever
+;  width MCM says, so 70 cells at 8 wide is nine rows with the last one
+;  part empty. A cell is one square of the grid.
+; ============================================================
+
+; ------------------------------------------------------------
+;  THE ARITHMETIC
+;
+;  cells = round(carry bonus in kg * per_kg), held between min and max.
+;
+;  per_kg is the dial worth turning. At 2.5 a 20 kg pack is 50 cells
+;  and a 60 kg pack is 150 - which keeps the small packs worth
+;  upgrading from without making the big ones a second inventory.
+;
+;  min stops a token 2 kg pack being useless; max stops a mod's 500 kg
+;  joke pack being a scrolling nightmare.
+; ------------------------------------------------------------
+[grid_pack_scale]
+per_kg = 2.5
+min    = 24
+max    = 200
+
+; ------------------------------------------------------------
+;  BY KIND
+;
+;  `kind` is the game's own word for what a thing is - the same one the
+;  sorting tabs read. A kind here beats the arithmetic and loses to an
+;  exact section below.
+; ------------------------------------------------------------
+[grid_pack_kind]
+; i_backpack = 70
+
+; ------------------------------------------------------------
+;  BY SECTION
+;
+;  The last word. Write the section name and the cells you want.
+;
+;  Anomaly's own backpack is listed because it is the one every install
+;  has, and because it is a useful reading of the scale: 20 kg of carry
+;  at 2.5 a kilo is 50 cells, and 70 is what the grid used to give
+;  everyone regardless. Delete the line to let the arithmetic have it.
+; ------------------------------------------------------------
+[grid_pack_section]
+itm_actor_backpack = 70

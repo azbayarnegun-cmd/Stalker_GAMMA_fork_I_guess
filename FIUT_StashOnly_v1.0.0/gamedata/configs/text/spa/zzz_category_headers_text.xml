@@ -1,0 +1,1023 @@
+<?xml version="1.0" encoding="windows-1252"?>
+<string_table>
+	<string id="ui_mcm_menu_CategoryHeaders">
+		<text>F.I.U.T - Fomok's Inventory Utility Tool</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders">
+		<text>F.I.U.T - Fomok's Inventory Utility Tool</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_general">
+		<text>General</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_general">
+		<text>General</text>
+	</string>
+	<string id="ui_mcm_cathdr_general">
+		<text>General</text>
+	</string>
+	<string id="ui_mcm_menu_CategoryHeaders_cathdr_general">
+		<text>General</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders_cathdr_general">
+		<text>General</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general">
+		<text>General</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_appearance">
+		<text>Barra de encabezado y fondo</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_appearance">
+		<text>Barra de encabezado y fondo</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance">
+		<text>Barra de encabezado y fondo</text>
+	</string>
+	<string id="ui_mcm_menu_CategoryHeaders_cathdr_appearance">
+		<text>Barra de encabezado y fondo</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders_cathdr_appearance">
+		<text>Barra de encabezado y fondo</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance">
+		<text>Barra de encabezado y fondo</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_text">
+		<text>Texto del encabezado</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_text">
+		<text>Texto del encabezado</text>
+	</string>
+	<string id="ui_mcm_cathdr_text">
+		<text>Texto del encabezado</text>
+	</string>
+	<string id="ui_mcm_menu_CategoryHeaders_cathdr_text">
+		<text>Texto del encabezado</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders_cathdr_text">
+		<text>Texto del encabezado</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text">
+		<text>Texto del encabezado</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_weight">
+		<text>Visualización de peso</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_weight">
+		<text>Visualización de peso</text>
+	</string>
+	<string id="ui_mcm_cathdr_weight">
+		<text>Visualización de peso</text>
+	</string>
+	<string id="ui_mcm_menu_CategoryHeaders_cathdr_weight">
+		<text>Visualización de peso</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders_cathdr_weight">
+		<text>Visualización de peso</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_weight">
+		<text>Visualización de peso</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_categories">
+		<text>Nombres de las categorías</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_categories">
+		<text>Nombres de las categorías</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories">
+		<text>Nombres de las categorías</text>
+	</string>
+	<string id="ui_mcm_menu_CategoryHeaders_cathdr_categories">
+		<text>Nombres de las categorías</text>
+	</string>
+	<string id="ui_mcm_title_CategoryHeaders_cathdr_categories">
+		<text>Nombres de las categorías</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories">
+		<text>Nombres de las categorías</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_enable">
+		<text>Activar encabezados de categoría</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_enable">
+		<text>Activar encabezados de categoría</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_enable">
+		<text>Activar encabezados de categoría</text>
+	</string>
+	<string id="ui_mcm_enable">
+		<text>Activar encabezados de categoría</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_in_inventory">
+		<text>Mostrar encabezados en el inventario personal</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_in_inventory">
+		<text>Mostrar encabezados en el inventario personal</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_in_inventory">
+		<text>Mostrar encabezados en el inventario personal</text>
+	</string>
+	<string id="ui_mcm_show_in_inventory">
+		<text>Mostrar encabezados en el inventario personal</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_in_containers">
+		<text>Mostrar encabezados en alijos/alijos de taller/cadáveres</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_in_containers">
+		<text>Mostrar encabezados en alijos/alijos de taller/cadáveres</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_in_containers">
+		<text>Mostrar encabezados en alijos/alijos de taller/cadáveres</text>
+	</string>
+	<string id="ui_mcm_show_in_containers">
+		<text>Mostrar encabezados en alijos/alijos de taller/cadáveres</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_in_trade">
+		<text>Mostrar encabezados en las ventanas de intercambio</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_in_trade">
+		<text>Mostrar encabezados en las ventanas de intercambio</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_in_trade">
+		<text>Mostrar encabezados en las ventanas de intercambio</text>
+	</string>
+	<string id="ui_mcm_show_in_trade">
+		<text>Mostrar encabezados en las ventanas de intercambio</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_colored_headers">
+		<text>Usar colores por categoría (desactivado = un solo color para todos los encabezados)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_colored_headers">
+		<text>Usar colores por categoría (desactivado = un solo color para todos los encabezados)</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_colored_headers">
+		<text>Usar colores por categoría (desactivado = un solo color para todos los encabezados)</text>
+	</string>
+	<string id="ui_mcm_colored_headers">
+		<text>Usar colores por categoría (desactivado = un solo color para todos los encabezados)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_bg_opacity">
+		<text>Opacidad del fondo de la barra de encabezado (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_bg_opacity">
+		<text>Opacidad del fondo de la barra de encabezado (0-255)</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_bg_opacity">
+		<text>Opacidad del fondo de la barra de encabezado (0-255)</text>
+	</string>
+	<string id="ui_mcm_bg_opacity">
+		<text>Opacidad del fondo de la barra de encabezado (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_thickness">
+		<text>Grosor de la barra de encabezado (% de altura de fila, 10-100)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_thickness">
+		<text>Grosor de la barra de encabezado (% de altura de fila, 10-100)</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_thickness">
+		<text>Grosor de la barra de encabezado (% de altura de fila, 10-100)</text>
+	</string>
+	<string id="ui_mcm_thickness">
+		<text>Grosor de la barra de encabezado (% de altura de fila, 10-100)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_section_tint">
+		<text>Teñir el fondo de la cuadrícula debajo de cada categoría</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_section_tint">
+		<text>Teñir el fondo de la cuadrícula debajo de cada categoría</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_section_tint">
+		<text>Teñir el fondo de la cuadrícula debajo de cada categoría</text>
+	</string>
+	<string id="ui_mcm_section_tint">
+		<text>Teñir el fondo de la cuadrícula debajo de cada categoría</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_section_tint_alpha">
+		<text>Opacidad del tinte de fondo de la categoría (0-120)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_section_tint_alpha">
+		<text>Opacidad del tinte de fondo de la categoría (0-120)</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_section_tint_alpha">
+		<text>Opacidad del tinte de fondo de la categoría (0-120)</text>
+	</string>
+	<string id="ui_mcm_section_tint_alpha">
+		<text>Opacidad del tinte de fondo de la categoría (0-120)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_names">
+		<text>Mostrar el nombre de la categoría en los encabezados (desactivado = solo barra y peso)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_show_names">
+		<text>Mostrar el nombre de la categoría en los encabezados (desactivado = solo barra y peso)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_show_names">
+		<text>Mostrar el nombre de la categoría en los encabezados (desactivado = solo barra y peso)</text>
+	</string>
+	<string id="ui_mcm_show_names">
+		<text>Mostrar el nombre de la categoría en los encabezados (desactivado = solo barra y peso)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_font_size">
+		<text>Tamaño del texto del encabezado (1=pequeño, 2=mediano, 3=grande)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_font_size">
+		<text>Tamaño del texto del encabezado (1=pequeño, 2=mediano, 3=grande)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_font_size">
+		<text>Tamaño del texto del encabezado (1=pequeño, 2=mediano, 3=grande)</text>
+	</string>
+	<string id="ui_mcm_font_size">
+		<text>Tamaño del texto del encabezado (1=pequeño, 2=mediano, 3=grande)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_txt_alpha">
+		<text>Opacidad del texto del encabezado (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_txt_alpha">
+		<text>Opacidad del texto del encabezado (0-255)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_txt_alpha">
+		<text>Opacidad del texto del encabezado (0-255)</text>
+	</string>
+	<string id="ui_mcm_txt_alpha">
+		<text>Opacidad del texto del encabezado (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_txt_red">
+		<text>Texto del encabezado rojo (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_txt_red">
+		<text>Texto del encabezado rojo (0-255)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_txt_red">
+		<text>Texto del encabezado rojo (0-255)</text>
+	</string>
+	<string id="ui_mcm_txt_red">
+		<text>Texto del encabezado rojo (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_txt_green">
+		<text>Texto del encabezado verde (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_txt_green">
+		<text>Texto del encabezado verde (0-255)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_txt_green">
+		<text>Texto del encabezado verde (0-255)</text>
+	</string>
+	<string id="ui_mcm_txt_green">
+		<text>Texto del encabezado verde (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_txt_blue">
+		<text>Texto del encabezado azul (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_text_txt_blue">
+		<text>Texto del encabezado azul (0-255)</text>
+	</string>
+	<string id="ui_mcm_cathdr_text_txt_blue">
+		<text>Texto del encabezado azul (0-255)</text>
+	</string>
+	<string id="ui_mcm_txt_blue">
+		<text>Texto del encabezado azul (0-255)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_weight">
+		<text>Mostrar el peso total por categoría en el encabezado</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_weight_show_weight">
+		<text>Mostrar el peso total por categoría en el encabezado</text>
+	</string>
+	<string id="ui_mcm_cathdr_weight_show_weight">
+		<text>Mostrar el peso total por categoría en el encabezado</text>
+	</string>
+	<string id="ui_mcm_show_weight">
+		<text>Mostrar el peso total por categoría en el encabezado</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_001loadout">
+		<text>Texto del encabezado (Equipamiento) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_001loadout">
+		<text>Texto del encabezado (Equipamiento) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_001loadout">
+		<text>Texto del encabezado (Equipamiento) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_001loadout">
+		<text>Texto del encabezado (Equipamiento) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_001loadout">
+		<text>Ocultar el encabezado "Equipamiento"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_001loadout">
+		<text>Ocultar el encabezado "Equipamiento"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_001loadout">
+		<text>Ocultar el encabezado "Equipamiento"</text>
+	</string>
+	<string id="ui_mcm_hide_001loadout">
+		<text>Ocultar el encabezado "Equipamiento"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_010weapons">
+		<text>Texto del encabezado (Armas) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_010weapons">
+		<text>Texto del encabezado (Armas) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_010weapons">
+		<text>Texto del encabezado (Armas) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_010weapons">
+		<text>Texto del encabezado (Armas) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_010weapons">
+		<text>Ocultar el encabezado "Armas"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_010weapons">
+		<text>Ocultar el encabezado "Armas"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_010weapons">
+		<text>Ocultar el encabezado "Armas"</text>
+	</string>
+	<string id="ui_mcm_hide_010weapons">
+		<text>Ocultar el encabezado "Armas"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_020outfits">
+		<text>Texto del encabezado (Atuendos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_020outfits">
+		<text>Texto del encabezado (Atuendos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_020outfits">
+		<text>Texto del encabezado (Atuendos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_020outfits">
+		<text>Texto del encabezado (Atuendos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_020outfits">
+		<text>Ocultar el encabezado "Atuendos"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_020outfits">
+		<text>Ocultar el encabezado "Atuendos"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_020outfits">
+		<text>Ocultar el encabezado "Atuendos"</text>
+	</string>
+	<string id="ui_mcm_hide_020outfits">
+		<text>Ocultar el encabezado "Atuendos"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_030artifacts">
+		<text>Texto del encabezado (Artefactos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_030artifacts">
+		<text>Texto del encabezado (Artefactos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_030artifacts">
+		<text>Texto del encabezado (Artefactos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_030artifacts">
+		<text>Texto del encabezado (Artefactos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_030artifacts">
+		<text>Ocultar el encabezado "Artefactos"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_030artifacts">
+		<text>Ocultar el encabezado "Artefactos"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_030artifacts">
+		<text>Ocultar el encabezado "Artefactos"</text>
+	</string>
+	<string id="ui_mcm_hide_030artifacts">
+		<text>Ocultar el encabezado "Artefactos"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_040devices">
+		<text>Texto del encabezado (Dispositivos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_040devices">
+		<text>Texto del encabezado (Dispositivos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_040devices">
+		<text>Texto del encabezado (Dispositivos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_040devices">
+		<text>Texto del encabezado (Dispositivos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_040devices">
+		<text>Ocultar el encabezado "Dispositivos"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_040devices">
+		<text>Ocultar el encabezado "Dispositivos"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_040devices">
+		<text>Ocultar el encabezado "Dispositivos"</text>
+	</string>
+	<string id="ui_mcm_hide_040devices">
+		<text>Ocultar el encabezado "Dispositivos"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_050tools">
+		<text>Texto del encabezado (Herramientas) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_050tools">
+		<text>Texto del encabezado (Herramientas) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_050tools">
+		<text>Texto del encabezado (Herramientas) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_050tools">
+		<text>Texto del encabezado (Herramientas) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_050tools">
+		<text>Ocultar el encabezado "Herramientas"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_050tools">
+		<text>Ocultar el encabezado "Herramientas"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_050tools">
+		<text>Ocultar el encabezado "Herramientas"</text>
+	</string>
+	<string id="ui_mcm_hide_050tools">
+		<text>Ocultar el encabezado "Herramientas"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_060medical">
+		<text>Texto del encabezado (Médico) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_060medical">
+		<text>Texto del encabezado (Médico) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_060medical">
+		<text>Texto del encabezado (Médico) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_060medical">
+		<text>Texto del encabezado (Médico) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_060medical">
+		<text>Ocultar el encabezado "Médico"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_060medical">
+		<text>Ocultar el encabezado "Médico"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_060medical">
+		<text>Ocultar el encabezado "Médico"</text>
+	</string>
+	<string id="ui_mcm_hide_060medical">
+		<text>Ocultar el encabezado "Médico"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_070foods">
+		<text>Texto del encabezado (Comida) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_070foods">
+		<text>Texto del encabezado (Comida) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_070foods">
+		<text>Texto del encabezado (Comida) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_070foods">
+		<text>Texto del encabezado (Comida) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_070foods">
+		<text>Ocultar el encabezado "Comida"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_070foods">
+		<text>Ocultar el encabezado "Comida"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_070foods">
+		<text>Ocultar el encabezado "Comida"</text>
+	</string>
+	<string id="ui_mcm_hide_070foods">
+		<text>Ocultar el encabezado "Comida"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_090quest">
+		<text>Texto del encabezado (Misión) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_090quest">
+		<text>Texto del encabezado (Misión) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_090quest">
+		<text>Texto del encabezado (Misión) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_090quest">
+		<text>Texto del encabezado (Misión) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_090quest">
+		<text>Ocultar el encabezado "Misión"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_090quest">
+		<text>Ocultar el encabezado "Misión"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_090quest">
+		<text>Ocultar el encabezado "Misión"</text>
+	</string>
+	<string id="ui_mcm_hide_090quest">
+		<text>Ocultar el encabezado "Misión"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_100notes">
+		<text>Texto del encabezado (Notas) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_100notes">
+		<text>Texto del encabezado (Notas) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_100notes">
+		<text>Texto del encabezado (Notas) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_100notes">
+		<text>Texto del encabezado (Notas) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_100notes">
+		<text>Ocultar el encabezado "Notas"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_100notes">
+		<text>Ocultar el encabezado "Notas"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_100notes">
+		<text>Ocultar el encabezado "Notas"</text>
+	</string>
+	<string id="ui_mcm_hide_100notes">
+		<text>Ocultar el encabezado "Notas"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_110ammo">
+		<text>Texto del encabezado (Munición) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_110ammo">
+		<text>Texto del encabezado (Munición) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_110ammo">
+		<text>Texto del encabezado (Munición) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_110ammo">
+		<text>Texto del encabezado (Munición) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_110ammo">
+		<text>Ocultar el encabezado "Munición"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_110ammo">
+		<text>Ocultar el encabezado "Munición"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_110ammo">
+		<text>Ocultar el encabezado "Munición"</text>
+	</string>
+	<string id="ui_mcm_hide_110ammo">
+		<text>Ocultar el encabezado "Munición"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_120mutantparts">
+		<text>Texto del encabezado (Partes de mutantes) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_120mutantparts">
+		<text>Texto del encabezado (Partes de mutantes) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_120mutantparts">
+		<text>Texto del encabezado (Partes de mutantes) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_120mutantparts">
+		<text>Texto del encabezado (Partes de mutantes) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_120mutantparts">
+		<text>Ocultar el encabezado "Partes de mutantes"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_120mutantparts">
+		<text>Ocultar el encabezado "Partes de mutantes"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_120mutantparts">
+		<text>Ocultar el encabezado "Partes de mutantes"</text>
+	</string>
+	<string id="ui_mcm_hide_120mutantparts">
+		<text>Ocultar el encabezado "Partes de mutantes"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_130misc">
+		<text>Texto del encabezado (Varios) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_130misc">
+		<text>Texto del encabezado (Varios) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_130misc">
+		<text>Texto del encabezado (Varios) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_130misc">
+		<text>Texto del encabezado (Varios) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_130misc">
+		<text>Ocultar el encabezado "Varios"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_130misc">
+		<text>Ocultar el encabezado "Varios"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_130misc">
+		<text>Ocultar el encabezado "Varios"</text>
+	</string>
+	<string id="ui_mcm_hide_130misc">
+		<text>Ocultar el encabezado "Varios"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_140upgrades">
+		<text>Texto del encabezado (Mejoras) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_140upgrades">
+		<text>Texto del encabezado (Mejoras) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_140upgrades">
+		<text>Texto del encabezado (Mejoras) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_140upgrades">
+		<text>Texto del encabezado (Mejoras) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_140upgrades">
+		<text>Ocultar el encabezado "Mejoras"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_140upgrades">
+		<text>Ocultar el encabezado "Mejoras"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_140upgrades">
+		<text>Ocultar el encabezado "Mejoras"</text>
+	</string>
+	<string id="ui_mcm_hide_140upgrades">
+		<text>Ocultar el encabezado "Mejoras"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_150parts">
+		<text>Texto del encabezado (Partes) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_150parts">
+		<text>Texto del encabezado (Partes) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_150parts">
+		<text>Texto del encabezado (Partes) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_150parts">
+		<text>Texto del encabezado (Partes) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_150parts">
+		<text>Ocultar el encabezado "Partes"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_150parts">
+		<text>Ocultar el encabezado "Partes"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_150parts">
+		<text>Ocultar el encabezado "Partes"</text>
+	</string>
+	<string id="ui_mcm_hide_150parts">
+		<text>Ocultar el encabezado "Partes"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_zzz_pinned_favorites">
+		<text>Texto del encabezado (Favoritos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_zzz_pinned_favorites">
+		<text>Texto del encabezado (Favoritos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_zzz_pinned_favorites">
+		<text>Texto del encabezado (Favoritos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_zzz_pinned_favorites">
+		<text>Texto del encabezado (Favoritos) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_zzz_pinned_favorites">
+		<text>Ocultar el encabezado "Favoritos"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_zzz_pinned_favorites">
+		<text>Ocultar el encabezado "Favoritos"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_zzz_pinned_favorites">
+		<text>Ocultar el encabezado "Favoritos"</text>
+	</string>
+	<string id="ui_mcm_hide_zzz_pinned_favorites">
+		<text>Ocultar el encabezado "Favoritos"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_zzz_pinned_junk">
+		<text>Texto del encabezado (Chatarra) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_zzz_pinned_junk">
+		<text>Texto del encabezado (Chatarra) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_zzz_pinned_junk">
+		<text>Texto del encabezado (Chatarra) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_zzz_pinned_junk">
+		<text>Texto del encabezado (Chatarra) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_zzz_pinned_junk">
+		<text>Ocultar el encabezado "Chatarra"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_zzz_pinned_junk">
+		<text>Ocultar el encabezado "Chatarra"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_zzz_pinned_junk">
+		<text>Ocultar el encabezado "Chatarra"</text>
+	</string>
+	<string id="ui_mcm_hide_zzz_pinned_junk">
+		<text>Ocultar el encabezado "Chatarra"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_zzz_unmapped">
+		<text>Texto del encabezado (Varios) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_zzz_unmapped">
+		<text>Texto del encabezado (Varios) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_zzz_unmapped">
+		<text>Texto del encabezado (Varios) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_zzz_unmapped">
+		<text>Texto del encabezado (Varios) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_zzz_unmapped">
+		<text>Ocultar el encabezado "Varios"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_zzz_unmapped">
+		<text>Ocultar el encabezado "Varios"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_zzz_unmapped">
+		<text>Ocultar el encabezado "Varios"</text>
+	</string>
+	<string id="ui_mcm_hide_zzz_unmapped">
+		<text>Ocultar el encabezado "Varios"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_allow_collapse">
+		<text>Haz clic en un encabezado para contraer/expandir esa categoría</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_allow_collapse">
+		<text>Haz clic en un encabezado para contraer/expandir esa categoría</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_allow_collapse">
+		<text>Haz clic en un encabezado para contraer/expandir esa categoría</text>
+	</string>
+	<string id="ui_mcm_allow_collapse">
+		<text>Haz clic en un encabezado para contraer/expandir esa categoría</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_zzz_magazines">
+		<text>Texto del encabezado (Cargadores) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_zzz_magazines">
+		<text>Texto del encabezado (Cargadores) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_zzz_magazines">
+		<text>Texto del encabezado (Cargadores) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_zzz_magazines">
+		<text>Texto del encabezado (Cargadores) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_zzz_magazines">
+		<text>Ocultar el encabezado "Cargadores"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_zzz_magazines">
+		<text>Ocultar el encabezado "Cargadores"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_zzz_magazines">
+		<text>Ocultar el encabezado "Cargadores"</text>
+	</string>
+	<string id="ui_mcm_hide_zzz_magazines">
+		<text>Ocultar el encabezado "Cargadores"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_debug_runs">
+		<text>Depuración: registrar la detección de categorías en el archivo de registro</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_debug_runs">
+		<text>Depuración: registrar la detección de categorías en el archivo de registro</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_debug_runs">
+		<text>Depuración: registrar la detección de categorías en el archivo de registro</text>
+	</string>
+	<string id="ui_mcm_debug_runs">
+		<text>Depuración: registrar la detección de categorías en el archivo de registro</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_label_zzz_ammo_parts">
+		<text>Texto del encabezado (Piezas de munición) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_label_zzz_ammo_parts">
+		<text>Texto del encabezado (Piezas de munición) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_label_zzz_ammo_parts">
+		<text>Texto del encabezado (Piezas de munición) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_label_zzz_ammo_parts">
+		<text>Texto del encabezado (Piezas de munición) - usa _ para los espacios</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_hide_zzz_ammo_parts">
+		<text>Ocultar el encabezado "Piezas de munición"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_categories_hide_zzz_ammo_parts">
+		<text>Ocultar el encabezado "Piezas de munición"</text>
+	</string>
+	<string id="ui_mcm_cathdr_categories_hide_zzz_ammo_parts">
+		<text>Ocultar el encabezado "Piezas de munición"</text>
+	</string>
+	<string id="ui_mcm_hide_zzz_ammo_parts">
+		<text>Ocultar el encabezado "Piezas de munición"</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_empty_inventory">
+		<text>Mostrar siempre todos los encabezados: inventario</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_empty_inventory">
+		<text>Mostrar siempre todos los encabezados: inventario</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_empty_inventory">
+		<text>Mostrar siempre todos los encabezados: inventario</text>
+	</string>
+	<string id="ui_mcm_show_empty_inventory">
+		<text>Mostrar siempre todos los encabezados: inventario</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_empty_bodies">
+		<text>Mostrar siempre todos los encabezados: cadáveres</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_empty_bodies">
+		<text>Mostrar siempre todos los encabezados: cadáveres</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_empty_bodies">
+		<text>Mostrar siempre todos los encabezados: cadáveres</text>
+	</string>
+	<string id="ui_mcm_show_empty_bodies">
+		<text>Mostrar siempre todos los encabezados: cadáveres</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_show_empty_stashes">
+		<text>Mostrar siempre todos los encabezados: alijos y cajas</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_show_empty_stashes">
+		<text>Mostrar siempre todos los encabezados: alijos y cajas</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_show_empty_stashes">
+		<text>Mostrar siempre todos los encabezados: alijos y cajas</text>
+	</string>
+	<string id="ui_mcm_show_empty_stashes">
+		<text>Mostrar siempre todos los encabezados: alijos y cajas</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_keep_span">
+		<text>Mantener el tamano de la categoria al retirar objetos</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_keep_span">
+		<text>Mantener el tamano de la categoria al retirar objetos</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_keep_span">
+		<text>Mantener el tamano de la categoria al retirar objetos</text>
+	</string>
+	<string id="ui_mcm_keep_span">
+		<text>Mantener el tamano de la categoria al retirar objetos</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_keep_emptied">
+		<text>Mantener los encabezados vacios hasta reabrir</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_general_keep_emptied">
+		<text>Mantener los encabezados vacios hasta reabrir</text>
+	</string>
+	<string id="ui_mcm_cathdr_general_keep_emptied">
+		<text>Mantener los encabezados vacios hasta reabrir</text>
+	</string>
+	<string id="ui_mcm_keep_emptied">
+		<text>Mantener los encabezados vacios hasta reabrir</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_compact_rows">
+		<text>Filas compactas (altura del encabezado segun el grosor)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_appearance_compact_rows">
+		<text>Filas compactas (altura del encabezado segun el grosor)</text>
+	</string>
+	<string id="ui_mcm_cathdr_appearance_compact_rows">
+		<text>Filas compactas (altura del encabezado segun el grosor)</text>
+	</string>
+	<string id="ui_mcm_compact_rows">
+		<text>Filas compactas (altura del encabezado segun el grosor)</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_rules">
+		<text>Reglas de objetos</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_rules_enable">
+		<text>Activar reglas de objetos</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_rules_rules_enable">
+		<text>Activar reglas de objetos</text>
+	</string>
+	<string id="ui_mcm_cathdr_rules_rules_enable">
+		<text>Activar reglas de objetos</text>
+	</string>
+	<string id="ui_mcm_rules_enable">
+		<text>Activar reglas de objetos</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_rules_clear">
+		<text>Borrar todas las reglas</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_rules_rules_clear">
+		<text>Borrar todas las reglas</text>
+	</string>
+	<string id="ui_mcm_cathdr_rules_rules_clear">
+		<text>Borrar todas las reglas</text>
+	</string>
+	<string id="ui_mcm_rules_clear">
+		<text>Borrar todas las reglas</text>
+	</string>
+	<string id="st_fiut_pin_open">
+		<text>Anadir a fijados</text>
+	</string>
+	<string id="st_fiut_pin_remove">
+		<text>Quitar de fijados</text>
+	</string>
+	<string id="st_fiut_pin_slot_1">
+		<text>Fijar en ranura 1</text>
+	</string>
+	<string id="st_fiut_pin_slot_2">
+		<text>Fijar en ranura 2</text>
+	</string>
+	<string id="st_fiut_pin_slot_3">
+		<text>Fijar en ranura 3</text>
+	</string>
+	<string id="st_fiut_pin_slot_4">
+		<text>Fijar en ranura 4</text>
+	</string>
+	<string id="st_fiut_pin_slot_5">
+		<text>Fijar en ranura 5</text>
+	</string>
+	<string id="st_fiut_pin_slot_taken">
+		<text>Ranura %s: %s</text>
+	</string>
+	<string id="ui_mcm_menu_cathdr_drag">
+		<text>Arrastrar cabeceras</text>
+	</string>
+	<string id="ui_mcm_title_cathdr_drag">
+		<text>Arrastrar cabeceras</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag">
+		<text>Arrastrar cabeceras</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_enable">
+		<text>Arrastrar cabeceras para reordenar categorías</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_enable">
+		<text>Arrastrar cabeceras para reordenar categorías</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_enable">
+		<text>Arrastrar cabeceras para reordenar categorías</text>
+	</string>
+	<string id="ui_mcm_drag_enable">
+		<text>Arrastrar cabeceras para reordenar categorías</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_order_mode">
+		<text>Sólo en modo de reordenación</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_order_mode">
+		<text>Sólo en modo de reordenación</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_order_mode">
+		<text>Sólo en modo de reordenación</text>
+	</string>
+	<string id="ui_mcm_drag_order_mode">
+		<text>Sólo en modo de reordenación</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_on_block">
+		<text>Soltar en cualquier parte de la categoría (zona teñida)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_on_block">
+		<text>Soltar en cualquier parte de la categoría (zona teñida)</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_on_block">
+		<text>Soltar en cualquier parte de la categoría (zona teñida)</text>
+	</string>
+	<string id="ui_mcm_drag_on_block">
+		<text>Soltar en cualquier parte de la categoría (zona teñida)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_hold_ms">
+		<text>Espera antes de iniciar el arrastre (ms)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_hold_ms">
+		<text>Espera antes de iniciar el arrastre (ms)</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_hold_ms">
+		<text>Espera antes de iniciar el arrastre (ms)</text>
+	</string>
+	<string id="ui_mcm_drag_hold_ms">
+		<text>Espera antes de iniciar el arrastre (ms)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_ghost">
+		<text>Mostrar copia de la cabecera en el cursor</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_ghost">
+		<text>Mostrar copia de la cabecera en el cursor</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_ghost">
+		<text>Mostrar copia de la cabecera en el cursor</text>
+	</string>
+	<string id="ui_mcm_drag_ghost">
+		<text>Mostrar copia de la cabecera en el cursor</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_ghost_alpha">
+		<text>Opacidad de la copia</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_ghost_alpha">
+		<text>Opacidad de la copia</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_ghost_alpha">
+		<text>Opacidad de la copia</text>
+	</string>
+	<string id="ui_mcm_drag_ghost_alpha">
+		<text>Opacidad de la copia</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_debug">
+		<text>Depuración: registrar arrastres</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_debug">
+		<text>Depuración: registrar arrastres</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_debug">
+		<text>Depuración: registrar arrastres</text>
+	</string>
+	<string id="ui_mcm_drag_debug">
+		<text>Depuración: registrar arrastres</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_drag_hide_arrows">
+		<text>Ocultar las flechas arriba/abajo (sólo arrastrar)</text>
+	</string>
+	<string id="ui_mcm_CategoryHeaders_cathdr_drag_drag_hide_arrows">
+		<text>Ocultar las flechas arriba/abajo (sólo arrastrar)</text>
+	</string>
+	<string id="ui_mcm_cathdr_drag_drag_hide_arrows">
+		<text>Ocultar las flechas arriba/abajo (sólo arrastrar)</text>
+	</string>
+	<string id="ui_mcm_drag_hide_arrows">
+		<text>Ocultar las flechas arriba/abajo (sólo arrastrar)</text>
+	</string>
+</string_table>

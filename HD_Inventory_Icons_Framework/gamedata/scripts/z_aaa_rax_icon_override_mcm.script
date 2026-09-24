@@ -1,0 +1,102 @@
+local icon_override = aaa_rax_icon_override_mcm.icon_override
+local sync_element = utils_xml.sync_element
+
+function aaa_rax_icon_override_mcm.utils_ui.UICellItem:Set(obj, area)
+	local ratio = utils_xml.screen_ratio()
+	
+	-- Added by Sota - lazy fix for 16:10 ratio (specifically for 1600x1024)
+	local ratio_1610 = (4/3) / (16/10)
+	ratio = (ratio > ratio_1610) and (ratio < 1) and ratio_1610 or ratio
+	
+	local xml = self:GetXML()
+	local path = self.path
+	local is_obj = (self.showcase == 0)
+	local grid_size = self.grid_size
+	
+	local sec = is_obj and obj:section() or obj
+	local clsid = is_obj and obj:clsid()
+	
+	local x = icon_override:section_exist(sec) and icon_override:r_float_ex(sec,"inv_grid_x") or SYS_GetParam(2,sec, "inv_grid_x")
+	local y = icon_override:section_exist(sec) and icon_override:r_float_ex(sec,"inv_grid_y") or SYS_GetParam(2,sec, "inv_grid_y")
+	local w = icon_override:section_exist(sec) and icon_override:r_float_ex(sec,"inv_grid_width") or SYS_GetParam(2,sec, "inv_grid_width")
+	local h = icon_override:section_exist(sec) and icon_override:r_float_ex(sec,"inv_grid_height") or SYS_GetParam(2,sec, "inv_grid_height")
+	
+	if not x or not y or not w or not h then
+		return false
+	end
+	
+	x = x * grid_size
+	y = y * grid_size
+	
+	-- Edited by G_FLAT - inventory cells use grid line thickness, separate dimensions for icons
+--	w = w * grid_size
+--	h = h * grid_size
+
+	-- demonized: HD Inventory Icons Framework
+	local scale = icon_override:section_exist(sec) and (icon_override:r_float_ex(sec, "inv_grid_scale") or 1) or SYS_GetParam(2, sec, "inv_grid_scale", 1)
+	local icon_w = math.ceil(w * grid_size / scale)
+	local icon_h = math.ceil(h * grid_size / scale)
+	
+	-- Added by G_FLAT - inventory cells use grid line thickness
+	local grid_line = self.grid_line
+	w = math.ceil(w * grid_size / scale) + (math.ceil(w / scale) - 1) * grid_line
+	h = math.ceil(h * grid_size / scale) + (math.ceil(h / scale) - 1) * grid_line
+	
+	self.ID = is_obj and obj:id() or nil
+	self.section = sec
+	self.area = area
+	self.X = x
+	self.Y = y
+	self.W = w
+	self.H = h
+	
+	-- Trade mode
+	--if self:Check_TradeMode(obj, sec) then
+		--return false
+	--end
+	
+	-- Cell pos
+	if area and (not self.manual) then
+		local area_x = ((area.x * grid_size) - grid_size) * ratio
+		local area_y = (area.y * grid_size) - grid_size
+		-- Edited by Sota - fix the gap between cells for wide screens
+--		local area_xl = self.grid_line * area.x
+		local area_xl = grid_line * area.x * ratio
+		local area_yl = grid_line * area.y
+		
+		self.cell:SetWndPos(vector2():set( area_x + area_xl , area_y + area_yl ))
+		self.cell:SetWndSize(vector2():set(w * ratio , h))
+		sync_element(self.hl, self.cell)
+		self:Print(nil, "Set for [%s]  in (%s,%s,%s,%s)", sec, area_x, area_y, w, h)
+		
+	-- Cell pos (free cell)
+	elseif self.st then 
+		local st_x = ((self.st:GetWidth() /2) - ((w * ratio) /2))
+		local st_y = ((self.st:GetHeight() /2) - (h /2))
+		self.cell:SetWndPos(vector2():set( st_x , st_y ))
+		self.cell:SetWndSize(vector2():set(w * ratio , h))
+		sync_element(self.hl, self.cell)
+		self:Print(nil, "Set for [%s]  in free cell", sec)
+	end
+	
+	-- Icon
+	-- Edited by G_FLAT - inventory cells use grid line thickness, separate dimensions for icons
+--	self:Add_Icon(sec, w, h)
+--	self:Add_Shadow(sec, w, h)
+	self:Add_Icon(sec, icon_w, icon_h)
+	self:Add_Shadow(sec, icon_w, icon_h)
+	
+	-- Icon layers
+	self:Add_Layers(xml, obj, sec, clsid)
+	
+	-- Update cell
+	local is_updated = self:Update(is_obj and obj)
+	if (not is_updated) then
+		self:Print(nil, "Updating failed for [%s] | Reset cell", sec)
+		self:Reset()
+		return false
+	end
+	
+	self.cell:Show(true)
+	return true
+end
