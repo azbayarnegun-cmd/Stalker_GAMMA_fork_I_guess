@@ -1,0 +1,452 @@
+--- ap_ext_news: news composer + per-consequence templates in ui_st_ap_news.xml.
+--- Reads ap_core_record.get_records, picks an unreported entry on the actor's level, picks a
+--- per-consequence template, substitutes slots, dispatches via dynamic_news_manager.PushToChannel.
+--- Only write is ap_core_record.mark_reported on the gossiped entry (record owns the flag).
+
+local IsStalker, get_object_story_id, get_actor_true_community = IsStalker, get_object_story_id, get_actor_true_community
+local pairs, tostring = pairs, tostring
+local math_random, math_floor = math.random, math.floor
+local string_format, string_gsub, string_find = string.format, string.gsub, string.find
+local table_concat = table.concat
+local game_translate_string = game.translate_string
+local xobject_se = xobject.se
+local xtime, xlevel, xpda, xprofiler = xtime, xlevel, xpda, xprofiler
+local ap_core_debug, ap_core_record = ap_core_debug, ap_core_record
+
+local TRACE, CONSEQUENCE, REASON = ap_core_const.TRACE, ap_core_const.CONSEQUENCE, ap_core_const.REASON
+local alignment_human = ap_ext_const.alignment_human
+
+local cfg = ap_core_mcm.cfg
+local COMPOSER_TIMER_EV = "ap_ext_news"
+local COMPOSE_TICK = "compose_tick"
+local NEWS_LOG = "[EXT.NEWS]"
+
+
+local MAX_TEMPLATE_VARIANTS = 20
+
+local SCOPE_OWN, SCOPE_ALLIES, SCOPE_WORLD = "own", "allies", "world"
+
+local _templates_by_consequence = {}
+local _locale = nil
+local _pending_dispatch = nil
+
+-- Load a numbered template pool: walk prefix_001..N until miss/empty
+local function _load_pool(prefix)
+    local arr = {}
+    for i = 1, MAX_TEMPLATE_VARIANTS do
+        local id = string_format("%s_%03d", prefix, i)
+        local text = game_translate_string(id)
+        if text == id or text == nil or text == "" then return arr end
+        arr[#arr + 1] = text
+    end
+    return arr
+end
+
+-- Build per-consequence template tables (5 variants per consequence per locale)
+local function _build_templates()
+    local by_cons = {}
+    for _, cons_id in pairs(CONSEQUENCE) do
+        local name = cons_id:match("^consequence:(.+)")
+        if name then by_cons[name] = _load_pool("st_ap_news_tpl_" .. name) end
+    end
+    return by_cons
+end
+
+-- XML lookup that returns empty string on miss (never leaks the key id as the value)
+local function _xml(key)
+    local v = game_translate_string(key)
+    if v and v ~= key and v ~= "" then return v end
+    return ""
+end
+
+-- Detect current game language from system.ltx
+local function _detect_locale()
+    if not ini_sys then return "eng" end
+    local lang = ini_sys:r_string_ex("string_table", "language")
+    if lang and lang ~= "" then return lang end
+    return "eng"
+end
+
+-- Hours-since descriptor for #ago#: resolved inline from XML. Empty only when game_hours_then
+-- is missing (data gap). delta=0 (same game-hour) renders as the recent string so templates
+-- never lose staleness info or collapse "since/from #ago#" to bare prepositions.
+local function _ago_text(game_hours_then)
+    if not game_hours_then then return "" end
+    local delta = math_floor(xtime.game_sec() / 3600) - game_hours_then
+    if delta < 0 then return "" end
+    return _xml(delta < 2 and "st_ap_macros_ago_recent" or "st_ap_macros_ago_hours")
+end
+
+-- Resolve slots for one side of a news entry. Translates XML keys at compose time.
+local function _side_slots(entry, prefix)
+    local faction_key = entry[prefix .. "_faction_key"]
+    local species_key = entry[prefix .. "_species_key"]
+    local faction = faction_key and _xml(faction_key) or ""
+    local species = species_key and _xml(species_key) or ""
+    local name = entry[prefix .. "_name"] or ""
+    return faction, name, species
+end
+
+-- Resolve location display from smart_id (stable, smarts do not despawn mid-session)
+-- Engine smart names sometimes embed a period to separate level/sublocation
+-- (e.g. "Great Swamp. Northern Village"). Replace ". " with ", " so the location reads
+-- as a single comma-separated phrase inside a sentence.
+local function _location_display(smart_id)
+    if not smart_id then return "" end
+    local smart = xobject_se(smart_id)
+    if not smart then return "" end
+    local name = xlevel.get_smart_display_name(smart) or ""
+    name = string_gsub(name, "%. ", ", ")
+    return name
+end
+
+-- Build slot table for a focal entry.
+local function _slots_for(entry)
+    local s_fac, s_name, s_spec = _side_slots(entry, "subject")
+    local o_fac, o_name, o_spec = _side_slots(entry, "other")
+    local level = entry.level_id and (xlevel.get_level_name(entry.level_id) or "") or ""
+    local location = _location_display(entry.smart_id)
+    if location == "" then location = level end
+    return {
+        subject_faction = s_fac, subject_name = s_name, subject_species = s_spec,
+        other_faction   = o_fac, other_name   = o_name, other_species   = o_spec,
+        location = location,
+        level    = level,
+        ago      = _ago_text(entry.game_hours),
+    }
+end
+
+-- Substitute slot table into template. Unknown #key# tokens are kept as-is
+-- (Lua gsub: a nil return leaves the match unchanged).
+local function _substitute(template, slots)
+    return (string_gsub(template, "#([%w_]+)#", function(key) return slots[key] end))
+end
+
+-- Slot placeholder -> slot name. Variant rejected if it references a placeholder whose slot is empty.
+local _SLOT_CHECKS = {
+    { "#subject_name#",    "subject_name" },
+    { "#subject_species#", "subject_species" },
+    { "#other_faction#",   "other_faction" },
+    { "#other_name#",      "other_name" },
+    { "#other_species#",   "other_species" },
+    { "#level#",           "level" },
+    { "#ago#",             "ago" },
+    { "#location#",        "location" },
+}
+
+-- True if variant references a placeholder whose corresponding slot is empty.
+local function _has_missing_slot(v, slots)
+    for j = 1, #_SLOT_CHECKS do
+        local check = _SLOT_CHECKS[j]
+        if string_find(v, check[1], 1, true) and slots[check[2]] == "" then return true end
+    end
+    return false
+end
+
+-- Filter variants by required-data availability.
+local function _filter_variants(variants, slots)
+    local ok = {}
+    for i = 1, #variants do
+        local v = variants[i]
+        if not _has_missing_slot(v, slots) then ok[#ok + 1] = v end
+    end
+    return ok
+end
+
+-- Collect entries eligible for compose: unreported + within age window + on current level.
+-- Returns array; caller picks one at random for gossip-style variety.
+local function _collect_eligible()
+    local entries = {}
+    local recs = ap_core_record.get_records()
+    local now_gh = math_floor(xtime.game_sec() / 3600)
+    local max_age = cfg.news_max_age_game_hours
+    local cur_level = xlevel.get_actor_level_id()
+    for i = 1, #recs do
+        local entry = recs[i]
+        if entry.cons_id and not entry.reported
+            and entry.level_id and entry.level_id == cur_level
+            and entry.game_hours and (now_gh - entry.game_hours) <= max_age
+        then
+            entries[#entries + 1] = entry
+        end
+    end
+    return entries
+end
+
+-- Clean output: trim, dedupe whitespace, strip space-before-punctuation, collapse artifacts from empty slots
+local function _clean_output(result)
+    if not result or result == "" then return nil end
+    result = string_gsub(result, "^%s+", "")
+    result = string_gsub(result, "%s+$", "")
+    result = string_gsub(result, "  +", " ")
+    result = string_gsub(result, "%s+([%.,;!?])", "%1")
+    result = string_gsub(result, ",%s*,", ",")
+    result = string_gsub(result, "%(%s*%)", "")
+    result = string_gsub(result, "  +", " ")
+    if result == "" then return nil end
+    return result
+end
+
+-- Scope filter: speaker's faction must match the configured scope vs the actor's faction.
+local function _passes_scope(comm, actor_comm, scope)
+    if scope == SCOPE_OWN then return comm == actor_comm end
+    if scope == SCOPE_ALLIES then
+        if comm == actor_comm then return true end
+        return game_relations.is_factions_friends(actor_comm, comm)
+    end
+    if scope == SCOPE_WORLD then
+        if comm == actor_comm then return true end
+        return not game_relations.is_factions_enemies(actor_comm, comm)
+    end
+    return false
+end
+
+-- NPC-attribute eligibility (everything testable without faction/channel context).
+local function _is_speaker_npc_eligible(npc, id)
+    if not npc or not npc:alive() then return false end
+    if not IsStalker(npc, npc:clsid()) then return false end
+    if get_object_story_id(id) then return false end
+    if npc:best_enemy() then return false end
+    return true
+end
+
+-- Compact "comm=true,comm=false" dump of DNM channel_status for diagnostic logging.
+local function _format_channels(channel_status)
+    if not channel_status then return "<nil>" end
+    local parts = {}
+    for k, v in pairs(channel_status) do parts[#parts + 1] = tostring(k) .. "=" .. tostring(v) end
+    if #parts == 0 then return "<empty>" end
+    return table_concat(parts, ",")
+end
+
+-- Pick a speaker: any online stalker passing canon channel, scope, and combat filters.
+-- No proximity, no `npc:see`. db.OnlineStalkers is overwhelmingly the player's level so
+-- "speaker on event level" follows from filtering events by level upstream.
+local function _pick_speaker(actor_comm, scope, channel_status)
+    local online = db.OnlineStalkers
+    if not online then return nil end
+    local storage = db.storage
+    local pool = {}
+    for i = 1, #online do
+        local id = online[i]
+        local st = storage[id]
+        local npc = st and st.object
+        local comm = _is_speaker_npc_eligible(npc, id) and npc:character_community() or nil
+        if comm and alignment_human[comm] and (not channel_status or channel_status[comm])
+            and _passes_scope(comm, actor_comm, scope) then
+            pool[#pool + 1] = npc
+        end
+    end
+    if #pool == 0 then return nil end
+    local npc = pool[math_random(#pool)]
+    return {
+        name    = npc:character_name(),
+        icon    = npc:character_icon(),
+        channel = npc:character_community(),
+    }
+end
+
+-- Engine dispatch. Routes through dynamic_news_manager.PushToChannel when initialized;
+-- falls back to xpda.send during the ~27s cold-start window. Engine-side drops (enable_news,
+-- NewsToggle, is_pda_charged, counter cap) are not duplicated here.
+-- Called from compose_tick AFTER the compose timer stops, so vanilla engine cost (PushToChannel:
+-- UI texture lookup, sound init, shared_str ops) is timed and logged on its own dispatch line,
+-- never attributed to the AP compose measurement.
+local function _do_engine_dispatch(picked, msg)
+    local dnm = dynamic_news_manager and dynamic_news_manager.get_dynamic_news
+                and dynamic_news_manager.get_dynamic_news() or nil
+    local use_queued = dnm and dnm.PushToChannel
+    local dbg = ap_core_debug.enabled()
+    local engine_timer = xprofiler.new_if(dbg):start()
+    if use_queued then
+        dnm:PushToChannel(picked.channel, {
+            Mg = msg, Se = picked.name, Ic = picked.icon,
+            Snd = "news", It = "npc",
+        })
+    else
+        xpda.send(picked.name, msg, picked.icon)
+    end
+    engine_timer:stop()
+    if dbg then ap_core_debug.debug("%s dispatch %s sender=%s channel=%s [%.2fms]", NEWS_LOG,
+        use_queued and "queued" or "fallback", picked.name, tostring(picked.channel), engine_timer:get_ms()) end
+end
+
+-- ============================================================================
+-- CHATTER: immediate, localized one-off lines pushed by a producer the instant something happens,
+-- instead of drained from the record queue. Reuses the news machinery: a producer hands a template
+-- pool prefix, a slots table, and selection context (level, faction); send_chatter gates it (local,
+-- non-hostile, throttled), fills a variant, picks an online stalker as the voice (the same
+-- _pick_speaker the radio uses), and dispatches now. No speaker -> not said. Templates live in
+-- ui_st_ap_chatter.xml (st_ap_chatter_<type>_NNN), separate from news.
+-- ============================================================================
+
+local _chatter_pools = {}
+local _chatter_locale = nil
+
+-- Chatter's own throttle (real-sec os.clock, independent of the news compose interval): at most one
+-- chatter line every cfg.chatter_interval_sec. When many producers fire in one tick, without this
+-- they would each speak at once; the throttle lets the first through and drops the rest. Ephemeral,
+-- resets on load -- a short real-time throttle needs no persistence.
+local _chatter_next = 0
+
+-- Locale-cached template pool for a chatter prefix (rebuilt on language switch, like the news pools).
+local function _chatter_pool(prefix)
+    local loc = _detect_locale()
+    if loc ~= _chatter_locale then
+        _chatter_locale = loc
+        _chatter_pools = {}
+    end
+    local pool = _chatter_pools[prefix]
+    if not pool then
+        pool = _load_pool(prefix)
+        _chatter_pools[prefix] = pool
+    end
+    return pool
+end
+
+--- Push one chatter line for the given pool prefix, filled from slots. Returns true if a line was
+--- spoken. Gated by cfg.chatter_enabled; needs an eligible online stalker (the voice) and a live
+--- news channel, else it stays silent. Producers own the content decision (when, what facts);
+--- this owns only voice + render + send, identical to the radio path.
+--- @param pool_prefix string Template id prefix, e.g. "st_ap_chatter_<type>"
+--- @param slots table Slot values keyed by placeholder name (#item#, #location#, ...)
+--- @param opts table|nil Selection context: { level_id = number, faction = string }. level_id, if
+---   set, must equal the player's current level (chatter is local). faction, if set, must not be at
+---   war with the player (a loner hears nothing from a faction hostile to them).
+--- @return boolean spoken
+local CHATTER_LOG = "[EXT.CHATTER]"
+
+function send_chatter(pool_prefix, slots, opts)
+    local dbg = ap_core_debug.enabled()
+    if not cfg.chatter_enabled or not slots then
+        if dbg then ap_core_debug.debug("%s skip %s: disabled or no slots", CHATTER_LOG, tostring(pool_prefix)) end
+        return false
+    end
+    if opts and opts.level_id and opts.level_id ~= xlevel.get_actor_level_id() then
+        if dbg then ap_core_debug.debug("%s skip %s: off-level (subject=%s)", CHATTER_LOG, pool_prefix, tostring(opts.level_id)) end
+        return false
+    end
+    if opts and opts.faction then
+        local actor_comm = get_actor_true_community()
+        if actor_comm and game_relations.is_factions_enemies(actor_comm, opts.faction) then
+            if dbg then ap_core_debug.debug("%s skip %s: enemy faction %s vs %s", CHATTER_LOG, pool_prefix, opts.faction, actor_comm) end
+            return false
+        end
+    end
+    local now = os.clock()
+    if now < _chatter_next then
+        if dbg then ap_core_debug.debug("%s skip %s: throttled (%.1fs left)", CHATTER_LOG, pool_prefix, _chatter_next - now) end
+        return false
+    end
+    local pool = _chatter_pool(pool_prefix)
+    if #pool == 0 then
+        if dbg then ap_core_debug.debug("%s skip %s: empty pool (XML not loaded?)", CHATTER_LOG, pool_prefix) end
+        return false
+    end
+    local filtered = _filter_variants(pool, slots)
+    if #filtered == 0 then
+        if dbg then ap_core_debug.debug("%s skip %s: all %d variants filtered (missing slot)", CHATTER_LOG, pool_prefix, #pool) end
+        return false
+    end
+    local msg = _clean_output(_substitute(filtered[math_random(#filtered)], slots))
+    if not msg then
+        if dbg then ap_core_debug.debug("%s skip %s: empty rendered msg", CHATTER_LOG, pool_prefix) end
+        return false
+    end
+    -- nil channel_status: xpda.send is direct to the actor, not channel-routed, so the speaker only
+    -- needs to pass the scope filter; the news radio channel does not have to be receivable.
+    local picked = _pick_speaker(get_actor_true_community(), cfg.news_scope, nil)
+    if not picked then
+        if dbg then ap_core_debug.debug("%s skip %s: no speaker (scope=%s, nobody to say it)", CHATTER_LOG, pool_prefix, tostring(cfg.news_scope)) end
+        return false
+    end
+    -- Direct give_game_news (immediate), NOT dnm:PushToChannel which queues onto the radio's delayed
+    -- schedule. Chatter is instant and does not ride the news pipeline.
+    xpda.send(picked.name, msg, picked.icon)
+    _chatter_next = now + cfg.chatter_interval_sec
+    if dbg then ap_core_debug.debug("%s sent %s by %s: %s", CHATTER_LOG, pool_prefix, picked.name, msg) end
+    return true
+end
+
+-- Pick the per-consequence template pool for the focal entry.
+local function _pick_template(entry)
+    local cons_name = entry.consequence_key:match("^consequence:(.+)") or ""
+    return _templates_by_consequence[cons_name], cons_name
+end
+
+local function _compose_tick_impl()
+    local current_locale = _detect_locale()
+    if current_locale ~= _locale then
+        _locale = current_locale
+        _templates_by_consequence = _build_templates()
+    end
+    local actor = db.actor
+    if not actor then return { code = TRACE.NONE } end
+    local dnm = dynamic_news_manager and dynamic_news_manager.get_dynamic_news
+                and dynamic_news_manager.get_dynamic_news() or nil
+    local channel_status = dnm and dnm.channel_status or nil
+    if not channel_status then return { code = TRACE.NONE } end
+    local entries = _collect_eligible()
+    if #entries == 0 then return { code = TRACE.NONE } end
+    local entry = entries[math_random(#entries)]
+    local pool, cons_name = _pick_template(entry)
+    if not pool or #pool == 0 then
+        ap_core_record.mark_reported(entry.cons_id)
+        return { code = TRACE.NO_TEMPLATES, cons = cons_name or "?" }
+    end
+    local slots = _slots_for(entry)
+    local filtered = _filter_variants(pool, slots)
+    if #filtered == 0 then
+        ap_core_record.mark_reported(entry.cons_id)
+        return { code = TRACE.NO_MSG, cons = cons_name or "?", reason = REASON.ALL_FILTERED }
+    end
+    local template = filtered[math_random(#filtered)]
+    local msg = _clean_output(_substitute(template, slots))
+    if not msg then return { code = TRACE.NO_MSG, cons = cons_name or "?" } end
+    local actor_comm = get_actor_true_community()
+    local picked = _pick_speaker(actor_comm, cfg.news_scope, channel_status)
+    if not picked then
+        return { code = TRACE.NO_SENDER, scope = cfg.news_scope,
+            actor_comm = actor_comm or "?", channels = _format_channels(channel_status) }
+    end
+    _pending_dispatch = { picked = picked, msg = msg }
+    ap_core_record.mark_reported(entry.cons_id)
+    return { code = TRACE.SENT, sender = picked.name }
+end
+
+--- compose_tick: news pipeline tick. AP-side compose is timed as one span; engine dispatch
+--- (vanilla dnm:PushToChannel / xpda.send) runs AFTER the timer stops so vanilla cost is not
+--- attributed to the AP compose measurement, and is logged on its own dispatch line.
+function compose_tick()
+    if not cfg.news_enabled then return { code = TRACE.NONE } end
+    _pending_dispatch = nil
+    local dbg = ap_core_debug.enabled()
+    local tmr = xprofiler.new_if(dbg):start()
+    local result = _compose_tick_impl()
+    tmr:stop()
+    if dbg then ap_core_debug.debug("%s compose %s%s [%.2fms]", NEWS_LOG, result.code or "?",
+        result.reason and ":" .. result.reason or "", tmr:get_ms()) end
+    local pending = _pending_dispatch
+    if pending then
+        _pending_dispatch = nil
+        _do_engine_dispatch(pending.picked, pending.msg)
+    end
+    return result
+end
+
+local function _next_delay()
+    local lo, hi = cfg.news_interval_min_sec, cfg.news_interval_max_sec
+    if lo > hi then lo, hi = hi, lo end
+    return math_random(lo, hi)
+end
+
+local function _on_compose_timer()
+    ResetTimeEvent(COMPOSER_TIMER_EV, COMPOSE_TICK, _next_delay())
+    compose_tick()
+    return false
+end
+
+function on_game_start()
+    _locale = nil
+    CreateTimeEvent(COMPOSER_TIMER_EV, COMPOSE_TICK, 30, _on_compose_timer)
+end

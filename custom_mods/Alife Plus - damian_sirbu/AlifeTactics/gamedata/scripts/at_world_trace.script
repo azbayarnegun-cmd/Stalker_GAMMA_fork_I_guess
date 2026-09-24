@@ -1,0 +1,616 @@
+--- at_world_trace: the world log. Everything here measures the fight's PHYSICAL REALITY from outputs -
+--- positions and bullets - never from intent fields, and writes to alifetactics_world.log. Reads only,
+--- zero gameplay effect, one MCM toggle (Development). OFF = no callbacks, no time events, zero cost.
+---
+--- Two instruments, one module:
+---
+--- SLIDE WATCHDOG. It reports ONE thing, because one thing is provable from cheap reads: a SLIDE - the
+--- body travels a real distance while its movement_type is never a locomotion type (walk/run/steal),
+--- i.e. it moved with no walk cycle, the visible glide. The 2026-07-24 lesson: the engine's intent
+--- fields (movement_type target, body_state, animation_count) read as "frozen/pinned" whenever an
+--- animation plays, so every flag built on them (posture flap, weapon flap, misaim, overlay pin,
+--- frozen-reload) fired on healthy vanilla NPCs and led to fake conclusions. Those are gone.
+---   SLIDE (monitor pass) - one line per episode when displacement from the start of a non-locomotion
+---     stretch crosses SLIDE_TOTAL_M. A still NPC never accumulates displacement, so it never trips.
+---   FAST (monitor pass) - one line per episode when the body's measured rate exceeds the fastest speed
+---     its own config allows ([stalker_movement_speeds] max, derived once, times a blend tolerance),
+---     WHATEVER the movement type - the walked-glide class the SLIDE anchor cannot see (a body walked
+---     with no cycle still reads mt=walk; the rate is the output that cannot lie). A smart-cover snap
+---     or scripted teleport CAN exceed the ceiling; the line records the numbers, the reader judges.
+---   HIT (hit watch) - one raw record per hit window, WATCH_MS after every hit landed on a nearby NPC:
+---     health, animation-overlay count and movement type at the hit against the same reads at close,
+---     plus the displacement over the window. No verdict in the line. It carries both open reports at
+---     once - the overlay counts are the reaction ("staggered or not"; the engine plays none of its own,
+---     CAI_Stalker::HitSignal is an empty body), the displacement against the movement types is the
+---     knockback slide the monitor pass is too coarse to catch.
+--- The monitor writes a line only for a real slide, never a per-tick dump; the hit watch writes one line
+--- per hit, which is the point - it is a per-event record, not a sampler.
+---
+--- BALLISTICS RECORDER. Outcome measurement over the engine's shot and impact feeds: in-memory counters
+--- per rank tier, weapon kind, shooter motion, and driver context (maneuver-held / Commitment-held /
+--- vanilla), plus the per-bullet aim split (fired-direction error off the actor, and the signed
+--- ahead/behind of the actor's travel = lead overshoot vs tracking lag), written as tables once a
+--- minute. One axis is enemy-relative rather than actor-relative: FIRING THE WRONG WAY - the angle
+--- between the round's own direction and the shooter->best_enemy line. Measured from the bullet (an
+--- output), never from facing (an intent field that lies during animations), it is the provable form of
+--- "the NPC shot the wall instead of its target". Capture and output are independently gated: counters
+--- accumulate while the toggle is on; per-bullet lines need log level DEBUG, the minute tables INFO.
+
+local RegisterScriptCallback, UnregisterScriptCallback = RegisterScriptCallback, UnregisterScriptCallback
+local IsStalker, time_global, db = IsStalker, time_global, db
+local math_sqrt, math_floor, math_max, pairs, tostring = math.sqrt, math.floor, math.max, pairs, tostring
+local math_deg, math_acos = math.deg, math.acos
+local string_format, table_concat = string.format, table.concat
+local ini_sys, tonumber = ini_sys, tonumber
+
+local log = xlog.get_logger("AT.WORLD", { outfile = "alifetactics_world.log" })
+local cfg = at_mcm.cfg
+local _enabled = false
+
+-- Who drives the NPC right now - the attribution every world line needs to point at a suspect.
+local function _driver(id)
+    local maneuver = at_combat.get_maneuver(id)
+    if maneuver then return maneuver end
+    if at_commitment.get_hold(id) then return "commit" end
+    return "vanilla"
+end
+
+-- ---------------------------------------------------------------------------
+-- Slide watchdog
+-- ---------------------------------------------------------------------------
+
+-- Monitor pass period (the fast clock) and the fight radius around the actor - the visible combat.
+local SAMPLE_SEC  = 0.15
+local RADIUS_SQR  = 70 * 70
+-- SLIDE (monitor): the body travels this far with movement_type never walk/run/steal across the stretch
+-- = it moved with no locomotion animation, the visible glide. One line per episode, not per pass.
+local SLIDE_TOTAL_M = 1.0
+-- HIT window: how long after a hit the body is sampled, and how fast. One raw record per window.
+local WATCH_MS    = 600
+local WATCH_SEC   = 0.06
+
+-- id -> { x, z, t, logged }: the anchor of the current non-locomotion stretch; a slide logs once when
+-- displacement from the anchor crosses SLIDE_TOTAL_M. Cleared when the NPC resumes walk/run/steal.
+local _slide = {}
+-- id -> { t0, x, z, anims0, drv0, maxd, walked }: the hit-triggered slide window (knockback catcher).
+local _watch = {}
+-- id -> { bt, src } last held danger, change-throttle for the [DANGER-HELD] line.
+local _dtrace = {}
+-- FAST (f009): per-id previous sample { x, z, t, logged } for the rate check, and the derived ceiling.
+-- The ceiling is the winning [stalker_movement_speeds] section's own maximum (ini_sys resolves the
+-- include chain, the at_noise config-read precedent) times a blend tolerance, derived once per enable.
+local SPEED_TOLERANCE = 1.25
+local _speed = {}
+local _speed_ceiling = nil
+-- Reused scratch: ids to drop from _watch after a pass - never mutate a table mid-pairs.
+local _drop = {}
+
+-- move enum -> short name, built lazily (move is a global absent at file body).
+local _MOVE
+local function _mt_name(v)
+    if not _MOVE then _MOVE = { [move.walk] = "walk", [move.run] = "run", [move.stand] = "stand", [move.steal] = "steal" } end
+    return _MOVE[v] or tostring(v)
+end
+
+-- A movement type that carries its own locomotion animation - walk, run, or the sneak (steal). While the
+-- NPC is in one of these, translation is legitimate and no slide is possible.
+local function _locomoting(mt)
+    return mt == move.walk or mt == move.run or mt == move.steal
+end
+
+-- The max speed any stalker's config legitimately allows: the winning [stalker_movement_speeds]
+-- section's own largest value (6.0 on vanilla). 6.0 fallback when the section is unreadable.
+local function _derive_ceiling()
+    local max_v = 0
+    local line_count = ini_sys:line_count("stalker_movement_speeds") or 0
+    for i = 0, line_count - 1 do
+        local _, _, value = ini_sys:r_line("stalker_movement_speeds", i, "", "")
+        local v = tonumber(value)
+        if v and v > max_v then max_v = v end
+    end
+    if max_v <= 0 then max_v = 6.0 end
+    return max_v * SPEED_TOLERANCE
+end
+
+-- The rate check (f009), any movement type: metres per second between consecutive samples against the
+-- config ceiling. One line per over-ceiling EPISODE (the logged latch clears when the rate drops back
+-- under). Records the numbers, raises no verdict - a legitimate engine displacement (smart-cover
+-- transition) exceeds the ceiling and reads as exactly what it is.
+local function _check_speed(npc, id, tg, pos, mt)
+    local prev = _speed[id]
+    if not prev then
+        _speed[id] = { x = pos.x, z = pos.z, t = tg, logged = false }
+        return
+    end
+    local dt = tg - prev.t
+    if dt <= 0 then return end
+    local mps = math_sqrt((pos.x - prev.x) ^ 2 + (pos.z - prev.z) ^ 2) * 1000 / dt
+    if mps > _speed_ceiling then
+        if not prev.logged then
+            prev.logged = true
+            log.info("[WORLD] id=%d %s FLAGS=FAST drv=%s mps=%.1f ceiling=%.1f mt=%s dt=%dms",
+                id, npc:name() or "?", _driver(id), mps, _speed_ceiling, _mt_name(mt), dt)
+        end
+    else
+        prev.logged = false
+    end
+    prev.x, prev.z, prev.t = pos.x, pos.z, tg
+end
+
+-- The monitor slide check, position only. While movement_type is a locomotion type there is no slide
+-- (real walking). Otherwise track displacement from the start of the non-locomotion stretch and log ONCE
+-- when it crosses SLIDE_TOTAL_M - the body moved a real distance with no walk cycle, the visible glide.
+local function _check(npc, id, tg, pos, mt)
+    if _locomoting(mt) then
+        _slide[id] = nil
+        return
+    end
+    local anchor = _slide[id]
+    if not anchor then
+        _slide[id] = { x = pos.x, z = pos.z, t = tg, logged = false }
+        return
+    end
+    if anchor.logged then return end
+    local dist = math_sqrt((pos.x - anchor.x) ^ 2 + (pos.z - anchor.z) ^ 2)
+    if dist >= SLIDE_TOTAL_M then
+        anchor.logged = true
+        log.info("[WORLD] id=%d %s FLAGS=SLIDE drv=%s moved=%.2fm over=%dms mt=%s",
+            id, npc:name() or "?", _driver(id), dist, tg - anchor.t, _mt_name(mt))
+    end
+end
+
+-- Near the actor = inside the fight radius (a field read, cheap).
+local function _near(npc, ap)
+    local pos = npc:position()
+    return (pos.x - ap.x) ^ 2 + (pos.z - ap.z) ^ 2 <= RADIUS_SQR
+end
+
+-- Log a near-actor NPC's currently held danger on change, so the alert NPC the player is looking at
+-- names its reason (corpse / grenade / sound) - including the alert-with-no-enemy case the combat
+-- census cannot see (it needs best_enemy). One line per new (type, source) per id; best_danger read live.
+local function _log_held_danger(npc, id, tg)
+    local d = npc:best_danger()
+    if not d then
+        _dtrace[id] = nil
+        return
+    end
+    local src = d:object()
+    local src_id = src and src:id() or -1
+    local bt = d:type()
+    local prev = _dtrace[id]
+    if prev and prev.bt == bt and prev.src == src_id then return end
+    _dtrace[id] = { bt = bt, src = src_id }
+    local dp, np = d:position(), npc:position()
+    log.debug("[DANGER-HELD] npc=%d name=%s bd=%s src=%d dist=%.0f age=%dms",
+        id, npc:name() or "?", at_danger.type_name(bt), src_id,
+        math_sqrt((dp.x - np.x) ^ 2 + (dp.z - np.z) ^ 2), tg - d:time())
+end
+
+-- The monitor pass: walk the combat NPCs near the actor, run the slide check, log only a real slide.
+local function _monitor()
+    if not _enabled then return true end
+    ResetTimeEvent("at_world_trace", "monitor", SAMPLE_SEC)
+    local ac = db.actor
+    if not ac then return false end
+    local ap, tg = ac:position(), time_global()
+    for i = 1, #db.OnlineStalkers do
+        local npc = xobject.go(db.OnlineStalkers[i])
+        if npc and IsStalker(npc) and npc:alive() and _near(npc, ap) then
+            local id = npc:id()
+            _log_held_danger(npc, id, tg)  -- danger readout, also covers no-enemy alert NPCs
+            if npc:best_enemy() then
+                local pos = npc:position()
+                local mt = npc:movement_type()
+                _check(npc, id, tg, pos, mt)
+                _check_speed(npc, id, tg, pos, mt)
+            end
+        end
+    end
+    return false
+end
+
+-- Hit-triggered watch: the monitor pass runs at 150ms and misses what happens in the few frames after a
+-- bullet lands, but the displacement and the overlay state persist, so on each hit the NPC is sampled at
+-- WATCH_SEC for WATCH_MS and one raw record is written at close. Captured at the hit: health, overlay
+-- count, movement type, damage amount, bone, and who was driving.
+local function _on_hit(npc, amount, _local_direction, _who, bone_index)
+    if not (npc and IsStalker(npc) and npc:alive() and db.actor) then return end
+    local id = npc:id()
+    if _watch[id] then return end
+    local pos = npc:position()
+    _watch[id] = { t0 = time_global(), x = pos.x, z = pos.z, anims0 = npc:animation_count(), drv0 = _driver(id),
+                   hp0 = npc.health, mt0 = npc:movement_type(), amount = amount or 0, bone = bone_index or -1 }
+end
+
+-- One watched NPC's step: accumulate displacement, and at window close write ONE raw record of what the
+-- body did around the hit. No verdict in the line - the numbers are the finding. It answers both open
+-- reports at once: the animation-overlay count at the hit against the count at close is the reaction
+-- ("staggered or not"; the engine plays none of its own, CAI_Stalker::HitSignal is empty), and the
+-- displacement against the movement types is the slide. Returns true when the window has closed.
+local function _watch_step(npc, id, w, tg)
+    local pos = npc:position()
+    w.maxd = math_max(w.maxd or 0, math_sqrt((pos.x - w.x) ^ 2 + (pos.z - w.z) ^ 2))
+    if _locomoting(npc:movement_type()) then w.walked = true end
+    if tg - w.t0 < WATCH_MS then return false end
+    log.info("[WORLD] hit id=%d %s drv=%s amount=%.2f bone=%d hp0=%.2f hp1=%.2f anims0=%d anims1=%d" ..
+        " mt0=%s mt1=%s moved=%.2f walked=%s over=%dms",
+        id, npc:name() or "?", w.drv0, w.amount, w.bone, w.hp0, npc.health, w.anims0, npc:animation_count(),
+        _mt_name(w.mt0), _mt_name(npc:movement_type()), w.maxd, w.walked and "y" or "n", tg - w.t0)
+    return true
+end
+
+local function _watch_poll()
+    if not _enabled then return true end
+    ResetTimeEvent("at_world_trace", "watch", WATCH_SEC)
+    local tg = time_global()
+    local dropped = 0
+    for id, w in pairs(_watch) do
+        local npc = xobject.go(id)
+        local drop = true
+        if npc and IsStalker(npc) and npc:alive() then drop = _watch_step(npc, id, w, tg) end
+        if drop then dropped = dropped + 1; _drop[dropped] = id end
+    end
+    for i = 1, dropped do _watch[_drop[i]] = nil; _drop[i] = nil end
+    return false
+end
+
+local function _on_unregister(se_obj)
+    if not se_obj then return end
+    local id = se_obj.id
+    _slide[id], _watch[id], _speed[id] = nil, nil, nil
+    _dtrace[id] = nil
+end
+
+-- ---------------------------------------------------------------------------
+-- Ballistics recorder
+-- ---------------------------------------------------------------------------
+
+local AC_ID = 0
+local SHOOTER_RADIUS_SQR = 120 * 120
+local NEAR_RADIUS_SQR = 100
+local GAP_MS = 180
+local REPORT_SEC = 60
+local MT_RUN = 1
+-- Firing the wrong way: a round more than this many degrees off the shooter->best_enemy line counts as
+-- fired away from its target (the visible "shooting the wall").
+local WRONGWAY_DEG = 50
+
+local TIERS = xcreature.RANK_TIERS
+
+local _t0 = 0
+local _tiers = {}
+local _drive = {}
+local _bursts = {}
+local _open = {}
+local _ctx = {}
+
+-- Actor horizontal velocity (m/s), sampled by the 200ms poll; the ahead/behind aim split needs it.
+local _avx, _avz = 0, 0
+local _apx, _apz, _at = nil, nil, 0
+
+local function _reset()
+    _t0 = time_global()
+    _tiers, _drive, _bursts, _open, _ctx = {}, {}, {}, {}, {}
+    _avx, _avz, _apx, _apz, _at = 0, 0, nil, nil, 0
+end
+
+local function _tier_row(tier)
+    local row = _tiers[tier]
+    if not row then
+        row = { shots = 0, hits = 0, dmg = 0, near = 0, conv = 0,
+                mv_shots = 0, mv_hits = 0, st_shots = 0, st_hits = 0,
+                ang_sum = 0, ang_n = 0, ahead_sum = 0, ahead_n = 0, behind_n = 0,
+                aim_shots = 0, aim_off_sum = 0, wrongway = 0 }
+        _tiers[tier] = row
+    end
+    return row
+end
+
+local function _drive_row(name)
+    local row = _drive[name]
+    if not row then
+        row = { shots = 0, hits = 0 }
+        _drive[name] = row
+    end
+    return row
+end
+
+local function _close_burst(id, entry)
+    if entry.count > 0 and entry.kind then
+        local hist = _bursts[entry.kind]
+        if not hist then
+            hist = {}
+            _bursts[entry.kind] = hist
+        end
+        local bucket = entry.count > 9 and 10 or entry.count
+        hist[bucket] = (hist[bucket] or 0) + 1
+    end
+    _open[id] = nil
+end
+
+-- One record per bullet FIRED: tier, kind, motion, and who drives the shooter right now - the
+-- context join happens here, at capture time, so no log correlation is ever needed.
+local function _on_shot(obj, wpn, body_state, move_type, temp_disp)
+    if not (obj and db and db.actor) then return end
+    if obj:position():distance_to_sqr(db.actor:position()) > SHOOTER_RADIUS_SQR then return end
+
+    local id = obj:id()
+    local tier = ranks.get_obj_rank_name(obj)
+    if not tier or tier == "" then return end
+
+    local tmr = xprofiler.new_if(at_debug.on()):start()
+    local moving = move_type ~= nil and move_type <= MT_RUN
+    local drive = "vanilla"
+    if at_combat.get_maneuver(id) then
+        drive = "maneuver"
+    elseif at_commitment.get_hold(id) then
+        drive = "hold"
+    end
+    local kind = xcombat.get_weapon_kind(obj)
+
+    local row = _tier_row(tier)
+    row.shots = row.shots + 1
+    if moving then row.mv_shots = row.mv_shots + 1 else row.st_shots = row.st_shots + 1 end
+    _drive_row(drive).shots = _drive_row(drive).shots + 1
+
+    local tg = time_global()
+    local entry = _open[id]
+    if entry and (tg - entry.last_ms) > GAP_MS then
+        _close_burst(id, entry)
+        entry = nil
+    end
+    if not entry then
+        entry = { last_ms = tg, count = 0, kind = kind }
+        _open[id] = entry
+    end
+    entry.count = entry.count + 1
+    entry.last_ms = tg
+
+    _ctx[id] = { tier = tier, moving = moving, drive = drive }
+    tmr:stop()
+    if at_debug.on() then
+        log.debug("[BAL] shot id=%d tier=%s kind=%s moving=%s drive=%s [%.3fms]",
+            id, tier, tostring(kind), tostring(moving), drive, tmr:get_ms())
+    end
+end
+
+-- 200ms poll: sample the actor's horizontal velocity for the ahead/behind aim split. Armed only
+-- while the recorder is on.
+local function _poll_velocity()
+    if not _enabled then return true end
+    if db and db.actor then
+        local apos = db.actor:position()
+        local tg = time_global()
+        if _apx and tg > _at then
+            local dt = (tg - _at) / 1000
+            _avx = (apos.x - _apx) / dt
+            _avz = (apos.z - _apz) / dt
+        end
+        _apx, _apz, _at = apos.x, apos.z, tg
+    end
+    ResetTimeEvent("at_world_trace", "velpoll", 0.2)
+    return false
+end
+
+-- Per bullet aimed at the actor (within 60deg of the shooter->actor line): total fired-direction
+-- error, and where the round's track crosses the actor plane relative to actor travel (positive =
+-- ahead = lead overshoot, negative = behind = tracking lag). Recorded for every such bullet, hit or
+-- miss - the aim signal, separate from hit rate.
+local function _record_angle(bullet, shooter, row)
+    local dir = bullet.direction
+    if not dir then return end
+    local apos = db.actor:position()
+    local spos = shooter:position()
+    local dx, dy, dz = apos.x - spos.x, apos.y + 0.9 - spos.y, apos.z - spos.z
+    local dist = math_sqrt(dx * dx + dy * dy + dz * dz)
+    if dist < 2 then return end
+    local dot = (dir.x * dx + dir.y * dy + dir.z * dz) / dist
+    if dot > 1 then dot = 1 elseif dot < -1 then dot = -1 end
+    local ang = math_deg(math_acos(dot))
+    if ang > 60 then return end
+    row.ang_sum = row.ang_sum + ang
+    row.ang_n = row.ang_n + 1
+    local speed = math_sqrt(_avx * _avx + _avz * _avz)
+    if speed > 0.5 then
+        local px = spos.x + dir.x * dist - apos.x
+        local pz = spos.z + dir.z * dist - apos.z
+        local ahead = (px * _avx + pz * _avz) / speed
+        row.ahead_sum = row.ahead_sum + ahead
+        if ahead >= 0 then row.ahead_n = row.ahead_n + 1 else row.behind_n = row.behind_n + 1 end
+    end
+end
+
+-- Firing the wrong way: the angle between the round's own direction and the shooter->best_enemy line,
+-- from the BULLET not from facing. A large angle = the NPC fired away from the target it should be
+-- shooting, the visible "shooting the wall". Recorded for every bullet from a tracked shooter that
+-- currently has an enemy, hit or miss - separate from the actor-relative aim split above.
+local function _record_wrongway(bullet, shooter, ctx)
+    local enemy = shooter:best_enemy()
+    local dir = bullet.direction
+    if not (enemy and dir) then return end
+    local ep, sp = enemy:position(), shooter:position()
+    local dx, dy, dz = ep.x - sp.x, (ep.y + 0.9) - sp.y, ep.z - sp.z
+    local edist = math_sqrt(dx * dx + dy * dy + dz * dz)
+    if edist < 2 then return end
+    local dot = (dir.x * dx + dir.y * dy + dir.z * dz) / edist
+    if dot > 1 then dot = 1 elseif dot < -1 then dot = -1 end
+    local off = math_deg(math_acos(dot))
+    local row = _tier_row(ctx.tier)
+    row.aim_shots = row.aim_shots + 1
+    row.aim_off_sum = row.aim_off_sum + off
+    if off <= WRONGWAY_DEG then return end
+    row.wrongway = row.wrongway + 1
+    if at_debug.on() then
+        log.debug("[BAL] wrongway id=%d tier=%s off=%.0fdeg enemy=%d edist=%.0f drive=%s",
+            shooter:id(), ctx.tier, off, enemy:id(), edist, ctx.drive)
+    end
+end
+
+-- One record per bullet LANDED: hit on the actor, or a near miss inside 10m; plus the aim split.
+local function _on_impact(bullet)
+    if not (db and db.actor) then return end
+    local parent_id = bullet.parent_id
+    if not parent_id or parent_id == AC_ID then return end
+    local ctx = _ctx[parent_id]
+    if not ctx then return end
+
+    local shooter = xobject.go(parent_id)
+    if shooter then
+        _record_angle(bullet, shooter, _tier_row(ctx.tier))
+        _record_wrongway(bullet, shooter, ctx)
+    end
+
+    local hit = bullet.target_id == AC_ID
+    local near = false
+    if not hit then
+        local apos = db.actor:position()
+        local pos = bullet.position
+        local dx, dy, dz = pos.x - apos.x, pos.y - apos.y, pos.z - apos.z
+        near = (dx * dx + dy * dy + dz * dz) <= NEAR_RADIUS_SQR
+    end
+    if not (hit or near) then return end
+
+    local row = _tier_row(ctx.tier)
+    row.near = row.near + 1
+    if hit then
+        row.hits = row.hits + 1
+        row.conv = row.conv + 1
+        if ctx.moving then row.mv_hits = row.mv_hits + 1 else row.st_hits = row.st_hits + 1 end
+        _drive_row(ctx.drive).hits = _drive_row(ctx.drive).hits + 1
+    end
+    if at_debug.on() then
+        log.debug("[BAL] impact id=%d tier=%s hit=%s drive=%s", parent_id, ctx.tier, tostring(hit), ctx.drive)
+    end
+end
+
+-- Damage the actor actually takes, attributed to the shooter's tier - hits weighted by what
+-- they cost, the third independent lethality axis beside hit rate and volume.
+local function _on_actor_hit(obj, amount, local_direction, who, bone_index)
+    if not (who and amount and amount > 0) then return end
+    if not IsStalker(who) then return end
+    local tier = ranks.get_obj_rank_name(who)
+    if not tier or tier == "" then return end
+    _tier_row(tier).dmg = _tier_row(tier).dmg + amount
+end
+
+local function _pct(hits, shots)
+    return shots > 0 and (100 * hits / shots) or 0
+end
+
+local function _hist_line(hist)
+    local parts = {}
+    for len = 1, 10 do
+        if hist[len] then
+            parts[#parts + 1] = string_format("%s=%d", len == 10 and "10+" or tostring(len), hist[len])
+        end
+    end
+    return table_concat(parts, " ")
+end
+
+--- Write the ballistics minute tables now (also runs on the 60s tick and at level exit).
+function report()
+    local minutes = (time_global() - _t0) / 60000
+    if minutes <= 0 then return end
+    log.info("=== ballistics %dm%02ds ===", math_floor(minutes), math_floor((minutes % 1) * 60))
+    for i = 1, #TIERS do
+        local tier = TIERS[i]
+        local row = _tiers[tier]
+        if row and row.shots > 0 then
+            local moving_n = row.ahead_n + row.behind_n
+            log.info("tier=%-12s shots=%-5d hits=%-4d hit=%.1f%% still=%.1f%% moving=%.1f%% conv=%.0f%% dmg=%.2f hpm=%.1f ang=%.1fdeg ahead=%.0f%% off=%.1fdeg wrong=%.0f%%",
+                tier, row.shots, row.hits, _pct(row.hits, row.shots), _pct(row.st_hits, row.st_shots),
+                _pct(row.mv_hits, row.mv_shots), _pct(row.conv, row.near), row.dmg, row.hits / minutes,
+                row.ang_n > 0 and (row.ang_sum / row.ang_n) or 0,
+                moving_n > 0 and (100 * row.ahead_n / moving_n) or 0,
+                row.aim_shots > 0 and (row.aim_off_sum / row.aim_shots) or 0,
+                _pct(row.wrongway, row.aim_shots))
+        end
+    end
+    for name, row in pairs(_drive) do
+        log.info("drive=%-8s shots=%-5d hits=%-4d hit=%.1f%%", name, row.shots, row.hits, _pct(row.hits, row.shots))
+    end
+    for kind, hist in pairs(_bursts) do
+        log.info("bursts kind=%-10s %s", tostring(kind), _hist_line(hist))
+    end
+end
+
+--- Zero the ballistics counters and restart the session clock - a bench-run boundary. Module state
+--- survives a save load within one game session, so without this a repeated bench accumulates runs into
+--- one table; cycling the toggle is the only other reset path.
+function reset()
+    _reset()
+end
+
+local function _report_tick()
+    if not _enabled then return true end
+    report()
+    ResetTimeEvent("at_world_trace", "report", REPORT_SEC)
+    return false
+end
+
+-- ---------------------------------------------------------------------------
+-- Lifecycle: one toggle arms both instruments; nothing is registered while off, so the module is
+-- truly zero cost when the player leaves it off.
+-- ---------------------------------------------------------------------------
+
+local function _apply_enabled()
+    local want = cfg.world_trace_enabled and true or false
+    if want == _enabled then return end
+    _enabled = want
+    if _enabled then
+        _slide, _watch, _speed = {}, {}, {}
+        _speed_ceiling = _speed_ceiling or _derive_ceiling()
+        _reset()
+        RegisterScriptCallback("npc_on_hit_callback", _on_hit)
+        RegisterScriptCallback("server_entity_on_unregister", _on_unregister)
+        RegisterScriptCallback("npc_shot_dispersion",   _on_shot)
+        RegisterScriptCallback("bullet_on_impact",      _on_impact)
+        RegisterScriptCallback("actor_on_hit_callback", _on_actor_hit)
+        RemoveTimeEvent("at_world_trace", "monitor")
+        CreateTimeEvent("at_world_trace", "monitor", SAMPLE_SEC, _monitor)
+        RemoveTimeEvent("at_world_trace", "watch")
+        CreateTimeEvent("at_world_trace", "watch", WATCH_SEC, _watch_poll)
+        RemoveTimeEvent("at_world_trace", "report")
+        CreateTimeEvent("at_world_trace", "report", REPORT_SEC, _report_tick)
+        RemoveTimeEvent("at_world_trace", "velpoll")
+        CreateTimeEvent("at_world_trace", "velpoll", 0.2, _poll_velocity)
+        log.info("World trace enabled (slide sample=%dms radius=70m, ballistics report=%ds)",
+            math_floor(SAMPLE_SEC * 1000), REPORT_SEC)
+    else
+        UnregisterScriptCallback("npc_on_hit_callback", _on_hit)
+        UnregisterScriptCallback("server_entity_on_unregister", _on_unregister)
+        UnregisterScriptCallback("npc_shot_dispersion",   _on_shot)
+        UnregisterScriptCallback("bullet_on_impact",      _on_impact)
+        UnregisterScriptCallback("actor_on_hit_callback", _on_actor_hit)
+        RemoveTimeEvent("at_world_trace", "monitor")
+        RemoveTimeEvent("at_world_trace", "watch")
+        RemoveTimeEvent("at_world_trace", "report")
+        RemoveTimeEvent("at_world_trace", "velpoll")
+        report()
+        log.flush()
+        log.info("World trace disabled")
+    end
+end
+
+local function _refresh_config()
+    log.set_level(at_mcm.get_config("log_level") or "WARN")
+    _apply_enabled()
+end
+
+local function _on_first_update()
+    _refresh_config()
+end
+
+local function _on_actor_net_destroy()
+    if _enabled then
+        report()
+        log.flush()
+    end
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_first_update",      _on_first_update)
+    RegisterScriptCallback("actor_on_net_destroy",       _on_actor_net_destroy)
+    RegisterScriptCallback("on_option_change",           _refresh_config)
+    RegisterScriptCallback("mcm_option_restore_default", _refresh_config)
+end

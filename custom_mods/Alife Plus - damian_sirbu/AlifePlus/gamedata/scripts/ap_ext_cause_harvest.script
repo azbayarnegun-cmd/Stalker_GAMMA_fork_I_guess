@@ -1,0 +1,91 @@
+--- ap_ext_cause_harvest: Artefact pickup by player or NPC
+local xsquad, xlevel, xconst, xttltable, xinventory = xsquad, xlevel, xconst, xttltable, xinventory
+local ap_core_debug, ap_core_broker, ap_core_limiter, ap_core_producer = ap_core_debug, ap_core_broker, ap_core_limiter, ap_core_producer
+
+local CAUSE = ap_core_const.CAUSE
+local CAUSE_TYPE = ap_core_const.CAUSE_TYPE
+local CAUSE_CATEGORY = ap_core_const.CAUSE_CATEGORY
+local CATEGORY = CAUSE_CATEGORY.REACTIONS
+local CAP_KEY = "cause_max_reactions"
+local CALLBACK = ap_core_const.CALLBACK
+local RESULT = ap_core_const.RESULT
+local REASON = ap_core_const.REASON
+local LOG = ap_core_debug.bracket(CAUSE.HARVEST)
+
+local cfg = ap_core_mcm.cfg
+
+local _pickup_cooldown = xttltable.create_ttl_table({
+    default_ttl = ap_core_const.HARVEST_COOLDOWN_SEC,
+    clock = os.clock,
+})
+
+local function _evaluate(item, npc)
+    if not cfg.cause_harvest_enabled then return { code = RESULT.FAILED_RULES, reason = REASON.DISABLED } end
+    if not item then return { code = RESULT.FAILED_RULES, reason = REASON.NIL_ARGS } end
+    if not ap_core_limiter.check_cause_rate_limit(CATEGORY, cfg[CAP_KEY]) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BUDGET_EXHAUSTED }
+    end
+
+    local section = item:section()
+    if not xinventory.is_in_category(section, "artefact") then return { code = RESULT.FAILED_RULES, reason = REASON.NOT_ARTEFACT, section = section } end
+
+    if _pickup_cooldown:has(section) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.ON_COOLDOWN, section = section }
+    end
+
+    local taker_is_player = npc == nil
+
+    local position, level_id, taker_squad_id, taker_squad
+    if taker_is_player then
+        local actor = db.actor
+        if not actor then return { code = RESULT.FAILED_RULES, reason = REASON.NO_ACTOR } end
+        position = actor:position()
+        level_id = xlevel.get_actor_level_id()
+    else
+        position = npc:position()
+        local squad = xsquad.get_squad_by_member(npc:id())
+        if not squad then return { code = RESULT.FAILED_RULES, reason = REASON.NO_SQUAD } end
+        local protected, reason, detail, pname = ap_core_broker.is_protected(squad)
+        if protected then return { code = RESULT.FAILED_RULES, reason = reason, detail = detail, name = pname } end
+        taker_squad_id = squad.id
+        taker_squad = squad
+        level_id = xlevel.get_level_id(squad)
+    end
+    if not level_id then return { code = RESULT.FAILED_RULES, reason = REASON.NO_LEVEL_ID } end
+
+    local taker_id = taker_is_player and xconst.ACTOR_ENTITY_ID or npc:id()
+    if not ap_core_limiter.check_causer_rate_limit(taker_id) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.CAUSER_EXHAUSTED }
+    end
+
+    _pickup_cooldown:set(section, true)
+
+    ap_core_limiter.increment_cause_counter(CATEGORY)
+    ap_core_limiter.increment_causer_counter(taker_id)
+    return {
+        cause = CAUSE.HARVEST,
+        taker_is_player = taker_is_player,
+        taker_id = taker_id,
+        taker_squad_id = taker_squad_id,
+        taker_squad = taker_squad,
+        artefact_section = section,
+        position = position,
+        level_id = level_id,
+    }
+end
+
+local _adapters = {
+    [CALLBACK.ACTOR_ON_ITEM_TAKE] = function(item) return _evaluate(item, nil) end,
+    [CALLBACK.NPC_ON_ITEM_TAKE]   = function(npc, item) return _evaluate(item, npc) end,
+}
+
+function on_game_start()
+    local cbs = ap_core_const.HARVEST_CALLBACKS
+    for i = 1, #cbs do
+        ap_core_producer.register({
+            callback = cbs[i], cause_type = CAUSE_TYPE.REACTIVE,
+            category = CAUSE_CATEGORY.REACTIONS, name = CAUSE.HARVEST,
+        }, _adapters[cbs[i]])
+    end
+    ap_core_debug.info(LOG .. " Initialized (actor=item_take, npc=item_take)")
+end

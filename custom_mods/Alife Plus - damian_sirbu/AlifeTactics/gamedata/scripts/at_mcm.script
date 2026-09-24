@@ -1,0 +1,847 @@
+--- at_mcm: MCM configuration for AlifeTactics
+
+local defaults = {
+    disclosure_enabled        = true,
+    disclosure_turn           = true,
+    disclosure_retention_min  = 2,
+    disclosure_survivor_gate  = true,
+    healing_enabled           = true,
+    heal_rate_multiplier      = 1.0,
+    charge_chance_novice      = 50,
+    charge_chance_experienced = 50,
+    charge_chance_veteran     = 50,
+    charge_chance_master      = 50,
+    limping_anim_enabled      = true,
+    limping_health_threshold  = 0.25,
+    healing_anim_enabled      = true,
+    disp_enabled           = true,
+    move_enabled           = true,
+    acc_disp_novice        = 1.00,
+    acc_disp_trainee       = 0.90,
+    acc_disp_experienced   = 0.82,
+    acc_disp_professional  = 0.75,
+    acc_disp_veteran       = 0.67,
+    acc_disp_expert        = 0.60,
+    acc_disp_master        = 0.51,
+    acc_disp_legend        = 0.25,
+    acc_move_novice        = 1.00,
+    acc_move_trainee       = 0.96,
+    acc_move_experienced   = 0.91,
+    acc_move_professional  = 0.87,
+    acc_move_veteran       = 0.83,
+    acc_move_expert        = 0.79,
+    acc_move_master        = 0.74,
+    acc_move_legend        = 0.70,
+    aim_enabled            = true,
+    vision_enabled         = true,
+    lead_enabled           = true,
+    discipline_enabled     = true,
+    rct_aim_novice         = 0.24,
+    rct_aim_trainee        = 0.40,
+    rct_aim_experienced    = 0.54,
+    rct_aim_professional   = 0.66,
+    rct_aim_veteran        = 0.80,
+    rct_aim_expert         = 0.92,
+    rct_aim_master         = 1.06,
+    rct_aim_legend         = 1.50,
+    rct_track_novice        = 0.196,
+    rct_track_trainee       = 0.222,
+    rct_track_experienced   = 0.245,
+    rct_track_professional  = 0.264,
+    rct_track_veteran       = 0.287,
+    rct_track_expert        = 0.306,
+    rct_track_master        = 0.328,
+    rct_track_legend        = 0.400,
+    rct_lead_novice         = 2.00,
+    rct_lead_trainee        = 1.85,
+    rct_lead_experienced    = 1.70,
+    rct_lead_professional   = 1.55,
+    rct_lead_veteran        = 1.40,
+    rct_lead_expert         = 1.25,
+    rct_lead_master         = 1.10,
+    rct_lead_legend         = 1.00,
+    rct_vision_novice       = 1.00,
+    rct_vision_trainee      = 1.03,
+    rct_vision_experienced  = 1.06,
+    rct_vision_professional = 1.09,
+    rct_vision_veteran      = 1.12,
+    rct_vision_expert       = 1.15,
+    rct_vision_master       = 1.18,
+    rct_vision_legend       = 1.21,
+    rct_vrange_novice       = 1.00,
+    rct_vrange_trainee      = 1.02,
+    rct_vrange_experienced  = 1.05,
+    rct_vrange_professional = 1.07,
+    rct_vrange_veteran      = 1.09,
+    rct_vrange_expert       = 1.11,
+    rct_vrange_master       = 1.13,
+    rct_vrange_legend       = 1.15,
+    rct_qsize_novice        = 1.00,
+    rct_qsize_trainee       = 0.97,
+    rct_qsize_experienced   = 0.95,
+    rct_qsize_professional  = 0.93,
+    rct_qsize_veteran       = 0.91,
+    rct_qsize_expert        = 0.89,
+    rct_qsize_master        = 0.87,
+    rct_qsize_legend        = 0.80,
+    rct_qinterval_novice        = 1.00,
+    rct_qinterval_trainee       = 0.96,
+    rct_qinterval_experienced   = 0.93,
+    rct_qinterval_professional  = 0.89,
+    rct_qinterval_veteran       = 0.86,
+    rct_qinterval_expert        = 0.82,
+    rct_qinterval_master        = 0.79,
+    rct_qinterval_legend        = 0.75,
+    commitment_enabled = true,
+    commitment_cover_pin = true,
+    commitment_hold_s  = 6,
+    combat_enabled = true,
+    combat_ignore_companions = true,
+    maneuver_counterflank    = true,
+    maneuver_reload_cover    = true,
+    maneuver_kite    = true,
+    maneuver_retreat = true,
+    maneuver_flee    = true,
+    maneuver_pickoff = true,
+    conduct_posture  = true,
+    crossfire_enabled        = true,
+    crossfire_factor         = 0.0,
+    danger_hit_bypass   = true,
+    danger_attack_sound = true,
+    danger_move_noise    = true,
+    danger_heard_actions = true,
+    danger_noise_mult    = 1.0,
+    danger_neutral_gunfire = true,
+    danger_actor_tables = true,
+    fix_config_isolation   = true,
+    fix_corpse_time        = true,
+    fix_npc_teardown       = true,
+    fix_time_value         = true,
+    fix_hit_memory         = true,
+    fix_anim_cleanup       = true,
+    fix_cover_scope        = true,
+    fix_corpse_despawn     = true,
+    fix_investigator_select = true,
+    fix_investigate_target = true,
+    fix_config_cache       = true,
+    fix_id_reuse           = true,
+    fix_corpse_order       = true,
+    jam_enabled  = true,
+    ammo_enabled = true,
+
+    gear_enabled           = true,
+    gear_artefacts_enabled = true,
+    gear_aura_enabled      = true,
+    gear_binoc_enabled     = true,
+    gear_nvg_enabled       = true,
+    log_level = "WARN",
+    log_flush = false,
+    hud_position   = "off",
+    world_trace_enabled = false,
+}
+
+local RegisterScriptCallback = RegisterScriptCallback
+
+-- Every value here MUST mirror the on_mcm_load tree: an option's saved path is at/<tab>/<key>, and
+-- ui_mcm.get validates that path against the option tree before touching storage (opt_val gate,
+-- MCM ui_mcm.script:711-714) - a path the tree does not contain reads nothing, logs
+-- "!MCM given bad path", and the getter silently falls back to the code default.
+local _key_to_tab = {
+    disclosure_enabled        = "effectiveness/disclosure",
+    disclosure_turn           = "effectiveness/disclosure",
+    disclosure_retention_min  = "effectiveness/disclosure",
+    disclosure_survivor_gate  = "effectiveness/disclosure",
+    healing_enabled           = "mechanics/healing",
+    heal_rate_multiplier      = "mechanics/healing",
+    charge_chance_novice      = "mechanics/healing",
+    charge_chance_experienced = "mechanics/healing",
+    charge_chance_veteran     = "mechanics/healing",
+    charge_chance_master      = "mechanics/healing",
+    limping_anim_enabled      = "mechanics/healing",
+    limping_health_threshold  = "mechanics/healing",
+    healing_anim_enabled      = "mechanics/healing",
+    disp_enabled           = "effectiveness/accuracy",
+    move_enabled           = "effectiveness/accuracy",
+    acc_disp_novice        = "effectiveness/accuracy",
+    acc_disp_trainee       = "effectiveness/accuracy",
+    acc_disp_experienced   = "effectiveness/accuracy",
+    acc_disp_professional  = "effectiveness/accuracy",
+    acc_disp_veteran       = "effectiveness/accuracy",
+    acc_disp_expert        = "effectiveness/accuracy",
+    acc_disp_master        = "effectiveness/accuracy",
+    acc_disp_legend        = "effectiveness/accuracy",
+    acc_move_novice        = "effectiveness/accuracy",
+    acc_move_trainee       = "effectiveness/accuracy",
+    acc_move_experienced   = "effectiveness/accuracy",
+    acc_move_professional  = "effectiveness/accuracy",
+    acc_move_veteran       = "effectiveness/accuracy",
+    acc_move_expert        = "effectiveness/accuracy",
+    acc_move_master        = "effectiveness/accuracy",
+    acc_move_legend        = "effectiveness/accuracy",
+    aim_enabled            = "effectiveness/reaction",
+    vision_enabled         = "perception/vision",
+    lead_enabled           = "effectiveness/reaction",
+    discipline_enabled     = "effectiveness/reaction",
+    rct_aim_novice         = "effectiveness/reaction",
+    rct_aim_trainee        = "effectiveness/reaction",
+    rct_aim_experienced    = "effectiveness/reaction",
+    rct_aim_professional   = "effectiveness/reaction",
+    rct_aim_veteran        = "effectiveness/reaction",
+    rct_aim_expert         = "effectiveness/reaction",
+    rct_aim_master         = "effectiveness/reaction",
+    rct_aim_legend         = "effectiveness/reaction",
+    rct_track_novice       = "effectiveness/reaction",
+    rct_track_trainee      = "effectiveness/reaction",
+    rct_track_experienced  = "effectiveness/reaction",
+    rct_track_professional = "effectiveness/reaction",
+    rct_track_veteran      = "effectiveness/reaction",
+    rct_track_expert       = "effectiveness/reaction",
+    rct_track_master       = "effectiveness/reaction",
+    rct_track_legend       = "effectiveness/reaction",
+    rct_lead_novice         = "effectiveness/reaction",
+    rct_lead_trainee        = "effectiveness/reaction",
+    rct_lead_experienced    = "effectiveness/reaction",
+    rct_lead_professional   = "effectiveness/reaction",
+    rct_lead_veteran        = "effectiveness/reaction",
+    rct_lead_expert         = "effectiveness/reaction",
+    rct_lead_master         = "effectiveness/reaction",
+    rct_lead_legend         = "effectiveness/reaction",
+    rct_vision_novice       = "perception/vision",
+    rct_vision_trainee      = "perception/vision",
+    rct_vision_experienced  = "perception/vision",
+    rct_vision_professional = "perception/vision",
+    rct_vision_veteran      = "perception/vision",
+    rct_vision_expert       = "perception/vision",
+    rct_vision_master       = "perception/vision",
+    rct_vision_legend       = "perception/vision",
+    rct_vrange_novice       = "perception/vision",
+    rct_vrange_trainee      = "perception/vision",
+    rct_vrange_experienced  = "perception/vision",
+    rct_vrange_professional = "perception/vision",
+    rct_vrange_veteran      = "perception/vision",
+    rct_vrange_expert       = "perception/vision",
+    rct_vrange_master       = "perception/vision",
+    rct_vrange_legend       = "perception/vision",
+    rct_qsize_novice        = "effectiveness/reaction",
+    rct_qsize_trainee       = "effectiveness/reaction",
+    rct_qsize_experienced   = "effectiveness/reaction",
+    rct_qsize_professional  = "effectiveness/reaction",
+    rct_qsize_veteran       = "effectiveness/reaction",
+    rct_qsize_expert        = "effectiveness/reaction",
+    rct_qsize_master        = "effectiveness/reaction",
+    rct_qsize_legend        = "effectiveness/reaction",
+    rct_qinterval_novice        = "effectiveness/reaction",
+    rct_qinterval_trainee       = "effectiveness/reaction",
+    rct_qinterval_experienced   = "effectiveness/reaction",
+    rct_qinterval_professional  = "effectiveness/reaction",
+    rct_qinterval_veteran       = "effectiveness/reaction",
+    rct_qinterval_expert        = "effectiveness/reaction",
+    rct_qinterval_master        = "effectiveness/reaction",
+    rct_qinterval_legend        = "effectiveness/reaction",
+    commitment_enabled = "combat/commitment",
+    commitment_cover_pin = "combat/commitment",
+    commitment_hold_s  = "combat/commitment",
+    combat_enabled = "combat/maneuvers",
+    combat_ignore_companions = "combat/maneuvers",
+    maneuver_counterflank    = "combat/maneuvers",
+    maneuver_reload_cover    = "combat/maneuvers",
+    maneuver_kite    = "combat/maneuvers",
+    maneuver_retreat = "combat/maneuvers",
+    maneuver_flee    = "combat/maneuvers",
+    maneuver_pickoff = "combat/maneuvers",
+    conduct_posture  = "combat/conduct",
+    crossfire_enabled = "effectiveness/crossfire",
+    crossfire_factor  = "effectiveness/crossfire",
+    danger_hit_bypass   = "perception/danger",
+    danger_attack_sound = "perception/sound",
+    danger_move_noise    = "perception/sound",
+    danger_heard_actions = "perception/sound",
+    danger_noise_mult    = "perception/sound",
+    danger_neutral_gunfire = "perception/sound",
+    danger_actor_tables = "perception/danger",
+    fix_config_isolation   = "perception/danger",
+    fix_corpse_time        = "perception/danger",
+    fix_npc_teardown       = "perception/danger",
+    fix_time_value         = "perception/danger",
+    fix_hit_memory         = "perception/danger",
+    fix_anim_cleanup       = "perception/danger",
+    fix_cover_scope        = "perception/danger",
+    fix_corpse_despawn     = "perception/danger",
+    fix_investigator_select = "perception/danger",
+    fix_investigate_target = "perception/danger",
+    fix_config_cache       = "perception/danger",
+    fix_id_reuse           = "perception/danger",
+    fix_corpse_order       = "perception/danger",
+    jam_enabled         = "mechanics/jam",
+    ammo_enabled        = "mechanics/ammo",
+    gear_enabled           = "mechanics/gear",
+    gear_artefacts_enabled = "mechanics/gear",
+    gear_aura_enabled      = "mechanics/gear",
+    gear_binoc_enabled     = "mechanics/gear",
+    gear_nvg_enabled       = "mechanics/gear",
+    log_level     = "development",
+    log_flush     = "development",
+    btn_reset_all = "development",
+    hud_position   = "development",
+    world_trace_enabled = "development",
+}
+
+local function path_builder(key)
+    return "at/" .. (_key_to_tab[key] or "development") .. "/" .. key
+end
+
+cfg, get_config, load_config = xmcm.create_config("at", defaults, path_builder)
+
+-- functor_ui receives the UI_MCM instance as trailing arg (ui_mcm.script:1435).
+-- functor would receive nothing. MCM 1.7.2fix leaves file-local GUI nil on fresh
+-- opens (only Open_to sets it, Reset_last_opt skips Open_to when last_path is nil),
+-- so ui_mcm.get_gui() returns nil. functor_ui sidesteps that bug.
+-- MCM keeps file-local opt_temp (pending widget edits) at ui_mcm.script:175. On_Accept
+-- at ui_mcm.script:2393 writes opt_temp AFTER our config writes, partially un-applying
+-- the reset. The warning desc above the button instructs the user to save or discard first.
+local function _apply_defaults(gui, msg)
+    local config = axr_main.config
+    for k, v in pairs(defaults) do
+        config:w_value("mcm", path_builder(k), v)
+    end
+    config:save()
+    load_config()
+    SendScriptCallback("mcm_option_restore_default")
+    if gui then
+        if gui.owner and gui.owner.SetMsg then
+            gui.owner:SetMsg(msg, 5)
+        end
+        -- Close via On_Cancel: On_Discard calls Reset_opt -> scroll_opt:Clear at
+        -- ui_mcm.script:949, which destroys btn_reset_all while its click handler is
+        -- still on the stack; C++ dispatcher returns into the freed control and
+        -- SEH-fires on some exe builds. On_Cancel only calls HideDialog + Unregister_UI.
+        if gui.On_Cancel then
+            gui:On_Cancel()
+        end
+    end
+    if db.actor then
+        news_manager.send_tip(db.actor, msg, nil, nil, 5000)
+    end
+end
+
+function btn_reset_all(gui)
+    _apply_defaults(gui, game.translate_string("st_at_reset_all_done"))
+end
+
+-- Greying helpers for a locked-on toggle, at file scope (no per-call closure), pcall-guarded by the
+-- caller against a handler MCM omits on some build. The handler keys are the proven ctrl + cap pair
+-- (mcm_probe, 2026-07-30): the control is disabled, the caption greyed.
+local function _disable_ctrl(ctrl) ctrl:Enable(false) end
+local function _grey_cap(cap, clr) cap:TextControl():SetTextColor(clr) end
+
+--- Render a check as a permanent ON, greyed, non-interactive toggle - the display for an always-on
+--- feature that cannot be turned off (the danger crash fixes). The check ships def = true and its
+--- ui_hook_functor disables the control and greys the caption, so it stays ON and cannot be changed; the
+--- disabled control never fires a change, so no functor is needed. The proven technique.
+--- @safety SAFE - each call is pcall-guarded against a handler MCM omits on some build
+function locked_on_grey(_anchor, handlers)
+    if type(handlers) ~= "table" then return end
+    if handlers.ctrl then pcall(_disable_ctrl, handlers.ctrl) end
+    if handlers.cap then pcall(_grey_cap, handlers.cap, GetARGB(255, 120, 120, 120)) end
+end
+
+-- The menu tree groups pages under the category folders Combat / Effectiveness / Perception / Mechanics / Effects / Mutants.
+-- (1) The saved setting path is path_builder(key) = at/_key_to_tab[key]/key and it MUST match this tree:
+-- ui_mcm.get validates the path against the option tree before reading storage (opt_val gate, MCM
+-- ui_mcm.script:711-714), so reparenting a page moves its path - update _key_to_tab in the same edit, and
+-- values stored under the old path are orphaned (defaults apply until the user re-sets them). The original
+-- restructure assumed the path was independent of the tree; it is not - every read off-tree logged
+-- "!MCM given bad path" and returned the code default. (2) An option's label/hint string is
+-- opt_str .. (v.hint or path) (ui_mcm.script:1412,886), so each option sets hint = its original
+-- "at_<tab>_<key>" and the label resolves to the existing ui_mcm_at_<tab>_<key> string without renaming any
+-- strings to the new tree path. desc/hdr/title nodes keep explicit text. Only the ui_mcm_menu_<id> page
+-- labels move (handled in ui_st_mcm_at.xml). WIP sub-pages carry a single "wip" desc until their feature exists.
+function on_mcm_load()
+    -- The Reaction sliders default from configs/alifetactics/at_reaction.ltx - the file owns the
+    -- default numbers; a moved slider overrides its key, and MCM reset returns to the LTX values.
+    -- rct_fb holds the code fallbacks for a missing key/file (repo LTX convention).
+    local rct_fb = {
+        aim_novice = 0.24, aim_trainee = 0.40, aim_experienced = 0.54, aim_professional = 0.66,
+        aim_veteran = 0.80, aim_expert = 0.92, aim_master = 1.06, aim_legend = 1.50,
+        track_novice = 0.196, track_trainee = 0.222, track_experienced = 0.245, track_professional = 0.264,
+        track_veteran = 0.287, track_expert = 0.306, track_master = 0.328, track_legend = 0.400,
+        lead_novice = 2.00, lead_trainee = 1.85, lead_experienced = 1.70, lead_professional = 1.55,
+        lead_veteran = 1.40, lead_expert = 1.25, lead_master = 1.10, lead_legend = 1.00,
+        qsize_novice = 1.00, qsize_trainee = 0.97, qsize_experienced = 0.95, qsize_professional = 0.93,
+        qsize_veteran = 0.91, qsize_expert = 0.89, qsize_master = 0.87, qsize_legend = 0.80,
+        qinterval_novice = 1.00, qinterval_trainee = 0.96, qinterval_experienced = 0.93, qinterval_professional = 0.89,
+        qinterval_veteran = 0.86, qinterval_expert = 0.82, qinterval_master = 0.79, qinterval_legend = 0.75,
+        vision_novice = 1.00, vision_trainee = 1.03, vision_experienced = 1.06, vision_professional = 1.09,
+        vision_veteran = 1.12, vision_expert = 1.15, vision_master = 1.18, vision_legend = 1.21,
+        vrange_novice = 1.00, vrange_trainee = 1.02, vrange_experienced = 1.05, vrange_professional = 1.07,
+        vrange_veteran = 1.09, vrange_expert = 1.11, vrange_master = 1.13, vrange_legend = 1.15,
+    }
+    local RCT_CONFIG_PATH    = "alifetactics\\at_reaction.ltx"
+    local RCT_CONFIG_SECTION = "at_reaction"
+    local rct_ini = ini_file(RCT_CONFIG_PATH)
+    local function rct_def(key)
+        return rct_ini:r_float_ex(RCT_CONFIG_SECTION, key) or rct_fb[key]
+    end
+    local function wip_page(id)
+        return {
+            id = id,
+            sh = true,
+            gr = {
+                { id = "title", type = "slide", link = "at_mcm_banner",
+                    text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                { id = "desc", type = "desc", text = "ui_mcm_at_" .. id .. "_desc" },            },
+        }
+    end
+    return {
+        id = "at",
+        gr = {
+            {
+                id = "combat",
+                gr = {
+                    {
+                        id = "maneuvers",
+                        sh = true,
+                        gr = {
+                            { id = "title", type = "slide", link = "at_mcm_banner",
+                                text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                            { id = "desc", type = "desc", text = "ui_mcm_at_combat_desc" },
+                            { id = "combat_enabled", type = "check", val = 1, def = true, hint = "at_combat_combat_enabled" },
+                            { id = "combat_ignore_companions", type = "check", val = 1, def = true, hint = "at_combat_combat_ignore_companions" },
+
+                            { id = "div_maneuvers", type = "line" },
+                            { id = "hdr_maneuvers", type = "desc", text = "ui_mcm_at_combat_hdr_maneuvers", clr = {255, 200, 200, 200} },
+                            { id = "maneuver_counterflank",    type = "check", val = 1, def = true, hint = "at_combat_maneuver_counterflank" },
+                            { id = "maneuver_reload_cover",    type = "check", val = 1, def = true, hint = "at_combat_maneuver_reload_cover" },
+                            { id = "maneuver_flee",    type = "check", val = 1, def = true, hint = "at_combat_maneuver_flee" },
+                            { id = "maneuver_retreat", type = "check", val = 1, def = true, hint = "at_combat_maneuver_retreat" },
+                            { id = "maneuver_kite",    type = "check", val = 1, def = true, hint = "at_combat_maneuver_kite" },
+                            { id = "maneuver_pickoff", type = "check", val = 1, def = true, hint = "at_combat_maneuver_pickoff" },
+
+                            -- Platform footer (self-contained builder in _at_deps, not xlibs)
+                            { id = "div_footer", type = "line" },
+                            { id = "platform", type = "desc", text = "ui_mcm_xmcm_footer",
+                                ui_hook_functor = { _at_deps.platform_functor() }, clr = {255, 212, 201, 168} },                        },
+                    },
+                    {
+                        id = "commitment",
+                        sh = true,
+                        gr = {
+                            { id = "title", type = "slide", link = "at_mcm_banner",
+                                text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                            { id = "desc", type = "desc", text = "ui_mcm_at_commitment_desc" },
+                            { id = "commitment_enabled", type = "check", val = 1, def = true, hint = "at_commitment_commitment_enabled" },
+                            { id = "commitment_cover_pin", type = "check", val = 1, def = true, hint = "at_commitment_commitment_cover_pin" },
+
+                            { id = "div_hold", type = "line" },
+                            { id = "hdr_hold", type = "desc", text = "ui_mcm_at_hdr_commitment_hold", clr = {255, 200, 200, 200} },
+                            { id = "commitment_hold_s", type = "track", val = 2, min = 2, max = 15, step = 1, def = 6, hint = "at_commitment_commitment_hold_s" },
+                        },
+                    },
+                    {
+                        id = "conduct",
+                        sh = true,
+                        gr = {
+                            { id = "title", type = "slide", link = "at_mcm_banner",
+                                text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                            { id = "desc", type = "desc", text = "ui_mcm_at_conduct_desc" },
+                            { id = "conduct_posture", type = "check", val = 1, def = true, hint = "at_conduct_conduct_posture" },
+                        },
+                    },
+                    wip_page("behaviors"),
+                },
+            },
+            {
+                id = "effectiveness",
+                gr = {
+                    {
+                        id = "accuracy",
+                        sh = true,
+                        gr = {
+                            { id = "title", type = "slide", link = "at_mcm_banner",
+                                text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                            { id = "desc", type = "desc", text = "ui_mcm_at_accuracy_desc" },
+
+                            { id = "div_accuracy_curve", type = "line" },
+                            { id = "hdr_accuracy_curve", type = "desc", text = "ui_mcm_at_hdr_accuracy_curve", clr = {255, 200, 200, 200} },
+                            { id = "disp_enabled", type = "check", val = 1, def = true, hint = "at_accuracy_disp_enabled" },
+                            { id = "acc_disp_novice",       type = "track", val = 2, min = 0.05, max = 2.00, step = 0.05, def = 1.00, hint = "at_accuracy_acc_disp_novice" },
+                            { id = "acc_disp_trainee",      type = "track", val = 2, min = 0.05, max = 2.00, step = 0.05, def = 0.90, hint = "at_accuracy_acc_disp_trainee" },
+                            { id = "acc_disp_experienced",  type = "track", val = 2, min = 0.05, max = 2.00, step = 0.05, def = 0.82, hint = "at_accuracy_acc_disp_experienced" },
+                            { id = "acc_disp_professional", type = "track", val = 2, min = 0.05, max = 2.00, step = 0.05, def = 0.75, hint = "at_accuracy_acc_disp_professional" },
+                            { id = "acc_disp_veteran",      type = "track", val = 2, min = 0.05, max = 2.00, step = 0.05, def = 0.67, hint = "at_accuracy_acc_disp_veteran" },
+                            { id = "acc_disp_expert",       type = "track", val = 2, min = 0.05, max = 2.00, step = 0.05, def = 0.60, hint = "at_accuracy_acc_disp_expert" },
+                            { id = "acc_disp_master",       type = "track", val = 2, min = 0.05, max = 2.00, step = 0.05, def = 0.51, hint = "at_accuracy_acc_disp_master" },
+                            { id = "acc_disp_legend",       type = "track", val = 2, min = 0.05, max = 2.00, step = 0.05, def = 0.25, hint = "at_accuracy_acc_disp_legend" },
+
+                            { id = "div_accuracy_move", type = "line" },
+                            { id = "hdr_accuracy_move", type = "desc", text = "ui_mcm_at_hdr_accuracy_move", clr = {255, 200, 200, 200} },
+                            { id = "move_enabled", type = "check", val = 1, def = true, hint = "at_accuracy_move_enabled" },
+                            { id = "acc_move_novice",       type = "track", val = 2, min = 0.50, max = 1.00, step = 0.01, def = 1.00, hint = "at_accuracy_acc_move_novice" },
+                            { id = "acc_move_trainee",      type = "track", val = 2, min = 0.50, max = 1.00, step = 0.01, def = 0.96, hint = "at_accuracy_acc_move_trainee" },
+                            { id = "acc_move_experienced",  type = "track", val = 2, min = 0.50, max = 1.00, step = 0.01, def = 0.91, hint = "at_accuracy_acc_move_experienced" },
+                            { id = "acc_move_professional", type = "track", val = 2, min = 0.50, max = 1.00, step = 0.01, def = 0.87, hint = "at_accuracy_acc_move_professional" },
+                            { id = "acc_move_veteran",      type = "track", val = 2, min = 0.50, max = 1.00, step = 0.01, def = 0.83, hint = "at_accuracy_acc_move_veteran" },
+                            { id = "acc_move_expert",       type = "track", val = 2, min = 0.50, max = 1.00, step = 0.01, def = 0.79, hint = "at_accuracy_acc_move_expert" },
+                            { id = "acc_move_master",       type = "track", val = 2, min = 0.50, max = 1.00, step = 0.01, def = 0.74, hint = "at_accuracy_acc_move_master" },
+                            { id = "acc_move_legend",       type = "track", val = 2, min = 0.50, max = 1.00, step = 0.01, def = 0.70, hint = "at_accuracy_acc_move_legend" },
+                        },
+                    },
+                    {
+                        id = "disclosure",
+                        sh = true,
+                        gr = {
+                            { id = "title", type = "slide", link = "at_mcm_banner",
+                                text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                            { id = "desc", type = "desc", text = "ui_mcm_at_disclosure_desc" },
+                            { id = "disclosure_enabled", type = "check", val = 1, def = true, hint = "at_disclosure_disclosure_enabled" },
+                            { id = "disclosure_turn", type = "check", val = 1, def = true, hint = "at_disclosure_disclosure_turn" },
+
+                            { id = "div_survivor", type = "line" },
+                            { id = "hdr_survivor", type = "desc", text = "ui_mcm_at_disclosure_hdr_survivor", clr = {255, 200, 200, 200} },
+                            { id = "disclosure_survivor_gate", type = "check", val = 1, def = true, hint = "at_disclosure_disclosure_survivor_gate" },
+
+                            { id = "div_retention", type = "line" },
+                            { id = "hdr_retention", type = "desc", text = "ui_mcm_at_hdr_retention", clr = {255, 200, 200, 200} },
+                            { id = "disclosure_retention_min", type = "track", val = 2, min = 1, max = 30, step = 1, def = 2, hint = "at_disclosure_disclosure_retention_min" },
+                        },
+                    },
+                    {
+                        id = "crossfire",
+                        sh = true,
+                        gr = {
+                            { id = "title", type = "slide", link = "at_mcm_banner",
+                                text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                            { id = "desc", type = "desc", text = "ui_mcm_at_crossfire_desc" },
+                            { id = "crossfire_enabled", type = "check", val = 1, def = true, hint = "at_crossfire_crossfire_enabled" },
+                            { id = "crossfire_factor", type = "track", val = 2, min = 0.0, max = 1.0, step = 0.05, def = 0.0, hint = "at_crossfire_crossfire_factor" },
+                        },
+                    },
+                    {
+                        id = "reaction",
+                        sh = true,
+                        gr = {
+                            { id = "title", type = "slide", link = "at_mcm_banner",
+                                text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                            { id = "desc", type = "desc", text = "ui_mcm_at_reaction_desc" },
+
+                            { id = "div_reaction_aim", type = "line" },
+                            { id = "hdr_reaction_aim", type = "desc", text = "ui_mcm_at_hdr_reaction_aim", clr = {255, 200, 200, 200} },
+                            { id = "aim_enabled", type = "check", val = 1, def = true, hint = "at_reaction_aim_enabled" },
+                            { id = "rct_aim_novice",       type = "track", val = 2, min = 0.24, max = 2.50, step = 0.02, def = rct_def("aim_novice"), hint = "at_reaction_rct_aim_novice" },
+                            { id = "rct_aim_trainee",      type = "track", val = 2, min = 0.24, max = 2.50, step = 0.02, def = rct_def("aim_trainee"), hint = "at_reaction_rct_aim_trainee" },
+                            { id = "rct_aim_experienced",  type = "track", val = 2, min = 0.24, max = 2.50, step = 0.02, def = rct_def("aim_experienced"), hint = "at_reaction_rct_aim_experienced" },
+                            { id = "rct_aim_professional", type = "track", val = 2, min = 0.24, max = 2.50, step = 0.02, def = rct_def("aim_professional"), hint = "at_reaction_rct_aim_professional" },
+                            { id = "rct_aim_veteran",      type = "track", val = 2, min = 0.24, max = 2.50, step = 0.02, def = rct_def("aim_veteran"), hint = "at_reaction_rct_aim_veteran" },
+                            { id = "rct_aim_expert",       type = "track", val = 2, min = 0.24, max = 2.50, step = 0.02, def = rct_def("aim_expert"), hint = "at_reaction_rct_aim_expert" },
+                            { id = "rct_aim_master",       type = "track", val = 2, min = 0.24, max = 2.50, step = 0.02, def = rct_def("aim_master"), hint = "at_reaction_rct_aim_master" },
+                            { id = "rct_aim_legend",       type = "track", val = 2, min = 0.24, max = 2.50, step = 0.02, def = rct_def("aim_legend"), hint = "at_reaction_rct_aim_legend" },
+
+                            { id = "div_reaction_track", type = "line" },
+                            { id = "hdr_reaction_track", type = "desc", text = "ui_mcm_at_hdr_reaction_track", clr = {255, 200, 200, 200} },
+                            { id = "rct_track_novice",       type = "track", val = 2, min = 0.10, max = 0.78, step = 0.005, def = rct_def("track_novice"), hint = "at_reaction_rct_track_novice" },
+                            { id = "rct_track_trainee",      type = "track", val = 2, min = 0.10, max = 0.78, step = 0.005, def = rct_def("track_trainee"), hint = "at_reaction_rct_track_trainee" },
+                            { id = "rct_track_experienced",  type = "track", val = 2, min = 0.10, max = 0.78, step = 0.005,
+                                def = rct_def("track_experienced"), hint = "at_reaction_rct_track_experienced" },
+                            { id = "rct_track_professional", type = "track", val = 2, min = 0.10, max = 0.78, step = 0.005,
+                                def = rct_def("track_professional"), hint = "at_reaction_rct_track_professional" },
+                            { id = "rct_track_veteran",      type = "track", val = 2, min = 0.10, max = 0.78, step = 0.005, def = rct_def("track_veteran"), hint = "at_reaction_rct_track_veteran" },
+                            { id = "rct_track_expert",       type = "track", val = 2, min = 0.10, max = 0.78, step = 0.005, def = rct_def("track_expert"), hint = "at_reaction_rct_track_expert" },
+                            { id = "rct_track_master",       type = "track", val = 2, min = 0.10, max = 0.78, step = 0.005, def = rct_def("track_master"), hint = "at_reaction_rct_track_master" },
+                            { id = "rct_track_legend",       type = "track", val = 2, min = 0.10, max = 0.78, step = 0.005, def = rct_def("track_legend"), hint = "at_reaction_rct_track_legend" },
+
+                            { id = "div_reaction_lead", type = "line" },
+                            { id = "hdr_reaction_lead", type = "desc", text = "ui_mcm_at_hdr_reaction_lead", clr = {255, 200, 200, 200} },
+                            { id = "lead_enabled", type = "check", val = 1, def = true, hint = "at_reaction_lead_enabled" },
+                            { id = "rct_lead_novice",       type = "track", val = 2, min = 0.50, max = 3.00, step = 0.05, def = rct_def("lead_novice"), hint = "at_reaction_rct_lead_novice" },
+                            { id = "rct_lead_trainee",      type = "track", val = 2, min = 0.50, max = 3.00, step = 0.05, def = rct_def("lead_trainee"), hint = "at_reaction_rct_lead_trainee" },
+                            { id = "rct_lead_experienced",  type = "track", val = 2, min = 0.50, max = 3.00, step = 0.05,
+                                def = rct_def("lead_experienced"), hint = "at_reaction_rct_lead_experienced" },
+                            { id = "rct_lead_professional", type = "track", val = 2, min = 0.50, max = 3.00, step = 0.05,
+                                def = rct_def("lead_professional"), hint = "at_reaction_rct_lead_professional" },
+                            { id = "rct_lead_veteran",      type = "track", val = 2, min = 0.50, max = 3.00, step = 0.05, def = rct_def("lead_veteran"), hint = "at_reaction_rct_lead_veteran" },
+                            { id = "rct_lead_expert",       type = "track", val = 2, min = 0.50, max = 3.00, step = 0.05, def = rct_def("lead_expert"), hint = "at_reaction_rct_lead_expert" },
+                            { id = "rct_lead_master",       type = "track", val = 2, min = 0.50, max = 3.00, step = 0.05, def = rct_def("lead_master"), hint = "at_reaction_rct_lead_master" },
+                            { id = "rct_lead_legend",       type = "track", val = 2, min = 0.50, max = 3.00, step = 0.05, def = rct_def("lead_legend"), hint = "at_reaction_rct_lead_legend" },
+
+                            { id = "div_reaction_trigger", type = "line" },
+                            { id = "hdr_reaction_trigger", type = "desc", text = "ui_mcm_at_hdr_reaction_trigger", clr = {255, 200, 200, 200} },
+                            { id = "discipline_enabled", type = "check", val = 1, def = true, hint = "at_reaction_discipline_enabled" },
+                            { id = "rct_qsize_novice",       type = "track", val = 2, min = 0.50, max = 1.50, step = 0.05, def = rct_def("qsize_novice"), hint = "at_reaction_rct_qsize_novice" },
+                            { id = "rct_qsize_trainee",      type = "track", val = 2, min = 0.50, max = 1.50, step = 0.05, def = rct_def("qsize_trainee"), hint = "at_reaction_rct_qsize_trainee" },
+                            { id = "rct_qsize_experienced",  type = "track", val = 2, min = 0.50, max = 1.50, step = 0.05,
+                                def = rct_def("qsize_experienced"), hint = "at_reaction_rct_qsize_experienced" },
+                            { id = "rct_qsize_professional", type = "track", val = 2, min = 0.50, max = 1.50, step = 0.05,
+                                def = rct_def("qsize_professional"), hint = "at_reaction_rct_qsize_professional" },
+                            { id = "rct_qsize_veteran",      type = "track", val = 2, min = 0.50, max = 1.50, step = 0.05, def = rct_def("qsize_veteran"), hint = "at_reaction_rct_qsize_veteran" },
+                            { id = "rct_qsize_expert",       type = "track", val = 2, min = 0.50, max = 1.50, step = 0.05, def = rct_def("qsize_expert"), hint = "at_reaction_rct_qsize_expert" },
+                            { id = "rct_qsize_master",       type = "track", val = 2, min = 0.50, max = 1.50, step = 0.05, def = rct_def("qsize_master"), hint = "at_reaction_rct_qsize_master" },
+                            { id = "rct_qsize_legend",       type = "track", val = 2, min = 0.50, max = 1.50, step = 0.05, def = rct_def("qsize_legend"), hint = "at_reaction_rct_qsize_legend" },
+
+                            { id = "div_reaction_qinterval", type = "line" },
+                            { id = "hdr_reaction_qinterval", type = "desc", text = "ui_mcm_at_hdr_reaction_qinterval", clr = {255, 200, 200, 200} },
+                            { id = "rct_qinterval_novice",       type = "track", val = 2, min = 0.60, max = 1.50, step = 0.05,
+                                def = rct_def("qinterval_novice"), hint = "at_reaction_rct_qinterval_novice" },
+                            { id = "rct_qinterval_trainee",      type = "track", val = 2, min = 0.60, max = 1.50, step = 0.05,
+                                def = rct_def("qinterval_trainee"), hint = "at_reaction_rct_qinterval_trainee" },
+                            { id = "rct_qinterval_experienced",  type = "track", val = 2, min = 0.60, max = 1.50, step = 0.05,
+                                def = rct_def("qinterval_experienced"), hint = "at_reaction_rct_qinterval_experienced" },
+                            { id = "rct_qinterval_professional", type = "track", val = 2, min = 0.60, max = 1.50, step = 0.05,
+                                def = rct_def("qinterval_professional"), hint = "at_reaction_rct_qinterval_professional" },
+                            { id = "rct_qinterval_veteran",      type = "track", val = 2, min = 0.60, max = 1.50, step = 0.05,
+                                def = rct_def("qinterval_veteran"), hint = "at_reaction_rct_qinterval_veteran" },
+                            { id = "rct_qinterval_expert",       type = "track", val = 2, min = 0.60, max = 1.50, step = 0.05,
+                                def = rct_def("qinterval_expert"), hint = "at_reaction_rct_qinterval_expert" },
+                            { id = "rct_qinterval_master",       type = "track", val = 2, min = 0.60, max = 1.50, step = 0.05,
+                                def = rct_def("qinterval_master"), hint = "at_reaction_rct_qinterval_master" },
+                            { id = "rct_qinterval_legend",       type = "track", val = 2, min = 0.60, max = 1.50, step = 0.05,
+                                def = rct_def("qinterval_legend"), hint = "at_reaction_rct_qinterval_legend" },
+                        },
+                    },
+                    wip_page("range"),
+                    wip_page("resistance"),
+                },
+            },
+            {
+                id = "perception",
+                gr = {
+                    {
+                        id = "sound",
+                        sh = true,
+                        gr = {
+                            { id = "title", type = "slide", link = "at_mcm_banner",
+                                text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                            { id = "desc", type = "desc", text = "ui_mcm_at_danger_sound_desc" },
+
+                            { id = "div_gunfire", type = "line" },
+                            { id = "hdr_gunfire", type = "desc", text = "ui_mcm_at_danger_hdr_gunfire", clr = {255, 200, 200, 200} },
+                            { id = "danger_attack_sound", type = "check", val = 1, def = true, hint = "at_fixes_danger_danger_attack_sound" },
+                            { id = "danger_neutral_gunfire", type = "check", val = 1, def = true, hint = "at_danger_danger_neutral_gunfire" },
+
+                            { id = "div_noise", type = "line" },
+                            { id = "hdr_noise", type = "desc", text = "ui_mcm_at_danger_hdr_noise", clr = {255, 200, 200, 200} },
+                            { id = "danger_move_noise", type = "check", val = 1, def = true, hint = "at_danger_danger_move_noise" },
+                            { id = "danger_heard_actions", type = "check", val = 1, def = true, hint = "at_danger_danger_heard_actions" },
+                            { id = "danger_noise_mult", type = "track", val = 2, min = 0.5, max = 2.0, step = 0.1, def = 1.0, hint = "at_danger_danger_noise_mult" },
+                        },
+                    },
+                    {
+                        id = "vision",
+                        sh = true,
+                        gr = {
+                            { id = "title", type = "slide", link = "at_mcm_banner",
+                                text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                            { id = "desc", type = "desc", text = "ui_mcm_at_vision_desc" },
+                            { id = "vision_enabled", type = "check", val = 1, def = true, hint = "at_reaction_vision_enabled" },
+
+                            { id = "div_vision_speed", type = "line" },
+                            { id = "hdr_vision_speed", type = "desc", text = "ui_mcm_at_hdr_reaction_vision", clr = {255, 200, 200, 200} },
+                            { id = "rct_vision_novice",       type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01, def = rct_def("vision_novice"), hint = "at_reaction_rct_vision_novice" },
+                            { id = "rct_vision_trainee",      type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01, def = rct_def("vision_trainee"), hint = "at_reaction_rct_vision_trainee" },
+                            { id = "rct_vision_experienced",  type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01,
+                                def = rct_def("vision_experienced"), hint = "at_reaction_rct_vision_experienced" },
+                            { id = "rct_vision_professional", type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01,
+                                def = rct_def("vision_professional"), hint = "at_reaction_rct_vision_professional" },
+                            { id = "rct_vision_veteran",      type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01, def = rct_def("vision_veteran"), hint = "at_reaction_rct_vision_veteran" },
+                            { id = "rct_vision_expert",       type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01, def = rct_def("vision_expert"), hint = "at_reaction_rct_vision_expert" },
+                            { id = "rct_vision_master",       type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01, def = rct_def("vision_master"), hint = "at_reaction_rct_vision_master" },
+                            { id = "rct_vision_legend",       type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01, def = rct_def("vision_legend"), hint = "at_reaction_rct_vision_legend" },
+
+                            { id = "div_vision_range", type = "line" },
+                            { id = "hdr_vision_range", type = "desc", text = "ui_mcm_at_hdr_vision_range", clr = {255, 200, 200, 200} },
+                            { id = "rct_vrange_novice",       type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01, def = rct_def("vrange_novice"), hint = "at_reaction_rct_vrange_novice" },
+                            { id = "rct_vrange_trainee",      type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01, def = rct_def("vrange_trainee"), hint = "at_reaction_rct_vrange_trainee" },
+                            { id = "rct_vrange_experienced",  type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01,
+                                def = rct_def("vrange_experienced"), hint = "at_reaction_rct_vrange_experienced" },
+                            { id = "rct_vrange_professional", type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01,
+                                def = rct_def("vrange_professional"), hint = "at_reaction_rct_vrange_professional" },
+                            { id = "rct_vrange_veteran",      type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01, def = rct_def("vrange_veteran"), hint = "at_reaction_rct_vrange_veteran" },
+                            { id = "rct_vrange_expert",       type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01, def = rct_def("vrange_expert"), hint = "at_reaction_rct_vrange_expert" },
+                            { id = "rct_vrange_master",       type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01, def = rct_def("vrange_master"), hint = "at_reaction_rct_vrange_master" },
+                            { id = "rct_vrange_legend",       type = "track", val = 2, min = 0.85, max = 1.25, step = 0.01, def = rct_def("vrange_legend"), hint = "at_reaction_rct_vrange_legend" },
+                        },
+                    },
+                    {
+                        id = "danger",
+                        sh = true,
+                        gr = {
+                            { id = "title", type = "slide", link = "at_mcm_banner",
+                                text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                            { id = "desc", type = "desc", text = "ui_mcm_at_perception_danger_desc" },
+                            { id = "danger_hit_bypass", type = "check", val = 1, def = true, hint = "at_fixes_danger_danger_hit_bypass" },
+                            { id = "danger_actor_tables", type = "check", val = 1, def = true, hint = "at_fixes_danger_danger_actor_tables" },
+
+                            { id = "div_fixes", type = "line" },
+                            { id = "hdr_fixes", type = "desc", text = "ui_mcm_at_danger_hdr_fixes", clr = {255, 200, 200, 200} },
+                            { id = "fix_config_isolation", type = "check", val = 1, def = true, hint = "at_danger_fix_config_isolation", ui_hook_functor = { at_mcm.locked_on_grey } },
+                            { id = "fix_corpse_time", type = "check", val = 1, def = true, hint = "at_danger_fix_corpse_time", ui_hook_functor = { at_mcm.locked_on_grey } },
+                            { id = "fix_npc_teardown", type = "check", val = 1, def = true, hint = "at_danger_fix_npc_teardown", ui_hook_functor = { at_mcm.locked_on_grey } },
+                            { id = "fix_time_value", type = "check", val = 1, def = true, hint = "at_danger_fix_time_value", ui_hook_functor = { at_mcm.locked_on_grey } },
+                            { id = "fix_hit_memory", type = "check", val = 1, def = true, hint = "at_danger_fix_hit_memory", ui_hook_functor = { at_mcm.locked_on_grey } },
+                            { id = "fix_anim_cleanup", type = "check", val = 1, def = true, hint = "at_danger_fix_anim_cleanup", ui_hook_functor = { at_mcm.locked_on_grey } },
+                            { id = "fix_cover_scope", type = "check", val = 1, def = true, hint = "at_danger_fix_cover_scope", ui_hook_functor = { at_mcm.locked_on_grey } },
+                            { id = "fix_corpse_despawn", type = "check", val = 1, def = true, hint = "at_danger_fix_corpse_despawn", ui_hook_functor = { at_mcm.locked_on_grey } },
+                            { id = "fix_investigator_select", type = "check", val = 1, def = true, hint = "at_danger_fix_investigator_select", ui_hook_functor = { at_mcm.locked_on_grey } },
+                            { id = "fix_investigate_target", type = "check", val = 1, def = true, hint = "at_danger_fix_investigate_target", ui_hook_functor = { at_mcm.locked_on_grey } },
+                            { id = "fix_config_cache", type = "check", val = 1, def = true, hint = "at_danger_fix_config_cache", ui_hook_functor = { at_mcm.locked_on_grey } },
+                            { id = "fix_id_reuse", type = "check", val = 1, def = true, hint = "at_danger_fix_id_reuse", ui_hook_functor = { at_mcm.locked_on_grey } },
+                            { id = "fix_corpse_order", type = "check", val = 1, def = true, hint = "at_danger_fix_corpse_order", ui_hook_functor = { at_mcm.locked_on_grey } },
+                        },
+                    },
+                },
+            },
+            {
+                id = "mechanics",
+                gr = {
+                    {
+                        id = "healing",
+                        sh = true,
+                        gr = {
+                            { id = "title", type = "slide", link = "at_mcm_banner",
+                                text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                            { id = "desc", type = "desc", text = "ui_mcm_at_healing_desc" },
+                            { id = "healing_enabled", type = "check", val = 1, def = true, hint = "at_healing_healing_enabled" },
+
+                            { id = "div_heal_rate", type = "line" },
+                            { id = "hdr_heal_rate", type = "desc", text = "ui_mcm_at_hdr_heal_rate", clr = {255, 200, 200, 200} },
+                            { id = "heal_rate_multiplier", type = "track", val = 2, min = 0.5, max = 3.0, step = 0.1, def = 1.0, hint = "at_healing_heal_rate_multiplier" },
+
+                            { id = "div_healing_charge", type = "line" },
+                            { id = "hdr_healing_charge", type = "desc", text = "ui_mcm_at_hdr_healing_charge", clr = {255, 200, 200, 200} },
+                            { id = "charge_chance_novice",      type = "track", val = 2, min = 0, max = 100, step = 5, def = 50, hint = "at_healing_charge_chance_novice" },
+                            { id = "charge_chance_experienced", type = "track", val = 2, min = 0, max = 100, step = 5, def = 50, hint = "at_healing_charge_chance_experienced" },
+                            { id = "charge_chance_veteran",     type = "track", val = 2, min = 0, max = 100, step = 5, def = 50, hint = "at_healing_charge_chance_veteran" },
+                            { id = "charge_chance_master",      type = "track", val = 2, min = 0, max = 100, step = 5, def = 50, hint = "at_healing_charge_chance_master" },
+
+                            { id = "div_visuals", type = "line" },
+                            { id = "hdr_visuals", type = "desc", text = "ui_mcm_at_hdr_visuals", clr = {255, 200, 200, 200} },
+                            { id = "limping_anim_enabled",     type = "check", val = 1, def = true, hint = "at_healing_limping_anim_enabled" },
+                            { id = "limping_health_threshold", type = "track", val = 2, min = 0.05, max = 1.00, step = 0.05, def = 0.25, hint = "at_healing_limping_health_threshold" },
+                            { id = "healing_anim_enabled",     type = "check", val = 1, def = true, hint = "at_healing_healing_anim_enabled" },
+                        },
+                    },
+                    {
+                        id = "jam",
+                        sh = true,
+                        gr = {
+                            { id = "title", type = "slide", link = "at_mcm_banner",
+                                text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                            { id = "desc", type = "desc", text = "ui_mcm_at_jam_desc" },
+                            { id = "jam_enabled", type = "check", val = 1, def = true, hint = "at_fixes_jam_jam_enabled" },
+                        },
+                    },
+                    {
+                        id = "ammo",
+                        sh = true,
+                        gr = {
+                            { id = "title", type = "slide", link = "at_mcm_banner",
+                                text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                            { id = "desc", type = "desc", text = "ui_mcm_at_ammo_desc" },
+                            { id = "ammo_enabled", type = "check", val = 1, def = true, hint = "at_fixes_ammo_ammo_enabled" },
+                        },
+                    },
+                    {
+                        id = "gear",
+                        sh = true,
+                        gr = {
+                            { id = "title", type = "slide", link = "at_mcm_banner",
+                                text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                            { id = "desc", type = "desc", text = "ui_mcm_at_gear_desc" },
+                            { id = "gear_enabled",           type = "check", val = 1, def = true, hint = "at_gear_gear_enabled" },
+                            { id = "gear_artefacts_enabled", type = "check", val = 1, def = true, hint = "at_gear_gear_artefacts_enabled" },
+                            { id = "gear_aura_enabled",      type = "check", val = 1, def = true, hint = "at_gear_gear_aura_enabled" },
+                            { id = "gear_binoc_enabled",     type = "check", val = 1, def = true, hint = "at_gear_gear_binoc_enabled" },
+                            { id = "gear_nvg_enabled",       type = "check", val = 1, def = true, hint = "at_gear_gear_nvg_enabled" },
+                        },
+                    },
+                },
+            },
+            {
+                id = "effects",
+                sh = true,
+                gr = {
+                    { id = "title", type = "slide", link = "at_mcm_banner",
+                        text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                    { id = "desc", type = "desc", text = "ui_mcm_at_effects_desc" },
+                },
+            },
+            {
+                id = "mutants",
+                sh = true,
+                gr = {
+                    { id = "title", type = "slide", link = "at_mcm_banner",
+                        text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                    { id = "desc", type = "desc", text = "ui_mcm_at_mutants_desc" },
+                },
+            },
+            {
+                id = "development",
+                sh = true,
+                gr = {
+                    { id = "title", type = "slide", link = "at_mcm_banner",
+                        text = "ui_mcm_at_title", size = {512, 50}, spacing = 20 },
+                    { id = "desc", type = "desc", text = "ui_mcm_at_development_desc" },
+
+                    { id = "div_logging", type = "line" },
+                    { id = "hdr_logging", type = "desc", text = "ui_mcm_at_hdr_logging", clr = {255, 200, 200, 200} },
+                    { id = "log_level", type = "list", val = 0, def = "WARN",
+                        content = {
+                            {"ERROR", "error"},
+                            {"WARN", "warn"},
+                            {"INFO", "info"},
+                            {"DEBUG", "debug"},
+                        },
+                    },
+                    { id = "log_flush", type = "check", val = 1, def = false },
+                    { id = "world_trace_enabled", type = "check", val = 1, def = false, hint = "at_development_world_trace_enabled" },
+
+                    { id = "div_hud", type = "line" },
+                    { id = "hdr_hud", type = "desc", text = "ui_mcm_at_hdr_hud", clr = {255, 200, 200, 200} },
+                    { id = "hud_position", type = "list", val = 0, def = "off",
+                        content = {
+                            {"off",          "off"},
+                            {"top_left",     "topleft"},
+                            {"top_right",    "topright"},
+                            {"center_left",  "centerleft"},
+                            {"center_right", "centerright"},
+                            {"bottom_left",  "bottomleft"},
+                            {"bottom_right", "bottomright"},
+                        },
+                    },
+
+                    { id = "div_reset", type = "line" },
+                    { id = "warn_reset", type = "desc", text = "ui_mcm_at_development_reset_warning", clr = {255, 240, 200, 80} },
+                    { id = "btn_reset_all", type = "button", functor_ui = { btn_reset_all } },
+
+                },
+            },
+        },
+    }
+end
+
+-- Dump every MCM setting to the debug log: the runtime value per key, so a misread flag
+-- (combat_enabled, ...) is visible at a glance after load_config has run.
+local function _log_mcm_settings()
+    local parts = {}
+    for key in pairs(defaults) do
+        parts[#parts + 1] = key .. "=" .. tostring(cfg[key])
+    end
+    table.sort(parts)
+    at_debug.info("[MCM] %s", table.concat(parts, " "))
+end
+
+local function _on_first_update()
+    at_debug.refresh()
+    at_debug.info("AlifeTactics MCM loaded (log_level=%s)", get_config("log_level") or "WARN")
+    _log_mcm_settings()
+end
+
+local function _on_option_change()
+    load_config()
+end
+
+function on_game_start()
+    load_config()
+    RegisterScriptCallback("actor_on_first_update", _on_first_update)
+    RegisterScriptCallback("on_option_change", _on_option_change)
+    RegisterScriptCallback("mcm_option_restore_default", _on_option_change)
+end

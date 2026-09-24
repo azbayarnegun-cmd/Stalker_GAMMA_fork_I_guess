@@ -1,0 +1,373 @@
+--- ap_ext_causes_needs: Hull-scored human needs generator. NEEDS table holds 9 drives;
+--- CAUSES table holds 17 specific causes (answers). Picker emits one specific cause per call.
+
+local table_sort, next, math_random = table.sort, next, math.random
+local xsmart, xsquad, xtime, xlevel = xsmart, xsquad, xtime, xlevel
+local ap_core_debug, ap_core_limiter, ap_core_producer, ap_core_util, ap_core_broker =
+    ap_core_debug, ap_core_limiter, ap_core_producer, ap_core_util, ap_core_broker
+local ap_ext_util, ap_ext_tracker = ap_ext_util, ap_ext_tracker
+
+local CAUSE = ap_core_const.CAUSE
+local CAUSE_TYPE = ap_core_const.CAUSE_TYPE
+local CAUSE_CATEGORY = ap_core_const.CAUSE_CATEGORY
+local CATEGORY = CAUSE_CATEGORY.NEEDS
+local CAP_KEY = "cause_max_needs"
+local MAX_SCANS_PER_GENERATOR = ap_core_const.RADIANT_MAX_SCANS_PER_GENERATOR
+local RESULT = ap_core_const.RESULT
+local REASON = ap_core_const.REASON
+local RANGE_RADIO = ap_core_const.RANGE_RADIO
+local HOURS_TO_SECONDS = ap_core_const.HOURS_TO_SECONDS
+local RANK_VETERAN = ap_core_const.RANK_VETERAN
+local PERSONALITY = ap_ext_const.PERSONALITY
+
+-- Vanilla Anomaly story flags consumed by _resolve_offmap_hops.
+-- Set by the engine when the player completes the corresponding quest:
+--   yan_labx16_switcher_primary_off  -> tm_yantar.ltx X-16 quest
+--   bar_deactivate_radar_done        -> tm_radar.ltx Brain Scorcher quest
+local STORY_FLAG = {
+    X16_OFF   = "yan_labx16_switcher_primary_off",
+    RADAR_OFF = "bar_deactivate_radar_done",
+}
+
+local LOG_INIT = ap_core_debug.bracket(CAUSE_CATEGORY.NEEDS)
+
+local cfg = ap_core_mcm.cfg
+local _alignment_human = ap_ext_const.alignment_human
+local _alignment_selfserving = ap_ext_const.alignment_selfserving
+local _alignment_naturalist = ap_ext_const.alignment_naturalist
+local _alignment_principled = ap_ext_const.alignment_principled
+local _alignment_offmap = ap_ext_const.alignment_offmap
+local _alignment_ecolog = { ecolog = true }
+
+--- 9 drives. Per-need Hull weight, threshold cfg key, period gating.
+--- Enable check is per-cause (cause_<cause_name>_enabled), gated by the shared ap_ext_util.try_cause; no drive-level enable.
+local NEEDS = {
+    { need = "shelter", field = "last_shelter_at", weight = 5.0, dormant_period = true,
+      threshold_key = "cause_shelter_threshold" },
+    { need = "heal",    field = "last_heal_at",    weight = 4.0,
+      threshold_key = "cause_heal_threshold" },
+    { need = "hunger",  field = "last_hunger_at",  weight = 3.0,
+      threshold_key = "cause_hunger_threshold" },
+    { need = "sleep",   field = "last_sleep_at",   weight = 2.5, dormant_period = true,
+      threshold_key = "cause_sleep_threshold" },
+    { need = "rest",    field = "last_rest_at",    weight = 2.0,
+      threshold_key = "cause_rest_threshold" },
+    { need = "supply",  field = "last_supply_at",  weight = 2.0, active_period = true,
+      threshold_key = "cause_supply_threshold" },
+    { need = "money",   field = "last_money_at",   weight = 1.2, active_period = true,
+      threshold_key = "cause_money_threshold" },
+    { need = "job",     field = "last_job_at",     weight = 1.5, active_period = true,
+      threshold_key = "cause_job_threshold" },
+    { need = "social",  field = "last_social_at",  weight = 0.8,
+      threshold_key = "cause_social_threshold" },
+}
+
+--- 17 specific causes. Each carries: cause const, short name (cfg key suffix), parent need,
+--- per-cause RULES (alignment subset, personality traits), per-cause SCAN (filter, exclude_enemy).
+local CAUSES
+
+-- In-place Fisher-Yates shuffle. Removes order bias so peer causes under the same need
+-- (on-map / off-map variants) get equal first-pick on each tick.
+local function _shuffle_causes()
+    for i = #CAUSES, 2, -1 do
+        local j = math_random(i)
+        if j ~= i then CAUSES[i], CAUSES[j] = CAUSES[j], CAUSES[i] end
+    end
+end
+
+local function _is_not_base_or_lair(smart) return not xsmart.is_base(smart) and not xsmart.is_lair(smart) end
+
+-- SIMBOARD-based: smart is unclaimed when no squad of any kind is currently stationed there.
+-- Drops the old smart.faction / LTX-declared-factions / warfare-owning-faction reads in favour
+-- of physical-presence truth via xsmart.iter_stationed_squads (cross-level safe, offline safe).
+local function _is_unclaimed(smart)
+    if not smart then return false end
+    for _ in xsmart.iter_stationed_squads(smart.id) do return false end
+    return true
+end
+
+-- Resolve total BFS hops for off-map adjacency search.
+-- Pre-story stalkers stay home (hops = 0 -> empty neighbor set -> off-map row never publishes).
+-- Each progression milestone (X-16 deactivated, Brain Scorcher deactivated) and veteran rank
+-- commander adds reach via MCM-tunable bonuses.
+-- @cost O(1) | 2 alife_info reads + commander rank (3-4 luabind)
+local function _resolve_offmap_hops(squad)
+    local hops = cfg.offmap_base_hops
+    if has_alife_info(STORY_FLAG.X16_OFF) then hops = hops + cfg.offmap_extra_map_x16 end
+    if has_alife_info(STORY_FLAG.RADAR_OFF) then hops = hops + cfg.offmap_extra_map_radar end
+    if xsquad.get_commander_rank(squad) >= RANK_VETERAN then hops = hops + cfg.offmap_extra_map_rank end
+    return hops
+end
+
+local function _build_filter(entry, community)
+    return function(smart)
+        if entry.filter and not entry.filter(smart) then return false end
+        if entry.exclude_enemy and community and xsmart.has_enemy_squad(smart.id, community) then
+            ap_core_debug.debug(entry.log_prefix .. " hostility filter rejected smart=%d community=%s", smart.id, community)
+            return false
+        end
+        return true
+    end
+end
+
+local function _find_overdue_needs(dto, now, identity)
+    local is_active = ap_ext_util.is_active_period(identity)
+    local debug_on = ap_core_debug.enabled()
+    local out = {}
+    for i = 1, #NEEDS do
+        local need = NEEDS[i]
+        local period_mismatch = (need.active_period and not is_active)
+            or (need.dormant_period and is_active)
+        if period_mismatch then
+            if not debug_on then goto continue end
+            out[#out + 1] = { need = need, drive = 0, period_mismatch = true }
+            goto continue
+        end
+
+        local elapsed = now - (dto[need.field] or 0)
+        local threshold = cfg[need.threshold_key] * HOURS_TO_SECONDS
+        if elapsed <= threshold then goto continue end
+        local ratio = elapsed / threshold
+        local drive = need.weight * ratio * ratio
+        out[#out + 1] = { need = need, drive = drive }
+
+        ::continue::
+    end
+    table_sort(out, function(a, b) return a.drive > b.drive end)
+    return out
+end
+
+-- Per-cause RULES + SCAN evaluator. Returns the publish payload (with .cause) on SUCCESS, or
+-- { code, reason } on rejection. The enable gate and the timing/logging live in the shared
+-- ap_ext_util.try_cause seam. budget: per-_on_smart table { remaining = N }; RULES rejections free,
+-- a SCAN reach consumes one slot.
+local function _eval_cause(squad, level_id, overdue_entry, entry, budget)
+    if not ap_ext_util.check_alignment(entry.alignment, squad.player_id) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT }
+    end
+    if not ap_ext_util.check_personality(entry.personality, squad.player_id) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.LOW_PERSONALITY }
+    end
+    if budget.remaining <= 0 then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BUDGET_EXHAUSTED }
+    end
+    local filter = _build_filter(entry, squad.player_id)
+    local opts = { filter = filter, level_id = level_id, max_distance = RANGE_RADIO }
+    if entry.offmap then
+        if ap_core_broker.is_offmap_dispatched(squad.id) then
+            return { code = RESULT.FAILED_RULES, reason = REASON.OFFMAP_ALREADY_DISPATCHED }
+        end
+        if not ap_core_limiter.check_offmap_rate_limit(level_id, cfg.cause_max_offmap) then
+            return { code = RESULT.FAILED_RULES, reason = REASON.OFFMAP_EXHAUSTED }
+        end
+        local hops = _resolve_offmap_hops(squad)
+        if hops <= 0 then return { code = RESULT.FAILED_RULES, reason = REASON.NO_OFFMAP_REACH } end
+        local neighbors = xlevel.get_neighbor_levels(level_id, hops)
+        if not next(neighbors) then return { code = RESULT.FAILED_RULES, reason = REASON.NO_OFFMAP_REACH } end
+        local base = opts.filter
+        opts.filter = function(s) return base(s) and neighbors[xlevel.get_level_id(s)] end
+        opts.level_id = nil
+        opts.max_distance = nil
+    end
+    budget.remaining = budget.remaining - 1
+    local smart
+    if entry.offmap then
+        smart = ap_core_util.find_first_smart(opts)
+    else
+        smart = ap_core_util.find_smart(squad.position, opts)
+    end
+    if not smart then return { code = RESULT.FAILED_SCAN, reason = REASON.NO_SMART } end
+    if not ap_ext_util.is_tactically_eligible(squad, smart) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.LOW_TACTICS }
+    end
+    if entry.offmap then ap_core_limiter.increment_offmap_counter(level_id) end
+    return {
+        cause = entry.cause,
+        dto_field = overdue_entry.need.field,
+        drive = overdue_entry.drive,
+        squad_id = squad.id,
+        community = squad.player_id,
+        position = squad.position,
+        level_id = level_id,
+        dst_smart_id = smart.id,
+    }
+end
+
+local function _init_dto(dto, now, identity, squad_id)
+    local is_active = ap_ext_util.is_active_period(identity)
+    for i = 1, #NEEDS do
+        local need = NEEDS[i]
+        local in_period = (need.active_period and is_active)
+            or (need.dormant_period and not is_active)
+            or (not need.active_period and not need.dormant_period)
+        local threshold = cfg[need.threshold_key] * HOURS_TO_SECONDS
+        dto[need.field] = ap_ext_util.init_overdue_timestamp(now, threshold, in_period, squad_id)
+    end
+end
+
+-- Per-cause attempt for one CAUSES entry under an overdue need. Filters to the entry's own drive and
+-- drops a period-mismatched drive, then hands the enable gate, timing, and outcome log to the shared
+-- ap_ext_util.try_cause seam. period_mismatch needs are walked only at DEBUG (see _find_overdue_needs);
+-- each emits a failed_rules:wrong_period line so dormant/active drops are not silent.
+local function _try_one_need_cause(squad, level_id, overdue_entry, entry, budget)
+    if entry.need ~= overdue_entry.need.need then return nil end
+    if overdue_entry.period_mismatch then
+        if ap_core_debug.enabled() then ap_core_debug.debug("%s failed_rules:wrong_period", entry.log_prefix) end
+        return nil
+    end
+    return ap_ext_util.try_cause(entry.enabled_key, entry.log_prefix, _eval_cause,
+        squad, level_id, overdue_entry, entry, budget)
+end
+
+--- Walk CAUSES belonging to one overdue need; first cause that publishes wins.
+local function _try_need(squad, level_id, overdue_entry, budget)
+    for j = 1, #CAUSES do
+        local result = _try_one_need_cause(squad, level_id, overdue_entry, CAUSES[j], budget)
+        if result then return result end
+    end
+    return nil
+end
+
+local function _on_smart(squad)
+    if not squad then return { code = RESULT.FAILED_RULES, reason = REASON.NIL_ARGS } end
+    if not _alignment_human[squad.player_id] then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT, community = squad.player_id } end
+    if not level.present() then return { code = RESULT.FAILED_RULES, reason = REASON.NO_LEVEL_ID } end
+
+    local level_id = xlevel.get_level_id(squad)
+    if not level_id then return { code = RESULT.FAILED_RULES, reason = REASON.NO_LEVEL_ID } end
+    if not ap_core_limiter.check_cause_rate_limit(CATEGORY, cfg[CAP_KEY]) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BUDGET_EXHAUSTED }
+    end
+
+    local now = xtime.game_sec()
+    local dto = ap_ext_tracker.get_stalker_needs(squad.id)
+    if not dto then
+        dto = ap_ext_tracker.init_stalker_needs(squad.id, now)
+        _init_dto(dto, now, squad.player_id, squad.id)
+    end
+
+    local overdue = _find_overdue_needs(dto, now, squad.player_id)
+    if #overdue == 0 then return { code = RESULT.FAILED_RULES, reason = REASON.BELOW_THRESHOLD } end
+
+    _shuffle_causes()
+
+    local budget = { remaining = MAX_SCANS_PER_GENERATOR }
+    local result
+    for i = 1, #overdue do
+        if not result then result = _try_need(squad, level_id, overdue[i], budget) end
+    end
+    if not result then return { code = RESULT.FAILED_RULES, reason = REASON.NO_BRANCH, community = squad.player_id } end
+
+    ap_core_limiter.increment_cause_counter(CATEGORY)
+    return result
+end
+
+function on_game_start()
+    CAUSES = {
+        { cause = CAUSE.HUNGER_CAMPFIRE,  name = "hunger_campfire",  need = "hunger",
+          filter = xsmart.has_campfire,       exclude_enemy = true,
+          personality = { PERSONALITY.SURVIVAL } },
+        { cause = CAUSE.SLEEP_CAMPFIRE,   name = "sleep_campfire",   need = "sleep",
+          filter = xsmart.has_campfire,       exclude_enemy = true,
+          personality = { PERSONALITY.SURVIVAL } },
+        { cause = CAUSE.REST_CAMPFIRE,    name = "rest_campfire",    need = "rest",
+          filter = xsmart.has_campfire,       exclude_enemy = true,
+          personality = { PERSONALITY.SURVIVAL } },
+        { cause = CAUSE.HEAL_SHELTER,     name = "heal_shelter",     need = "heal",
+          filter = function(s) return xsmart.has_surge_shelter(s) and xsmart.has_animated_stalker_jobs(s) end,
+          exclude_enemy = true,
+          personality = { PERSONALITY.TERRITORY, PERSONALITY.SURVIVAL } },
+        { cause = CAUSE.SHELTER_INDOOR,   name = "shelter_indoor",   need = "shelter",
+          filter = function(s) return xsmart.has_surge_shelter(s) and xsmart.has_animated_stalker_jobs(s) end,
+          exclude_enemy = true,
+          personality = { PERSONALITY.TERRITORY, PERSONALITY.DISCIPLINE } },
+        { cause = CAUSE.SHELTER_OUTDOOR,  name = "shelter_outdoor",  need = "shelter",
+          filter = xsmart.has_campfire,       exclude_enemy = true,
+          personality = { PERSONALITY.PERCEPTION } },
+        { cause = CAUSE.SUPPLY_TRADER,    name = "supply_trader",    need = "supply",
+          filter = ap_core_util.has_service_npc_at_smart,
+          exclude_enemy = true,
+          personality = { PERSONALITY.GREED, PERSONALITY.RELATION } },
+        -- Cross-map peer row. INV_AGGRESSION pairs with GREED so peaceful greedy factions
+        -- (Ecologists, Clear Sky, Loners, Freedom) travel to other-map traders; aggressive
+        -- factions stay home. Alignment widens to the off-map traveler set; the on-map
+        -- SUPPLY_TRADER stays alignment_human. Filter is prop-only xsmart.is_base -- a faction base
+        -- is where a trader sits; offline / cross-level safe (base is an LTX prop). The trade never
+        -- executes off-map (commander offline); arrival resets the supply need.
+        { cause = CAUSE.SUPPLY_TRADER_OFFMAP, name = "supply_trader_offmap", need = "supply",
+          filter = xsmart.is_base, alignment = _alignment_offmap, exclude_enemy = true,
+          personality = { PERSONALITY.GREED, PERSONALITY.INV_AGGRESSION }, offmap = true },
+        -- Barter: peer answer to the supply drive alongside the trader causes. Instead of a service
+        -- NPC it routes to any non-hostile occupied smart (has_peer_squad_at_smart + exclude_enemy)
+        -- and, on arrival, swaps surplus for deficit with a stalker there -- no money. Arriving at a
+        -- barter smart resets last_supply_at exactly as a trade does; barter and trade are
+        -- interchangeable restocks. RELATION pairs with GREED: sociable greedy factions share stock.
+        { cause = CAUSE.BARTER, name = "barter", need = "supply",
+          filter = ap_core_util.has_peer_squad_at_smart, exclude_enemy = true,
+          personality = { PERSONALITY.GREED, PERSONALITY.RELATION } },
+        -- Cross-map peer row: peaceful greedy factions travel to a neighbor map to barter; aggressive
+        -- factions stay home. Distinct from supply_trader_offmap's base target -- routes to an occupied
+        -- NON-base smart (a field camp), so trade-at-a-base and barter-in-the-field don't overlap.
+        -- has_peer_squad_at_smart (SIMBOARD roster) and is_base (LTX prop) are both cross-level safe.
+        { cause = CAUSE.BARTER_OFFMAP, name = "barter_offmap", need = "supply",
+          filter = function(s) return ap_core_util.has_peer_squad_at_smart(s) and not xsmart.is_base(s) end,
+          alignment = _alignment_offmap, exclude_enemy = true,
+          personality = { PERSONALITY.GREED, PERSONALITY.INV_AGGRESSION }, offmap = true },
+        { cause = CAUSE.MONEY_HARVEST,    name = "money_harvest",    need = "money",
+          filter = function(s) return xsmart.has_anomaly(s) and xsmart.has_animated_stalker_jobs(s) end,
+          alignment = _alignment_selfserving, exclude_enemy = true,
+          personality = { PERSONALITY.GREED, PERSONALITY.PERCEPTION } },
+        { cause = CAUSE.MONEY_HUNT,       name = "money_hunt",       need = "money",
+          filter = function(s) return xsmart.is_lair(s) and xsmart.has_animated_stalker_jobs(s) end,
+          alignment = _alignment_naturalist, exclude_enemy = true,
+          personality = { PERSONALITY.GREED, PERSONALITY.PERCEPTION } },
+        { cause = CAUSE.JOB_OUTPOST,      name = "job_outpost",      need = "job",
+          filter = function(s) return _is_not_base_or_lair(s) and xsmart.has_animated_stalker_jobs(s) end,
+          alignment = _alignment_principled, exclude_enemy = true,
+          personality = { PERSONALITY.TERRITORY, PERSONALITY.DISCIPLINE } },
+        { cause = CAUSE.JOB_EXPLORE,      name = "job_explore",      need = "job",
+          filter = function(s) return _is_unclaimed(s) and xsmart.has_animated_stalker_jobs(s) end,
+          alignment = _alignment_selfserving,
+          personality = { PERSONALITY.PERCEPTION, PERSONALITY.TERRITORY } },
+        -- Cross-map peer row. INV_AGGRESSION pairs with PERCEPTION so peaceful curious factions
+        -- (Ecologists, Clear Sky, Loners, Freedom) scout neighbor maps; outlaws and aggressive
+        -- factions stay home. Alignment widens to the off-map traveler set. Filter drops
+        -- has_animated_stalker_jobs because stalker_jobs is nil for off-actor-level smarts
+        -- (smart_terrain.script:462); unclaimed-faction check is prop-based and works cross-level.
+        { cause = CAUSE.JOB_EXPLORE_OFFMAP, name = "job_explore_offmap", need = "job",
+          filter = _is_unclaimed,
+          alignment = _alignment_offmap,
+          personality = { PERSONALITY.PERCEPTION, PERSONALITY.INV_AGGRESSION }, offmap = true },
+        { cause = CAUSE.JOB_RESEARCH,     name = "job_research",     need = "job",
+          filter = function(s) return xsmart.has_anomaly(s) and xsmart.has_animated_stalker_jobs(s) end,
+          alignment = _alignment_ecolog, exclude_enemy = true,
+          personality = { PERSONALITY.PERCEPTION, PERSONALITY.DISCIPLINE } },
+        { cause = CAUSE.SOCIAL_CAMPFIRE,  name = "social_campfire",  need = "social",
+          filter = xsmart.has_campfire,       exclude_enemy = true,
+          personality = { PERSONALITY.RELATION } },
+        { cause = CAUSE.SOCIAL_BASE,      name = "social_base",      need = "social",
+          filter = xsmart.is_base,            alignment = _alignment_principled, exclude_enemy = true,
+          personality = { PERSONALITY.RELATION, PERSONALITY.TERRITORY } },
+        -- Cross-map peer row of SOCIAL_CAMPFIRE (not SOCIAL_BASE): peaceful sociable factions travel to a
+        -- neighbor-map campfire to gather; aggressive factions stay home. Targets has_campfire (the static
+        -- xdata.campfire_smarts set, offline / cross-level safe) so social off-map goes to a fire, distinct
+        -- from supply_trader_offmap's base target -- no collision on bases.
+        { cause = CAUSE.SOCIAL_OFFMAP,    name = "social_offmap",    need = "social",
+          filter = xsmart.has_campfire,       alignment = _alignment_offmap, exclude_enemy = true,
+          personality = { PERSONALITY.RELATION, PERSONALITY.INV_AGGRESSION }, offmap = true },
+    }
+
+    for i = 1, #CAUSES do
+        CAUSES[i].log_prefix = ap_core_debug.bracket(CAUSES[i].cause)
+        CAUSES[i].enabled_key = "cause_" .. CAUSES[i].name .. "_enabled"
+    end
+
+    local radiant = ap_core_const.RADIANT_CALLBACKS
+    for i = 1, #radiant do
+        ap_core_producer.register({
+            callback = radiant[i], cause_type = CAUSE_TYPE.RADIANT,
+            category = CAUSE_CATEGORY.NEEDS, name = "needs",
+        }, _on_smart)
+    end
+    ap_core_debug.info(LOG_INIT .. " Initialized")
+end

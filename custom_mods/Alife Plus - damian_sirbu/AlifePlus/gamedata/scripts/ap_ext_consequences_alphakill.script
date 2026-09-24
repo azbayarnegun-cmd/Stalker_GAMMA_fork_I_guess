@@ -1,0 +1,90 @@
+--- ap_ext_consequences_alphakill: Same-species mutants hunt the alpha's killer (alphakill_targeted)
+
+local ipairs = ipairs
+local xsquad, xcreature, xconst = xsquad, xcreature, xconst
+local ap_core_debug, ap_core_record, ap_core_consumer, ap_core_util, ap_ext_util = ap_core_debug, ap_core_record, ap_core_consumer, ap_core_util, ap_ext_util
+
+local RESULT = ap_core_const.RESULT
+local REASON = ap_core_const.REASON
+local CAUSE = ap_core_const.CAUSE
+local CONSEQUENCE = ap_core_const.CONSEQUENCE
+local ACTION = ap_core_const.ACTION
+local PERSONALITY = ap_ext_const.PERSONALITY
+local RANGE_SCENT = ap_core_const.RANGE_SCENT
+local LOG = ap_core_debug.bracket(CONSEQUENCE.ALPHAKILL_TARGETED)
+
+local cfg = ap_core_mcm.cfg
+local _alignment_mutant = ap_ext_const.alignment_mutant
+local _personality = { PERSONALITY.AGGRESSION }
+
+local _move_actor_chasers = ap_ext_common.move_actor_chasers
+
+local _move_squad_chasers = ap_ext_common.move_squad_chasers
+
+-- Keep candidates of the victim's exact species that pass the aggression roll.
+local function _same_species_hunters(candidates, victim_species)
+    local hunters = {}
+    for _, squad in ipairs(candidates) do
+        local species = xcreature.get_mutant_species(squad.id)
+        if species == victim_species and ap_ext_util.check_personality(_personality, species) then
+            hunters[#hunters + 1] = squad
+        end
+    end
+    return hunters
+end
+
+local function _handler(event_data)
+    local killer_id, level_id = event_data.killer_id, event_data.level_id
+    local position = event_data.position
+    local victim_species = event_data.species
+
+    if not killer_id then return { code = RESULT.FAILED_RULES, reason = REASON.NO_KILLER } end
+    if not level_id then return { code = RESULT.FAILED_RULES, reason = REASON.NO_LEVEL_ID } end
+    if not victim_species then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT } end
+    if not position then return { code = RESULT.FAILED_RULES, reason = REASON.NO_POS } end
+
+    local is_player_kill = killer_id == xconst.ACTOR_ENTITY_ID
+    local killer_squad
+    if not is_player_kill then
+        killer_squad = xsquad.get_squad_by_member(killer_id)
+        if not killer_squad then return { code = RESULT.FAILED_SCAN, reason = REASON.NO_KILLER_SQUAD } end
+    end
+
+    local candidates = ap_core_util.find_squads(position, {
+        factions = _alignment_mutant, min_distance = ap_core_const.RADIUS_CLOSE_MAX, max_distance = RANGE_SCENT,
+        level_id = level_id, max_count = cfg.consequence_alphakill_targeted_max_squads,
+        allow_preempt = true,
+    })
+    local hunters = _same_species_hunters(candidates, victim_species)
+    local moved = {}
+    local code, reason = RESULT.SUCCESS, nil
+    if #candidates == 0 then
+        code, reason = RESULT.FAILED_SCAN, REASON.NO_SQUAD
+    elseif #hunters == 0 then
+        code, reason = RESULT.FAILED_RULES, REASON.NO_ELIGIBLE_SQUAD
+    else
+        if is_player_kill then
+            _move_actor_chasers(hunters, moved)
+        else
+            _move_squad_chasers(hunters, killer_squad.id, moved)
+        end
+        if #moved == 0 then code, reason = RESULT.FAILED_ACTION, REASON.MOVE_FAILED end
+    end
+    if code ~= RESULT.SUCCESS then return { code = code, reason = reason } end
+    for i = 1, #moved do
+        ap_core_record.add_record(moved[i], CAUSE.ALPHAKILL, CONSEQUENCE.ALPHAKILL_TARGETED, {
+            action_key = ACTION.ALPHAKILL_TARGETED,
+            other_squad = killer_squad,
+            level_id = level_id,
+        })
+    end
+    return { code = RESULT.SUCCESS }
+end
+
+function on_game_start()
+    ap_core_consumer.register(CONSEQUENCE.ALPHAKILL_TARGETED, {
+        event = CAUSE.ALPHAKILL,
+        condition = function() return cfg.consequence_alphakill_targeted_enabled end,
+    }, _handler)
+    ap_core_debug.info(LOG .. " Initialized")
+end

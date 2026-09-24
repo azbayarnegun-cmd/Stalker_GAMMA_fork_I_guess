@@ -1,0 +1,178 @@
+--- ap_ext_causes_stash: State-classifier picker. Peeks one stash in EYE range,
+--- classifies empty/non-empty, branches by alignment + items count, publishes specific cause.
+
+local xsmart, xtime, xlevel, xstash, xtable = xsmart, xtime, xlevel, xstash, xtable
+local ap_core_debug, ap_core_limiter, ap_core_producer, ap_core_util, ap_core_cache = ap_core_debug, ap_core_limiter, ap_core_producer, ap_core_util, ap_core_cache
+local ap_ext_util, ap_ext_tracker = ap_ext_util, ap_ext_tracker
+
+local CAUSE = ap_core_const.CAUSE
+local CAUSE_TYPE = ap_core_const.CAUSE_TYPE
+local CAUSE_CATEGORY = ap_core_const.CAUSE_CATEGORY
+local CATEGORY = CAUSE_CATEGORY.OPPORTUNITIES
+local CAP_KEY = "cause_max_opportunities"
+local MAX_SCANS_PER_GENERATOR = ap_core_const.RADIANT_MAX_SCANS_PER_GENERATOR
+local RESULT = ap_core_const.RESULT
+local REASON = ap_core_const.REASON
+local RANGE_EYE = ap_core_const.RANGE_EYE
+local HOURS_TO_SECONDS = ap_core_const.HOURS_TO_SECONDS
+local PERSONALITY = ap_ext_const.PERSONALITY
+
+local LOG_INIT = ap_core_debug.bracket(CAUSE_CATEGORY.OPPORTUNITIES)
+
+local cfg = ap_core_mcm.cfg
+local _alignment_human = ap_ext_const.alignment_human
+local _alignment_loot = ap_ext_const.alignment_unprincipled
+local _alignment_outlaw = ap_ext_const.alignment_outlaw
+local _alignment_fill = xtable.merge(ap_ext_const.alignment_principled, { ["ecolog"] = true })
+
+local _personality_fill   = { PERSONALITY.INV_GREED, PERSONALITY.RELATION }
+local _personality_loot   = { PERSONALITY.GREED, PERSONALITY.PERCEPTION }
+local _personality_ambush = { PERSONALITY.GREED, PERSONALITY.AGGRESSION }
+
+--- Per-cause storage: opportunity DTO field, threshold cfg key.
+local KEYS_BY_CAUSE = {
+    [CAUSE.STASH_LOOT] = {
+        field = "last_stash_loot_at", threshold_key = "cause_stash_loot_threshold",
+        enabled_key = "cause_stash_loot_enabled", log_prefix = ap_core_debug.bracket(CAUSE.STASH_LOOT),
+    },
+    [CAUSE.STASH_AMBUSH] = {
+        field = "last_stash_ambush_at", threshold_key = "cause_stash_ambush_threshold",
+        enabled_key = "cause_stash_ambush_enabled", log_prefix = ap_core_debug.bracket(CAUSE.STASH_AMBUSH),
+    },
+    [CAUSE.STASH_FILL] = {
+        field = "last_stash_fill_at", threshold_key = "cause_stash_fill_threshold",
+        enabled_key = "cause_stash_fill_enabled", log_prefix = ap_core_debug.bracket(CAUSE.STASH_FILL),
+    },
+}
+
+--- Per-cause personality traits.
+local _personality_by_cause = {
+    [CAUSE.STASH_FILL]   = { traits = _personality_fill },
+    [CAUSE.STASH_LOOT]   = { traits = _personality_loot },
+    [CAUSE.STASH_AMBUSH] = { traits = _personality_ambush },
+}
+
+--- World-state classifier. Emits ordered list of eligible sibling causes; caller cascades
+--- the list on RULES (threshold + personality), first to pass reaches the 1 SCAN slot.
+--- Empty stash + fill-eligible alignment -> [STASH_FILL].
+--- Non-empty + outlaw + items_count >= cause_stash_ambush_min_items -> [STASH_AMBUSH, STASH_LOOT]
+---   when the squad is also loot-eligible (outlaws are both); ambush preferred, loot as fallback.
+--- Non-empty + loot-eligible (non-outlaw) -> [STASH_LOOT].
+local function _pick_branches(community, is_empty, items_count, out)
+    if is_empty then
+        if _alignment_fill[community] then
+            out[#out + 1] = CAUSE.STASH_FILL
+        end
+        return out
+    end
+    if _alignment_outlaw[community] and items_count >= cfg.cause_stash_ambush_min_items then
+        out[#out + 1] = CAUSE.STASH_AMBUSH
+    end
+    if _alignment_loot[community] then
+        out[#out + 1] = CAUSE.STASH_LOOT
+    end
+    return out
+end
+
+-- Per-cause threshold + personality + SCAN for the cause picked by _pick_branch.
+-- Returns publish payload (with .cause) on SUCCESS, rejection result otherwise.
+-- The shared ap_ext_util.try_cause gates, times, and logs each picked-cause attempt.
+-- opts: { now, stash, items_count, cause_const }
+local function _try_picked_cause(squad, level_id, opts)
+    local cause_const = opts.cause_const
+    local keys = KEYS_BY_CAUSE[cause_const]
+    local opp_dto = ap_ext_tracker.get_squad_opportunities(squad.id)
+    if not opp_dto then opp_dto = ap_ext_tracker.init_squad_opportunities(squad.id, opts.now) end
+    local elapsed = opts.now - (opp_dto[keys.field] or 0)
+    if elapsed <= cfg[keys.threshold_key] * HOURS_TO_SECONDS then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BELOW_THRESHOLD }
+    end
+
+    local pcfg = _personality_by_cause[cause_const]
+    local dst_smart_id
+    if pcfg then
+        if not ap_ext_util.check_personality(pcfg.traits, squad.player_id) then
+            return { code = RESULT.FAILED_RULES, reason = REASON.LOW_PERSONALITY }
+        end
+        if opts.budget.remaining <= 0 then
+            return { code = RESULT.FAILED_RULES, reason = REASON.BUDGET_EXHAUSTED }
+        end
+        opts.budget.remaining = opts.budget.remaining - 1
+        local dst = ap_core_util.find_smart(opts.stash.position, {
+            level_id = level_id, filter = function(s) return not xsmart.is_base(s) end,
+        })
+        if not dst then return { code = RESULT.FAILED_SCAN, reason = REASON.NO_SMART } end
+        if not ap_ext_util.is_tactically_eligible(squad, dst) then
+            return { code = RESULT.FAILED_RULES, reason = REASON.LOW_TACTICS }
+        end
+        dst_smart_id = dst.id
+    end
+
+    return {
+        cause = cause_const,
+        squad_id = squad.id,
+        community = squad.player_id,
+        position = squad.position,
+        level_id = level_id,
+        stash_id = opts.stash.id,
+        stash_position = opts.stash.position,
+        items_count = opts.items_count,
+        dto_field = keys.field,
+        dst_smart_id = dst_smart_id,
+    }
+end
+
+local function _on_smart(squad)
+    if not squad then return { code = RESULT.FAILED_RULES, reason = REASON.NIL_ARGS } end
+    if not _alignment_human[squad.player_id] then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT, community = squad.player_id } end
+    if not ap_ext_util.is_active_period(squad.player_id) then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_PERIOD } end
+    if not ap_core_limiter.check_cause_rate_limit(CATEGORY, cfg[CAP_KEY]) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BUDGET_EXHAUSTED }
+    end
+
+    local level_id = xlevel.get_level_id(squad)
+    if not level_id then return { code = RESULT.FAILED_RULES, reason = REASON.NO_LEVEL_ID } end
+
+    -- ap_core_cache returns whatever's bucketed for this level: nil during warmup if nothing
+    -- on this level has been processed yet, partial mid-build, full after xslice finishes.
+    -- nil = no candidate this tick; next tick has more.
+    local source = ap_core_cache.stashes_on_level(level_id)
+    if not source then return { code = RESULT.FAILED_RULES, reason = REASON.NO_STASH_NEARBY } end
+
+    local stashes = xstash.find_stashes(squad.position, { max_distance = RANGE_EYE, level_id = level_id, max_count = 1, source = source })
+    local stash = stashes[1]
+    if not stash then return { code = RESULT.FAILED_RULES, reason = REASON.NO_STASH_NEARBY } end
+
+    local items = xstash.get_stash_items(stash.id)
+    local is_empty = items == nil
+    local items_count = items and #items or 0
+
+    local branches = _pick_branches(squad.player_id, is_empty, items_count, {})
+    if #branches == 0 then return { code = RESULT.FAILED_RULES, reason = REASON.NO_BRANCH, community = squad.player_id } end
+
+    local now = xtime.game_sec()
+    local budget = { remaining = MAX_SCANS_PER_GENERATOR }
+    local result
+    for i = 1, #branches do
+        if not result then
+            local keys = KEYS_BY_CAUSE[branches[i]]
+            local opts = { now = now, stash = stash, items_count = items_count, cause_const = branches[i], budget = budget }
+            result = ap_ext_util.try_cause(keys.enabled_key, keys.log_prefix, _try_picked_cause, squad, level_id, opts)
+        end
+    end
+    if not result then return { code = RESULT.FAILED_RULES, reason = REASON.NO_BRANCH, community = squad.player_id } end
+
+    ap_core_limiter.increment_cause_counter(CATEGORY)
+    return result
+end
+
+function on_game_start()
+    local radiant = ap_core_const.RADIANT_CALLBACKS
+    for i = 1, #radiant do
+        ap_core_producer.register({
+            callback = radiant[i], cause_type = CAUSE_TYPE.RADIANT,
+            category = CAUSE_CATEGORY.OPPORTUNITIES, name = "stash",
+        }, _on_smart)
+    end
+    ap_core_debug.info(LOG_INIT .. " Initialized")
+end

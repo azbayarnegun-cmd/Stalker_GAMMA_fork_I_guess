@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+  <!-- ==================== LOOT CLAIM TIPS ==================== -->
+  <string id="st_ap_loot_claim_warn_001">
+    <text>That kill is mine. Hands off.</text>
+  </string>
+  <string id="st_ap_loot_claim_warn_002">
+    <text>Step away from that body, friend.</text>
+  </string>
+  <string id="st_ap_loot_claim_warn_003">
+    <text>I dropped him. His gear is mine.</text>
+  </string>
+  <string id="st_ap_loot_claim_warn_004">
+    <text>Touch that body and we have a problem, #name#.</text>
+  </string>
+  <string id="st_ap_loot_claim_warn_005">
+    <text>Back off, #name#. That loot is spoken for.</text>
+  </string>
+  <!-- Half A yield: an NPC leaves YOUR kill (seldom, the skipping stalker speaks) -->
+  <string id="st_ap_loot_reserve_yield_001">
+    <text>Leaving that one for you, stalker.</text>
+  </string>
+  <string id="st_ap_loot_reserve_yield_002">
+    <text>Your kill, your loot. I won't touch it.</text>
+  </string>
+  <string id="st_ap_loot_reserve_yield_003">
+    <text>That body's yours. I'll look elsewhere.</text>
+  </string>
+  <string id="st_ap_loot_reserve_yield_004">
+    <text>You dropped him, #name#. You strip him.</text>
+  </string>
+  <string id="st_ap_loot_reserve_yield_005">
+    <text>Wouldn't dream of taking your kill, #name#.</text>
+  </string>
+  <!-- Flow C yield: you witness an NPC pass up another squad's kill (seldom, the passer speaks) -->
+  <string id="st_ap_loot_npcvnpc_yield_001">
+    <text>Not my kill. I'll leave it be.</text>
+  </string>
+  <string id="st_ap_loot_npcvnpc_yield_002">
+    <text>That one belongs to another squad.</text>
+  </string>
+  <string id="st_ap_loot_npcvnpc_yield_003">
+    <text>Someone else dropped him. Their loot.</text>
+  </string>
+  <string id="st_ap_loot_npcvnpc_yield_004">
+    <text>That kill is #name#'s, not ours to take.</text>
+  </string>
+  <string id="st_ap_loot_npcvnpc_yield_005">
+    <text>Let #name# have their kill.</text>
+  </string>
+</string_table>

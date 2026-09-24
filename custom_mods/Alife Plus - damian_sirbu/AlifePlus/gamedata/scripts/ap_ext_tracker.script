@@ -1,0 +1,313 @@
+--- ap_ext_tracker: Kill registry, alpha system, stalker needs DTO, mutant instincts DTO
+local pairs, tostring, type = pairs, tostring, type
+local table_concat = table.concat
+local math_min, math_floor = math.min, math.floor
+local RegisterScriptCallback = RegisterScriptCallback
+local xtable, xttltable, xcreature, xconst, xprofiler = xtable, xttltable, xcreature, xconst, xprofiler
+local ap_core_debug, ap_core_util, ap_core_world_trace = ap_core_debug, ap_core_util, ap_core_world_trace
+
+local CALLBACK = ap_core_const.CALLBACK
+local ALPHA_MAX_LEVEL = 10
+local DEAD_GRACE_SEC = 3600
+local NEED_FIELDS = ap_ext_const.NEED_FIELDS
+local INSTINCT_FIELDS = ap_ext_const.INSTINCT_FIELDS
+local OPPORTUNITY_FIELDS = ap_ext_const.OPPORTUNITY_FIELDS
+local OPPORTUNITY_THRESHOLD_KEY = ap_ext_const.OPPORTUNITY_THRESHOLD_KEY
+local HOURS_TO_SECONDS = ap_core_const.HOURS_TO_SECONDS
+
+local _ap_killers = {}
+local _ap_alphas = {}
+local _last_victim_id
+local _ap_alpha_dead
+local cfg = ap_core_mcm.cfg
+local _ap_stalker_needs
+local _ap_mutant_instincts
+local _ap_squad_opportunities
+
+local function _on_save_state(m_data)
+    m_data.ap_ext_tracker = {
+        killers = _ap_killers,
+        alphas = _ap_alphas,
+    }
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("[TRACKER] save: killers=%d alphas=%d needs=%d instincts=%d",
+            xtable.count(_ap_killers), xtable.count(_ap_alphas), _ap_stalker_needs:size(), _ap_mutant_instincts:size())
+    end
+end
+
+local function _validate_alphas(loaded)
+    local result = {}
+    for id, data in pairs(loaded) do
+        if data.level and data.kills then result[id] = data end
+    end
+    return result
+end
+
+local function _on_load_state(m_data)
+    _ap_alpha_dead:clear()
+    local saved = m_data.ap_ext_tracker or {}
+    _ap_killers = (type(saved.killers) == "table") and saved.killers or {}
+    _ap_alphas = _validate_alphas((type(saved.alphas) == "table") and saved.alphas or {})
+    _ap_stalker_needs = xttltable.create_fifo_cache({ capacity = 100 })
+    _ap_mutant_instincts = xttltable.create_fifo_cache({ capacity = 100 })
+    _ap_squad_opportunities = xttltable.create_fifo_cache({ capacity = 100 })
+    if type(saved.killers) ~= "table" then ap_core_debug.warn("[TRACKER] load: missing killers, fresh init") end
+    if type(saved.alphas) ~= "table" then ap_core_debug.warn("[TRACKER] load: missing alphas, fresh init") end
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("[TRACKER] load: killers=%d alphas=%d",
+            xtable.count(_ap_killers), xtable.count(_ap_alphas))
+    end
+end
+
+local function _dump_killers()
+    if not ap_core_world_trace.enabled() then return end
+    local parts = {}
+    for id, count in pairs(_ap_killers) do
+        parts[#parts + 1] = id .. "=" .. count
+    end
+    ap_core_world_trace.debug("[TRACKER] killers: {%s}", table_concat(parts, ", "))
+end
+
+--- Register a kill for entity
+--- @param killer_id number Killer entity ID
+--- @param victim_id number|nil Victim entity ID (logging only)
+--- @return number Current kill count for killer
+local function _register_kill(killer_id, victim_id)
+    if not killer_id or killer_id == xconst.ACTOR_ENTITY_ID then return 0 end
+    if killer_id == victim_id then return 0 end
+    _last_victim_id = victim_id
+    local old = _ap_killers[killer_id] or 0
+    local new = old + 1
+    _ap_killers[killer_id] = new
+    ap_core_debug.debug("[TRACKER] _register_kill: killer=%d victim=%d %d->%d", killer_id, victim_id or -1, old, new)
+    _dump_killers()
+    return new
+end
+
+--- Projected kill count inclusive of a pending death (order-independent of _register_kill)
+function projected_kill_count(killer_id, victim_id)
+    if not killer_id or killer_id == xconst.ACTOR_ENTITY_ID then return 0 end
+    local count = _ap_killers[killer_id] or 0
+    if killer_id == victim_id then return count end
+    if victim_id and victim_id ~= _last_victim_id then
+        count = count + 1
+    end
+    return count
+end
+
+--- Compute alpha level from kill count (0 if below threshold)
+function compute_level(kills)
+    local kpl = cfg.cause_alpha_kills_per_level
+    if not kills or kills < kpl then return 0 end
+    return math_min(ALPHA_MAX_LEVEL, math_floor(kills / kpl))
+end
+
+--- Check if entity is an alpha (returns true even if dead, for cause queries)
+function is_alpha(id)
+    return id and (_ap_alphas[id] ~= nil or _ap_alpha_dead:has(id))
+end
+
+--- Get alpha data (returns data even if dead, for cause queries)
+function get_alpha(id)
+    if not id then return nil end
+    return _ap_alphas[id] or _ap_alpha_dead:get(id)
+end
+
+--- Get alpha level for entity (0 if not alpha)
+function get_alpha_level(id)
+    if not id then return 0 end
+    local data = _ap_alphas[id]
+    if data then return data.level end
+    local dead_data = _ap_alpha_dead:get(id)
+    if dead_data then return dead_data.level end
+    return 0
+end
+
+--- Update alpha status (computes level from kills, upserts entry)
+function update_alpha(id, data)
+    if not id or not data or not data.kills then return nil end
+    local level = compute_level(data.kills)
+    if level < 1 then return nil end
+    _ap_alphas[id] = { level = level, kills = data.kills }
+    ap_core_debug.debug("[TRACKER] update_alpha: id=%d kills=%d level=%d", id, data.kills, level)
+    return _ap_alphas[id]
+end
+
+--- Move alpha to dead table (data persists for cause queries, auto-expires after DEAD_GRACE_SEC)
+local function _unregister_alpha(id)
+    if not id then return false end
+    local data = _ap_alphas[id]
+    if not data then return false end
+    _ap_alpha_dead:set(id, data)
+    _ap_alphas[id] = nil
+    ap_core_debug.debug("[TRACKER] _unregister_alpha: id=%d level=%d (dead)", id, data.level or 0)
+    return true
+end
+
+--- Get all alive alphas as {id = data}
+function get_alphas()
+    local result = {}
+    for id, data in pairs(_ap_alphas) do result[id] = data end
+    return result
+end
+
+--- Unregister entity from all tracking (on death or unregister)
+local function _unregister_entity(id)
+    if not id then return end
+    local had_kills = _ap_killers[id] ~= nil
+    local had_alpha = _unregister_alpha(id)
+    _ap_killers[id] = nil
+    if had_kills or had_alpha then
+        ap_core_debug.debug("[TRACKER] _unregister_entity: id=%d kills=%s alpha=%s",
+            id, tostring(had_kills), tostring(had_alpha))
+    end
+end
+
+function get_stalker_needs(squad_id)
+    if not squad_id then return nil end
+    return _ap_stalker_needs:get(squad_id)
+end
+
+function init_stalker_needs(squad_id, now)
+    if not squad_id or not now then return nil end
+    local dto = {}
+    for i = 1, #NEED_FIELDS do
+        dto[NEED_FIELDS[i]] = now
+    end
+    _ap_stalker_needs:set(squad_id, dto)
+    ap_core_debug.debug("[TRACKER] init_stalker_needs: squad=%d", squad_id)
+    return dto
+end
+
+function reset_stalker_need(squad_id, key, now)
+    if not squad_id or not key or not now then return false end
+    local dto = _ap_stalker_needs:get(squad_id)
+    if not dto then return false end
+    dto[key] = now
+    return true
+end
+
+
+function get_mutant_instincts(squad_id)
+    if not squad_id then return nil end
+    return _ap_mutant_instincts:get(squad_id)
+end
+
+function init_mutant_instincts(squad_id, now)
+    if not squad_id or not now then return nil end
+    local dto = {}
+    for i = 1, #INSTINCT_FIELDS do
+        dto[INSTINCT_FIELDS[i]] = now
+    end
+    _ap_mutant_instincts:set(squad_id, dto)
+    ap_core_debug.debug("[TRACKER] init_mutant_instincts: squad=%d", squad_id)
+    return dto
+end
+
+function reset_mutant_instinct(squad_id, key, now)
+    if not squad_id or not key or not now then return false end
+    local dto = _ap_mutant_instincts:get(squad_id)
+    if not dto then return false end
+    dto[key] = now
+    return true
+end
+
+function get_squad_opportunities(squad_id)
+    if not squad_id then return nil end
+    return _ap_squad_opportunities:get(squad_id)
+end
+
+--- Initialize squad opportunities DTO so the squad starts overdue with per-squad jitter.
+--- Uses ap_ext_util.init_overdue_timestamp; opportunities have no period gate, treated as in_period.
+--- Hard-fails on missing OPPORTUNITY_THRESHOLD_KEY entry or unloaded cfg key (logs error, leaves field nil).
+function init_squad_opportunities(squad_id, now)
+    if not squad_id or not now then return nil end
+    local dto = {}
+    for i = 1, #OPPORTUNITY_FIELDS do
+        local field = OPPORTUNITY_FIELDS[i]
+        local threshold_key = OPPORTUNITY_THRESHOLD_KEY[field]
+        local threshold_hours = threshold_key and cfg[threshold_key]
+        if not threshold_hours then
+            ap_core_debug.err("[TRACKER] init_squad_opportunities: missing threshold field=%s key=%s", field, tostring(threshold_key))
+        else
+            local threshold = threshold_hours * HOURS_TO_SECONDS
+            dto[field] = ap_ext_util.init_overdue_timestamp(now, threshold, true, squad_id)
+        end
+    end
+    _ap_squad_opportunities:set(squad_id, dto)
+    ap_core_debug.debug("[TRACKER] init_squad_opportunities: squad=%d", squad_id)
+    return dto
+end
+
+function reset_squad_opportunity(squad_id, key, now)
+    if not squad_id or not key or not now then return false end
+    local dto = _ap_squad_opportunities:get(squad_id)
+    if not dto then return false end
+    dto[key] = now
+    return true
+end
+
+local function _on_squad_npc_death(squad, npc, killer)
+    local dbg = ap_core_debug.enabled()
+    local tmr = xprofiler.new_if(dbg):start()
+    local victim_id = npc and (type(npc.id) == "function" and npc:id() or npc.id)
+    local killer_id = ap_core_util.get_entity_id(killer)
+    if killer_id and xcreature.is_npc(killer_id) then
+        _register_kill(killer_id, victim_id)
+    end
+    if victim_id then
+        _unregister_entity(victim_id)
+    end
+    tmr:stop()
+    if dbg then ap_core_debug.debug("[TRACKER] death killer=%s victim=%s [%.2fms]",
+        tostring(killer_id), tostring(victim_id), tmr:get_ms()) end
+end
+
+-- Clear kill/alpha state when an entity despawns without a death event (AlifeGuard release,
+-- GAMMA despawners, engine cull). Server ids recycle with no grace (id_generator.h), so a leaked
+-- entry hands its kill count to a fresh entity via _register_kill's old + 1. Death itself already
+-- routes through _unregister_entity, so this is usually a no-op pair of hash deletes.
+local function _on_entity_unregister(se_obj)
+    if not se_obj then return end
+    local id = se_obj.id
+    _ap_killers[id] = nil
+    _ap_alphas[id] = nil
+end
+
+-- Drop saved ids that no longer resolve to a stalker or mutant. Catches entries that leaked
+-- through a save via paths that bypass server_entity_on_unregister (callbacks.md); the class
+-- check also drops ids recycled onto a different entity kind. Broker load-sweep pattern.
+local function _sweep_recycled_ids(map)
+    local dropped = 0
+    for id in pairs(map) do
+        if not xcreature.is_npc(id) then
+            map[id] = nil
+            dropped = dropped + 1
+        end
+    end
+    return dropped
+end
+
+local function _on_game_load()
+    local dropped_killers = _sweep_recycled_ids(_ap_killers)
+    local dropped_alphas = _sweep_recycled_ids(_ap_alphas)
+    if dropped_killers > 0 or dropped_alphas > 0 then
+        ap_core_debug.info("[TRACKER] load_sweep: dropped killers=%d alphas=%d", dropped_killers, dropped_alphas)
+    end
+end
+
+function on_game_start()
+    _ap_alpha_dead = xttltable.create_ttl_table({ default_ttl = DEAD_GRACE_SEC })
+    _ap_stalker_needs = xttltable.create_fifo_cache({ capacity = 100 })
+    _ap_mutant_instincts = xttltable.create_fifo_cache({ capacity = 100 })
+    _ap_squad_opportunities = xttltable.create_fifo_cache({ capacity = 100 })
+
+    RegisterScriptCallback(CALLBACK.SAVE_STATE, _on_save_state)
+    RegisterScriptCallback(CALLBACK.LOAD_STATE, _on_load_state)
+    RegisterScriptCallback(CALLBACK.ON_GAME_LOAD, _on_game_load)
+    RegisterScriptCallback(CALLBACK.SERVER_ENTITY_ON_UNREGISTER, _on_entity_unregister)
+    RegisterScriptCallback(CALLBACK.SQUAD_ON_NPC_DEATH, _on_squad_npc_death)
+
+    ap_core_debug.info("AlifePlus v%s (xlibs v%s)", _ap_deps.get_version(), xlibs.get_version())
+    ap_core_debug.info("[TRACKER] Initialized")
+end

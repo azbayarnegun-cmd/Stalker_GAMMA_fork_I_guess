@@ -1,0 +1,177 @@
+--- ap_core_consumer: Routes cause events to consequence handlers via shuffle
+local pairs, RegisterScriptCallback = pairs, RegisterScriptCallback
+local math_random, table_remove, xprofiler = math.random, table.remove, xprofiler
+local ap_core_debug, ap_core_broker, ap_core_limiter, ap_core_util = ap_core_debug, ap_core_broker, ap_core_limiter, ap_core_util
+
+local RESULT = ap_core_const.RESULT
+local CALLBACK = ap_core_const.CALLBACK
+
+local _registry = {}
+local _cause_for = {}
+local _subscribed = false
+local _subscribe_event
+
+local hud = ap_core_hud
+local hud_collecting = ap_core_hud.collecting
+
+--- Register a consequence handler for an event. Strict: refuses duplicate names.
+--- Caller must call unregister(name) first if replacing.
+--- @param name string Consequence name (used as trace key, rate limit key, arrival key)
+--- @param config table { event, condition, on_arrive } condition: returns false to skip
+--- @param handler function(event_data) -> { code = RESULT.X, reason = "..." }
+--- @return boolean true on success, false if already registered or args invalid
+function register(name, config, handler)
+    if not name or not config or not handler then
+        ap_core_debug.err("[CONSUMER] register: missing name, config, or handler")
+        return false
+    end
+    if not config.event then
+        ap_core_debug.err("[CONSUMER] register '%s': missing event", name)
+        return false
+    end
+    if _cause_for[name] then
+        ap_core_debug.warn("[CONSUMER] register: name already registered: %s (event=%s); call unregister first", name, _cause_for[name])
+        return false
+    end
+
+    if config.on_arrive then
+        ap_core_broker.register_arrival_handler(name, config.on_arrive)
+    end
+
+    local event = config.event
+    if not _registry[event] then
+        _registry[event] = {}
+    end
+
+    local entries = _registry[event]
+    entries[#entries + 1] = { name = name, condition = config.condition, handler = handler, log_prefix = ap_core_debug.bracket(name) }
+    _cause_for[name] = event
+    if _subscribed and #entries == 1 then
+        _subscribe_event(event)
+    end
+    ap_core_debug.info("[CONSUMER] registered: %s event=%s", name, event)
+    return true
+end
+
+local function _remove_named_entry(entries, name)
+    if not entries then return end
+    for i = #entries, 1, -1 do
+        if entries[i].name == name then table_remove(entries, i); return end
+    end
+end
+
+--- Unregister a consequence handler by name. Removes from event registry, clears
+--- cause-of mapping, and unhooks any arrival handler registered under the same name.
+--- @param name string Consequence name
+--- @return boolean true if removed, false if not registered
+function unregister(name)
+    local event = _cause_for[name]
+    if not event then return false end
+    _remove_named_entry(_registry[event], name)
+    _cause_for[name] = nil
+    ap_core_broker.unregister_arrival_handler(name)
+    ap_core_debug.info("[CONSUMER] unregistered: %s event=%s", name, event)
+    return true
+end
+
+--- Get the cause event a consequence subscribes to.
+--- 1:1 mapping built at register time. Returns nil if consequence not registered.
+--- @param consequence string Consequence registration name
+--- @return string|nil Cause string (e.g. "cause:massacre"), or nil
+function cause_of(consequence)
+    return _cause_for[consequence]
+end
+
+-- @cost O(1) | 0 luabind
+local function _on_success(entry_name, is_radiant, event_data)
+    if is_radiant then ap_core_limiter.increment_global_consequence_counter() end
+    ap_core_limiter.increment_consequence_counter(entry_name)
+    if event_data then event_data._fired = true end
+end
+
+
+-- Dispatch one consequence. Returns (stop, ran): stop ends the loop, ran means the handler executed.
+local function _dispatch_entry(entry, event_type, event_data, is_radiant, sc)
+    if is_radiant and not ap_core_limiter.check_global_consequence_rate_limit() then
+        ap_core_debug.debug("[CONSUMER] GLOBAL_RATE_EXHAUSTED consequence=%s cause=%s", entry.name, event_type)
+        if sc then hud.inc_cap() end
+        return true, false
+    end
+    if not ap_core_limiter.check_consequence_rate_limit(entry.name) then
+        ap_core_debug.debug("[CONSUMER] RATE_LIMITED consequence=%s", entry.name)
+        if sc then hud.inc_bucket(is_radiant) end
+        return false, false
+    end
+    if entry.condition and not entry.condition() then return false, false end
+    local dbg = ap_core_debug.enabled()
+    local tmr = xprofiler.new_if(dbg):start()
+    local result = entry.handler(event_data)
+    tmr:stop()
+    if not result then return false, false end
+    if dbg then
+        ap_core_debug.debug("%s [tid=%d] %s%s [%.2fms]", entry.log_prefix, event_data.tid or 0,
+            result.code, result.reason and (":" .. result.reason) or "", tmr:get_ms())
+    end
+    if sc then hud.classify_csq(result, is_radiant) end
+    if result.code == RESULT.SUCCESS then
+        _on_success(entry.name, is_radiant, event_data)
+        if is_radiant then return true, true end
+    end
+    return false, true
+end
+
+local function _process(event_type, event_data)
+    local consequences = _registry[event_type]
+    if not consequences or #consequences == 0 then return end
+
+    ap_core_debug.debug("[CONSUMER] RECEIVED cause=%s squad=%s level=%s type=%s",
+        event_type, event_data.squad_id or event_data.id, event_data.level_id, event_data.cause_type)
+
+    local is_radiant = event_data.cause_type == ap_core_const.CAUSE_TYPE.RADIANT
+    local sc = hud_collecting()
+    -- In-place Fisher-Yates on _registry[event_type]. Order between events is permuted; every
+    -- entry still gets considered. Avoids per-event allocation. Mirrors ap_core_producer's _cascade_buf shuffle.
+    local count = #consequences
+    for i = count, 2, -1 do
+        local j = math_random(i)
+        if j ~= i then consequences[i], consequences[j] = consequences[j], consequences[i] end
+    end
+    local cap = ap_core_const.REACTIVE_MAX_CONSEQUENCES_PER_CAUSE
+    local ran_count = 0
+
+    for i = 1, count do
+        local stop, ran = _dispatch_entry(consequences[i], event_type, event_data, is_radiant, sc)
+        if stop then break end
+        if not ran or is_radiant then goto continue end
+        ran_count = ran_count + 1
+        if ran_count >= cap then break end
+        ::continue::
+    end
+end
+
+
+local function _make_handler(event)
+    return function(event_data) _process(event, event_data) end
+end
+
+_subscribe_event = function(event)
+    ap_core_util.event_subscribe(event, _make_handler(event), "consumer")
+end
+
+local function _subscribe()
+    for event, _ in pairs(_registry) do
+        _subscribe_event(event)
+    end
+end
+
+local function _on_first_update()
+    if _subscribed then return end
+    _subscribe()
+    _subscribed = true
+end
+
+function on_game_start()
+    _subscribed = false
+    RegisterScriptCallback(CALLBACK.ACTOR_ON_FIRST_UPDATE, _on_first_update)
+    ap_core_debug.info("[CONSUMER] Initialized")
+end

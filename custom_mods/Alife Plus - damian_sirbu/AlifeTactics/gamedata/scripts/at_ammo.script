@@ -1,0 +1,312 @@
+--- at_ammo: veteran-rank-and-up NPCs fire AP from the loose ammo they carry;
+--- each engagement has a rank- and fire-rate-weighted chance to consume one AP
+--- box, until the NPC runs out and reverts to vanilla magic FMJ.
+---
+--- Engine model: NPCs fire copies of m_DefaultCartridge keyed from
+--- m_ammoTypes[m_ammoType] (WeaponMagazined.cpp:559-571); while unlimited_ammo()
+--- is TRUE (g_ai_unlimited_ammo cvar && infinite_ammo && alive,
+--- ai_stalker.cpp:78,1592-1594 - the cvar defaults to 1, the stalker default)
+--- the refill never consumes inventory and the reload never re-derives
+--- m_ammoType, so set_ammo_type(idx) re-keys what is fired and holds for the
+--- online session. At g_ai_unlimited_ammo 0 the engine consumes real inventory
+--- rounds, and deleting whole boxes on top of that would double-consume, so
+--- this module probes the cvar at tick time and goes inert while it is 0.
+--- get_ammo_count_for_type sums loose belt+ruck boxes (Weapon.cpp:1727), so the
+--- AP an NPC carries comes from AlifePlus trade/loot -- vanilla gives NPCs zero
+--- loose ammo (xrs_rnd_npc_loadout.script:215, ammo-give block commented out).
+---
+--- Budget is the inventory itself: the NPC's AP boxes (box_size 15 rifle / 16
+--- pistol). No virtual ledger. Decay deletes one whole AP box (alife_release) at
+--- a fight's end on a probabilistic roll; the engine top-up (try_advance_ammo,
+--- object_actions.cpp:131-169) refills rounds inside surviving boxes but cannot
+--- recreate a deleted box, so counting boxes sidesteps the top-up entirely.
+---
+--- No death hook: vanilla decide_items_to_keep releases every ammo box > 5 on
+--- death (death_manager.script:457) and an AP box is 15 rounds, so NPCs drop no
+--- AP boxes without any help from this module.
+---
+--- Decay chance per fight = ap_decay_base * (rpm / rpm_ref) * rank_weight, where
+--- rank_weight falls from 1.0 at min_ap_rank to rank_weight_floor at
+--- rank_ceiling. Fast weapons burn AP quickly; high rank conserves it (a legend
+--- bolt-action shoots AP almost always).
+
+local IsStalker, IsWeapon, time_global, pairs = IsStalker, IsWeapon, time_global, pairs
+local RegisterScriptCallback, parse_list = RegisterScriptCallback, parse_list
+local math_random, math_min, math_max = math.random, math.min, math.max
+
+-- The monitor pass period (a vanilla time event): the whole ammo state machine runs once per period
+-- over the tracked stalkers - zero per-frame code.
+local MONITOR_PERIOD_SEC = 5
+local LTX_PATH = "alifetactics\\at_ammo.ltx"
+local LTX_SECTION = "at_ammo"
+
+--- Clean armor-piercing cartridge sections enumerated from vanilla Anomaly
+--- configs/items/weapons ammo_class scans. Degraded _bad / _verybad variants are
+--- excluded by design. Add new calibers here as modpacks introduce them.
+--- Exported: the single AP section set. at_test consumes it for its AP arming
+--- helper, so a modpack caliber added here reaches both.
+AP_SECTIONS = {
+    ["ammo_5.45x39_ap"]   = true,
+    ["ammo_5.56x45_ap"]   = true,
+    ["ammo_7.62x39_ap"]   = true,
+    ["ammo_7.62x51_ap"]   = true,
+    ["ammo_7.62x54_ap"]   = true,
+    ["ammo_7.62x54_7h14"] = true,
+    ["ammo_7.92x33_ap"]   = true,
+    ["ammo_9x18_ap"]      = true,
+    ["ammo_9x19_ap"]      = true,
+    ["ammo_9x19_pbp"]     = true,
+    ["ammo_9x39_ap"]      = true,
+    ["ammo_9x39_pab9"]    = true,
+    ["ammo_12.7x55_ap"]   = true,
+    ["ammo_12x76_dart"]   = true,
+}
+
+local MIN_AP_RANK, RANK_CEILING, AP_DECAY_BASE, RPM_REF, RANK_WEIGHT_FLOOR, PEACE_DEBOUNCE_MS
+
+local function _load_tunables()
+    local ini = ini_file(LTX_PATH)
+    local function read(key, default)
+        local value = ini:r_float_ex(LTX_SECTION, key)
+        return value or default
+    end
+    MIN_AP_RANK       = read("min_ap_rank",       12000)
+    RANK_CEILING      = read("rank_ceiling",      27000)
+    AP_DECAY_BASE     = read("ap_decay_base",     0.5)
+    RPM_REF           = read("rpm_ref",           600)
+    RANK_WEIGHT_FLOOR = read("rank_weight_floor", 0.1)
+    PEACE_DEBOUNCE_MS = read("peace_debounce_ms", 15000)
+end
+
+-- Per-NPC fight state. Shape: { fighting, last_seen, wpn_sec, idx, sec }.
+-- idx/sec are the active AP ammo index+section, cached on combat entry; idx nil
+-- means "no AP this engagement" (the NPC fires vanilla FMJ). Survives an offline
+-- round-trip (cleared only on unregister), so a returning NPC resumes its fight state.
+local _state = {}
+-- ONLINE tracked stalkers, the monitor pass roster: id set, filled on net spawn,
+-- dropped on net destroy / unregister.
+local _npc_ids = {}
+local _ammo_class_cache = {}
+local _rpm_cache = {}
+
+local _enabled = true
+
+-- nil = unprobed; false = the exe ships no g_ai_unlimited_ammo (the magic refill is unconditionally
+-- on); true = the cvar exists (read live per tick - a console toggle mid-session must be honored).
+-- Probe via get_console():get_string, the one getter that signals absence without an error path
+-- (XR_IOConsole_get.cpp:76-85, the xcombat _fire_cvars precedent).
+local _unlimited_cvar = nil
+
+-- True while the engine's stalker infinite-ammo path is on (g_ai_unlimited_ammo ~= 0, default 1,
+-- ai_stalker.cpp:78,1592-1594). At 0 the engine consumes real inventory rounds and the whole-box
+-- decay would double-consume, so pick() goes inert. An absent cvar means the path is always on.
+local function _engine_unlimited_ammo()
+    if _unlimited_cvar == nil then
+        _unlimited_cvar = get_console():get_string("g_ai_unlimited_ammo") ~= nil
+    end
+    if not _unlimited_cvar then return true end
+    return get_console():get_integer("g_ai_unlimited_ammo") ~= 0
+end
+
+-- Weapon ammo_class list, cached per weapon section (LTX-fixed).
+local function _get_ammo_class(wpn_sec)
+    local cached = _ammo_class_cache[wpn_sec]
+    if cached ~= nil then return cached end
+    local list = parse_list(ini_sys, wpn_sec, "ammo_class")
+    _ammo_class_cache[wpn_sec] = list or false
+    return list
+end
+
+-- Weapon rpm (effective fire rate), cached per weapon section.
+local function _get_rpm(wpn_sec)
+    local cached = _rpm_cache[wpn_sec]
+    if cached ~= nil then return cached end
+    local value = ini_sys:r_float_ex(wpn_sec, "rpm") or RPM_REF
+    _rpm_cache[wpn_sec] = value
+    return value
+end
+
+-- First ammo_class entry that is AP and currently carried (count > 0).
+local function _find_ap(wpn, ammo_class)
+    for i = 1, #ammo_class do
+        local section = ammo_class[i]
+        if AP_SECTIONS[section] and wpn:get_ammo_count_for_type(i - 1) > 0 then
+            return i - 1, section
+        end
+    end
+    return nil, nil
+end
+
+-- Per-fight chance to consume one AP box: faster weapons and lower rank decay sooner.
+local function _decay_chance(npc, wpn_sec)
+    local span = RANK_CEILING - MIN_AP_RANK
+    local progress = (span > 0) and math_max(0, math_min(1, (npc:character_rank() - MIN_AP_RANK) / span)) or 0
+    local rank_weight = 1.0 - progress * (1.0 - RANK_WEIGHT_FLOOR)
+    local chance = AP_DECAY_BASE * (_get_rpm(wpn_sec) / RPM_REF) * rank_weight
+    return math_max(0, math_min(1, chance))
+end
+
+-- Release one inventory ammo box of `section`. Capture the id during iteration,
+-- release after, so inventory is not mutated mid-walk.
+local function _delete_one_ap_box(npc, section)
+    local target_id
+    npc:iterate_inventory(function(_owner, item)
+        if not target_id and item and item:is_ammo() and item:section() == section then
+            target_id = item:id()
+        end
+    end, npc)
+    if not target_id then return end
+    local se_item = xobject.se(target_id)
+    if se_item then xobject.release(se_item) end
+end
+
+-- Re-key an AP-keyed weapon with no AP carried back to the default type. The disengage
+-- revert can miss: alife_release of an online box is a deferred GE_DESTROY event
+-- (alife_simulator_script.cpp:288-310), so the same-tick count still included the deleted
+-- box. Only AP sections revert - a looted weapon's own non-AP type is not ours to touch.
+local function _try_rekey_depleted(npc, wpn, wpn_sec, ammo_class)
+    local cur = wpn:get_ammo_type()
+    if cur ~= 0 and AP_SECTIONS[ammo_class[cur + 1]] then
+        wpn:set_ammo_type(0)
+        if at_debug.on() then at_debug.dbg("[AP] rekey npc=%d wpn=%s ap depleted, back to type 0", npc:id(), wpn_sec) end
+    end
+end
+
+-- Combat tick: (re)scan AP on entry or weapon change, then hold AP as the loaded type.
+local function _on_combat_tick(npc, wpn, wpn_sec, ammo_class, st, now)
+    if not st.fighting or st.wpn_sec ~= wpn_sec then
+        local tmr = xprofiler.new_if(at_debug.on()):start()
+        st.fighting = true
+        st.wpn_sec = wpn_sec
+        st.idx, st.sec = _find_ap(wpn, ammo_class)
+        if not st.idx then _try_rekey_depleted(npc, wpn, wpn_sec, ammo_class) end
+        tmr:stop()
+        if at_debug.on() then at_debug.dbg("[AP] engage npc=%d wpn=%s ap=%s [%dus]", npc:id(), wpn_sec, st.sec or "none", tmr:get_us()) end
+    end
+    st.last_seen = now
+    if st.idx and wpn:get_ammo_type() ~= st.idx then
+        wpn:set_ammo_type(st.idx)
+    end
+end
+
+-- Peace tick: once the enemy has been gone past the debounce, end the fight and
+-- roll the AP-box decay. Revert to FMJ if the active AP section is now empty.
+local function _on_peace_tick(npc, wpn, wpn_sec, st, now)
+    if not st.fighting then return end
+    if now - (st.last_seen or 0) < PEACE_DEBOUNCE_MS then return end
+    st.fighting = false
+    if not st.idx then return end
+    local tmr = xprofiler.new_if(at_debug.on()):start()
+    local chance = _decay_chance(npc, st.wpn_sec)
+    local dropped = math_random() < chance
+    if dropped then _delete_one_ap_box(npc, st.sec) end
+    -- st.idx indexes st.wpn_sec's ammo_class: after a mid-debounce weapon switch the current
+    -- weapon's slots are unrelated, so the depleted-revert is skipped (left = -1 in the log);
+    -- the next engagement rescans and re-keys. The decay roll and box delete above are keyed by
+    -- section, not index, and stay unconditional.
+    local left = -1
+    if st.wpn_sec == wpn_sec then
+        left = wpn:get_ammo_count_for_type(st.idx)
+        if left <= 0 and wpn:get_ammo_type() ~= 0 then wpn:set_ammo_type(0) end
+    end
+    tmr:stop()
+    if at_debug.on() then
+        at_debug.dbg("[AP] disengage npc=%d ap=%s p=%.2f %s left=%d%s [%.2fms]", npc:id(), st.sec, chance,
+            dropped and "DROP" or "keep", left, (left == 0) and " fmj" or "", tmr:get_ms())
+    end
+end
+
+-- One INFO line the first time the inert path is taken, so a silent module is distinguishable from
+-- a broken one in the log.
+local _inert_logged = false
+
+--- Run one tick of the ammo state machine on `npc`. Public so test helpers drive it.
+function pick(npc, now)
+    if not _enabled then return end
+    if not _engine_unlimited_ammo() then
+        if not _inert_logged then
+            _inert_logged = true
+            at_debug.info("[AP] inert: g_ai_unlimited_ammo is 0, the engine consumes real rounds (box decay would double-consume)")
+        end
+        return
+    end
+    if not (npc and npc:alive() and IsStalker(npc)) then return end
+    if npc:character_rank() < MIN_AP_RANK then return end
+    local wpn = npc:active_item()
+    if not (wpn and IsWeapon(wpn)) then return end
+    local wpn_sec = wpn:section()
+    local ammo_class = _get_ammo_class(wpn_sec)
+    if not (ammo_class and #ammo_class > 0) then return end
+
+    now = now or time_global()
+    local id = npc:id()
+    local st = _state[id]
+    if not st then st = { fighting = false }; _state[id] = st end
+
+    if npc:best_enemy() then
+        _on_combat_tick(npc, wpn, wpn_sec, ammo_class, st, now)
+    else
+        _on_peace_tick(npc, wpn, wpn_sec, st, now)
+    end
+end
+
+-- The monitor pass, a vanilla time event every MONITOR_PERIOD_SEC: run the state machine on each
+-- tracked stalker. Per frame the whole module costs one timer compare inside vanilla's own
+-- ProcessEventQueue walk; a disabled feature costs one boolean per pass (pick's own guard covers
+-- test-driven calls). xobject.go returns nil for a gone id - the roster entry dies with the NPC.
+local _monitor_active = false
+
+local function _run_monitor()
+    if not _monitor_active then return true end
+    -- Re-arm FIRST: ProcessEventQueue has no error protection, so an expired event that errors would
+    -- re-fire and re-error every frame, starving every time event in the game. Re-armed, a fault costs
+    -- one aborted pass. Liveness inside pick (alive/IsStalker gates precede every engine combat read).
+    ResetTimeEvent("at_ammo", "monitor", MONITOR_PERIOD_SEC)
+    if not _enabled then return end
+    local now = time_global()
+    for id in pairs(_npc_ids) do
+        local npc = xobject.go(id)
+        if npc then pick(npc, now) end
+    end
+end
+
+-- Time events do not survive a save load (_g.script header), so the monitor arms here, per session.
+local function _on_first_update()
+    if _monitor_active then return end
+    _monitor_active = true
+    RemoveTimeEvent("at_ammo", "monitor")
+    CreateTimeEvent("at_ammo", "monitor", MONITOR_PERIOD_SEC, _run_monitor)
+end
+
+local function _on_net_spawn(npc)
+    if not npc or not IsStalker(npc) then return end
+    _npc_ids[npc:id()] = true
+end
+
+-- Roster entry only: _state survives the offline round-trip and dies on unregister.
+local function _on_net_destroy(npc)
+    if not npc then return end
+    _npc_ids[npc:id()] = nil
+end
+
+local function _on_entity_unregister(se_obj)
+    if not se_obj then return end
+    local id = se_obj.id
+    _state[id] = nil
+    _npc_ids[id] = nil
+end
+
+local function _refresh_cfg()
+    _enabled = at_mcm.get_config("ammo_enabled") ~= false
+end
+
+function on_game_start()
+    _load_tunables()
+    _refresh_cfg()
+    RegisterScriptCallback("npc_on_net_spawn",            _on_net_spawn)
+    RegisterScriptCallback("npc_on_net_destroy",          _on_net_destroy)
+    RegisterScriptCallback("actor_on_first_update",       _on_first_update)
+    RegisterScriptCallback("server_entity_on_unregister", _on_entity_unregister)
+    RegisterScriptCallback("on_option_change",            _refresh_cfg)
+    RegisterScriptCallback("mcm_option_restore_default",  _refresh_cfg)
+end

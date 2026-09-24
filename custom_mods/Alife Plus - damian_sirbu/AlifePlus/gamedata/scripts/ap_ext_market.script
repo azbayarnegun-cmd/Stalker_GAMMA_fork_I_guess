@@ -1,0 +1,825 @@
+--- ap_ext_market: faction market. THE BRIDGE vanilla does not have between NPC trading and the
+--- player's trader shelf. In vanilla the two are disjoint: a trader's player-facing stock is his
+--- config [supplies] alone, wiped and respawned every restock by buy_supplies (trade_manager.script:154);
+--- what NPCs sell him (vanilla axr_trade_manager transfer_item) is deleted by that same restock and
+--- never reaches the player's buy panel. This module records what a faction's stalkers trade (an
+--- xevent hook on ap_ext_trade.trade, observe-only) and reshapes that faction's trader stock right
+--- after the restock, so NPC trading finally decides part of what the player buys. It changes no
+--- vanilla trade code and adds no trade UI; it only adds/removes stock in the post-restock window.
+---
+--- A faction's hub traders briefly stock a bounded echo of what
+--- that faction's stalkers have recently sold, injected at the trader's restock, rank-gated to the
+--- player, sold at a premium, and removed after a short window. The sell-out is the mirror: what
+--- the trader recently sold to that faction's stalkers is removed from his freshly respawned stock
+--- at the same restock, capped per section at a percent of what he holds.
+---
+--- Observe, do not modify. ap_ext_trade.trade already returns { sold, bought } and the trade
+--- arrival knows the seller; the market reads that output via an xevent hook (ap_ext_trade is
+--- unchanged) and records both directions per faction in trader perspective: NPC sold = trader
+--- bought (shelf gains), NPC bought = trader sold (shelf loses). NPC stalkers use only the trade
+--- flow; the player uses only the market. Both market directions run the identical eligibility
+--- chain (whitelist + role fit + player-rank roll + distribution claim), each against its own
+--- whitelist block: [ap_market_trader_buy] for injection, [ap_market_trader_sell] (ammo + medical
+--- staples, nothing else) for the sell-out. At restock the sell-out runs first and claims what it
+--- removed, so injection never re-adds a sold-out section inside the goods window.
+---
+--- FIFO shape. Per faction, a bounded dedup FIFO of section names (most-recent at the end), capped
+--- at fifo_max. The section is all that is kept; injection re-derives cost, category, and rank from
+--- it. A plain table, saved and loaded verbatim, so it needs no clock and is safe at load_state.
+---
+--- Echo, not conservation. Every trader restock destroys the trader's whole ruck then respawns the
+--- config list (purchase_list.cpp:20 -> InventoryOwner.cpp:596), so anything sold to a trader is
+--- purged each cycle. Injection re-materialises a bounded echo; no double-count.
+---
+--- Different stock per trader. A section injected or sold out at one trader is claimed for the goods
+--- window, so a sibling faction trader restocking inside that window acts on different sections
+--- (_claimed).
+---
+--- One restock path: a hook over trade_manager.update, which every restock advances resupply_time
+--- through on every install (vanilla writes it directly; destockifier-style trader_autoinject variants
+--- monkeypatch the same function, so their restock is visible through the wrapper chain too).
+---
+--- Premium pricing is applied by the engine's on_get_item_cost script callback (utils_item.script:995)
+--- for tagged goods only: full base cost x premium, the condition discount bypassed.
+---
+--- Policy: configs/alifeplus/ap_market_policy.ltx. Online only (script_trader hub traders).
+
+local RegisterScriptCallback = RegisterScriptCallback
+local math_random, math_floor = math.random, math.floor
+local pairs, tonumber, type, tostring, next = pairs, tonumber, type, tostring, next
+local table_remove, table_concat, table_sort = table.remove, table.concat, table.sort
+local xinventory, xsquad, xtime, xevent, xttltable, xobject, xprofiler =
+    xinventory, xsquad, xtime, xevent, xttltable, xobject, xprofiler
+local CALLBACK = ap_core_const.CALLBACK
+local cfg = ap_core_mcm.cfg
+
+local LOG = "[EXT.MARKET]"
+local POLICY_PATH = "alifeplus\\ap_market_policy.ltx"
+local TRADER_BUY_SECTION = "ap_market_trader_buy"
+local TRADER_SELL_SECTION = "ap_market_trader_sell"
+local FLOOR_SECTION = "ap_market_rank_floor"
+local CHANCE_SECTION = "ap_market_rank_chance"
+local SPECIALS = { fifo_max = true }
+local RELEASE_EV = "ap_market_release"
+local RELEASE_PERIOD_MS = 60000
+local VIEW_LOG_INTERVAL_SEC = 3
+local SAVE_KEY = "ap_ext_market"
+local DEFAULT_FIFO_MAX = 20
+-- Chatter fires only for a restock whose most valuable injected item clears this base cost, so a
+-- nearby stalker mentions rifles and artefacts, not bread. Base cost (pre-premium), in rubles.
+local CHATTER_MIN_COST = 5000
+
+-- Factions that never seed the market (no real allegiance / cannot trade goods)
+local _SKIP_FACTION = { trader = true, monster = true, zombied = true, [""] = true }
+-- Role -> categories that role may stock. A general trader stocks everything whitelisted; a pure
+-- medic stocks consumables; a pure mechanic stocks gear / parts.
+local _MEDICAL = { medkit = true, bandage = true, antirad = true, stim = true, pill = true, food = true, drink = true }
+local _GEAR = { weapon = true, helmet = true, device = true, crafting = true, grenade = true }
+
+-- { trader_buy, trader_sell, specials } from POLICY_PATH; trader_buy[key] = { min, max } per
+-- category or item section (injection whitelist); trader_sell[key] = same shape (sell-out
+-- whitelist: ammo + medical).
+local MARKET_POLICY = nil
+-- { floor = { [section|category] = tier }, bands = { [tier] = { {cost,chance} asc }, default } }
+local RANK_RULESET = nil
+
+-- Trader-bought FIFO: faction -> ordered dedup FIFO of sections the faction's traders took in from
+-- stalkers (NPC sold), oldest first, newest last. Bounded to fifo_max per faction. Section is all
+-- we keep. Plain table: saved / loaded verbatim, no clock, so it is safe at load_state (game_sec
+-- AVs there). Feeds injection.
+local _trader_bought = {}
+-- Trader-sold mirror: faction -> ordered dedup FIFO of sections the faction's traders handed out
+-- to stalkers (NPC bought). Same shape, same fifo_max bound, saved beside _trader_bought. Entries
+-- persist until FIFO-evicted by newer buys; a sold-out section is claimed in _claimed for the
+-- goods window, exactly like an injected one. Feeds the sell-out.
+local _trader_sold = {}
+-- Distribution claim (ttl_table, goods window, ephemeral): a section injected or sold out at one
+-- trader is claimed so sibling faction traders act on different items and injection never re-adds
+-- what the sell-out removed inside the window. Reset on load; harmless.
+local _claimed = nil
+-- item_id -> { trader_id, inject_time(game_sec), section } for tagged market goods. Persisted across
+-- save/load: the items are real alife objects that survive the save, and this tag table is saved
+-- alongside _trader_bought, so the premium price and the timed release survive a reload (a player reloads
+-- inside the goods window routinely). Validated at first update: any entry whose item the engine
+-- purged on an offline restock between save and load is dropped; a recycled id that slips through is
+-- still caught at pricing time by the parent==trader guard in _on_get_item_cost, and at release time
+-- by the parent==trader + section guard in _release_one (so a bought good is never released from the
+-- buyer). section is absent on tags restored from a pre-fix save; the release guard treats a missing
+-- section as "cannot confirm identity" and leaves the good to the engine purge.
+local _market_goods = {}
+-- Reused collector for expired ids, so _release_expired never mutates _market_goods mid-iteration.
+local _release_buf = {}
+-- Debug throttle: trader_id -> next os.clock at which a trade-view line may log again.
+local _view_log_next = {}
+
+local _subscribed = false
+
+-- ============================================================================
+-- POLICY LOADING
+-- ============================================================================
+
+--- Load the trader-buy whitelist (+ specials) and the trader-sell whitelist via the shared
+--- xinventory kernel. Same row shape; injection reads .trader_buy, the sell-out reads .trader_sell.
+--- @cost O(lines) | 1 ini parse at on_game_start
+local function _load_policy()
+    local blocks = xinventory.load_policy(POLICY_PATH, { TRADER_BUY_SECTION, TRADER_SELL_SECTION }, SPECIALS)
+    MARKET_POLICY = {
+        trader_buy = blocks[TRADER_BUY_SECTION].rules,
+        trader_sell = blocks[TRADER_SELL_SECTION].rules,
+        specials = blocks[TRADER_BUY_SECTION].specials,
+    }
+end
+
+--- Strip whitespace and split "a:b" into two numbers; nil on malformed.
+local function _parse_band(pair)
+    local cs = str_explode(pair:gsub("%s+", ""), ":")
+    local cost, chance = tonumber(cs[1]), tonumber(cs[2])
+    if cost and chance then return { cost = cost, chance = chance } end
+    return nil
+end
+
+local function _band_cost_asc(a, b) return a.cost < b.cost end
+
+--- Parse a "cost:chance, cost:chance, ..." cell into an ascending band row.
+local function _parse_chance_row(value)
+    local row = {}
+    local list = str_explode(value, ",")
+    for j = 1, #list do
+        local band = _parse_band(list[j])
+        if band then row[#row + 1] = band end
+    end
+    table_sort(row, _band_cost_asc)
+    return row
+end
+
+--- Invoke fn(key, value) for every non-empty key/value line of an ini section.
+local function _each_kv(ini, section, fn)
+    if not ini:section_exist(section) then return end
+    for i = 0, ini:line_count(section) - 1 do
+        local _, key, value = ini:r_line_ex(section, i, "", "")
+        if key and key ~= "" and value and value ~= "" then fn(key, value) end
+    end
+end
+
+--- Parse the two rank blocks into the get_rank_chance ruleset. Both optional.
+--- @cost O(lines) | 1 ini parse at on_game_start
+local function _load_rank_ruleset()
+    local ini = ini_file(POLICY_PATH)
+    local floor, bands = {}, {}
+    _each_kv(ini, FLOOR_SECTION, function(key, value) floor[key] = value end)
+    _each_kv(ini, CHANCE_SECTION, function(key, value) bands[key] = _parse_chance_row(value) end)
+    RANK_RULESET = { floor = floor, bands = bands }
+end
+
+-- ============================================================================
+-- CONFIG ACCESSORS
+-- ============================================================================
+
+local function _premium()        return cfg.market_premium end
+local function _item_condition()  return cfg.market_item_condition end
+local function _trader_sell_percent()  return cfg.market_trader_sell_percent end
+local function _fifo_max()      return (MARKET_POLICY and MARKET_POLICY.specials.fifo_max) or DEFAULT_FIFO_MAX end
+local function _goods_window_sec() return cfg.market_window_hours * 3600 end
+local function _per_trader_cap()
+    return cfg.market_items_per_trader
+end
+
+-- ============================================================================
+-- FIFOS (observe ap_ext_trade output)
+-- ============================================================================
+
+local function _is_market_faction(faction)
+    return faction ~= nil and not _SKIP_FACTION[faction]
+end
+
+--- Push a section into a faction FIFO of the given store (an NPC sale lands in _trader_bought, an
+--- NPC purchase in _trader_sold): dedup (drop any existing position), append as newest, evict the
+--- oldest once over the cap.
+--- @param store table _trader_bought or _trader_sold
+--- @param label string Trace tag: "bought" or "sold"
+local function _fifo_add(store, faction, section, label)
+    local list = store[faction]
+    if not list then
+        list = {}
+        store[faction] = list
+    end
+    for i = 1, #list do
+        if list[i] == section then table_remove(list, i); break end
+    end
+    list[#list + 1] = section
+    local evicted
+    if #list > _fifo_max() then evicted = table_remove(list, 1) end
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s %s faction=%s +%s n=%d%s", LOG, label, faction, section, #list,
+            evicted and (" evict=" .. evicted) or "")
+    end
+end
+
+--- xevent wrapper over ap_ext_trade.trade: run the original, then record the result in trader
+--- perspective, keyed by the visiting NPC's faction: what the NPC sold enters _trader_bought, what
+--- the NPC bought enters _trader_sold. Pure observation -- the return value is passed through
+--- untouched.
+--- @param orig function The original ap_ext_trade.trade
+--- @param npc game_object The visiting NPC who traded with the trader
+--- @param seller game_object The trader (unused here)
+--- @return table The original { sold, bought }
+local function _observe_trade(orig, npc, seller)
+    local result = orig(npc, seller)
+    if not cfg.market_enabled then return result end
+    if not (npc and result) then return result end
+    local sold, bought = result.sold or {}, result.bought or {}
+    if #sold == 0 and #bought == 0 then return result end
+    local squad = xsquad.get_squad_by_member(npc:id())
+    local faction = squad and xsquad.get_community(squad)
+    if not _is_market_faction(faction) then return result end
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s observe faction=%s npc=%d sold=%s bought=%s", LOG, faction, npc:id(),
+            table_concat(sold, ","), table_concat(bought, ","))
+    end
+    for i = 1, #sold do _fifo_add(_trader_bought, faction, sold[i], "bought") end
+    for i = 1, #bought do _fifo_add(_trader_sold, faction, bought[i], "sold") end
+    return result
+end
+
+-- ============================================================================
+-- INJECTION
+-- ============================================================================
+
+--- True if a trader serving role_info may stock items of this category.
+local function _accepts_category(role_info, category)
+    if role_info.trader then return true end
+    if role_info.medic and _MEDICAL[category] then return true end
+    if role_info.mechanic and _GEAR[category] then return true end
+    return false
+end
+
+--- The policy key for a section (its own row if listed, else its category) and the matching rule.
+local function _rule_for(section, category, rules)
+    local key = rules[section] and section or category
+    return key, rules[key]
+end
+
+--- Trace one eligibility rejection when debug is on, tagged with the direction ("inject" or
+--- "sellout") so a restock's interleaved passes read apart in the log. Always returns false so
+--- eligibility guards can `return _skip(...)` in one line.
+local function _skip(dir, section, why, ...)
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s %s skip %s " .. why, LOG, dir, section, ...)
+    end
+    return false
+end
+
+--- Decide whether one FIFO section is actionable at a faction trader: not claimed this window (by
+--- a sibling trader's injection or an earlier sell-out), whitelisted with a positive cap, category
+--- accepted by the role, and passing the player-rank roll. The ONE market filter chain -- injection
+--- and the sell-out run it identically, each against its own whitelist rules ([ap_market_trader_buy]
+--- vs [ap_market_trader_sell]). Traces the rejection reason when debug is on.
+local function _eligible_section(section, faction, role_info, rules, dir)
+    if _claimed:has(faction .. "|" .. section) then return _skip(dir, section, "claimed") end
+    local category = xinventory.get_section_category(section)
+    local _, rule = _rule_for(section, category, rules)
+    if not (rule and rule.max and rule.max > 0) then return _skip(dir, section, "not-whitelisted cat=%s", category) end
+    if not _accepts_category(role_info, category) then return _skip(dir, section, "role-reject cat=%s", category) end
+    local chance = xinventory.get_rank_chance(section, db.actor, RANK_RULESET)
+    if math_random() > chance then return _skip(dir, section, "rank-roll chance=%.2f", chance) end
+    return true
+end
+
+--- Collect the sections eligible for market action at a faction trader, walking one faction FIFO
+--- (_trader_bought for injection, _trader_sold for the sell-out). Both directions pass the identical filter.
+--- @cost O(L) FIFO length + per match: get_section_category + get_rank_chance
+--- @param store table _trader_bought or _trader_sold
+--- @param dir string Trace tag: "inject" or "sellout"
+--- @return table Array of distinct section names
+local function _eligible_sections(store, faction, role_info, rules, dir)
+    local out = {}
+    local list = store[faction]
+    if not list then return out end
+    for i = 1, #list do
+        local section = list[i]
+        if _eligible_section(section, faction, role_info, rules, dir) then out[#out + 1] = section end
+    end
+    return out
+end
+
+--- Fisher-Yates shuffle in place (per-restock randomisation of the eligible set).
+local function _shuffle(t)
+    for i = #t, 2, -1 do
+        local j = math_random(i)
+        t[i], t[j] = t[j], t[i]
+    end
+end
+
+--- Try to inject one section at the trader, honouring its per-category cap. Spawns at the configured
+--- condition, tags the item for the premium hook + timed release, and claims it for distribution.
+--- ctx = { trader_id, faction, rules, cat_count, cond, window, now }. Returns true on a spawn.
+local function _try_inject_section(ctx, sec)
+    local category = xinventory.get_section_category(sec)
+    local key, rule = _rule_for(sec, category, ctx.rules)
+    local used = ctx.cat_count[key] or 0
+    if used >= rule.max then
+        if ap_core_debug.enabled() then ap_core_debug.debug("%s inject skip %s cat-cap %s full", LOG, sec, key) end
+        return false
+    end
+    local item_se = xinventory.create_item(sec, ctx.trader_id, { cond = ctx.cond })
+    if not (item_se and item_se.id) then
+        if ap_core_debug.enabled() then ap_core_debug.debug("%s inject spawn-fail %s", LOG, sec) end
+        return false
+    end
+    _market_goods[item_se.id] = { trader_id = ctx.trader_id, inject_time = ctx.now, section = sec }
+    _claimed:set(ctx.faction .. "|" .. sec, true, ctx.window)
+    ctx.cat_count[key] = used + 1
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s inject %s id=%d base=%d premium=%sx cond=%.2f", LOG, sec, item_se.id,
+            xinventory.get_cost(sec) or 0, _premium(), ctx.cond)
+    end
+    return true
+end
+
+--- Resolve a trader's curated role + faction from xdata.npc_roles; nil (with a debug note) for an
+--- uncurated trader. Split out to keep _inject_at_trader under the complexity ceiling.
+local function _resolve_trader_role(trader)
+    local se = xobject.se(trader:id())
+    if not se then return nil end
+    local section = se:section_name()
+    local role_info = section and xdata.npc_roles[section]
+    if role_info and role_info.faction then return role_info end
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s restock trader=%d no-role sec=%s", LOG, trader:id(), tostring(section))
+    end
+    return nil
+end
+
+-- ============================================================================
+-- TRADER SELL-OUT (removal at restock)
+-- ============================================================================
+
+--- Strip an ammo section's condition suffix so every degraded variant of the same round collapses
+--- to one bullet type: ammo_9x18_fmj_verybad -> ammo_9x18_fmj. NPCs buy the cheapest (degraded)
+--- variant, traders restock the clean one; matching on bullet type is what lets the two meet.
+local function _ammo_bullet_type(sec)
+    return (sec:gsub("_verybad$", ""):gsub("_bad$", ""))
+end
+
+--- The grouping key the sell-out matches demand to stock on. Ammo groups by bullet type (any
+--- condition variant of the same round counts together, but 9x18 fmj and 9x18 ap stay separate);
+--- everything else groups by its whitelist rule key (the category, e.g. medkit).
+local function _sellout_class(sec, rules)
+    local category = xinventory.get_section_category(sec)
+    if category == "ammo_not_equipped" then return _ammo_bullet_type(sec) end
+    local key = _rule_for(sec, category, rules)
+    return key
+end
+
+--- Walk the trader's freshly respawned stock once and bucket the removable items by sell-out class
+--- (bullet type / category), keeping only the classes the demand FIFO wants. Skips tagged market
+--- goods (the sell-out never eats the injected echo) and the trader's equipped items (its weapon).
+--- @cost O(items) | 1 iterate_inventory walk, O(1) per item
+--- @param trader game_object Online trader
+--- @param wanted table { [class] = true } sell-out classes to collect
+--- @param rules table Trader-sell whitelist (for class resolution)
+--- @return table { [class] = { item_go, ... } } wanted classes actually present in stock
+local function _collect_trader_sold_stock(trader, wanted, rules)
+    local stock = {}
+    local equipped = xinventory.get_equipped_ids(trader)
+    xinventory.iterate_inventory(trader:id(), function(_, item)
+        if not (_market_goods[item:id()] or equipped[item:id()]) then
+            local cls = _sellout_class(item:section(), rules)
+            if wanted[cls] then
+                local list = stock[cls]
+                if not list then list = {}; stock[cls] = list end
+                list[#list + 1] = item
+            end
+        end
+    end)
+    return stock
+end
+
+--- Sell out one class (bullet type / category) from the trader's stock: release
+--- floor(held x percent / 100) items, picked at random across the variants held, and claim each
+--- distinct removed section for the goods window so injection never re-adds it. The share rounds
+--- down, so scarce stock survives at low percentages; at 100% the class is wiped, no protection.
+--- Returns (removed_count, representative_section); (0, nil) on no removal.
+--- ctx = { trader_id, faction, pct, window }.
+local function _try_sellout_class(ctx, cls, items)
+    local held = items and #items or 0
+    local remove = math_floor(held * ctx.pct / 100)
+    if remove <= 0 then
+        if ap_core_debug.enabled() then ap_core_debug.debug("%s sellout skip %s held=%d below-share", LOG, cls, held) end
+        return 0
+    end
+    _shuffle(items)
+    local removed_secs = {}
+    for j = 1, remove do
+        local item = items[j]
+        removed_secs[item:section()] = true
+        xinventory.release_item(item)
+    end
+    for sec in pairs(removed_secs) do
+        _claimed:set(ctx.faction .. "|" .. sec, true, ctx.window)
+    end
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s sellout trader=%d class=%s removed=%d/held=%d", LOG, ctx.trader_id, cls, remove, held)
+    end
+    return remove, next(removed_secs)
+end
+
+--- Push one chatter line when a trader has just run short of a staple, the sell-out mirror of the
+--- restock chatter (_try_chatter). The channel (ap_ext_news.send_chatter) owns speaker + throttle +
+--- level + non-hostile-faction gates; this only names the trader, the depleted item, and where.
+--- Silent if the trader's level cannot be resolved.
+--- @param trader game_object The trader that ran short
+--- @param section string Representative section of the most-depleted class
+--- @param faction string The trader's faction
+local function _try_sellout_chatter(trader, section, faction)
+    local se = xobject.se(trader:id())
+    local level_id = se and xlevel.get_level_id(se)
+    if not level_id then return end
+    ap_ext_news.send_chatter("st_ap_chatter_market_short", {
+        trader   = trader:character_name() or "",
+        item     = xinventory.get_item_name(section),
+        location = xlevel.get_level_name(level_id) or "",
+    }, { level_id = level_id, faction = faction })
+end
+
+--- Sell out at one online trader what he recently sold to his faction's stalkers: the exact mirror
+--- of _inject_at_trader over the _trader_sold FIFO, but matched by sell-out class (bullet type for
+--- ammo, category for medical) so the degraded variants NPCs buy meet the clean stock traders
+--- restock. Same guards and eligibility chain (_eligible_section: whitelist, role fit, player-rank
+--- roll, distribution claim); the demanded sections are grouped into classes, at most the per-trader
+--- cap of classes is sold out, each releasing floor(held x percent / 100) items at random. The whitelist
+--- is the [ap_market_trader_sell] block (ammo + medical staples NPCs actually buy). Runs before
+--- _inject_at_trader on both restock paths; the claims it sets keep injection off the sold-out
+--- sections for the goods window. The engine restock respawns the full config list next cycle, so
+--- removal never permanently damages a trader.
+--- @safety SAFE - bails on disabled, zero percent, dead trader, unresolved role/faction, nil policy
+--- @param trader game_object Online trader at its restock
+local function _sellout_at_trader(trader)
+    if not cfg.market_enabled or not MARKET_POLICY then return end
+    if not trader or not trader:alive() then return end
+    local pct = _trader_sell_percent()
+    if pct <= 0 then return end
+    local cap = _per_trader_cap()
+    if cap <= 0 then return end
+
+    local role_info = _resolve_trader_role(trader)
+    if not role_info then return end
+    local faction = role_info.faction
+    local trader_id = trader:id()
+    local tname = ap_core_debug.enabled() and (trader:character_name() or "?") or "?"
+
+    local rules = MARKET_POLICY.trader_sell
+    local eligible = _eligible_sections(_trader_sold, faction, role_info, rules, "sellout")
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s sellout trader=%d(%s) faction=%s pct=%d cap=%d eligible=%d", LOG,
+            trader_id, tname, faction, pct, cap, #eligible)
+    end
+    if #eligible == 0 then return end
+
+    -- Map the eligible demanded sections to their sell-out classes, then bucket the trader's fresh
+    -- stock by the same class so degraded-variant demand meets clean-variant stock.
+    local wanted = {}
+    for i = 1, #eligible do wanted[_sellout_class(eligible[i], rules)] = true end
+    local stock = _collect_trader_sold_stock(trader, wanted, rules)
+    local classes = {}
+    for cls in pairs(stock) do classes[#classes + 1] = cls end
+    _shuffle(classes)
+
+    local ctx = { trader_id = trader_id, faction = faction, pct = pct, window = _goods_window_sec() }
+    local sold_out, best_removed, best_sec = 0, 0, nil
+    for i = 1, #classes do
+        if sold_out >= cap then break end
+        local removed, sec = _try_sellout_class(ctx, classes[i], stock[classes[i]])
+        if removed > 0 then
+            sold_out = sold_out + 1
+            if removed > best_removed then best_removed, best_sec = removed, sec end
+        end
+    end
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s sellout trader=%d(%s) faction=%s sold_out=%d/%d", LOG,
+            trader_id, tname, faction, sold_out, cap)
+    end
+    if best_sec then _try_sellout_chatter(trader, best_sec, faction) end
+end
+
+--- Push one chatter line about a notable item this trader just took in, but only when the trader is
+--- on the player's current level (chatter is local). Delivery reuses the news speaker + sender via
+--- ap_ext_news.send_chatter; with no eligible nearby stalker to voice it, nothing is said.
+--- Announce a notable restock through the chatter channel. This only describes the event (the
+--- trader, the item, where); the channel (ap_ext_news.send_chatter) owns the selection policy --
+--- whether the subject is on the player's map, whether the faction is non-hostile, who voices it,
+--- and the throttle. Stays silent if the trader's level cannot be resolved.
+--- @param trader game_object The trader that restocked
+--- @param section string The most valuable section injected this restock
+--- @param faction string The trader's faction (role_info.faction)
+local function _try_chatter(trader, section, faction)
+    local se = xobject.se(trader:id())
+    local level_id = se and xlevel.get_level_id(se)
+    if not level_id then return end
+    ap_ext_news.send_chatter("st_ap_chatter_market", {
+        trader   = trader:character_name() or "",
+        item     = xinventory.get_item_name(section),
+        location = xlevel.get_level_name(level_id) or "",
+    }, { level_id = level_id, faction = faction })
+end
+
+--- Inject a bounded echo of the faction's recently-sold goods into one online trader. Resolves the
+--- trader's curated role + faction (xdata.npc_roles); skips traders with no resolved role/faction.
+--- Picks from the eligible set up to the per-trader cap (the MCM items-per-trader count), honouring
+--- per-category caps, spawns each at the configured condition, tags it for the premium hook + timed
+--- release, and claims it so sibling traders carry other items.
+--- @safety SAFE - bails on disabled, dead trader, unresolved role/faction, nil policy
+--- @param trader game_object Online trader at its restock
+local function _inject_at_trader(trader)
+    if not cfg.market_enabled or not MARKET_POLICY then return end
+    if not trader or not trader:alive() then return end
+    local cap = _per_trader_cap()
+    if cap <= 0 then return end
+
+    local role_info = _resolve_trader_role(trader)
+    if not role_info then return end
+    local faction = role_info.faction
+    local tname = ap_core_debug.enabled() and (trader:character_name() or "?") or "?"
+
+    local rules = MARKET_POLICY.trader_buy
+    local eligible = _eligible_sections(_trader_bought, faction, role_info, rules, "inject")
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s restock trader=%d(%s) faction=%s cap=%d eligible=%d", LOG, trader:id(), tname, faction, cap, #eligible)
+    end
+    if #eligible == 0 then return end
+    _shuffle(eligible)
+
+    local ctx = {
+        trader_id = trader:id(), faction = faction, rules = rules,
+        cat_count = {}, cond = _item_condition(),
+        window = _goods_window_sec(), now = xtime.game_sec(),
+    }
+    local injected = 0
+    local best_sec, best_cost = nil, 0
+    for i = 1, #eligible do
+        if injected >= cap then break end
+        local sec = eligible[i]
+        if _try_inject_section(ctx, sec) then
+            injected = injected + 1
+            local cost = xinventory.get_cost(sec) or 0
+            if cost > best_cost then best_cost, best_sec = cost, sec end
+        end
+    end
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s restock trader=%d(%s) faction=%s injected=%d/%d", LOG, trader:id(), tname, faction, injected, cap)
+    end
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s chatter gate trader=%d best=%s cost=%d min=%d", LOG, trader:id(),
+            tostring(best_sec), best_cost, CHATTER_MIN_COST)
+    end
+    if best_sec and best_cost >= CHATTER_MIN_COST then _try_chatter(trader, best_sec, faction) end
+end
+
+--- Deferred sell-out + inject for the self-patched restock path: by the time this fires (0.1s after
+--- the engine restock) the freshly spawned config stock is registered. The sell-out runs first; its
+--- claims keep injection off the sold-out sections. Returns true (one-shot).
+local function _restock_deferred(trader_id)
+    local trader = xobject.go(trader_id)
+    if trader then
+        local dbg = ap_core_debug.enabled()
+        -- Market flow's per-trader dump: the raw restock stock, before this module's sellout/inject
+        -- reshape. A world-state dump, so it goes to the world log, not the decision trace.
+        if ap_core_world_trace.enabled() then xinventory.dump(trader, "market", ap_core_world_trace.debug) end
+        local tmr = xprofiler.new_if(dbg):start()
+        _sellout_at_trader(trader)
+        _inject_at_trader(trader)
+        tmr:stop()
+        if dbg then ap_core_debug.debug("%s reshape trader=%d [%.2fms]", LOG, trader_id, tmr:get_ms()) end
+    end
+    return true
+end
+
+-- ============================================================================
+-- RESTOCK DETECTION (exactly one path)
+-- ============================================================================
+
+--- Detect a real restock by trade_manager.update advancing resupply_time (it replaces the table only
+--- when the restock gate passes; an unchanged reference means no restock). Defer the inject 0.1s so
+--- the freshly spawned stock registers.
+local function _update_wrapper(orig, npc, force_refresh)
+    if not (npc and npc.alive and npc:alive()) then return orig(npc, force_refresh) end
+    local id = npc:id()
+    local before = trade_manager.get_trade_profile(id, "resupply_time")
+    orig(npc, force_refresh)
+    if not cfg.market_enabled then return end
+    local after = trade_manager.get_trade_profile(id, "resupply_time")
+    if after and after ~= before then
+        CreateTimeEvent("ap_market_restock", id, 0.1, _restock_deferred, id)
+    end
+end
+
+--- Wire the single restock path: a hook over trade_manager.update. Every restock advances
+--- resupply_time through that function on every install -- vanilla performs the write directly, and
+--- destockifier-style trader_autoinject variants monkeypatch trade_manager.update, so the reference
+--- change is visible through the wrapper chain either way. No capability probe: there is no public
+--- query for a declared callback name, and RegisterScriptCallback on an undeclared name (e.g.
+--- trader_on_restock when the winning trader_autoinject variant does not declare it) silently drops the
+--- registration, which would be a silent feature kill. Touch trade_manager first so xevent.hook can
+--- rawget it.
+local function _setup_restock()
+    local _ = trade_manager
+    xevent.hook("trade_manager", "update", _update_wrapper)
+    ap_core_debug.info("%s restock via trade_manager.update hook", LOG)
+end
+
+-- ============================================================================
+-- PREMIUM PRICING
+-- ============================================================================
+
+--- on_get_item_cost handler: for a tagged market good still sitting in its injecting trader, override
+--- the price to full base cost x premium (relation/eco discount kept, condition discount dropped) by
+--- writing ret.new_cost (utils_item.script returns tonumber(ret.new_cost) or cost). Non-market items
+--- are untouched.
+--- @param _kind string Cost path -- unused, override is uniform
+--- @param obj game_object The item being priced
+--- @param profile table Trade profile (carries .discount)
+--- @param _cost number Engine-computed cost (replaced)
+--- @param ret table Output: set ret.new_cost to override
+-- Debug: log one tagged good's live state at the viewed trader -- whether its game object is still
+-- online, who owns it now, and its condition. Names why a good the player expected can be missing
+-- (offline, released, or owned by someone else). Split out so _log_trade_view stays a flat walk.
+local function _log_trade_good(trader_id, id)
+    local go = xobject.go(id)
+    if not go then
+        ap_core_debug.debug("%s view-good trader=%d id=%d offline (no game object)", LOG, trader_id, id)
+        return
+    end
+    local parent = go:parent()
+    ap_core_debug.debug("%s view-good trader=%d id=%d sec=%s parent=%s cond=%.2f", LOG,
+        trader_id, id, go:section(), tostring(parent and parent:id()), go:condition())
+end
+
+-- Debug: while the player has a trader's buy panel open, on_get_item_cost fires per item. Log which
+-- trader it is and how many market goods it holds right now, throttled per trader, so the log shows
+-- exactly which trader the player visited and whether it carried market stock. Skips the actor's own
+-- (sell-side) items.
+local function _log_trade_view(obj)
+    if not ap_core_debug.enabled() then return end
+    local parent = obj:parent()
+    local actor = db.actor
+    if not parent or (actor and parent:id() == actor:id()) then return end
+    local trader_id = parent:id()
+    local now = os.clock()
+    if (_view_log_next[trader_id] or 0) > now then return end
+    _view_log_next[trader_id] = now + VIEW_LOG_INTERVAL_SEC
+    local count = 0
+    for id, tag in pairs(_market_goods) do
+        if tag.trader_id == trader_id then
+            count = count + 1
+            _log_trade_good(trader_id, id)
+        end
+    end
+    ap_core_debug.debug("%s view trader=%d(%s) market_goods=%d", LOG, trader_id, parent:character_name() or "?", count)
+end
+
+local function _on_get_item_cost(_kind, obj, profile, _cost, ret)
+    if not (cfg.market_enabled and obj and ret) then return end
+    _log_trade_view(obj)
+    local tag = _market_goods[obj:id()]
+    if not tag then return end
+    local parent = obj:parent()
+    if not (parent and parent:id() == tag.trader_id) then return end
+    local base = obj:cost() or 0
+    local price = math_floor(base * _premium() * (profile and profile.discount or 1))
+    ret.new_cost = price
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s price id=%d base=%d cond=%.2f -> %d", LOG, obj:id(), base, obj:condition(), price)
+    end
+end
+
+-- ============================================================================
+-- WINDOW RELEASE
+-- ============================================================================
+
+--- Release one market good, but only if it is still the injected item sitting in its injecting
+--- trader: online, parent == trader_id, and section matching the tag. A good the player bought (or
+--- that was sold on, purged, or whose id the engine recycled) fails identity and is left untouched --
+--- the tag is dropped by the caller either way. Offline goods resolve to no game object and are left
+--- to the engine restock purge. This is the release-time backstop the tag-drop comment defers to.
+local function _release_one(id, tag)
+    local obj = xobject.go(id)
+    if not obj then return end
+    local parent = obj:parent()
+    if not (parent and parent:id() == tag.trader_id) then return end
+    if tag.section and obj:section() ~= tag.section then return end
+    xinventory.release_item(obj)
+end
+
+-- Debug-only vanish trace: name a tagged good that left its trader BEFORE its window expired --
+-- released outright (engine restock wipe, a destockifier's removal) or moved to another owner
+-- (sold, looted). Observation only, once per good (tag.gone_logged), never untags; the normal
+-- expiry path still owns the tag lifecycle. Skipped entirely when debug is off.
+-- @cost O(1) | 1 luabind (xobject.se) per live tag per period, debug on only
+local function _log_vanished(id, tag)
+    if tag.gone_logged then return end
+    local se_item = xobject.se(id)
+    if se_item and se_item.parent_id == tag.trader_id then return end
+    tag.gone_logged = true
+    ap_core_debug.debug("%s good_gone: trader=%d id=%d sec=%s %s", LOG, tag.trader_id, id,
+        tostring(tag.section), se_item and ("owner=" .. tostring(se_item.parent_id)) or "released")
+end
+
+--- Release market goods past their window. Repeating timer (re-armed each fire). The engine restock
+--- also wipes goods, so this is the primary cleanup only when the window is shorter than the restock
+--- interval. Expired ids are collected first (module-level buffer), then released + untagged after
+--- the walk, so _market_goods is never mutated mid-iteration.
+local function _release_expired()
+    local now = xtime.game_sec()
+    local window = _goods_window_sec()
+    local debug_on = ap_core_debug.enabled()
+    local count = 0
+    for id, tag in pairs(_market_goods) do
+        if now - tag.inject_time >= window then
+            count = count + 1
+            _release_buf[count] = id
+        elseif debug_on then
+            _log_vanished(id, tag)
+        end
+    end
+    for i = 1, count do
+        local id = _release_buf[i]
+        _release_one(id, _market_goods[id])
+        _market_goods[id] = nil
+        _release_buf[i] = nil
+    end
+    if count > 0 and ap_core_debug.enabled() then
+        ap_core_debug.debug("%s released %d expired", LOG, count)
+    end
+    -- Periodic re-arm: ResetTimeEvent + return false (re-CreateTimeEvent with the same id no-ops
+    -- mid-callback because removal trails the return, _g.script:345,374).
+    ResetTimeEvent(RELEASE_EV, RELEASE_EV, RELEASE_PERIOD_MS / 1000)
+    return false
+end
+
+-- ============================================================================
+-- SAVE / LOAD
+-- ============================================================================
+
+local function _on_save(m_data)
+    m_data[SAVE_KEY] = { trader_bought = _trader_bought, trader_sold = _trader_sold, market_goods = _market_goods }
+end
+
+local function _on_load(m_data)
+    -- Data only: no alife queries here (LOAD_STATE fires before entities exist). Stale-id
+    -- validation is deferred to _on_first_update via _validate_market_goods.
+    local data = m_data and m_data[SAVE_KEY]
+    if not data then return end
+    -- Type-guarded loads: a corrupt shape is dropped, not assigned, so a later _fifo_add / release
+    -- walk cannot crash on it. Each FIFO is ambient state that repopulates within one trade cycle,
+    -- so no cross-version data migration is carried (code-standards Save Data Migrations).
+    if type(data.trader_bought) == "table" then _trader_bought = data.trader_bought end
+    if type(data.trader_sold) == "table" then _trader_sold = data.trader_sold end
+    if type(data.market_goods) == "table" then _market_goods = data.market_goods end
+end
+
+--- Drop restored goods whose item no longer exists (a trader purged its ruck on an offline restock
+--- between save and load). Runs once at first update, when alife queries are safe. A recycled id
+--- that survives here is still rejected at pricing time by the parent==trader guard in
+--- _on_get_item_cost, so premium never mis-applies.
+local function _validate_market_goods()
+    local dropped = 0
+    for id in pairs(_market_goods) do
+        if not xobject.se(id) then
+            _market_goods[id] = nil
+            dropped = dropped + 1
+        end
+    end
+    if dropped > 0 and ap_core_debug.enabled() then
+        ap_core_debug.debug("%s load dropped %d stale goods", LOG, dropped)
+    end
+end
+
+-- ============================================================================
+-- LIFECYCLE
+-- ============================================================================
+
+local function _on_first_update()
+    if _subscribed then return end
+    _subscribed = true
+    _validate_market_goods()
+    local _ = ap_ext_trade
+    xevent.hook("ap_ext_trade", "trade", _observe_trade)
+    RegisterScriptCallback(CALLBACK.ON_GET_ITEM_COST, _on_get_item_cost)
+    _setup_restock()
+    CreateTimeEvent(RELEASE_EV, RELEASE_EV, RELEASE_PERIOD_MS / 1000, _release_expired)
+    ap_core_debug.info("%s subscribed", LOG)
+end
+
+function on_game_start()
+    _subscribed = false
+    _market_goods = {}
+    _trader_bought = {}
+    _trader_sold = {}
+    _load_policy()
+    _load_rank_ruleset()
+    _claimed = xttltable.create_ttl_table({ clock = xtime.game_sec })
+    RegisterScriptCallback(CALLBACK.SAVE_STATE, _on_save)
+    RegisterScriptCallback(CALLBACK.LOAD_STATE, _on_load)
+    RegisterScriptCallback(CALLBACK.ACTOR_ON_FIRST_UPDATE, _on_first_update)
+    ap_core_debug.info("%s Initialized", LOG)
+end

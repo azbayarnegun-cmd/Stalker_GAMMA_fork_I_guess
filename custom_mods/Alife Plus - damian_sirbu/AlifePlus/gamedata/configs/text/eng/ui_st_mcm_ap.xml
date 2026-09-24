@@ -1,0 +1,2324 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+  <!-- ==================== MAIN MENU ==================== -->
+  <string id="ui_mcm_menu_ap">
+    <text>AlifePlus</text>
+  </string>
+  <!-- ==================== LEVEL 2 MENU NAMES ==================== -->
+  <string id="ui_mcm_menu_framework">
+    <text>Framework</text>
+  </string>
+  <string id="ui_mcm_menu_world">
+    <text>World</text>
+  </string>
+  <string id="ui_mcm_menu_news">
+    <text>News</text>
+  </string>
+  <string id="ui_mcm_menu_causes">
+    <text>Causes</text>
+  </string>
+  <string id="ui_mcm_menu_consequences">
+    <text>Consequences</text>
+  </string>
+  <string id="ui_mcm_menu_development">
+    <text>Development</text>
+  </string>
+  <string id="ui_mcm_menu_economy">
+    <text>Economy</text>
+  </string>
+  <string id="ui_mcm_menu_creatures">
+    <text>Creatures</text>
+  </string>
+  <string id="ui_mcm_menu_loot">
+    <text>Loot claim</text>
+  </string>
+  <string id="ui_mcm_menu_loot_policy">
+    <text>Loot policy</text>
+  </string>
+  <string id="ui_mcm_menu_trade">
+    <text>Trade</text>
+  </string>
+  <string id="ui_mcm_menu_market">
+    <text>Market</text>
+  </string>
+  <!-- ==================== LEVEL 3 MENU NAMES (CAUSE CATEGORIES) ==================== -->
+  <string id="ui_mcm_menu_reactions">
+    <text>Reactions</text>
+  </string>
+  <string id="ui_mcm_menu_opportunities">
+    <text>Opportunities</text>
+  </string>
+  <!-- ==================== LEVEL 4 MENU NAMES (CAUSE FAMILIES) ==================== -->
+  <string id="ui_mcm_menu_alpha">
+    <text>Alpha</text>
+  </string>
+  <string id="ui_mcm_menu_alphakill">
+    <text>AlphaKill</text>
+  </string>
+  <string id="ui_mcm_menu_massacre">
+    <text>Massacre</text>
+  </string>
+  <string id="ui_mcm_menu_stash">
+    <text>Stash</text>
+  </string>
+  <string id="ui_mcm_menu_squadkill">
+    <text>SquadKill</text>
+  </string>
+  <string id="ui_mcm_menu_basekill">
+    <text>BaseKill</text>
+  </string>
+  <string id="ui_mcm_menu_wounded">
+    <text>Wounded</text>
+  </string>
+  <string id="ui_mcm_menu_area">
+    <text>Area</text>
+  </string>
+  <string id="ui_mcm_menu_harvest">
+    <text>Harvest</text>
+  </string>
+  <string id="ui_mcm_menu_needs">
+    <text>Needs</text>
+  </string>
+  <string id="ui_mcm_menu_offmap">
+    <text>Off-map</text>
+  </string>
+  <string id="ui_mcm_menu_instincts">
+    <text>Instincts</text>
+  </string>
+  <string id="ui_mcm_menu_scatter">
+    <text>Scatter</text>
+  </string>
+  <string id="ui_mcm_menu_feed">
+    <text>Feed</text>
+  </string>
+  <string id="ui_mcm_menu_slumber_field">
+    <text>Slumber\nField</text>
+  </string>
+  <string id="ui_mcm_menu_slumber_lair">
+    <text>Slumber\nLair</text>
+  </string>
+  <string id="ui_mcm_menu_slumber_surge">
+    <text>Slumber\nSurge</text>
+  </string>
+  <string id="ui_mcm_menu_roam">
+    <text>Roam</text>
+  </string>
+  <string id="ui_mcm_menu_pack">
+    <text>Pack</text>
+  </string>
+  <string id="ui_mcm_menu_area_infest">
+    <text>Area\nInfest</text>
+  </string>
+  <!-- ==================== LEVEL 3 MENU NAMES (CONSEQUENCES) ==================== -->
+  <string id="ui_mcm_menu_alpha_promote">
+    <text>Alpha\nPromote</text>
+  </string>
+  <string id="ui_mcm_menu_alphakill_targeted">
+    <text>AlphaKill\nTargeted</text>
+  </string>
+  <string id="ui_mcm_menu_mutators">
+    <text>Territory</text>
+  </string>
+  <string id="ui_mcm_menu_conquest">
+    <text>Conquest</text>
+  </string>
+  <string id="ui_mcm_menu_swarm">
+    <text>Swarm</text>
+  </string>
+  <string id="ui_mcm_menu_infest">
+    <text>Infest</text>
+  </string>
+  <string id="ui_mcm_menu_massacre_scavenge">
+    <text>Massacre\nScavenge</text>
+  </string>
+  <string id="ui_mcm_menu_massacre_investigate">
+    <text>Massacre\nInvestigate</text>
+  </string>
+  <string id="ui_mcm_menu_massacre_loot">
+    <text>Massacre\nLoot</text>
+  </string>
+  <string id="ui_mcm_menu_stash_ambush">
+    <text>Stash\nAmbush</text>
+  </string>
+  <string id="ui_mcm_menu_stash_loot">
+    <text>Stash\nLoot</text>
+  </string>
+  <string id="ui_mcm_menu_stash_fill">
+    <text>Stash\nFill</text>
+  </string>
+  <string id="ui_mcm_menu_squadkill_revenge">
+    <text>SquadKill\nRevenge</text>
+  </string>
+  <string id="ui_mcm_menu_basekill_support">
+    <text>BaseKill\nSupport</text>
+  </string>
+  <string id="ui_mcm_menu_basekill_flee">
+    <text>BaseKill\nFlee</text>
+  </string>
+  <string id="ui_mcm_menu_wounded_hunt">
+    <text>Wounded\nHunt</text>
+  </string>
+  <string id="ui_mcm_menu_wounded_help">
+    <text>Wounded\nHelp</text>
+  </string>
+  <string id="ui_mcm_menu_area_conquer">
+    <text>Area\nConquer</text>
+  </string>
+  <string id="ui_mcm_menu_area_swarm">
+    <text>Area\nSwarm</text>
+  </string>
+  <string id="ui_mcm_menu_harvest_rob">
+    <text>Harvest\nRob</text>
+  </string>
+  <string id="ui_mcm_menu_harvest_haunt">
+    <text>Harvest\nHaunt</text>
+  </string>
+  <string id="ui_mcm_menu_hunger_campfire">
+    <text>Hunger\nCampfire</text>
+  </string>
+  <string id="ui_mcm_menu_sleep_campfire">
+    <text>Sleep\nCampfire</text>
+  </string>
+  <string id="ui_mcm_menu_rest_campfire">
+    <text>Rest\nCampfire</text>
+  </string>
+  <string id="ui_mcm_menu_heal_shelter">
+    <text>Heal\nShelter</text>
+  </string>
+  <string id="ui_mcm_menu_shelter_indoor">
+    <text>Shelter\nIndoor</text>
+  </string>
+  <string id="ui_mcm_menu_shelter_outdoor">
+    <text>Shelter\nOutdoor</text>
+  </string>
+  <string id="ui_mcm_menu_money_harvest">
+    <text>Money\nHarvest</text>
+  </string>
+  <string id="ui_mcm_menu_money_hunt">
+    <text>Money\nHunt</text>
+  </string>
+  <string id="ui_mcm_menu_supply_trader">
+    <text>Supply\nTrader</text>
+  </string>
+  <string id="ui_mcm_menu_supply_trader_offmap">
+    <text>Supply Trader\nOff-map</text>
+  </string>
+  <string id="ui_mcm_menu_barter">
+    <text>Barter</text>
+  </string>
+  <string id="ui_mcm_menu_barter_offmap">
+    <text>Barter\nOff-map</text>
+  </string>
+  <string id="ui_mcm_menu_job_outpost">
+    <text>Job\nOutpost</text>
+  </string>
+  <string id="ui_mcm_menu_job_explore">
+    <text>Job\nExplore</text>
+  </string>
+  <string id="ui_mcm_menu_job_explore_offmap">
+    <text>Job Explore\nOff-map</text>
+  </string>
+  <string id="ui_mcm_menu_job_research">
+    <text>Job\nResearch</text>
+  </string>
+  <string id="ui_mcm_menu_social_campfire">
+    <text>Social\nCampfire</text>
+  </string>
+  <string id="ui_mcm_menu_social_base">
+    <text>Social\nBase</text>
+  </string>
+  <string id="ui_mcm_menu_social_offmap">
+    <text>Social\nOff-map</text>
+  </string>
+  <!-- ==================== FRAMEWORK TAB ==================== -->
+  <string id="ui_mcm_ap_framework_title">
+    <text>Framework</text>
+  </string>
+  <string id="ui_mcm_ap_framework_desc">
+    <text>Event pipeline controls. The ap_squad_on_change sweep produces squad events at exactly the A-Life Rate, split between the player's map and background maps by the A-Life Ratio. Cause and Consequence budgets cap what the events may do to the world.</text>
+  </string>
+  <string id="ui_mcm_ap_framework_alife_ratio">
+    <text>A-Life Ratio</text>
+  </string>
+  <string id="ui_mcm_ap_framework_alife_ratio_desc">
+    <text>How the produced events are split between the player's map and background maps, similar to X-Ray's original going speed. Higher values favor the player's map (8 gives about 4 of 5 events to it). Zero splits evenly. Negative values favor background maps.</text>
+  </string>
+  <string id="ui_mcm_ap_framework_alife_rate">
+    <text>A-Life Rate</text>
+  </string>
+  <string id="ui_mcm_ap_framework_alife_rate_desc">
+    <text>[events per minute]\nHow many squads get their moment of attention each minute, across all maps. An event is not an action: it is one look at one real squad in the live simulation. Whether that squad then does something, and what, follows from its own state at that moment: hunger, fear, losses, territory, opportunities around it. Most looks end with the squad carrying on as it was. Squads whose situation really changed are looked at first, quiet squads take turns. This setting paces the simulation, it does not script it. Direct reactive events (deaths, item use) are separate.</text>
+  </string>
+  <string id="ui_mcm_ap_framework_cause_max_reactions">
+    <text>Reactions budget</text>
+  </string>
+  <string id="ui_mcm_ap_framework_cause_max_reactions_desc">
+    <text>Max reaction publishes per 60s (massacre, squadkill, basekill, wounded, harvest, alpha, alphakill).</text>
+  </string>
+  <string id="ui_mcm_ap_framework_cause_max_per_causer">
+    <text>Reactions per causer</text>
+  </string>
+  <string id="ui_mcm_ap_framework_cause_max_per_causer_desc">
+    <text>Max reactions a single source entity may trigger within 1 in-game hour. The causer is the killer, the wounded NPC, or the artefact taker (actor or NPC). Stops uneven situations where one source dominates the reactions: a hostile map where the player is the only enemy, a lone predator clearing out a lair, or a single squad on a long killing spree.</text>
+  </string>
+  <string id="ui_mcm_ap_framework_cause_max_needs">
+    <text>Needs budget</text>
+  </string>
+  <string id="ui_mcm_ap_framework_cause_max_needs_desc">
+    <text>Max stalker-needs publishes per 60s (hunger, sleep, rest, heal, shelter, money, supply, job, social).</text>
+  </string>
+  <string id="ui_mcm_ap_framework_cause_max_instincts">
+    <text>Instincts budget</text>
+  </string>
+  <string id="ui_mcm_ap_framework_cause_max_instincts_desc">
+    <text>Max mutant-instinct publishes per 60s (scatter, feed, sleep, explore, socialize, infest).</text>
+  </string>
+  <string id="ui_mcm_ap_framework_cause_max_opportunities">
+    <text>Opportunities budget</text>
+  </string>
+  <string id="ui_mcm_ap_framework_cause_max_opportunities_desc">
+    <text>Max territorial-opportunity publishes per 60s (stash interactions, area conquest).</text>
+  </string>
+  <string id="ui_mcm_ap_framework_consequence_max_events">
+    <text>Consequence budget</text>
+  </string>
+  <string id="ui_mcm_ap_framework_consequence_max_events_desc">
+    <text>[count]\nMax activations per consequence type per 60 seconds. Prevents one consequence from firing too often.</text>
+  </string>
+  <string id="ui_mcm_ap_framework_global_consequence_max_events">
+    <text>Global consequence rate limit</text>
+  </string>
+  <string id="ui_mcm_ap_framework_global_consequence_max_events_desc">
+    <text>[count]\nMax total consequence activations across all types per 60 seconds. Prevents consequence floods from multiple causes firing in quick succession.</text>
+  </string>
+  <string id="ui_mcm_ap_framework_allow_external_ownership">
+    <text>Allow external ownership</text>
+  </string>
+  <string id="ui_mcm_ap_framework_allow_external_ownership_desc">
+    <text>When enabled, other mods can register squad ownership. AP will not touch squads owned by other mods (Warfare, BAO, etc). When disabled, AP ignores external ownership claims and controls all eligible squads.</text>
+  </string>
+  <!-- ==================== NEWS ==================== -->
+  <string id="ui_mcm_ap_news_title">
+    <text>News</text>
+  </string>
+  <string id="ui_mcm_ap_news_desc">
+    <text>PDA gossip composer. Zone events (kills, conquests, raids, mutant activity) are recorded as they happen, then periodically composed into radio chatter and delivered via PDA by an event-connected stalker.</text>
+  </string>
+  <string id="ui_mcm_ap_news_news_enabled">
+    <text>Enable news</text>
+  </string>
+  <string id="ui_mcm_ap_news_news_enabled_desc">
+    <text>Master toggle for the PDA news composer. When disabled, no gossip is dispatched. Event recording continues regardless.</text>
+  </string>
+  <string id="ui_mcm_ap_news_chatter_enabled">
+    <text>Enable chatter</text>
+  </string>
+  <string id="ui_mcm_ap_news_chatter_enabled_desc">
+    <text>Local, immediate lines about what is happening near you, spoken by a nearby stalker on the PDA feed the instant it happens. Disable to mute them.</text>
+  </string>
+  <string id="ui_mcm_ap_news_chatter_interval_sec">
+    <text>Chatter interval (seconds)</text>
+  </string>
+  <string id="ui_mcm_ap_news_chatter_interval_sec_desc">
+    <text>Minimum real seconds between chatter lines. When many events fire at once, this drops the extras so the feed is not flooded.</text>
+  </string>
+  <string id="ui_mcm_ap_news_news_interval_min_sec">
+    <text>Compose interval min</text>
+  </string>
+  <string id="ui_mcm_ap_news_news_interval_min_sec_desc">
+    <text>[seconds]\nMinimum delay between PDA messages. Each tick picks a random delay between min and max, so cadence feels human instead of mechanical.</text>
+  </string>
+  <string id="ui_mcm_ap_news_news_interval_max_sec">
+    <text>Compose interval max</text>
+  </string>
+  <string id="ui_mcm_ap_news_news_interval_max_sec_desc">
+    <text>[seconds]\nMaximum delay between PDA messages. Higher means a quieter Zone overall. Set min and max to the same value for fixed cadence.</text>
+  </string>
+  <string id="ui_mcm_ap_news_news_scope">
+    <text>News scope</text>
+  </string>
+  <string id="ui_mcm_ap_news_news_scope_desc">
+    <text>Which faction radios you tune into. Own: only your faction speaks. Allies: your faction plus factions friendly to you. World: any non-enemy stalker. Secret faction channels (Monolith, Army, Greh, ISG) stay member-only regardless.</text>
+  </string>
+  <string id="ap_news_news_scope_lst_own">
+    <text>Own faction only</text>
+  </string>
+  <string id="ap_news_news_scope_lst_allies">
+    <text>Own and allies</text>
+  </string>
+  <string id="ap_news_news_scope_lst_world">
+    <text>Any non-enemy</text>
+  </string>
+  <string id="ui_mcm_ap_news_news_max_age_game_hours">
+    <text>Max news age</text>
+  </string>
+  <string id="ui_mcm_ap_news_news_max_age_game_hours_desc">
+    <text>[game hours]\nHow old an event can be and still get gossiped about. Each compose tick picks a random event from the past N game hours. Lower = fresher news, higher = wider gossip pool.</text>
+  </string>
+  <!-- ==================== CAUSES / REACTIONS (page banner) ==================== -->
+  <string id="ui_mcm_ap_causes_reactions_title">
+    <text>Reactions</text>
+  </string>
+  <!-- ==================== CAUSES / OPPORTUNITIES (page banner) ==================== -->
+  <string id="ui_mcm_ap_causes_opportunities_title">
+    <text>Opportunities</text>
+  </string>
+  <!-- ==================== CAUSES / ALPHA ==================== -->
+  <string id="ui_mcm_ap_causes_alpha_tag">
+    <text>Cause: Alpha\nDesc: Mutant accumulated enough kills to level up as an alpha. 10 levels, each requiring more kills. Stalkers use engine rank instead.\nRules: kill threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_alpha_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_alpha_enabled_desc">
+    <text>Fire cause:alpha when a mutant reaches a new alpha level.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_alpha_kills_per_level">
+    <text>Kills per level</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_alpha_kills_per_level_desc">
+    <text>Kills required per alpha level. At 2: level 1 at 2 kills, level 10 at 20 kills.</text>
+  </string>
+  <!-- ==================== CAUSES / ALPHAKILL ==================== -->
+  <string id="ui_mcm_ap_causes_alphakill_tag">
+    <text>Cause: Alphakill\nDesc: An alpha mutant has died.\nRules: alpha died</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_alphakill_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_alphakill_enabled_desc">
+    <text>Fire cause:alphakill event when alpha mutants die. Required for targeted pack hunt.</text>
+  </string>
+  <!-- ==================== CAUSES / MASSACRE ==================== -->
+  <string id="ui_mcm_ap_causes_massacre_tag">
+    <text>Cause: Massacre\nDesc: Deaths pile up at a smart terrain.\nRules: multiple human deaths; not at base</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_massacre_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_massacre_enabled_desc">
+    <text>Track death accumulation and fire massacre events when threshold reached.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_massacre_threshold">
+    <text>Death threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_massacre_threshold_desc">
+    <text>Deaths required in area before massacre event fires.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_massacre_decay_time">
+    <text>Decay time</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_massacre_decay_time_desc">
+    <text>[seconds]\nTime window for death accumulation. Deaths older than this don't count.</text>
+  </string>
+  <!-- ==================== CAUSES / STASH ==================== -->
+  <string id="ui_mcm_ap_causes_stash_loot_tag">
+    <text>Cause: Stash Loot Available\nDesc: Squad finds a non-empty stash and loots it.\nRules: eye range; day; loot-seeking stalkers; personality(greed, perception); stash non-empty; destination non-base; tactics; MVT</text>
+  </string>
+  <string id="ui_mcm_ap_causes_stash_ambush_tag">
+    <text>Cause: Stash Ambush Available\nDesc: Outlaw squad stakes out a heavily-stocked stash.\nRules: eye range; day; outlaw stalkers; personality(greed, aggression); items &gt;= min; destination non-base; tactics; MVT</text>
+  </string>
+  <string id="ui_mcm_ap_causes_stash_fill_tag">
+    <text>Cause: Stash Fill Available\nDesc: Squad finds an empty stash and stocks it.\nRules: eye range; day; any stalker; personality(greed, relation); stash empty; destination non-base; tactics; MVT</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_stash_loot_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_stash_loot_enabled_desc">
+    <text>Allow loot cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_stash_ambush_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_stash_ambush_enabled_desc">
+    <text>Allow ambush cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_stash_fill_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_stash_fill_enabled_desc">
+    <text>Allow fill cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_stash_loot_threshold">
+    <text>MVT threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_stash_loot_threshold_desc">
+    <text>Game hours per squad before another loot attempt. MVT recovery time.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_stash_ambush_threshold">
+    <text>MVT threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_stash_ambush_threshold_desc">
+    <text>Game hours per squad before another ambush attempt. MVT recovery time.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_stash_fill_threshold">
+    <text>MVT threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_stash_fill_threshold_desc">
+    <text>Game hours per squad before another fill attempt. MVT recovery time.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_stash_ambush_min_items">
+    <text>Min items</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_stash_ambush_min_items_desc">
+    <text>Minimum item count for outlaws to stake out a stash. Below this, they loot directly instead.</text>
+  </string>
+  <!-- ==================== CAUSES / SQUADKILL ==================== -->
+  <string id="ui_mcm_ap_causes_squadkill_tag">
+    <text>Cause: Squadkill\nDesc: A squad has been wiped out.\nRules: human squad wiped; not at base</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_squadkill_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_squadkill_enabled_desc">
+    <text>Fire cause:squadkill event when last squad member dies.</text>
+  </string>
+  <!-- ==================== CAUSES / BASEKILL ==================== -->
+  <string id="ui_mcm_ap_causes_basekill_tag">
+    <text>Cause: Basekill\nDesc: Deaths pile up at a faction base.\nRules: multiple human deaths; at base</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_basekill_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_basekill_enabled_desc">
+    <text>Track deaths at faction bases and fire events when threshold reached.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_basekill_threshold">
+    <text>Death threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_basekill_threshold_desc">
+    <text>Deaths required at base before event fires.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_basekill_decay_time">
+    <text>Decay time</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_basekill_decay_time_desc">
+    <text>[seconds]\nTime window for death accumulation at base.</text>
+  </string>
+  <!-- ==================== CAUSES / WOUNDED ==================== -->
+  <string id="ui_mcm_ap_causes_wounded_tag">
+    <text>Cause: Wounded\nDesc: An NPC or player used a healing item.\nRules: healing item used; not at base</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_wounded_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_wounded_enabled_desc">
+    <text>Fire event when NPC or player uses healing item.</text>
+  </string>
+  <!-- ==================== CAUSES / AREA ==================== -->
+  <string id="ui_mcm_ap_causes_area_conquer_tag">
+    <text>Cause: Area Conquer Available\nDesc: Stalker squad claims an empty smart.\nRules: eye range; day; non-ecologist stalkers; personality(territory, aggression); empty smart; not at base; max faction smarts per level; tactics; MVT</text>
+  </string>
+  <string id="ui_mcm_ap_causes_area_swarm_tag">
+    <text>Cause: Area Swarm Available\nDesc: Mutant squad claims an empty smart.\nRules: eye range; day; non-cowardly mutants; personality(territory, aggression); empty smart; not at base; max faction smarts per level; tactics; MVT</text>
+  </string>
+  <string id="ui_mcm_ap_causes_area_infest_tag">
+    <text>Cause: Area Infest Available\nDesc: Mutant claims a lair or surge shelter.\nRules: eye range; day; non-cowardly mutants; personality(territory, survival); species-specific shelter; not at base; not infested; has alpha; per-level cap; tactics; MVT</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_conquer_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_conquer_enabled_desc">
+    <text>Allow conquer cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_conquer_threshold">
+    <text>MVT threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_conquer_threshold_desc">
+    <text>Game hours per squad before another conquer attempt. MVT recovery time.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_conquer_max_faction_smarts_per_level">
+    <text>Max faction smarts per level</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_conquer_max_faction_smarts_per_level_desc">
+    <text>A faction stops conquering on a level once its squads hold this many smart terrains there. Counts every smart the faction occupies, not only conquered ones, so dominant factions stop and newcomers expand freely.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_swarm_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_swarm_enabled_desc">
+    <text>Allow swarm cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_swarm_threshold">
+    <text>MVT threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_swarm_threshold_desc">
+    <text>Game hours per squad before another swarm attempt. MVT recovery time.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_swarm_max_faction_smarts_per_level">
+    <text>Max mutant smarts per level</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_swarm_max_faction_smarts_per_level_desc">
+    <text>Mutants stop swarming on a level once mutant squads of any species hold this many smart terrains there. All mutant species count as one side.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_infest_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_infest_enabled_desc">
+    <text>Allow infest cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_infest_threshold">
+    <text>MVT threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_opportunities_cause_area_infest_threshold_desc">
+    <text>Game hours per squad before another infest attempt. MVT recovery time.</text>
+  </string>
+  <!-- ==================== CAUSES / HARVEST ==================== -->
+  <string id="ui_mcm_ap_causes_harvest_tag">
+    <text>Cause: Harvest\nDesc: An NPC or player picked up an artefact.\nRules: artefact picked up</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_harvest_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_reactions_cause_harvest_enabled_desc">
+    <text>Fire cause:harvest when artefact is picked up.</text>
+  </string>
+  <!-- ==================== CAUSES / NEEDS ==================== -->
+  <string id="ui_mcm_ap_causes_needs_title">
+    <text>Needs</text>
+  </string>
+  <!-- Per-cause tags (14 sub-causes) -->
+  <string id="ui_mcm_ap_causes_needs_hunger_campfire_tag">
+    <text>Cause: Hunger Campfire Available\nDesc: Hungry squad heads to a campfire to eat.\nRules: radio range; any stalker; personality(survival); campfire; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_sleep_campfire_tag">
+    <text>Cause: Sleep Campfire Available\nDesc: Tired squad beds down at a campfire.\nRules: radio range; night; any stalker; personality(survival); campfire; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_rest_campfire_tag">
+    <text>Cause: Rest Campfire Available\nDesc: Worn squad takes a halt at a campfire.\nRules: radio range; any stalker; personality(survival); campfire; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_heal_shelter_tag">
+    <text>Cause: Heal Shelter Available\nDesc: Wounded squad seeks a surge shelter.\nRules: radio range; any stalker; personality(territory, survival); surge shelter; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_shelter_indoor_tag">
+    <text>Cause: Shelter Indoor Available\nDesc: Squad takes an indoor surge shelter.\nRules: radio range; night; any stalker; personality(territory, discipline); surge shelter; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_shelter_outdoor_tag">
+    <text>Cause: Shelter Outdoor Available\nDesc: Squad takes a campfire as outdoor shelter.\nRules: radio range; night; any stalker; personality(perception); campfire; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_supply_trader_tag">
+    <text>Cause: Supply Trader Available\nDesc: Squad heads to a smart hosting a curated trader, medic, or mechanic to restock.\nRules: radio range; day; any stalker; personality(greed, relation); service NPC at smart; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_supply_trader_offmap_tag">
+    <text>Cause: Supply Trader Off-map Available\nDesc: Squad heads to a smart on another map hosting a curated trader, medic, or mechanic. Peer of supply_trader; peaceful greedy factions travel for trade.\nRules: all-level scan; excludes source level; offmap balance cap applies; off-map travelers; personality(greed, inv_aggression); service NPC at smart; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_barter_tag">
+    <text>Cause: Barter Available\nDesc: Squad heads to a same-faction smart to swap surplus for what it lacks with a stalker there, no money. Shares the supply drive with the trader causes.\nRules: radio range; day; same faction present; personality(greed, relation); non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_barter_offmap_tag">
+    <text>Cause: Barter Off-map Available\nDesc: Squad heads to a same-faction smart on another map to barter. Peer of barter; peaceful greedy factions travel to swap.\nRules: all-level scan; excludes source level; offmap balance cap applies; off-map travelers; personality(greed, inv_aggression); same faction present; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_money_harvest_tag">
+    <text>Cause: Money Harvest Available\nDesc: Squad heads to an anomaly to pull artefacts.\nRules: radio range; day; self-serving stalkers; personality(greed, perception); anomaly; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_money_hunt_tag">
+    <text>Cause: Money Hunt Available\nDesc: Squad heads to a lair to hunt mutants.\nRules: radio range; day; naturalist stalkers; personality(greed, perception); lair; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_job_outpost_tag">
+    <text>Cause: Job Outpost Available\nDesc: Squad mans a remote post on watch.\nRules: radio range; day; principled stalkers; personality(territory, discipline); not at base; not at lair; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_job_explore_tag">
+    <text>Cause: Job Explore Available\nDesc: Squad scouts an unclaimed smart.\nRules: radio range; day; self-serving stalkers; personality(perception, territory); unclaimed; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_job_explore_offmap_tag">
+    <text>Cause: Job Explore Off-map Available\nDesc: Squad scouts an unclaimed smart on another map. Peer of job_explore; peaceful curious factions scout neighbor maps.\nRules: all-level scan; excludes source level; offmap balance cap applies; off-map travelers; personality(perception, inv_aggression); unclaimed faction; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_job_research_tag">
+    <text>Cause: Job Research Available\nDesc: Ecologist squad samples an anomaly field.\nRules: radio range; day; ecologists; personality(perception, discipline); anomaly; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_social_campfire_tag">
+    <text>Cause: Social Campfire Available\nDesc: Squad gathers at a campfire to drink.\nRules: radio range; any stalker; personality(relation); campfire; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_social_base_tag">
+    <text>Cause: Social Base Available\nDesc: Squad returns to base for downtime.\nRules: radio range; principled stalkers; personality(relation, territory); base; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_social_offmap_tag">
+    <text>Cause: Social Off-map Available\nDesc: Squad visits a base on another map for company. Peer of social_base; peaceful sociable factions visit other camps.\nRules: all-level scan; excludes source level; offmap balance cap applies; off-map travelers; personality(relation, inv_aggression); base; non-hostile; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_hunger_threshold">
+    <text>Hunger threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_hunger_threshold_desc">
+    <text>[game-hours]\nTime between hunger events.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_sleep_threshold">
+    <text>Sleep threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_sleep_threshold_desc">
+    <text>[game-hours]\nTime between sleep events. Night-gated (20:00-05:00).</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_rest_threshold">
+    <text>Rest threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_rest_threshold_desc">
+    <text>[game-hours]\nTime between rest events (smoke, drink, relax).</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_heal_threshold">
+    <text>Heal threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_heal_threshold_desc">
+    <text>[game-hours]\nTime between healing events.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_shelter_threshold">
+    <text>Shelter threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_shelter_threshold_desc">
+    <text>[game-hours]\nTime between shelter events.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_money_threshold">
+    <text>Money threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_money_threshold_desc">
+    <text>[game-hours]\nTime between money-seeking events.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_supply_threshold">
+    <text>Supply threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_supply_threshold_desc">
+    <text>[game-hours]\nTime between supply events (trader visit, stash deposit).</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_job_threshold">
+    <text>Job threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_job_threshold_desc">
+    <text>[game-hours]\nTime between job events (guard, explore, research).</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_social_threshold">
+    <text>Social threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_social_threshold_desc">
+    <text>[game-hours]\nTime between social events (campfire gathering, base visit).</text>
+  </string>
+  <!-- Per-cause enable labels (uniform "Enabled") -->
+  <string id="ui_mcm_ap_causes_needs_cause_hunger_campfire_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_hunger_campfire_enabled_desc">
+    <text>Allow hunger_campfire cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_sleep_campfire_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_sleep_campfire_enabled_desc">
+    <text>Allow sleep_campfire cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_rest_campfire_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_rest_campfire_enabled_desc">
+    <text>Allow rest_campfire cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_heal_shelter_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_heal_shelter_enabled_desc">
+    <text>Allow heal_shelter cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_shelter_indoor_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_shelter_indoor_enabled_desc">
+    <text>Allow shelter_indoor cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_shelter_outdoor_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_shelter_outdoor_enabled_desc">
+    <text>Allow shelter_outdoor cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_supply_trader_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_supply_trader_enabled_desc">
+    <text>Allow supply_trader cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_money_harvest_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_money_harvest_enabled_desc">
+    <text>Allow money_harvest cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_money_hunt_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_money_hunt_enabled_desc">
+    <text>Allow money_hunt cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_job_outpost_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_job_outpost_enabled_desc">
+    <text>Allow job_outpost cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_job_explore_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_job_explore_enabled_desc">
+    <text>Allow job_explore cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_job_research_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_job_research_enabled_desc">
+    <text>Allow job_research cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_social_campfire_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_social_campfire_enabled_desc">
+    <text>Allow social_campfire cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_social_base_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_social_base_enabled_desc">
+    <text>Allow social_base cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_social_offmap_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_social_offmap_enabled_desc">
+    <text>Allow social_offmap cause to publish (peer of social_base; peaceful sociable factions visit other camps).</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_supply_trader_offmap_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_supply_trader_offmap_enabled_desc">
+    <text>Allow supply_trader_offmap cause to publish (peer of supply_trader; peaceful greedy factions travel for trade).</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_barter_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_barter_enabled_desc">
+    <text>Allow barter cause to publish (stalkers swap surplus for what they lack with a same-faction squad, no money).</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_barter_offmap_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_barter_offmap_enabled_desc">
+    <text>Allow barter_offmap cause to publish (peer of barter; peaceful greedy factions travel to a same-faction smart on another map to swap).</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_job_explore_offmap_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_needs_cause_job_explore_offmap_enabled_desc">
+    <text>Allow job_explore_offmap cause to publish (peer of job_explore; peaceful curious factions scout neighbor maps).</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / ALPHA PROMOTE ==================== -->
+  <string id="ui_mcm_ap_consequences_alpha_promote_title">
+    <text>Alpha\nPromote</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_alpha_promote_tag">
+    <text>Desc: Registers a new alpha or raises its level\nCause: Alpha\nRules: mutant; kill threshold</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_alpha_promote_consequence_alpha_promote_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_alpha_promote_consequence_alpha_promote_enabled_desc">
+    <text>Register mutants as alphas when they level up from kills.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_alpha_promote_consequence_alpha_promote_max_alphas">
+    <text>Maximum alphas</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_alpha_promote_consequence_alpha_promote_max_alphas_desc">
+    <text>Maximum number of alphas allowed worldwide. Only blocks new alphas, not level-ups.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / ALPHAKILL TARGETED ==================== -->
+  <string id="ui_mcm_ap_consequences_alphakill_targeted_title">
+    <text>Alphakill Targeted</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_alphakill_targeted_tag">
+    <text>Desc: Same-species mutants chase the killer\nCause: Alphakill\nRules: scent range; same species; personality(aggression)</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_alphakill_targeted_consequence_alphakill_targeted_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_alphakill_targeted_consequence_alphakill_targeted_enabled_desc">
+    <text>Same-species mutants on the level pursue the killer.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_alphakill_targeted_consequence_alphakill_targeted_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_alphakill_targeted_consequence_alphakill_targeted_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_alphakill_targeted_consequence_alphakill_targeted_max_squads">
+    <text>Max squads per event</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_alphakill_targeted_consequence_alphakill_targeted_max_squads_desc">
+    <text>Maximum alpha squads that pursue the killer.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / MASSACRE SCAVENGE ==================== -->
+  <string id="ui_mcm_ap_consequences_massacre_scavenge_title">
+    <text>Massacre Scavenge</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_scavenge_tag">
+    <text>Desc: Cowardly mutants scavenge the corpses\nCause: Massacre\nRules: scent range; cowardly mutants; personality(survival, perception)</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_scavenge_consequence_massacre_scavenge_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_scavenge_consequence_massacre_scavenge_enabled_desc">
+    <text>Outlaws and cowardly mutants converge on massacre sites.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_scavenge_consequence_massacre_scavenge_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_scavenge_consequence_massacre_scavenge_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_scavenge_consequence_massacre_scavenge_max_squads">
+    <text>Max squads per event</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_scavenge_consequence_massacre_scavenge_max_squads_desc">
+    <text>Maximum scavenger squads that respond to a massacre.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / MASSACRE INVESTIGATE ==================== -->
+  <string id="ui_mcm_ap_consequences_massacre_investigate_title">
+    <text>Massacre\nInvestigate</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_investigate_tag">
+    <text>Desc: Victim-faction stalkers head to the kill site\nCause: Massacre\nRules: radio range; non-renegade stalkers; personality(perception, relation)</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_investigate_consequence_massacre_investigate_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_investigate_consequence_massacre_investigate_enabled_desc">
+    <text>Stalker factions investigate when their own die.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_investigate_consequence_massacre_investigate_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_investigate_consequence_massacre_investigate_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_investigate_consequence_massacre_investigate_max_squads">
+    <text>Max squads per event</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_investigate_consequence_massacre_investigate_max_squads_desc">
+    <text>Maximum faction squads that investigate a massacre (random 1..N).</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / MASSACRE LOOT ==================== -->
+  <string id="ui_mcm_ap_consequences_massacre_loot_title">
+    <text>Massacre\nLoot</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_loot_tag">
+    <text>Desc: Outlaws strip the corpses\nCause: Massacre\nRules: radio range; outlaw stalkers; personality(greed, perception)</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_loot_consequence_massacre_loot_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_loot_consequence_massacre_loot_enabled_desc">
+    <text>Outlaws strip corpses at massacre sites.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_loot_consequence_massacre_loot_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_loot_consequence_massacre_loot_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_loot_consequence_massacre_loot_max_squads">
+    <text>Max squads per event</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_massacre_loot_consequence_massacre_loot_max_squads_desc">
+    <text>Maximum outlaw squads that walk to loot a massacre.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / STASH AMBUSH ==================== -->
+  <string id="ui_mcm_ap_consequences_stash_ambush_title">
+    <text>Stash\nAmbush</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_ambush_tag">
+    <text>Desc: Squad arrives and waits to ambush a looter\nCause: Stash Ambush Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_ambush_consequence_stash_ambush_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_ambush_consequence_stash_ambush_enabled_desc">
+    <text>Bandits camp at revealed stash locations and wait.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_ambush_consequence_stash_ambush_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_ambush_consequence_stash_ambush_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / STASH LOOT ==================== -->
+  <string id="ui_mcm_ap_consequences_stash_loot_title">
+    <text>Stash\nLoot</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_loot_tag">
+    <text>Desc: Squad takes per-category bands from the stash (ammo matching equipped weapons, medkits, bandages, food, drink, antirad, grenades). Quest items skip the whole stash. Optional MCM toggle skips stashes with crafting items.\nCause: Stash Loot Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_loot_consequence_stash_loot_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_loot_consequence_stash_loot_enabled_desc">
+    <text>Scavengers race to revealed stashes to loot them before player arrives.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_loot_consequence_stash_loot_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_loot_consequence_stash_loot_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_loot_consequence_stash_loot_skip_crafting">
+    <text>Skip stashes with crafting items</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_loot_consequence_stash_loot_skip_crafting_desc">
+    <text>If a stash contains any crafting workflow item (tools, kits, weapon parts, upgrades), the squad leaves the entire stash untouched. Preserves the player's crafting supply chain. Disable to let squads loot every stash regardless of contents.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / STASH FILL ==================== -->
+  <string id="ui_mcm_ap_consequences_stash_fill_title">
+    <text>Stash\nFill</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_fill_tag">
+    <text>Desc: Squad deposits squad surplus above each category's max into a stash, capped per event.\nCause: Stash Fill Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_fill_consequence_stash_fill_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_fill_consequence_stash_fill_enabled_desc">
+    <text>Stalkers hide supplies in stashes they discover.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_fill_consequence_stash_fill_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_stash_fill_consequence_stash_fill_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / SQUADKILL REVENGE ==================== -->
+  <string id="ui_mcm_ap_consequences_squadkill_revenge_title">
+    <text>Squadkill Revenge</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_squadkill_revenge_tag">
+    <text>Desc: Victim-faction squads chase the killer\nCause: Squadkill\nRules: radio range; unprincipled or outlaw stalkers; personality(aggression, relation)</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_squadkill_revenge_consequence_squadkill_revenge_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_squadkill_revenge_consequence_squadkill_revenge_enabled_desc">
+    <text>Nearby friendly squads pursue killers when squad is wiped.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_squadkill_revenge_consequence_squadkill_revenge_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_squadkill_revenge_consequence_squadkill_revenge_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_squadkill_revenge_consequence_squadkill_revenge_max_squads">
+    <text>Max squads per event</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_squadkill_revenge_consequence_squadkill_revenge_max_squads_desc">
+    <text>Maximum avenger squads that pursue a killer (random 1..N).</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / BASEKILL SUPPORT ==================== -->
+  <string id="ui_mcm_ap_consequences_basekill_support_title">
+    <text>Basekill Support</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_basekill_support_tag">
+    <text>Desc: Victim-faction squads rush to defend the base\nCause: Basekill\nRules: radio range; non-renegade stalkers; personality(discipline, relation)</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_basekill_support_consequence_basekill_support_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_basekill_support_consequence_basekill_support_enabled_desc">
+    <text>Nearby squads rush to reinforce base under attack.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_basekill_support_consequence_basekill_support_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_basekill_support_consequence_basekill_support_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_basekill_support_consequence_basekill_support_max_squads">
+    <text>Max squads per event</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_basekill_support_consequence_basekill_support_max_squads_desc">
+    <text>Maximum reinforcement squads sent to defend base (random 1..N).</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / BASEKILL FLEE ==================== -->
+  <string id="ui_mcm_ap_consequences_basekill_flee_title">
+    <text>Basekill Flee</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_basekill_flee_tag">
+    <text>Desc: Nearby squads flee to a distant friendly base\nCause: Basekill\nRules: eye range; non-principled stalkers; personality(inv_discipline, inv_territory); base on level</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_basekill_flee_consequence_basekill_flee_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_basekill_flee_consequence_basekill_flee_enabled_desc">
+    <text>Squads abandon base under heavy attack and retreat to safety.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_basekill_flee_consequence_basekill_flee_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_basekill_flee_consequence_basekill_flee_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_basekill_flee_consequence_basekill_flee_max_squads">
+    <text>Max squads per event</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_basekill_flee_consequence_basekill_flee_max_squads_desc">
+    <text>Maximum squads that flee per event (random 1..N).</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / WOUNDED HUNT ==================== -->
+  <string id="ui_mcm_ap_consequences_wounded_hunt_title">
+    <text>Wounded\nHunt</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_wounded_hunt_tag">
+    <text>Desc: Predator and aberrant mutants converge on the wounded\nCause: Wounded\nRules: radio range; predator or aberrant species; personality(aggression, perception)</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_wounded_hunt_consequence_wounded_hunt_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_wounded_hunt_consequence_wounded_hunt_enabled_desc">
+    <text>Predator and aberrant mutants hunt wounded.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_wounded_hunt_consequence_wounded_hunt_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_wounded_hunt_consequence_wounded_hunt_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_wounded_hunt_consequence_wounded_hunt_max_squads">
+    <text>Max squads per event</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_wounded_hunt_consequence_wounded_hunt_max_squads_desc">
+    <text>Maximum mutant squads drawn to wounded (random 1..N).</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / WOUNDED FACTION HELP ==================== -->
+  <string id="ui_mcm_ap_consequences_wounded_help_title">
+    <text>Wounded\nHelp</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_wounded_help_tag">
+    <text>Desc: Same-faction medics converge on the wounded\nCause: Wounded\nRules: radio range; non-outlaw stalkers; personality(relation, discipline)</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_wounded_help_consequence_wounded_help_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_wounded_help_consequence_wounded_help_enabled_desc">
+    <text>Faction members rush to assist wounded comrades.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_wounded_help_consequence_wounded_help_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_wounded_help_consequence_wounded_help_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_wounded_help_consequence_wounded_help_max_squads">
+    <text>Max squads per event</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_wounded_help_consequence_wounded_help_max_squads_desc">
+    <text>Maximum helper squads sent per event (random 1..N).</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / AREA CONQUER ==================== -->
+  <string id="ui_mcm_ap_consequences_area_conquer_title">
+    <text>Area\nConquer</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_area_conquer_tag">
+    <text>Desc: Stalker squad arrives and adds its faction to the spawn pool\nCause: Area Conquer Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_area_conquer_consequence_area_conquer_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_area_conquer_consequence_area_conquer_enabled_desc">
+    <text>Dispatch human squads to claim empty areas.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_area_conquer_consequence_area_conquer_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_area_conquer_consequence_area_conquer_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / AREA SWARM ==================== -->
+  <string id="ui_mcm_ap_consequences_area_swarm_title">
+    <text>Area\nSwarm</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_area_swarm_tag">
+    <text>Desc: Mutant pack arrives and adds its species to the spawn pool\nCause: Area Swarm Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_area_swarm_consequence_area_swarm_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_area_swarm_consequence_area_swarm_enabled_desc">
+    <text>Dispatch mutant squads to claim empty areas.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_area_swarm_consequence_area_swarm_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_area_swarm_consequence_area_swarm_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / HARVEST ROB ==================== -->
+  <string id="ui_mcm_ap_consequences_harvest_rob_title">
+    <text>Harvest\nRob</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_harvest_rob_tag">
+    <text>Desc: Outlaws chase the artefact taker\nCause: Harvest\nRules: radio range; outlaw stalkers; personality(greed, aggression)</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_harvest_rob_consequence_harvest_rob_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_harvest_rob_consequence_harvest_rob_enabled_desc">
+    <text>Outlaws pursue artefact takers.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_harvest_rob_consequence_harvest_rob_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_harvest_rob_consequence_harvest_rob_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_harvest_rob_consequence_harvest_rob_max_squads">
+    <text>Max squads per event</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_harvest_rob_consequence_harvest_rob_max_squads_desc">
+    <text>Maximum hunter squads that pursue the artefact taker (random 1..N).</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / HARVEST HAUNT ==================== -->
+  <string id="ui_mcm_ap_consequences_harvest_haunt_title">
+    <text>Harvest\nHaunt</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_harvest_haunt_tag">
+    <text>Desc: Aberrant mutants haunt the pickup site\nCause: Harvest\nRules: scent range; aberrant species; personality(perception, territory)</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_harvest_haunt_consequence_harvest_haunt_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_harvest_haunt_consequence_harvest_haunt_enabled_desc">
+    <text>Aberrant mutants converge on artefact pickup sites.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_harvest_haunt_consequence_harvest_haunt_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_harvest_haunt_consequence_harvest_haunt_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_harvest_haunt_consequence_harvest_haunt_max_squads">
+    <text>Max squads per event</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_harvest_haunt_consequence_harvest_haunt_max_squads_desc">
+    <text>Maximum aberrant squads that converge on the pickup site (random 1..N).</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / HUNGER CAMPFIRE ==================== -->
+  <string id="ui_mcm_ap_consequences_hunger_campfire_title">
+    <text>Hunger Campfire</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_hunger_campfire_tag">
+    <text>Desc: Squad heads to a campfire to eat\nCause: Hunger Campfire Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_hunger_campfire_consequence_hunger_campfire_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_hunger_campfire_consequence_hunger_campfire_enabled_desc">
+    <text>Hungry stalkers seek campfires to eat.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_hunger_campfire_consequence_hunger_campfire_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_hunger_campfire_consequence_hunger_campfire_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / SLEEP CAMPFIRE ==================== -->
+  <string id="ui_mcm_ap_consequences_sleep_campfire_title">
+    <text>Sleep Campfire</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_sleep_campfire_tag">
+    <text>Desc: Squad heads to a campfire to sleep\nCause: Sleep Campfire Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_sleep_campfire_consequence_sleep_campfire_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_sleep_campfire_consequence_sleep_campfire_enabled_desc">
+    <text>Tired stalkers seek campfires to sleep at night.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_sleep_campfire_consequence_sleep_campfire_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_sleep_campfire_consequence_sleep_campfire_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / REST CAMPFIRE ==================== -->
+  <string id="ui_mcm_ap_consequences_rest_campfire_title">
+    <text>Rest Campfire</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_rest_campfire_tag">
+    <text>Desc: Squad heads to a campfire to rest\nCause: Rest Campfire Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_rest_campfire_consequence_rest_campfire_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_rest_campfire_consequence_rest_campfire_enabled_desc">
+    <text>Fatigued stalkers seek campfires to rest.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_rest_campfire_consequence_rest_campfire_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_rest_campfire_consequence_rest_campfire_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / HEAL SHELTER ==================== -->
+  <string id="ui_mcm_ap_consequences_heal_shelter_title">
+    <text>Heal Shelter</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_heal_shelter_tag">
+    <text>Desc: Squad heads to a shelter to heal\nCause: Heal Shelter Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_heal_shelter_consequence_heal_shelter_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_heal_shelter_consequence_heal_shelter_enabled_desc">
+    <text>Wounded stalkers seek sheltered locations for healing.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_heal_shelter_consequence_heal_shelter_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_heal_shelter_consequence_heal_shelter_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / SHELTER ==================== -->
+  <string id="ui_mcm_ap_consequences_shelter_indoor_title">
+    <text>Shelter</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_shelter_indoor_tag">
+    <text>Desc: Squad takes indoor shelter from the surge\nCause: Shelter Indoor Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_shelter_indoor_consequence_shelter_indoor_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_shelter_indoor_consequence_shelter_indoor_enabled_desc">
+    <text>Exposed stalkers seek surge-sheltered locations.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_shelter_indoor_consequence_shelter_indoor_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_shelter_indoor_consequence_shelter_indoor_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / SHELTER OUTDOOR ==================== -->
+  <string id="ui_mcm_ap_consequences_shelter_outdoor_title">
+    <text>Shelter Outdoor</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_shelter_outdoor_tag">
+    <text>Desc: Squad takes outdoor shelter from the surge\nCause: Shelter Outdoor Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_shelter_outdoor_consequence_shelter_outdoor_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_shelter_outdoor_consequence_shelter_outdoor_enabled_desc">
+    <text>Exposed stalkers seek campfires when no surge shelter is nearby.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_shelter_outdoor_consequence_shelter_outdoor_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_shelter_outdoor_consequence_shelter_outdoor_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / MONEY HARVEST ==================== -->
+  <string id="ui_mcm_ap_consequences_money_harvest_title">
+    <text>Money Harvest</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_money_harvest_tag">
+    <text>Desc: Squad heads to an anomaly field to harvest artefacts\nCause: Money Harvest Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_money_harvest_consequence_money_harvest_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_money_harvest_consequence_money_harvest_enabled_desc">
+    <text>Stalkers seek anomaly zones when they need money.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_money_harvest_consequence_money_harvest_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_money_harvest_consequence_money_harvest_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / MONEY HUNT ==================== -->
+  <string id="ui_mcm_ap_consequences_money_hunt_title">
+    <text>Money Hunt</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_money_hunt_tag">
+    <text>Desc: Squad heads to a lair to hunt for trophies\nCause: Money Hunt Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_money_hunt_consequence_money_hunt_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_money_hunt_consequence_money_hunt_enabled_desc">
+    <text>Stalkers hunt mutants when they need money.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_money_hunt_consequence_money_hunt_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_money_hunt_consequence_money_hunt_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / SUPPLY TRADER ==================== -->
+  <string id="ui_mcm_ap_consequences_supply_trader_title">
+    <text>Supply Trader</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_supply_trader_tag">
+    <text>Desc: Squad heads to a trader, sells surplus, and restocks per a rank-tiered policy. Rookies carry basic ammo, medkits, bandages. Veterans add premium ammo and grenades.\nCause: Supply Trader Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_supply_trader_consequence_supply_trader_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_supply_trader_consequence_supply_trader_enabled_desc">
+    <text>Stalkers visit traders when they need supplies.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_supply_trader_consequence_supply_trader_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_supply_trader_consequence_supply_trader_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_supply_trader_consequence_supply_trader_arrive_action_enabled">
+    <text>Arrive action</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_supply_trader_consequence_supply_trader_arrive_action_enabled_desc">
+    <text>Sell phase drops anything whose category count exceeds the policy max. Equipped items, quest items, and money are never touched. Buy phase fills any category whose count falls below the min, ammo per equipped slot and tier, consumables cheapest-first. Veterans add premium ammo and grenades. The trade profit cap (economy &gt; trade) limits net cash gain per event.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / SUPPLY TRADER OFF-MAP ==================== -->
+  <string id="ui_mcm_ap_consequences_supply_trader_offmap_title">
+    <text>Supply Trader Off-map</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_supply_trader_offmap_tag">
+    <text>Desc: Squad heads to a base on another map to restock\nCause: Supply Trader Off-map Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_supply_trader_offmap_consequence_supply_trader_offmap_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_supply_trader_offmap_consequence_supply_trader_offmap_enabled_desc">
+    <text>Stalkers cross to a base on another map to restock when no on-map trader is available.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_supply_trader_offmap_consequence_supply_trader_offmap_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_supply_trader_offmap_consequence_supply_trader_offmap_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_supply_trader_offmap_consequence_supply_trader_offmap_arrive_action_enabled">
+    <text>Arrive action</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_supply_trader_offmap_consequence_supply_trader_offmap_arrive_action_enabled_desc">
+    <text>Sell phase drops anything whose category count exceeds the policy max. Equipped items, quest items, and money are never touched. Buy phase fills any category whose count falls below the min, ammo per equipped slot and tier, consumables cheapest-first. Veterans add premium ammo and grenades. The trade profit cap (economy &gt; trade) limits net cash gain per event.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / BARTER ==================== -->
+  <string id="ui_mcm_ap_consequences_barter_title">
+    <text>Barter</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_barter_tag">
+    <text>Desc: Squad heads to a same-faction smart and swaps items with a stalker there, no money. Each hands over surplus the other lacks and a spare weapon, outfit, or helmet that beats what the other has equipped.\nCause: Barter Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_barter_consequence_barter_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_barter_consequence_barter_enabled_desc">
+    <text>Stalkers meet a same-faction squad to swap supplies when they need to restock.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_barter_consequence_barter_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_barter_consequence_barter_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_barter_consequence_barter_arrive_action_enabled">
+    <text>Arrive action</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_barter_consequence_barter_arrive_action_enabled_desc">
+    <text>On arrival each stalker hands the other any category surplus (above its policy max) the other is short on (below its min), and a spare weapon, outfit, or helmet whose cost beats what the other has equipped. No money changes hands. Equipped and quest items are never touched. The item cap (economy &gt; barter) limits how many items move per meeting.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / BARTER OFF-MAP ==================== -->
+  <string id="ui_mcm_ap_consequences_barter_offmap_title">
+    <text>Barter Off-map</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_barter_offmap_tag">
+    <text>Desc: Squad heads to a same-faction smart on another map to swap items with a stalker there, no money\nCause: Barter Off-map Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_barter_offmap_consequence_barter_offmap_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_barter_offmap_consequence_barter_offmap_enabled_desc">
+    <text>Stalkers cross to a same-faction squad on another map to swap supplies when no on-map peer is available.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_barter_offmap_consequence_barter_offmap_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_barter_offmap_consequence_barter_offmap_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_barter_offmap_consequence_barter_offmap_arrive_action_enabled">
+    <text>Arrive action</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_barter_offmap_consequence_barter_offmap_arrive_action_enabled_desc">
+    <text>On arrival each stalker hands the other any category surplus (above its policy max) the other is short on (below its min), and a spare weapon, outfit, or helmet whose cost beats what the other has equipped. No money changes hands. Equipped and quest items are never touched. The item cap (economy &gt; barter) limits how many items move per meeting.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / JOB OUTPOST ==================== -->
+  <string id="ui_mcm_ap_consequences_job_outpost_title">
+    <text>Job Outpost</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_outpost_tag">
+    <text>Desc: Squad heads to an outpost to guard\nCause: Job Outpost Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_outpost_consequence_job_outpost_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_outpost_consequence_job_outpost_enabled_desc">
+    <text>Stalkers guard outposts and checkpoints when duty calls.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_outpost_consequence_job_outpost_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_outpost_consequence_job_outpost_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / JOB EXPLORE ==================== -->
+  <string id="ui_mcm_ap_consequences_job_explore_title">
+    <text>Job Explore</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_explore_tag">
+    <text>Desc: Squad heads to unclaimed territory to scout\nCause: Job Explore Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_explore_consequence_job_explore_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_explore_consequence_job_explore_enabled_desc">
+    <text>Stalkers explore unknown areas when duty calls.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_explore_consequence_job_explore_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_explore_consequence_job_explore_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / JOB EXPLORE OFF-MAP ==================== -->
+  <string id="ui_mcm_ap_consequences_job_explore_offmap_title">
+    <text>Job Explore Off-map</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_explore_offmap_tag">
+    <text>Desc: Squad heads to unclaimed territory on another map\nCause: Job Explore Off-map Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_explore_offmap_consequence_job_explore_offmap_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_explore_offmap_consequence_job_explore_offmap_enabled_desc">
+    <text>Stalkers cross to unclaimed territory on another map when no on-map unclaimed smart is available.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_explore_offmap_consequence_job_explore_offmap_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_explore_offmap_consequence_job_explore_offmap_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / JOB RESEARCH ==================== -->
+  <string id="ui_mcm_ap_consequences_job_research_title">
+    <text>Job Research</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_research_tag">
+    <text>Desc: Squad heads to an anomaly field to research\nCause: Job Research Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_research_consequence_job_research_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_research_consequence_job_research_enabled_desc">
+    <text>Stalkers research anomaly zones when duty calls.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_research_consequence_job_research_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_job_research_consequence_job_research_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / JOB RESEARCH OFF-MAP ==================== -->
+  <!-- ==================== CONSEQUENCES / SOCIAL CAMPFIRE ==================== -->
+  <string id="ui_mcm_ap_consequences_social_campfire_title">
+    <text>Social Campfire</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_social_campfire_tag">
+    <text>Desc: Squad heads to a campfire to socialize\nCause: Social Campfire Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_social_campfire_consequence_social_campfire_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_social_campfire_consequence_social_campfire_enabled_desc">
+    <text>Lonely stalkers seek campfire company.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_social_campfire_consequence_social_campfire_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_social_campfire_consequence_social_campfire_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / SOCIAL BASE ==================== -->
+  <string id="ui_mcm_ap_consequences_social_base_title">
+    <text>Social Base</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_social_base_tag">
+    <text>Desc: Squad heads to a base to socialize\nCause: Social Base Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_social_base_consequence_social_base_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_social_base_consequence_social_base_enabled_desc">
+    <text>Lonely stalkers return to base for company.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_social_base_consequence_social_base_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_social_base_consequence_social_base_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== CONSEQUENCES / SOCIAL OFF-MAP ==================== -->
+  <string id="ui_mcm_ap_consequences_social_offmap_title">
+    <text>Social Off-map</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_social_offmap_tag">
+    <text>Desc: Squad heads to a base on another map for downtime; off-map travelers\nCause: Social Off-map Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_social_offmap_consequence_social_offmap_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_social_offmap_consequence_social_offmap_enabled_desc">
+    <text>Stalkers cross to a base on another map for downtime when no on-map base is available. Fires for off-map travelers (army, monolith, zombied excluded).</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_social_offmap_consequence_social_offmap_rush">
+    <text>Rush mode</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_social_offmap_consequence_social_offmap_rush_desc">
+    <text>Scripted squads move at maximum speed. Disable for slower, more realistic movement.</text>
+  </string>
+  <!-- ==================== MUTATORS / AREA CONQUEST ==================== -->
+  <string id="ui_mcm_ap_mutators_conquest_title">
+    <text>Area Conquest</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_desc">
+    <text>A faction squad takes over a wild camp and holds it: the camp now spawns only the conqueror's squads and can grow into a small outpost with a trader or another service NPC plus resident guards. Killed residents are replaced by the world's normal respawn pacing while the camp is held. Small factions on a level conquer more, the dominant one less, and each faction holds a limited number of camps per level. The hold ends by decay; bases and story camps are never taken. Squad tier follows the level's danger. Disable to keep the squad movement (the area_conquer consequence) without touching engine spawn tables.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_mutate_smart">
+    <text>Inject spawns</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_mutate_smart_desc">
+    <text>Conquered areas spawn the conqueror's squads exclusively, replacing original spawns. Disable to keep squad movement without spawn changes.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_spawn_num">
+    <text>Spawn squads per area</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_spawn_num_desc">
+    <text>Number of the conqueror's squads a conquered area respawns. The conqueror takes sole ownership; the area's original spawns are suppressed.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_decay_hours">
+    <text>Area decay (hours)</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_decay_hours_desc">
+    <text>A conquered area returns to its original spawns after this many game hours. Set to 0 to disable decay.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_grow_services">
+    <text>Grow services</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_grow_services_desc">
+    <text>A conquered area grows service NPCs: a trader that buys and sells, or a barman, mechanic, or medic that trades, repairs, or heals. They keep their faction, join the faction market, carry a role map icon, and are replaced when killed while the area is held. Off keeps conquest combat-only.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_services_per_smart">
+    <text>Services per area</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_services_per_smart_desc">
+    <text>The most service NPCs one conquered area can grow. Each area rolls its own count up to this, with different roles.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_guards_per_smart">
+    <text>Guard squads per area</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_guards_per_smart_desc">
+    <text>The most resident guard squads one conquered area keeps. Guards stay at the area and defend it; 0 grows services only.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_services_max_per_level">
+    <text>Max services per level</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_services_max_per_level_desc">
+    <text>Total service NPCs allowed on one level, all factions combined. An area conquered while the level is full grows guards only.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_trader_supplies_penalty">
+    <text>Supplies tiers below hub</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_trader_supplies_penalty_desc">
+    <text>How many supplies tiers the area's trader stocks below the faction hub trader's for your current standing. His assortment tracks your goodwill and wealth like the hub trader, then drops this many tiers, so an area trader always trails the hub and scales with your progression. 0 makes them equal.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_trader_supplies_tier">
+    <text>Max supplies tier</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_trader_supplies_tier_desc">
+    <text>Absolute ceiling on the area trader's supplies tier, applied after the tiers-below-hub drop. Traders outside conquered areas are not affected.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_respawn_minutes">
+    <text>Respawn interval (minutes)</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_conquest_mutator_area_conquest_respawn_minutes_desc">
+    <text>Game minutes between resident respawns at a conquered area. Lower fills the area faster; overrides the world's spawn pacing for conquered areas only.</text>
+  </string>
+  <!-- ==================== MUTATORS / AREA SWARM ==================== -->
+  <string id="ui_mcm_ap_mutators_swarm_title">
+    <text>Area Swarm</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_swarm_desc">
+    <text>The swarming species takes sole ownership of a swarmed area: it respawns only that species and suppresses the original spawns. Same takeover as conquest, with mutants instead of a faction: mutants swarm more where they are few on the level and less where they already dominate, with a per-level cap, and the hold ends by decay. Disable to keep the squad movement (the area_swarm consequence) without touching engine spawn tables.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_swarm_mutator_area_swarm_mutate_smart">
+    <text>Inject spawns</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_swarm_mutator_area_swarm_mutate_smart_desc">
+    <text>Swarmed areas respawn the swarming species exclusively, replacing original spawns. Disable to keep squad movement without spawn changes.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_swarm_mutator_area_swarm_spawn_num">
+    <text>Spawn squads per area</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_swarm_mutator_area_swarm_spawn_num_desc">
+    <text>Number of the swarming species' squads a swarmed area respawns. The species takes sole ownership; the area's original spawns are suppressed.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_swarm_mutator_area_swarm_decay_hours">
+    <text>Area decay (hours)</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_swarm_mutator_area_swarm_decay_hours_desc">
+    <text>A swarmed area returns to its original spawns after this many game hours. Set to 0 to disable decay.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_swarm_mutator_area_swarm_respawn_minutes">
+    <text>Respawn interval (minutes)</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_swarm_mutator_area_swarm_respawn_minutes_desc">
+    <text>Game minutes between squad respawns at a swarmed area. Lower repopulates the swarm faster; overrides the world's spawn pacing for swarmed areas only.</text>
+  </string>
+  <!-- ==================== MUTATORS / AREA INFEST ==================== -->
+  <string id="ui_mcm_ap_mutators_infest_title">
+    <text>Area Infest</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_infest_desc">
+    <text>The infesting species replaces an infested area's original LTX spawns exclusively. A cap limits how many areas can be infested on each level. Disable to keep the squad movement (the area_infest consequence) without touching engine spawn tables.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_infest_mutator_area_infest_mutate_smart">
+    <text>Inject spawns</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_infest_mutator_area_infest_mutate_smart_desc">
+    <text>Infested areas spawn the infesting species exclusively, replacing original spawns. Disable to keep squad movement without spawn changes.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_infest_mutator_area_infest_max_per_level">
+    <text>Max infested areas per level</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_infest_mutator_area_infest_max_per_level_desc">
+    <text>[1-5]\nMaximum number of infested areas per level.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_infest_mutator_area_infest_spawn_num">
+    <text>Spawn squads per area</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_infest_mutator_area_infest_spawn_num_desc">
+    <text>[1-5]\nNumber of squads the infested spawn entry can produce.</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_infest_mutator_area_infest_decay_hours">
+    <text>Area decay (hours)</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_infest_mutator_area_infest_decay_hours_desc">
+    <text>[0-168]\nGame hours before infestation expires. 0 = permanent (no decay).</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_infest_mutator_area_infest_respawn_minutes">
+    <text>Respawn interval (minutes)</text>
+  </string>
+  <string id="ui_mcm_ap_mutators_infest_mutator_area_infest_respawn_minutes_desc">
+    <text>[1-720]\nGame minutes between squad respawns at an infested area. Lower repopulates faster; overrides world spawn pacing for infested areas only.</text>
+  </string>
+  <!-- ==================== CREATURES TAB ==================== -->
+  <string id="ui_mcm_ap_creatures_alpha_title">
+    <text>Alpha</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_desc">
+    <text>A mutant promoted by its kills. Each alpha level raises damage dealt and lowers damage taken, up to the caps below and scaling linearly from level 1, grants panic immunity, and adds the species hide plus trophy parts to the corpse. Set a slider to 0 to disable that effect.</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_hit_power_dealt_enabled">
+    <text>Damage bonus vs NPCs and mutants</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_hit_power_dealt_enabled_desc">
+    <text>Alphas deal extra damage to NPC and mutant victims, scaling with alpha level up to the cap below. Hits on the player have their own toggle underneath.</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_hit_power_dealt_max_pct">
+    <text>Damage bonus cap (%)</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_hit_power_dealt_max_pct_desc">
+    <text>Extra damage a top-level alpha deals, in percent of the normal hit. Lower alpha levels scale down linearly. Even at the slider maximum a hit is a fraction stronger, never a multiplied one.</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_hit_power_taken_enabled">
+    <text>Damage resistance</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_hit_power_taken_enabled_desc">
+    <text>Alphas take reduced damage from every hit, scaling with alpha level.</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_hit_power_taken_max_pct">
+    <text>Damage resistance cap (%)</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_hit_power_taken_max_pct_desc">
+    <text>Damage reduction a top-level alpha gets, in percent. Lower levels scale down linearly.</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_vs_player">
+    <text>Damage bonus vs player</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_vs_player_desc">
+    <text>The alpha damage bonus also applies to hits on the player, under the same cap slider. Turn off to keep player incoming damage fully vanilla while NPCs and mutants still feel the alphas.</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_panic_immunity_enabled">
+    <text>Panic immunity</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_panic_immunity_enabled_desc">
+    <text>Alphas never flee from taking damage.</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_loot_enabled">
+    <text>Trophy loot</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_loot_enabled_desc">
+    <text>A dead alpha carries its species' hide and extra parts, more at higher alpha levels.</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_mark_enabled">
+    <text>Visual mark</text>
+  </string>
+  <string id="ui_mcm_ap_creatures_alpha_mutator_alpha_mark_enabled_desc">
+    <text>An alpha carries a visible dust shimmer on its body. Purely visual.</text>
+  </string>
+  <!-- ==================== WORLD TAB ==================== -->
+  <string id="ui_mcm_ap_world_offmap_title">
+    <text>Off-map</text>
+  </string>
+  <string id="ui_mcm_ap_world_offmap_desc">
+    <text>Off-map dispatches use vanilla A-Life map adjacency. Every squad starts with the base reach set below (default 0; raise to grant pre-story reach). Each progression milestone (X-16 deactivation, Brain Scorcher deactivation) and master-rank commander adds one map further. Balance cap caps total dispatches per source map within a rolling 48 game-hour window.</text>
+  </string>
+  <string id="ui_mcm_ap_world_offmap_cause_max_offmap">
+    <text>Off-map cap</text>
+  </string>
+  <string id="ui_mcm_ap_world_offmap_cause_max_offmap_desc">
+    <text>[1-10]\nMaximum off-map dispatches per source level within a 48 game-hour window. Faction-agnostic and destination-agnostic; one shared counter across all off-map causes.</text>
+  </string>
+  <string id="ui_mcm_ap_world_offmap_offmap_base_hops">
+    <text>Base off-map reach</text>
+  </string>
+  <string id="ui_mcm_ap_world_offmap_offmap_base_hops_desc">
+    <text>[0-3]\nBase adjacency hops available to every squad before story or rank bonuses. 0 keeps squads on their home map until a milestone unlocks reach. 1 lets fresh stalkers scout one neighbouring map immediately.</text>
+  </string>
+  <string id="ui_mcm_ap_world_offmap_offmap_extra_map_x16">
+    <text>Extra maps after Yantar X-16 deactivation</text>
+  </string>
+  <string id="ui_mcm_ap_world_offmap_offmap_extra_map_x16_desc">
+    <text>[0-3]\nAdditional adjacency hops once yan_labx16_switcher_primary_off has been set (Yantar X-16 psy-emitter deactivated). 0 disables this gate.</text>
+  </string>
+  <string id="ui_mcm_ap_world_offmap_offmap_extra_map_radar">
+    <text>Extra maps after Radar Brain Scorcher deactivation</text>
+  </string>
+  <string id="ui_mcm_ap_world_offmap_offmap_extra_map_radar_desc">
+    <text>[0-3]\nAdditional adjacency hops once bar_deactivate_radar_done has been set (Radar Brain Scorcher deactivated). 0 disables this gate.</text>
+  </string>
+  <string id="ui_mcm_ap_world_offmap_offmap_extra_map_rank">
+    <text>Extra maps for master-rank squad commander</text>
+  </string>
+  <string id="ui_mcm_ap_world_offmap_offmap_extra_map_rank_desc">
+    <text>[0-3]\nAdditional adjacency hops when the squad commander is master rank or higher (character_rank &gt;= 17499). 0 disables this gate.</text>
+  </string>
+  <string id="ui_mcm_ap_world_offmap_offmap_despawn_hours">
+    <text>Despawn safety hours</text>
+  </string>
+  <string id="ui_mcm_ap_world_offmap_offmap_despawn_hours_desc">
+    <text>[24-720 game-hours]\nMaximum off-map age before the squad is released as a safety. Only fires while the squad is offline and not protected (story / task / companion / warfare).</text>
+  </string>
+  <!-- ==================== DEVELOPMENT TAB ==================== -->
+  <string id="ui_mcm_ap_development_title">
+    <text>Development and Tools</text>
+  </string>
+  <string id="ui_mcm_ap_development_btn_reset_all">
+    <text>Reset ALL to Defaults</text>
+  </string>
+  <string id="ui_mcm_ap_development_btn_reset_all_desc">
+    <text>Revert every AlifePlus setting to its factory default. Takes effect immediately; close and re-open MCM to see the updated sliders. Useful after experimenting or when upgrading to a new version with rebalanced defaults.</text>
+  </string>
+  <string id="ui_mcm_ap_development_btn_reset_stateless">
+    <text>Reset ALL to Stateless Defaults</text>
+  </string>
+  <string id="ui_mcm_ap_development_btn_reset_stateless_desc">
+    <text>Reset every setting to its factory default, then disable any functionality that mutates inventory, trade, or world spawn like trading, item consumption, stash filling and looting, smart ownership.</text>
+  </string>
+  <string id="ui_mcm_ap_development_reset_warning">
+    <text>Warning: save or discard pending MCM changes first; otherwise they override the reset on the next Accept.</text>
+  </string>
+  <string id="ui_mcm_ap_development_desc">
+    <text>Debug and development. DEBUG enables tracing, performance timing, and verbose logs. Debug markers show squad destinations on the PDA map.</text>
+  </string>
+  <string id="ui_mcm_ap_development_log_level">
+    <text>Log level</text>
+  </string>
+  <string id="ui_mcm_ap_development_log_level_desc">
+    <text>Controls log verbosity and debug features. DEBUG enables OTel-style tracing, performance timing, and verbose logs. Has performance cost.</text>
+  </string>
+  <string id="ap_development_log_level_lst_error">
+    <text>Error</text>
+  </string>
+  <string id="ap_development_log_level_lst_warn">
+    <text>Warn</text>
+  </string>
+  <string id="ap_development_log_level_lst_info">
+    <text>Info</text>
+  </string>
+  <string id="ap_development_log_level_lst_debug">
+    <text>Debug</text>
+  </string>
+  <string id="ui_mcm_ap_development_log_flush">
+    <text>Flush log every line</text>
+  </string>
+  <string id="ui_mcm_ap_development_log_flush_desc">
+    <text>Write each log line to disk immediately instead of buffering. Turn on when diagnosing a crash so the final lines survive a hard freeze that never reaches the periodic flush. Slower; leave off for normal play.</text>
+  </string>
+  <string id="ui_mcm_ap_development_map_markers">
+    <text>Debug markers</text>
+  </string>
+  <string id="ui_mcm_ap_development_map_markers_desc">
+    <text>Show squad destination markers on the PDA map. Approximate positions for tracing A-Life movement, not exact. Reload save to apply.</text>
+  </string>
+  <string id="ui_mcm_ap_development_world_trace_enabled">
+    <text>World trace log</text>
+  </string>
+  <string id="ui_mcm_ap_development_world_trace_enabled_desc">
+    <text>Write periodic simulation state dumps (smarts, squads, the controlled-squad roster, killer registry, trader inventories) to a separate alifeplus_world.log, apart from the decision trace. For diagnosing A-Life state, not decisions. Nothing runs while the toggle is off.</text>
+  </string>
+  <string id="st_ap_teleport_to_squad">
+    <text>Teleport to squad</text>
+  </string>
+  <string id="st_ap_map_subject">
+    <text>Subject</text>
+  </string>
+  <string id="st_ap_map_other">
+    <text>Other</text>
+  </string>
+  <string id="st_ap_map_target">
+    <text>Target</text>
+  </string>
+  <string id="st_ap_map_started">
+    <text>Started</text>
+  </string>
+  <string id="ui_mcm_ap_development_statistics_position">
+    <text>Statistics overlay</text>
+  </string>
+  <string id="ui_mcm_ap_development_statistics_position_desc">
+    <text>Show pipeline statistics on screen and write to log every 10 seconds. Select position or Off. Zero overhead when disabled.</text>
+  </string>
+  <string id="ap_development_statistics_position_lst_off">
+    <text>Off</text>
+  </string>
+  <string id="ap_development_statistics_position_lst_top_left">
+    <text>Top Left</text>
+  </string>
+  <string id="ap_development_statistics_position_lst_top_right">
+    <text>Top Right</text>
+  </string>
+  <string id="ap_development_statistics_position_lst_center_left">
+    <text>Center Left</text>
+  </string>
+  <string id="ap_development_statistics_position_lst_center_right">
+    <text>Center Right</text>
+  </string>
+  <string id="ap_development_statistics_position_lst_bottom_left">
+    <text>Bottom Left</text>
+  </string>
+  <string id="ap_development_statistics_position_lst_bottom_right">
+    <text>Bottom Right</text>
+  </string>
+  <!-- Cause: Instincts (5 drives + 7 answers, multi-answer drive: slumber splits 3 ways) -->
+  <string id="ui_mcm_ap_causes_instincts_title">
+    <text>Instincts</text>
+  </string>
+  <!-- Per-cause tags (7 sub-causes) -->
+  <string id="ui_mcm_ap_causes_instincts_scatter_tag">
+    <text>Cause: Scatter Available\nDesc: Mutant flees a higher-tier threat.\nRules: scent range; any period; prey mutants; personality(INV_aggression, survival); threat nearby; safe smart; not at base; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_feed_tag">
+    <text>Cause: Feed Available\nDesc: Mutant goes to a field to feed.\nRules: scent range; day; any mutant; personality(survival, perception); territory; not at base; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_slumber_field_tag">
+    <text>Cause: Slumber Field Available\nDesc: Mutant sleeps in the open.\nRules: scent range; night; cowardly mutants; personality(survival); territory; not at base; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_slumber_lair_tag">
+    <text>Cause: Slumber Lair Available\nDesc: Mutant retreats to its lair.\nRules: scent range; night; feral or predator; personality(survival); lair; not at base; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_slumber_surge_tag">
+    <text>Cause: Slumber Surge Available\nDesc: Mutant takes shelter from anomalies.\nRules: scent range; night; aberrant or predator; personality(survival); surge shelter; not at base; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_roam_tag">
+    <text>Cause: Roam Available\nDesc: Mutant wanders to new ground.\nRules: scent range; day; non-aberrant mutants; personality(perception, territory); territory or lair; not at base; tactics; Hull</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_pack_tag">
+    <text>Cause: Pack Available\nDesc: Mutant joins its kin nearby.\nRules: scent range; day; feral or predator; personality(relation); kin present; not at base; tactics; Hull</text>
+  </string>
+  <!-- Per-cause enable labels (uniform "Enabled"; single-answer drives use the drive name as cause name) -->
+  <string id="ui_mcm_ap_causes_instincts_cause_scatter_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_scatter_enabled_desc">
+    <text>Allow scatter cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_feed_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_feed_enabled_desc">
+    <text>Allow feed cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_roam_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_roam_enabled_desc">
+    <text>Allow roam cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_pack_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_pack_enabled_desc">
+    <text>Allow pack cause to publish.</text>
+  </string>
+  <!-- Drive thresholds (5; drive-level sliders sit above their cause sections) -->
+  <string id="ui_mcm_ap_causes_instincts_cause_scatter_threshold">
+    <text>Scatter threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_scatter_threshold_desc">
+    <text>[game-hours]\nHull recovery time for the scatter drive.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_feed_threshold">
+    <text>Feed threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_feed_threshold_desc">
+    <text>[game-hours]\nHull recovery time for the feed drive.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_slumber_threshold">
+    <text>Slumber threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_slumber_threshold_desc">
+    <text>[game-hours]\nHull recovery time for the slumber drive (shared by all 3 answers; any answer firing resets).</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_roam_threshold">
+    <text>Roam threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_roam_threshold_desc">
+    <text>[game-hours]\nHull recovery time for the roam drive.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_pack_threshold">
+    <text>Pack threshold</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_pack_threshold_desc">
+    <text>[game-hours]\nHull recovery time for the pack drive.</text>
+  </string>
+  <!-- Slumber per-answer enables -->
+  <string id="ui_mcm_ap_causes_instincts_cause_slumber_field_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_slumber_field_enabled_desc">
+    <text>Allow slumber_field cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_slumber_lair_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_slumber_lair_enabled_desc">
+    <text>Allow slumber_lair cause to publish.</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_slumber_surge_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_causes_instincts_cause_slumber_surge_enabled_desc">
+    <text>Allow slumber_surge cause to publish.</text>
+  </string>
+  <!-- Consequence: Scatter -->
+  <string id="ui_mcm_ap_consequences_scatter_title">
+    <text>Scatter</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_scatter_tag">
+    <text>Desc: Pack scatters from a higher-tier predator\nCause: Scatter Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_scatter_consequence_scatter_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_scatter_consequence_scatter_enabled_desc">
+    <text>Route lower-tier mutants away from nearby higher-tier predators to a safe smart terrain.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_scatter_consequence_scatter_rush">
+    <text>Rush</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_scatter_consequence_scatter_rush_desc">
+    <text>Mutants sprint when scattering from predators.</text>
+  </string>
+  <!-- Consequence: Feed -->
+  <string id="ui_mcm_ap_consequences_feed_title">
+    <text>Feed</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_feed_tag">
+    <text>Desc: Pack heads to a hunting ground to feed\nCause: Feed Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_feed_consequence_feed_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_feed_consequence_feed_enabled_desc">
+    <text>Route mutants to open territory for feeding.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_feed_consequence_feed_rush">
+    <text>Rush</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_feed_consequence_feed_rush_desc">
+    <text>Mutants sprint to feeding grounds.</text>
+  </string>
+  <!-- Consequence: Slumber Field (cowardly mutants in open territory) -->
+  <string id="ui_mcm_ap_consequences_slumber_field_title">
+    <text>Slumber\nField</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_slumber_field_tag">
+    <text>Desc: Cowardly pack curls up in territory to sleep\nCause: Slumber Field Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_slumber_field_consequence_slumber_field_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_slumber_field_consequence_slumber_field_enabled_desc">
+    <text>Route cowardly mutants to open territory smarts.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_slumber_field_consequence_slumber_field_rush">
+    <text>Rush</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_slumber_field_consequence_slumber_field_rush_desc">
+    <text>Mutants sprint to bedding location.</text>
+  </string>
+  <!-- Consequence: Slumber Lair (feral + predator returning to lair) -->
+  <string id="ui_mcm_ap_consequences_slumber_lair_title">
+    <text>Slumber\nLair</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_slumber_lair_tag">
+    <text>Desc: Feral or predator pack dens up in a lair to sleep\nCause: Slumber Lair Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_slumber_lair_consequence_slumber_lair_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_slumber_lair_consequence_slumber_lair_enabled_desc">
+    <text>Route feral mutants and predators to lair smarts.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_slumber_lair_consequence_slumber_lair_rush">
+    <text>Rush</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_slumber_lair_consequence_slumber_lair_rush_desc">
+    <text>Mutants sprint to lair.</text>
+  </string>
+  <!-- Consequence: Slumber Surge (aberrant + predator overflow into surge shelter) -->
+  <string id="ui_mcm_ap_consequences_slumber_surge_title">
+    <text>Slumber\nSurge</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_slumber_surge_tag">
+    <text>Desc: Predator or aberrant pack takes shelter from the surge\nCause: Slumber Surge Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_slumber_surge_consequence_slumber_surge_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_slumber_surge_consequence_slumber_surge_enabled_desc">
+    <text>Route aberrant mutants and predators to surge shelters.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_slumber_surge_consequence_slumber_surge_rush">
+    <text>Rush</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_slumber_surge_consequence_slumber_surge_rush_desc">
+    <text>Mutants sprint to shelter.</text>
+  </string>
+  <!-- Consequence: Roam -->
+  <string id="ui_mcm_ap_consequences_roam_title">
+    <text>Roam</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_roam_tag">
+    <text>Desc: Pack roams unclaimed territory\nCause: Roam Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_roam_consequence_roam_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_roam_consequence_roam_enabled_desc">
+    <text>Route mutants to nearby territory or lair for exploration.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_roam_consequence_roam_rush">
+    <text>Rush</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_roam_consequence_roam_rush_desc">
+    <text>Mutants sprint during exploration.</text>
+  </string>
+  <!-- Consequence: Pack -->
+  <string id="ui_mcm_ap_consequences_pack_title">
+    <text>Pack</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_pack_tag">
+    <text>Desc: Pack converges with kin\nCause: Pack Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_pack_consequence_pack_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_pack_consequence_pack_enabled_desc">
+    <text>Route mutants toward same-faction squads.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_pack_consequence_pack_rush">
+    <text>Rush</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_pack_consequence_pack_rush_desc">
+    <text>Mutants sprint toward packmates.</text>
+  </string>
+  <!-- ==================== CONSEQUENCE: AREA INFEST ==================== -->
+  <string id="ui_mcm_ap_consequences_area_infest_title">
+    <text>Area Infest</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_area_infest_tag">
+    <text>Desc: Mutant pack arrives and replaces the spawn pool with its species\nCause: Area Infest Available</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_area_infest_consequence_area_infest_enabled">
+    <text>Enabled</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_area_infest_consequence_area_infest_enabled_desc">
+    <text>Enable the area infest consequence. Mutants will claim smart terrains as nests.</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_area_infest_consequence_area_infest_rush">
+    <text>Rush movement</text>
+  </string>
+  <string id="ui_mcm_ap_consequences_area_infest_consequence_area_infest_rush_desc">
+    <text>When enabled, squads move at rush speed to claim their nest.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_title">
+    <text>Loot claim</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_desc">
+    <text>A kill belongs to whoever made it, and the claim holds while the owner stays near the body. The same rule runs three ways, identical for every side: your kills are reserved from NPC looters, an NPC squad's kills are reserved from you, and rival squads are held off each other. Each direction has its own radius and duration. No side is privileged.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_reserve_own_enabled">
+    <text>Reserve your kills from NPCs</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_reserve_own_enabled_desc">
+    <text>NPC looters skip a body you killed while you stand within the reserve radius. Walk away and a passing stalker may take it.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_include_companions">
+    <text>Reserve your kills from companions</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_include_companions_desc">
+    <text>Your companions are held off a body you killed, like any other NPC. Turn off to let a companion field-dress or loot your kills.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_reserve_own_radius">
+    <text>Reserve radius (m)</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_reserve_own_radius_desc">
+    <text>How close you must be to the body to hold the claim.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_reserve_own_ttl">
+    <text>Reserve duration (h)</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_reserve_own_ttl_desc">
+    <text>Game hours before the claim lapses.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_block_npc_enabled">
+    <text>Block looting an NPC's kill</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_block_npc_enabled_desc">
+    <text>A body an NPC squad killed will not open while a living member stays near it. A PDA tip names the owner when you try.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_block_npc_radius">
+    <text>Block radius (m)</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_block_npc_radius_desc">
+    <text>How close the killer's squad must be to hold the kill.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_block_npc_ttl">
+    <text>Block duration (h)</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_block_npc_ttl_desc">
+    <text>Game hours before the claim lapses.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_block_npc_vs_npc_enabled">
+    <text>Block NPCs from each other's kills</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_block_npc_vs_npc_enabled_desc">
+    <text>A stalker walks past a kill another squad made while that squad stays near the body. The killers collect their own.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_block_npc_vs_npc_radius">
+    <text>NPC vs NPC radius (m)</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_block_npc_vs_npc_radius_desc">
+    <text>How close the owning squad must be to hold the kill.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_block_npc_vs_npc_ttl">
+    <text>NPC vs NPC duration (h)</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_loot_block_npc_vs_npc_ttl_desc">
+    <text>Game hours before the claim lapses.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_policy_title">
+    <text>Loot policy</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_policy_desc">
+    <text>A policy decides what an NPC keeps off a body. It holds ammo that fits the NPC's own weapons and the most valuable items in each class up to a cap, and destroys whatever is left. A stalker walks away with a working loadout instead of a corpse-sized hoard. The bodies you reach later are leaner. Long saves stay clear of the loot buildup that slows and eventually breaks them. These caps live in an editable policy file built on the same shape as trade and stashes, so one consistent set of rules runs the whole economy.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_policy_loot_select_enabled">
+    <text>Apply loot policy</text>
+  </string>
+  <string id="ui_mcm_ap_economy_loot_policy_loot_select_enabled_desc">
+    <text>NPCs keep ammo for their own weapons and the most valuable items in each class, then destroy the surplus that would otherwise pile up on them. Off restores vanilla NPC looting.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_trade_title">
+    <text>Trade</text>
+  </string>
+  <string id="ui_mcm_ap_economy_trade_desc">
+    <text>When a stalker reaches a trader he sells his surplus, then restocks ammo and gear by rank: rookies on basics, veterans on premium rounds and grenades. The buy and sell bands live in an editable policy file built on the same shape as looting and stashes, so one consistent set of rules runs the whole economy. The cap below limits the rubles an NPC nets from a single visit, all ranks. Trading itself switches on under Supply, in causes.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_trade_trade_profit_max">
+    <text>Max profit per trade (rubles)</text>
+  </string>
+  <string id="ui_mcm_ap_economy_trade_trade_profit_max_desc">
+    <text>Net rubles an NPC may gain from a single trade visit, all ranks. 0 = no profit.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_barter_title">
+    <text>Barter</text>
+  </string>
+  <string id="ui_mcm_ap_economy_barter_desc">
+    <text>When a stalker reaches a same-faction squad he swaps items with a stalker there, no money. Each hands over any category surplus (above its policy max) the other is short on (below its min), and a spare weapon, outfit, or helmet whose cost beats what the other has equipped. The give and take bands live in an editable policy file built on the same shape as trade. The cap below limits how many items move per meeting. Barter itself switches on under Supply, in causes.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_barter_barter_max_items">
+    <text>Max items per barter</text>
+  </string>
+  <string id="ui_mcm_ap_economy_barter_barter_max_items_desc">
+    <text>Items moved per barter meeting, both directions combined. 0 = barter off.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_market_title">
+    <text>Faction market</text>
+  </string>
+  <string id="ui_mcm_ap_economy_market_desc">
+    <text>In vanilla a trader's stock is his own config, respawned each restock and unrelated to what his faction's stalkers trade; this is the bridge that lets their trading shape it. A faction's hub traders briefly stock an echo of what that faction's stalkers have recently sold: items appear at restock, gated by your rank, priced at a premium, and gone after a short window. The sell-out works in reverse: part of what a trader recently sold to those stalkers disappears from his fresh stock at the same restock. Which items may appear or sell out, their caps, and the rank gate live in an editable policy file. The price multiplier, item condition, and trader sell-out are sliders below.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_market_market_enabled">
+    <text>Enable faction market</text>
+  </string>
+  <string id="ui_mcm_ap_economy_market_market_enabled_desc">
+    <text>Stock hub traders with a rank-gated echo of what their faction recently sold, at a premium. Off restores vanilla trader stock.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_market_market_items_per_trader">
+    <text>Items per trader</text>
+  </string>
+  <string id="ui_mcm_ap_economy_market_market_items_per_trader_desc">
+    <text>Number of market items a trader stocks per restock. 0 = none. Per-category caps and rank gates live in an editable policy file.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_market_market_window_hours">
+    <text>Market window (game-hours)</text>
+  </string>
+  <string id="ui_mcm_ap_economy_market_market_window_hours_desc">
+    <text>Game-hours an injected item stays on the shelf before it is removed. The next trader restock also clears it.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_market_market_premium">
+    <text>Price multiplier</text>
+  </string>
+  <string id="ui_mcm_ap_economy_market_market_premium_desc">
+    <text>Price multiplier on market stock: the item's full base price (100% condition) times this. Relation and economy discounts still apply; the condition discount is dropped.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_market_market_item_condition">
+    <text>Item condition</text>
+  </string>
+  <string id="ui_mcm_ap_economy_market_market_item_condition_desc">
+    <text>Condition that market goods spawn at. 1.00 = full; lower values are more worn.</text>
+  </string>
+  <string id="ui_mcm_ap_economy_market_market_trader_sell_percent">
+    <text>Trader sell-out (percent)</text>
+  </string>
+  <string id="ui_mcm_ap_economy_market_market_trader_sell_percent_desc">
+    <text>Share of the fresh stock removed at restock for goods the trader recently sold to his faction's stalkers. Applies to ammo and medical supplies per the policy file, and nothing else. At low values scarce stock survives; at 100 a trader is stripped bare.</text>
+  </string>
+  <string id="st_ap_reset_all_done">
+    <text>AlifePlus: all settings restored to defaults.</text>
+  </string>
+  <string id="st_ap_reset_stateless_done">
+    <text>AlifePlus: stateless defaults applied.</text>
+  </string>
+</string_table>

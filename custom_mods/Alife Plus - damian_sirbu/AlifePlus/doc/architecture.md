@@ -1,0 +1,1243 @@
+# AlifePlus Architecture
+
+AlifePlus is a reactive framework for STALKER Anomaly. It hooks X-Ray engine callbacks, classifies them through cause generators, and dispatches consequences. Two pipelines:
+
+- Event Pipeline (ap_core_producer): gate chain -> cause generator -> xbus publish.
+- Dispatch Pipeline (ap_core_consumer): xbus subscribe -> consequence handler -> script_squad.
+
+The framework produces its own radiant heartbeat (ap_core_callbacks.script declares and fires ap_squad_on_change at the MCM-configured rate and map mix) and owns protection (ap_core_broker), rate limiting (ap_core_limiter), squad lifecycle (ap_core_broker), tracing (ap_core_debug), PDA map markers (ap_core_map), and statistics overlay (ap_core_hud). Domain logic registers a cause generator with the producer and a consequence handler with the consumer.
+
+Two layers: core (ap_core_*) and ext (ap_ext_*). Core never imports ext. All domain logic reaches the framework through registered function references.
+
+Built on xlibs. _ap_deps asserts xlibs presence and version on load. See conventions.md for naming, result codes, MCM, logging.
+
+Part of a three-mod alife family: **AlifePlus** extends A-Life with new behaviors (this mod), **AlifeBalance** modulates rates and counts the engine already owns and never releases anything, **AlifeGuard** owns all release work, entities and items, and repairs alife state.
+
+![System Overview](img/system-overview.png)
+
+---
+
+## Decision model
+
+AlifePlus extends A-Life on the input side and replaces it on the output side. It consumes the same world the vanilla simulation runs on (engine callbacks, smart props, squad rosters) but writes a different kind of decision into it.
+
+### The control field
+
+Every squad runs `sim_squad_scripted:update` every tick, and one branch decides everything (`sim_squad_scripted.script:233-238`):
+
+```lua
+local script_target_id = self:get_script_target()
+if (script_target_id) then self:specific_update(script_target_id)
+else self:generic_update() end
+```
+
+`get_script_target()` returns `self.scripted_target` first when it is set (`sim_squad_scripted.script:104-106`). That single field is AlifePlus's entire write surface into targeting. AP's radiant input is not the engine heartbeat: the `ap_core_callbacks` sweep (installed at on_game_start) visits every squad on a staggered timer, diffs a 4-field snapshot, and produces `ap_squad_on_change` fires at the configured rate and map mix, real transitions first, round-robin turns for quiet squads (see Event Pipeline). The pipeline runs synchronously inside that timer tick: sweep fires `ap_squad_on_change` -> gates -> cause generator -> `ap_core_broker.script_squad` -> `xsquad.acquire_squad` sets `scripted_target`. The squad consumes the write at its NEXT `sim_squad_scripted:update`: the fork at `:233` reads `scripted_target` first, one frame later for online squads, up to one scheduler visit (~30s) later for offline squads. This is the same timing contract every reactive dispatch has always had (death and item callbacks also run outside the target squad's update), so radiant and reactive now share one synchrony model. AP authors only the write-back; the engine's own update loop acts on it.
+
+### Vanilla: a stateless weighted lottery
+
+`scripted_target` nil -> `generic_update` -> `SIMBOARD:get_squad_target` (`sim_board.script:379-423`): score every available target with `evaluate_prior`, keep the top 5, then roll - 50% the single highest, 50% a random one of the top 5 (`sim_board.script:418`). The score (`simulation_objects.script:252-343`) is `(base + faction props + category weights) * (1 + 1/graph_distance)` (`simulation_objects.script:177-183`). Only the distance term varies per squad; `target.props[squad.player_id]` is faction-keyed and `default_squad_behaviour` / `default_monster_behaviour` are species-keyed. Two squads of one faction at the same position score the entire board identically and differ only by the coin flip. A vanilla squad carries no internal state - it is a position plus a faction label, pulled toward smarts by an inverse-distance attraction field shared across its whole faction.
+
+### AlifePlus: a per-squad stateful command
+
+`scripted_target` set -> `specific_update` (`sim_squad_scripted.script:276-331`): the squad walks straight to the assigned smart - no `evaluate_prior`, no top-5, no roll. The destination is computed from that squad's own accumulated state: its hunger and instinct timers, opportunity windows, personality roll, and post-scan tactics, all held in DTOs keyed by `squad_id` (`ap_ext_tracker.script`). AP suppresses the lottery for that squad until the broker releases `scripted_target`, after which the squad falls back into `generic_update`.
+
+The distinction is bias versus command. Vanilla writes a bias - faction-wide props that tilt a draw each squad makes for itself. AlifePlus writes a command - a concrete target id that overrides the draw for one squad.
+
+### Granularity: squad, not NPC
+
+Both systems decide at the squad level. AlifePlus adds no per-NPC targeting; the DTOs and `scripted_target` are squad-scoped. NPC-level individuality already exists in vanilla and lives in the gulag: on arrival, `select_npc_job` (`smart_terrain.script:626-798`) assigns each member a distinct job (camper, sleeper, animpoint) by priority and exclusivity, then `setup_logic` activates its scheme and the GOAP planner. Vanilla migration, AP migration, and the gulag all converge here. AP commands where a squad goes; the gulag still owns what each NPC does there, and AP never touches it (see Engine integration -> Write surface).
+
+---
+
+## Vocabulary
+
+- Cause: a labeled event the framework publishes. Specific name (cause:massacre, cause:hunger_campfire). Umbrella names (NEEDS, REACTIONS) are categories, never published.
+- Consequence: a handler subscribed to a cause; runs the action and side effects.
+- Cause generator: function that picks and emits one cause per call, or none. One generator per family. Files named ap_ext_cause_<family>.script for single-cause, ap_ext_causes_<family>.script for multi-cause.
+- Cause type: RADIANT (squad-tick driven, 1:1 with consequence) or REACTIVE (engine-event driven, 1:N with consequences). Defined in ap_core_const.CAUSE_TYPE.
+- Cause category: REACTIONS, NEEDS, INSTINCTS, OPPORTUNITIES. Behavioral axis parallel to cause type. Drives per-category rate-limit grouping and MCM organization. Defined in ap_core_const.CAUSE_CATEGORY.
+- RULES: business checks that need no world scan. Toggle, alignment, species, personality, payload field, threshold, tactics. Cheap. Always cheapest-first.
+- SCAN: world lookup. find_smart, find_squads, find_stashes. Two flavors: destination SCAN (locates a target smart) and responder SCAN (locates responder squads).
+- ACTION: the consequence's effect. script_squad / script_actor_target, state mutation, news add, on_arrive callback.
+- Hull(<drive>): Hull's drive reduction theory (1943). Score = weight * (elapsed / threshold)^2 (`_find_overdue_needs` in ap_ext_causes_needs.script). Squared exponent makes overdue drives compete strongly. Used by NEEDS (stalker drives) and INSTINCTS (mutant drives).
+- MVT(<cause>): Charnov's marginal value theorem (1976). Binary patch-recovery gate: elapsed > threshold. Used by stash and area causes (6 OPPORTUNITY fields).
+- personality(<TRAITS>): probability check on a faction or species. avg(traits) clamped to [PERSONALITY_FLOOR, PERSONALITY_CEILING], rolled per dispatch. Inverted traits resolve as 1 - base before averaging.
+- tactics(<reason>): post-SCAN soft check on radiant decisions. Score starts at 1.0; each tactical concern subtracts a weight. math_random() > score returns FAILED_RULES with reason LOW_TACTICS. Conditions: last-of-faction at source (-0.20), smart already targeted by another scripted squad (-0.20). Radiant only; reactive bypasses (event responses are not voluntary picks). Implemented in `ap_ext_util.is_tactically_eligible`.
+- Cross-DTO read: any cause generator may read any DTO; only the owning generator writes.
+- Consequence file shapes: _set (hand-written handlers, used for per-handler quirks) and CONFIGS factory (one CONFIGS table + one closure builder generates the handlers from a single body).
+- Producer (ap_core_producer): runs the gate chain, evaluates cause generators, publishes to xbus.
+- Consumer (ap_core_consumer): subscribes to xbus events, dispatches to consequence handlers.
+- xbus: pub/sub event bus from xlibs. Causes publish, consequences subscribe.
+
+---
+
+## Invariants
+
+Project-wide constraints that hold across all pipelines and modules.
+
+- **No steady-state per-frame work.** Ongoing work runs on a throttled tick (a fixed interval) or on a discrete engine event (hit, shot, spawn, option change); it never runs continuously every frame. A per-frame engine callback (`npc_on_update`) is used only as a carrier that throttles before doing anything, and we never place our code on a path the engine runs every frame (a visibility or fire functor). Frame-spreading a bounded one-off batch (xslice, 1 item per frame) to avoid a single-frame spike is the one allowed use of the frame; it completes and stops. Full rule and rationale: `doc/standards/code-standards.md` "No Per-Frame Work".
+- Core never imports ext. All ext modules reach core through registered function references at on_game_start.
+- Cross-DTO read, single-writer write. Any cause generator may read any DTO; only the owning generator writes.
+- **Performance first.** Performance is the top priority and outranks features. A feature that cannot meet the budget below is reworked, replaced, dropped, or removed with an X-Ray engine modification (a themrdemonized / xray-monolith change) — never kept at the cost of the budget. Only correctness and the "never break base gameplay" invariant rank above it; everything else gives way. See `doc/standards/code-standards.md` "Performance is the priority".
+- **Use the engine, don't work around it.** Every capability comes from the engine and the Anomaly layer first, always through xlibs; our own code enters only where stock behavior falls short, escalating nudge / correct (callback, wrapped setter, monkey-patch, DLTX/DXML) then, as a last resort, changing the layer itself (an engine modification or a full-file vanilla override). Never reimplement in script what the engine already does. See `doc/standards/code-standards.md` "Use the engine, don't work around it".
+- Performance budget. Every measured flow (each bracketed inline-timer line in the log: `[DISPATCH.FIND_SQUADS]`, the `[NEEDS]` / `[STASH]` cause families, the `[SQUAD]` broker sweep, `[CORE.CACHE]`, ...) targets 0.1ms average per call and has a hard 2ms ceiling per call. No exceptions, including cold start, save load, and level transition. Any preload (index build, cache warm, registry walk) that would breach 2ms in a single tick must be frame-spread (xslice or equivalent), with the search path falling back to the un-indexed walk until the build completes. A flow that averages above 0.1ms, or that ever exceeds 2ms in a single call, is a regression and requires a perf task. See `doc/standards/code-standards.md` "Performance budget".
+- Item transfer only. AlifePlus never invents new section names. Every materialized item is a section that already exists in vanilla configs. AP policy LTX files (`ap_trade_policy.ltx`, `ap_barter_policy.ltx`, `ap_stash_policy.ltx`, `ap_loot_policy.ltx`, `ap_market_policy.ltx`) declare category bands; the actual sections come from `xinventory.get_category_sections(category)`, which reads vanilla Parse_ITM buckets (`_ITM["outfit"]`, `_ITM["ammo"]`, etc.) and hand-curated sets of real vanilla sections (`_medkit_set`, `_grenade_set`, etc.). Some sections come from `character_desc [supplies]`, `trade_*.ltx [supplies_N]`, or `treasure_manager` tier configs. None are invented by AP.
+- Money flows match vanilla. NPCs gain money when they sell items above category max (`floor(cost * 0.5)`) and spend money when they buy items below category min (`floor(cost * 1.0)`). Cost reads `xinventory.get_cost(sec)` which wraps `ini_sys:r_float_ex(sec, "cost")`. Money moves only inside `ap_ext_trade.trade` via `xcreature.transfer_money` and `xcreature.give_money`, both defensive against the engine `TransferMoney` u32 underflow (see todo-demonized-exes.md n015 PR). No money moves through stash loot, stash fill, the faction market, barter (item transfer only, both directions), or any other AP path. The market's premium is not an AP money move: it overrides the engine's displayed price for tagged trader stock (`on_get_item_cost`), and the player pays it through the normal engine buy.
+
+---
+
+## File layout
+
+Two layers. Core is the framework. Ext is the domain. Core never imports ext; all ext modules register with core via function references at on_game_start.
+
+### Core
+
+| File | Role |
+|------|------|
+| _ap_deps | Dependency gate: assert xlibs installed and version-compatible |
+| ap_api | Public integration facade over broker / record / consumer / producer: owner registry, script_squad / script_actor_target, record queries, register_*_cause / register_consequence. The supported external surface (see integration.md) |
+| ap_core_const | Enums and timing constants: CALLBACK, CAUSE_TYPE, CAUSE_CATEGORY, RESULT, REASON, TRACE, RANGE_*. |
+| ap_core_mcm | MCM defaults, cfg snapshot, UI builder, on_option_change |
+| ap_core_debug | Logger, bracket helper, MCM log-level, periodic [CORE.DIAG] dump. Zero overhead below DEBUG |
+| ap_core_cache | Per-level smart / stash / squad indexes, built frame-spread (xslice) at actor_on_first_update. Finders take them as opts.source. Mechanism in the module header |
+| ap_core_util | xbus pub/sub wrappers, find_smart / find_squads with protection filters |
+| ap_core_limiter | Rate-limit primitives. Pipeline family (real-sec, ephemeral): per-key cause counter, per-consequence token bucket, global radiant TTL counter. Balance family (game-sec, persisted): offmap dispatch counter |
+| ap_core_callbacks | Synthetic callbacks AP declares and fires: ap_squad_on_change (the radiant heartbeat sweep) and ap_npc_medkit_use. Canonical section: Pipeline -> Synthetic callbacks |
+| ap_core_producer | Event Pipeline: radiant gate chain on ap_squad_on_change (budget peek, protection), reactive gate chain on engine callbacks, cause generator cascade, xbus publish |
+| ap_core_consumer | Dispatch Pipeline: xbus subscribe, consequence iteration, result codes, rate gating |
+| ap_core_broker | Squad lifecycle: protection, ownership registry, scripting, 20s scan, arrival, release, transit balance |
+| ap_core_chase | Squad-target chase hooks homing an AP-scripted chaser on another squad by live coordinates. Canonical section: Consequences -> Chase pattern |
+| ap_core_anomaly_fixes | Vanilla Anomaly bugfix monkeypatches (wrap, never replace). Canonical section: Engine integration -> Vanilla fixes |
+| ap_core_record | Activity record: FIFO of dispatched consequences with denormalized display facts; HUD / news / external integrators read from it |
+| ap_core_map | PDA map markers rendered from activity record entries; 10s apply timer, 20s validate pass, 60s linger before unmark |
+| ap_core_hud | Pipeline statistics overlay (UIStatsHUD): counters, gate breakdown, periodic dump |
+| ap_core_compat | Save data cleanup for version upgrades, default ownership proxy (warfare) |
+
+### Ext: cause and consequence files
+
+Single-cause files, one cause per family: ap_ext_cause_alpha, ap_ext_cause_alphakill, ap_ext_cause_basekill, ap_ext_cause_harvest, ap_ext_cause_massacre, ap_ext_cause_squadkill, ap_ext_cause_wounded.
+
+Multi-cause files: ap_ext_causes_area, ap_ext_causes_instincts, ap_ext_causes_needs, ap_ext_causes_stash.
+
+Consequence files (always plural): ap_ext_consequences_alpha, ap_ext_consequences_alphakill, ap_ext_consequences_area, ap_ext_consequences_basekill, ap_ext_consequences_harvest, ap_ext_consequences_instincts, ap_ext_consequences_massacre, ap_ext_consequences_needs, ap_ext_consequences_squadkill, ap_ext_consequences_stash, ap_ext_consequences_wounded.
+
+### Ext: named modules
+
+| File | Role |
+|------|------|
+| ap_ext_const | Domain const tables: CAUSE_CATEGORY, alignment_*, PERSONALITY traits, mutant species displays, range tiers |
+| ap_ext_util | Domain gates: alignment / species / personality / tactics checks, FIFO-cached species resolution |
+| ap_ext_common | Shared chase dispatch: move_actor_chasers (player target) / move_squad_chasers (squad target) |
+| ap_ext_tracker | Domain state: kill counts, alphas, alpha-dead grace, stalker NEEDS DTO, mutant INSTINCTS DTO, squad OPPORTUNITY DTO |
+| ap_ext_smart_mutator | Runtime smart terrain mutations, all exclusive spawn: territory conquest (grows a mini base: service NPCs + resident guards via plan respawn rows, engine-paced), mutant swarm, mutant infestation. Taken smarts are never retaken (is_taken); swarm/infest share the INFEST_SPECIES allowlist |
+| ap_ext_object_mutator | Combat identity of the earned alpha status: level-scaled hit power dealt (vs anyone) and taken, panic immunity, trophy loot, visible particle mark. Before-hit seams + monster_on_loot_init + net spawn/death for the mark, nothing per frame. Canonical section: Object mutator |
+| ap_ext_trade | NPC supply-trader orchestration: sell surplus, buy up to per-rank policy bands, net-profit capped. Canonical row: Item flow -> Supply Trader |
+| ap_ext_barter | NPC-to-NPC barter orchestration: swap surplus for a peer's deficit and hand over a gear upgrade by cost with a same-faction stalker, no money. Canonical row: Item flow -> Barter |
+| ap_ext_loot_claim | Corpse loot ownership: a kill belongs to the killer (squad-held for NPC kills), reserved symmetrically in all three directions (actor kills vs NPC looters, NPC kills vs the actor, NPC vs NPC), each flow with its own MCM toggle / radius / TTL. Canonical section: Corpse loot ownership |
+| ap_ext_market | Faction market: the player-facing echo of NPC trading at a faction's hub traders, injection and sell-out in trader perspective. Canonical section: Item flow -> Faction market |
+| ap_ext_loot_select | Corpse loot policy (sibling to loot_claim: claim decides who may loot, select decides what is kept): a looter keeps a policy-bounded, value-ranked share of what it just took from a body. Canonical row: Item flow -> Corpse Loot Trim |
+| ap_ext_news | News composer: per-consequence templates, slot substitution, speaker selection, dynamic_news_manager dispatch |
+| ap_ext_test | Console test driver: world-state seeders (per-category NPC item kits, NPC cash, stash fills, artefact drop) plus a periodic runner (run()) that re-seeds on intervals for soak sessions; seeds only real world state, never AP internals |
+
+---
+
+## Pipeline
+
+### Execution model
+
+X-Ray runs Lua single-threaded. There is no concurrency within one engine tick. When a callback fires (the sweep's ap_squad_on_change, or an engine reactive callback), the entire AP pipeline executes synchronously in one Lua call stack before control returns to the engine. Producer evaluates gates, cause generator runs, xbus publishes, consumer iterates consequences, each handler runs and may script a squad. All inside a single function call.
+
+```
+sweep tick (1s timer, 20 squads, cursor)
+  -> diff snapshot -> SendScriptCallback("ap_squad_on_change", squad, changed, prev, curr)
+    -> producer._on_radiant (gate chain: BUDGET peek, is_protected, RATIO)
+      -> EVAL cascade: shuffle generators, try each, stop on first publish
+        -> cause generator returns nil -> try next
+        -> cause generator returns { cause = CAUSE.X, ...payload } -> publish + break
+          -> xbus.publish (synchronous, inline)
+            -> consumer._process (shuffle consequences, iterate)
+              -> consequence handler returns { code = RESULT.X }
+                -> script_squad sets scripted_target, registers arrival
+            <- returns to producer
+          <- cascade breaks on first publish
+```
+
+xbus.publish calls each subscriber inline and returns when all have finished.
+
+### Event Pipeline (ap_core_producer)
+
+Producer receives engine callbacks and filters them through a gate chain before evaluating cause generators. Two variants because radiant and reactive events differ structurally.
+
+Radiant events are ambient observations delivered by `ap_squad_on_change`, produced at a configured rate and map mix. The squad is both subject and responder. Every fire is meaningful: either an observed transition or the squad's round-robin turn.
+
+Reactive events are world-state changes on engine callbacks (death, healing, pickup). The triggering entity may not be the entity AP acts on. Low frequency, high significance per event.
+
+#### Synthetic callbacks (ap_core_callbacks.script)
+
+AlifePlus adds 2 events the base game never exposed. Both are declared into the vanilla `_g.script` callback registry at module load (`AddScriptCallback`, so the names exist before any subscriber binds) and installed in `ap_core_callbacks.on_game_start`; any co-installed mod subscribes with plain `RegisterScriptCallback` (the events exist only when AlifePlus is installed). This section is the single home for both mechanisms.
+
+`ap_npc_medkit_use (npc, medkit, kind)` completes a vanilla seam: `xr_eat_medkit.consume_medkit` fires no callback, so an `xevent.hook` emits ours before the original runs - the medkit still exists for the subscriber (consume_medkit releases it afterward). `kind` is "health" or "bleed". No options, no state. Consumed by the wounded reactive generators (see Reactive gate chain).
+
+`ap_squad_on_change (squad, changed|nil, prev, curr)` is the radiant heartbeat. AP does not subscribe to the engine's `squad_on_update` (6,624 calls/min across ~776 squads, of which the old gate chain discarded 99.94%; the engine still fires it for other mods); a squad has no call seam to hook, so the sweep polls. Rate and mix are read live from `cfg.alife_rate` / `cfg.alife_ratio` each tick, so MCM changes apply on the next tick with no push path.
+
+The sweep separates detection from production:
+
+Detection: a 1s time event walks 20 squads per tick with a circular cursor over an id snapshot from `xsquad.collect_squad_ids` (SIMBOARD.squads is engine-script truth, registered at `sim_squad_scripted.script:1010`; the id is removed on several paths -- `remove_squad` at `:418`, the `:473` and `:192` branches, and `on_unregister` at `:1019` -- so the snapshot never assumes a single removal site, and resolve-time nil checks via `xobject.se` are the backstop that keeps a departed id from firing). Per-tick cost is O(batch), constant, independent of total squad count; more squads only lengthen the full pass (~776 -> ~40s). The engine's own A-Life scheduler settles the shape: `alife_schedule_registry` round-robins a live registry mutated in place (`alife_schedule_registry.h:25-51`), and the sweep works the same way one level up - live lane membership (one array per lane, actor's current level vs background, plus an id->index map for O(1) swap-with-last removal), never rebuilt-and-swapped. Each visit resolves the id (`xobject.se`; ids, never held refs), re-places the squad's lane only when its level changed (one field compare on the common path, `xlevel` cached lookups), and diffs a 4-field snapshot; a changed squad is queued, not fired:
+
+| Field | Signal |
+|-------|--------|
+| m_game_vertex_id | movement (pre-quantized position; the engine advances it as the squad walks) |
+| online | online/offline transition |
+| smart_id | assignment change |
+| current_action | moving vs staying |
+
+Production: a credit accumulator gains `cfg.alife_rate / 60` per tick; each whole credit emits exactly one fire, so the total rate is enforced by counting, not by timers. Per credit: the lane is picked by `cfg.alife_ratio` (the manifesto's Bresenham, current level vs background, applied at production instead of rejection; the same slider the reactive ratio gate uses); the lane's oldest queued change fires first; with no pending change, the lane's next squad fires round-robin over the live lane array — the implicit keepalive that guarantees every squad its turn per cursor cycle. A credit whose picked lane cannot fire falls back to the other lane; after 8 dead candidates (FIRE_ATTEMPTS_MAX: despawned or inside refractory) the credit drops. The Bresenham counter advances after the successful fire, on the lane that actually fired, so the recorded mix is the real mix even under the fallback. Fire payload is `(squad, changed, prev, curr)`; `changed` names the differing fields, nil = round-robin fire with no transition. The fire re-diffs live fields, so a queued change that reverted goes out truthfully. One clamp: a per-squad refractory (60s, os.clock) protects small lanes from rapid re-fires; a blocked fire defers (snapshot not advanced, re-detected next pass). First sight of a squad baselines silently and enters its lane immediately — game start and mid-session spawn behave identically, with the first fires beginning once the first credit accrues (~12s at the default rate); spawn is reactive territory. Snapshot state is ephemeral (never saved). Eviction is event-driven and exact: `sim_squad_scripted:on_unregister` fires `server_entity_on_unregister` one line before it removes the id from SIMBOARD.squads (:1018-1019), so every id discovery can see gets a prompt destroy event; prompt eviction is what keeps the lane arrays clean and recycled ids fresh (the engine pools and reuses freed ids, `xrServer.cpp:873`), and resolve-time nil checks are the backstop.
+
+The sweep is detection-only: no protection, no budgets, no knowledge that a pipeline exists. It fires for protected and warfare-owned squads too, so the stream the producer sees is uncensored. Payload tables (`changed`, `prev`, `curr`) are reused between fires: read-only during the callback, never retain references. Instrumentation is complete but costs one boolean when DEBUG is off: the sweep gates every stat accumulator, `xprofiler.new_if` tick timing, and log line on `ap_core_debug.enabled()`; at DEBUG it emits one `[CALLBACKS.SQUAD]` line per fire (squad, lane, kind, field values) plus a per-pass summary (`visits, detected, fires cur/bg, change/keep, dropped, tick avg/max ms`) into alifeplus.log.
+
+#### Radiant gate chain (ap_core_producer._on_radiant)
+
+Two gates on each `ap_squad_on_change` fire; rate and level mix are enforced at production inside the sweep, so no ratio gate remains on the radiant path (the manifesto's A-Life Ratio lives at the intake now):
+
+1. BUDGET peek. Non-consuming read of the global radiant dispatch counter (`ap_core_limiter.check_global_consequence_rate_limit`). Radiant is 1:1 publish-to-dispatch and the consumer refuses past `global_consequence_max_events` per window, so when the window is full every evaluation is provably wasted work and would violate the cause publish contract (universal rule 14). Window full -> return before any work. Self-tunes with the MCM cap; the counter only advances on dispatch SUCCESS, so failed consequences do not eat the window.
+2. is_protected. Full eligibility check via ap_core_broker.is_protected. Checks ownership, scripted, permanent, active_role, task_target. Short-circuits early.
+3. EVAL (cascade). Shuffles registered cause generators in-place inside a reusable buffer, walks them in random order. Each generator self-gates the per-CAUSE_CATEGORY rate (check_cause_rate_limit at the top of the predicate); the producer does not rate-check. First generator to publish stops the cascade. Each generator's `_on_smart` carries its own internal SCAN budget `ap_core_const.RADIANT_MAX_SCANS_PER_GENERATOR` = 1; RULES rejections are free and the generator can cascade through all of its causes, but only the first cause that passes RULES and enters its world SCAN consumes the slot — any later cause that reaches SCAN in the same `_on_smart` call hits BUDGET_EXHAUSTED. Budget is a local Lua counter, resets every `_on_smart` call.
+
+Shuffling ensures fair distribution regardless of how many generators apply to a given squad's alignment. Per-squad fairness comes from the sweep's round-robin production: every squad gets its turn instead of winning a global pacer lottery. The turn guarantee is conditional, not absolute: pending changes preempt turns inside a lane, so it holds while change inflow stays under the pop capacity (8 x credits/min per lane); under sustained heavy transit, turns defer until the change queue drains.
+
+#### Reactive gate chain (ap_core_producer._on_reactive)
+
+Reactive callbacks: squad_on_npc_death, ap_npc_medkit_use (synthetic; mechanism under Synthetic callbacks above), actor_on_item_take, npc_on_item_take, actor_on_item_use. Three gates:
+
+1. PACER. Token bucket with per-callback-type keys: capacity 5 tokens, refill 1 token/sec per type. Capacity covers a same-frame burst (a grenade or anomaly wiping a squad fires several squad_on_npc_death in one frame; the events are one incident, not spam), so edge-triggered causes (squadkill's last-member death, alphakill) see their trigger and cluster causes (massacre, basekill) count every death; the refill still bounds the sustained average at 1/sec.
+2. RATIO. Same Bresenham as radiant with its own counter pair. Some reactive callbacks (actor_on_item_use, actor_on_item_take) are always on-map (require a game_object which only exists online).
+3. EVAL (per-handler walk). Iterates all reactive cause generators for this callback in registration order. Each generator self-gates its rate; the producer does not rate-check. All evaluate independently. A single death event can trigger MASSACRE, SQUADKILL, ALPHA generators in sequence. Reactive does NOT cascade-and-stop - every generator gets its chance to publish.
+
+#### Protection layers
+
+Protection is applied at four layers, same guard set against different entities depending on context:
+
+| Layer | Where | Subject |
+|-------|-------|---------|
+| Producer | radiant gate 2 (is_protected) | triggering squad |
+| Cause | reactive cause generators | the entity AP would act on (killer, patient, taker) |
+| Consequence | ap_core_util.find_squads | every candidate responder squad |
+| Squad | ap_core_broker.script_squad | no inline check; protection is upstream |
+
+Reactive causes skip the producer protection gate because the callback entity (e.g. dead victim in squad_on_npc_death) is not the entity AP would script. They check protection on the relevant entity inside the generator: alpha and alphakill guard the killer, wounded guards the patient, harvest guards the taker. Causes whose trigger is a dead victim (massacre, squadkill, basekill) need no in-cause guard - consequences find responders through find_squads which applies all exclusions.
+
+#### Cause generator contract
+
+Takes the callback args, returns either a payload tagged with the picked specific cause or nil. Generators self-gate the per-category rate via ap_core_limiter.check_cause_rate_limit and increment_cause_counter; the producer does not gate cause budgets. The producer times each generator call inline (xprofiler, DEBUG-gated) and logs its outcome. Single-cause reactives register name = CAUSE.X; multi-cause radiants register name = family string (stash, area, needs, instincts) and route each per-cause attempt through ap_ext_util.try_cause, the one shared seam every radiant generator uses: it skips a disabled cause before any timer (no line, no allocation), otherwise times the attempt and logs it under its own bracket.
+
+```lua
+local CATEGORY = CAUSE_CATEGORY.OPPORTUNITIES
+local function _predicate(trace, squad)
+    if not cfg.cause_X_enabled then return { code = RESULT.FAILED_RULES } end
+    if not ap_core_limiter.check_cause_rate_limit(CATEGORY, cfg.cause_max_opportunities) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BUDGET_EXHAUSTED }
+    end
+    -- RULES + SCAN, then on success:
+    ap_core_limiter.increment_cause_counter(CATEGORY)
+    return { cause = CAUSE.X, ...payload }
+end
+```
+
+Generators are pure: no rate-limit awareness from outside, no counter manipulation, no side effects beyond the published payload.
+
+#### Instrumentation
+
+Both pipelines measure gate span and eval span. Gate span: time from first eligibility check to admission (radiant: BUDGET peek + is_protected + RATIO; reactive: PACER + RATIO). Eval span: cause generator evaluation, xbus dispatch, all consequence handlers. Spans accumulated per PACER_LOG_INTERVAL (60s) and reported as avg/max in the periodic [PIPELINE] dump. All timing uses os.clock() and is gated by debug enablement; zero overhead when log level is above DEBUG.
+
+### Dispatch Pipeline (ap_core_consumer)
+
+After a cause publishes to xbus, the consumer receives the event and iterates registered consequence handlers. Loop in ap_core_consumer._process; per-handler steps in _dispatch_entry. _dispatch_entry times each handler call (xprofiler, DEBUG-gated) and logs one outcome line under the consequence bracket (entry.log_prefix, built at register from ap_core_debug.bracket(name)). Handlers are pure: they return { code, reason } and never time or log their own outcome, so a RULES rejection that returns before any world query logs the same way as a SUCCESS.
+
+#### Per-handler dispatch
+
+Per consequence:
+
+1. condition pre-gate. Function registered at consumer.register, typically the MCM enabled flag. False -> SKIP this consequence.
+2. Per-consequence rate limit (ap_core_limiter.check_consequence_rate_limit). Exhausted -> SKIP.
+3. Global radiant rate limit (radiant only, ap_core_limiter.check_global_consequence_rate_limit). Exhausted -> STOP the entire loop.
+4. Handler runs. Returns { code = RESULT.X, reason = "..." }. FAILED_RULES (business rules rejected: alignment, personality, species, validation), FAILED_SCAN (rules passed but world query empty), FAILED_ACTION (rules and scan passed but the action failed: script_squad could not route, registration call returned false), SUCCESS.
+5. On SUCCESS: increment per-consequence counter; for radiant only, increment global radiant counter; set event_data._fired = true. For radiant, also stop the loop (rule 5 below).
+
+A consequence whose MCM toggle is off is skipped by the consumer condition pre-gate before any timer or handler call, so it produces no outcome line (the same disabled-skip-before-timer contract ap_ext_util.try_cause applies on the cause side). The four phase codes are what the handler returns when it does run.
+
+#### Dispatch rules
+
+1. Radiant cascade (producer-side). Producer shuffles registered radiant generators and cascades through them in random order. First generator to publish stops the cascade. Remaining generators do not evaluate.
+2. Cause publish contract. A cause generator must not publish if no consequence can act. Cascade stops on publish - if every consequence rejects, the trigger is wasted. Causes serving a subset of alignments must filter at the cause level (alignment_human for stash/needs, alignment_mutant for instincts) rather than relying on consequences to reject.
+3. Per-need / per-instinct routing. Needs and instincts each register one generator with the producer but publish specific xbus events per need/instinct (cause:hunger_campfire, cause:heal_shelter, cause:scatter, etc.). Each consequence subscribes to its specific event. Only consequences that handle the winning need/instinct receive the event. No mismatch iteration.
+4. Consequence shuffle. The consumer shuffles registered consequences before iterating so order is not fixed. Reactive causes have multiple consequences (e.g. massacre_investigate and massacre_scavenge); shuffling matters. Radiant causes have one consequence each (1:1 shared noun), so the shuffle is a no-op.
+5. Radiant: at most one consequence runs per cause. 1:1 shared noun. The consumer runs it or skips it; no loop, no alternatives.
+6. Reactive: all run independently. All consequences for the cause run regardless of results. Multiple consequences can fire from a single event.
+7. Loop stop (reactive only). The reactive loop stops when REACTIVE_MAX_CONSEQUENCES_PER_CAUSE = 2 consequences have actually run. Other results (FAILED_RULES, FAILED_SCAN, FAILED_ACTION, DISABLED, rate-limited) skip and continue.
+
+### Rate limiting
+
+ap_core_limiter holds two limiter families. Pipeline limiter throttles event flow so the engine doesn't thrash (real-sec clock, ephemeral). Balance limiter caps in-world impact so the world doesn't drift (game-sec clock, persisted across save/load). The other layers live in producer or in cause generators.
+
+| Layer | Mechanism | Scope | Default | Lives in | Config |
+|-------|-----------|-------|---------|----------|--------|
+| Per-key cause counter | TTL counter, sliding window | per CAUSE_CATEGORY | 20 / 60s | ap_core_limiter (check_cause_rate_limit, increment_cause_counter) | MCM cause_max_<category> |
+| Per-consequence token bucket | peek / acquire | per consequence name | 2 / 60s | ap_core_limiter (check_consequence_rate_limit, increment_consequence_counter) | MCM consequence_max_events |
+| Global radiant TTL counter | TTL counter | radiant only | 5 / 60s | ap_core_limiter (check_global_consequence_rate_limit) | MCM global_consequence_max_events |
+| Offmap balance counter | TTL counter, sliding window (game-sec) | per source level_id | 2 / 48 game-hours | ap_core_limiter (check_offmap_rate_limit, increment_offmap_counter) | MCM cause_max_offmap |
+| Per-causer reaction counter | TTL counter, sliding window (game-sec) | per causer entity id (shared across dispatching REACTIONS; alpha promotion excluded) | 1 / 1 game-hour | ap_core_limiter (check_causer_rate_limit, increment_causer_counter) | MCM cause_max_per_causer |
+| Sweep rate | credit accumulator, 1 credit = 1 fire | global sweep production | 5 / min | ap_core_callbacks (reads cfg live) | MCM alife_rate |
+| Sweep level mix | Bresenham lane pick per credit (current level vs background) | sweep production split | +8 (~4:1 current level) | ap_core_callbacks (reads cfg live) | MCM alife_ratio |
+| Sweep refractory | per-squad os.clock spacing | per squad | 60s | ap_core_callbacks | constant |
+| BUDGET peek | non-consuming read of global radiant counter | radiant EVAL admission | 5 / 60s (shared window) | ap_core_producer gate 1 | MCM global_consequence_max_events |
+| Reactive PACER | token bucket (burst 5) | per callback type | 1 / sec sustained | ap_core_producer | constant |
+| Per-squad MVT / Hull threshold | DTO last_<X>_at + arrival reset | per squad per cause | per cause | cause generator | MCM cause_<X>_threshold |
+
+Per-squad threshold (Hull / MVT). Owned by each cause generator. Reads last_<X>_at from a DTO (_ap_stalker_needs, _ap_mutant_instincts, _ap_squad_opportunities); arrival action resets the timestamp. Hull family (needs, instincts) is per-drive: multiple answers under one drive share the timestamp; any answer firing resets the drive's field. Score = weight * (elapsed/threshold)^2. MVT family (stash, area) is per-cause: each cause has its own threshold and timestamp. Gate is binary: elapsed > threshold.
+
+Per-category cause budget is consumed inside the cause generator (self-gating). The producer does not gate cause budgets. A rate-blocked generator is skipped by the EVAL cascade so the slot frees for the next entry. ap_core_limiter.create_cooldown is a small helper for arbitrary timestamp-based cooldowns.
+
+Offmap balance counter. Backs the offmap cause family (SUPPLY_TRADER_OFFMAP, SOCIAL_OFFMAP, JOB_EXPLORE_OFFMAP). Single counter keyed by source level_id; faction-agnostic and destination-agnostic; shared across all offmap causes. Window OFFMAP_WINDOW_SEC (48 game-hours, hardcoded) mirrors the framework pattern where pipeline windows are const and only caps are MCM-exposed (cause_max_offmap, default 2). Clock is xtime.game_sec; bucket state round-trips through save/load via xttltable export / import in ap_core_limiter SAVE_STATE / LOAD_STATE. The selection-side constraints (prop-only filters, adjacency narrowing) live in Squad Lifecycle -> Off-map track.
+
+Per-causer reaction counter. A second balance-family counter, parallel to the per-category REACTIONS budget. A causer is the source entity whose action fired a reactive event: the killer (massacre, basekill, squadkill, alphakill), the patient who healed (wounded), or the artefact taker (harvest). For an actor-triggered event the causer id is xconst.ACTOR_ENTITY_ID. Six of the seven reactive causes - all the ones that dispatch a squad at the causer - call check_causer_rate_limit(causer_id) before publishing and increment_causer_counter(causer_id) at publish. The alpha cause is deliberately excluded: alpha_promote only updates the alpha tracker (no squad dispatch), so it neither consumes the per-causer budget nor is blocked by it; gating it would let a promotion silence real reactions and vice versa, and it never keys on the actor anyway (mutant killer only). The counter is keyed by causer id alone (not by cause), so it is shared: once a single source has triggered cause_max_per_causer reactions of any kind within CAUSER_WINDOW_SEC (1 game-hour, hardcoded), every reactive cause attributed to that id is blocked until the window slides. This prevents one dominant source from saturating the reaction layer - the motivating case is a hostile map where the player is the only enemy (Radar), but it also smooths a lone predator clearing a lair or one squad on a long killing spree. Nil causer (unidentified killer) is always allowed; a cooldown cannot key on it. Clock is xtime.game_sec (so the window tracks game time across sleep / time-skip), but the counter is ephemeral - unlike the offmap counter it is NOT persisted; it resets on save load and on level transition (Lua VM reinit). A short throttle does not need to survive a reload. Default cap 1 (MCM cause_max_per_causer) makes the gate a strict one-reaction-per-source-per-game-hour cooldown; raising it admits more.
+
+The world tab in MCM houses the balance family. Pipeline family caps live under framework. Reset button moved to the development tab.
+
+### Tracing
+
+Each big flow times itself inline with `xprofiler.new_if(dbg)` and logs one line. There is no per-call `observe()` wrapper and no span hierarchy. Correlation is a plain integer `tid` carried on the payload: the producer mints `xtrace.new().id` per evaluation, writes it to `result.tid`, and the consumer reads `event_data.tid` to log each consequence outcome under the same tid. The consumer (`_dispatch_entry`) is the single seam that times the handler and logs its outcome, so every consequence outcome logs the same way, a RULES rejection included; handlers stay pure and return `{ code, reason }` without logging. One tid links a cause to its consequence outcomes:
+
+```
+[CAUSE.HUNGER_CAMPFIRE] failed_rules:low_personality [0.04ms]
+[NEEDS] [tid=42] fired=cause:hunger_campfire [0.15ms]
+[CONSEQUENCE.HUNGER_CAMPFIRE] [tid=42] success [0.42ms]
+```
+
+The line format is `[LABEL] [tid=N] <outcome> [X.XXms]`, `<outcome>` being the handler's `code` or `code:reason`. A debug line that carries a `[tid=N]` also carries its `[X.XXms]` duration (validator rule `alifeplus-debug-log-duration`). The consumer outcome line holds only the code and reason. The moved-squad count and target smart live in the activity records the handler writes on success (one add_record per moved squad), not on the outcome line.
+
+Radiant families (needs, instincts, area, stash) run alignment / scan / pick before a specific cause is known. Each per-candidate attempt runs through ap_ext_util.try_cause: a disabled cause is skipped before any timer and emits no line, otherwise the attempt logs a tid-less line under its own bracket (`[CAUSE.X] fired [X.XXms]` on publish, else `[CAUSE.X] code:reason [X.XXms]`, the first line above); the family outcome line the producer emits carries the tid (the second line). The tid is not threaded into generators. Deferred arrivals mint a FRESH `xtrace.new().id` and correlate to their dispatch by `dst=` / `sq=`, never by a stored tid: the counter resets on VM reinit, so a stored tid would collide after a save.
+
+bracket(constant) in ap_core_debug composes log labels by uppercasing and replacing `:` with `.`: `"cause:hunger_campfire"` -> `"[CAUSE.HUNGER_CAMPFIRE]"`. Each cause / consequence file caches its bracket strings at module load (`entry.log_prefix`). No hardcoded `[CAUSE.X]` literals.
+
+Coarse inline timers cover the big flows with no per-cause / per-param / per-branch timer spam: the producer cause evaluation, each consequence, the broker scripted-squad sweep (per-item accumulate plus an `on_done` total), the map-marker tick, the ap_core_cache bucket warmup (same accumulate-plus-total shape), the loot-claim and loot-select passes, the market reshape, the news compose tick, and the tracker death handler. One line per component. `ap_ext_object_mutator` before-hit is a hot path (over 10/sec) and stays untimed; a per-hit timer would distort it.
+
+Below DEBUG: `ap_core_debug.debug` early-returns on the `enabled()` check, `xprofiler.new_if(false)` returns the shared null singleton (zero allocation, `get_ms()` returns 0), and the tid is not minted (`dbg and xtrace.new().id or 0`). Cost is one `enabled()` check per flow. All null singletons are pre-allocated; no allocation at non-debug levels.
+
+---
+
+## Initialization
+
+Four phases. Each requires the previous to complete.
+
+### Phase 0: module load
+
+Engine auto-load resolves .script files on first namespace access (script_engine.cpp:375 sets _G.__index = auto_load). axr_main.on_game_start() iterates .script files alphabetically and triggers auto-load. Module-level code runs immediately on first reference: engine globals cached to locals, constant tables built, xlibs API references captured. No game state at this point - no actor, no entities, no callbacks active.
+
+### Phase 1: on_game_start
+
+axr_main calls on_game_start() on every loaded script. File order alphabetical, but all operations are independent - no cross-module reads at this phase:
+
+- _ap_deps asserts xlibs compatibility. Hard crash on mismatch.
+- ap_core_mcm loads config from defaults, registers on_option_change.
+- ap_core_debug registers actor_on_first_update for deferred log level init.
+- ap_core_callbacks declares both event names at module load (`AddScriptCallback`, phase 0) and installs both detections in its on_game_start: the `ap_squad_on_change` sweep (server_entity_on_unregister eviction + 1s tick, reading cfg.alife_rate/alife_ratio live) and the `ap_npc_medkit_use` hook on `xr_eat_medkit.consume_medkit`.
+- ap_core_producer resets dispatch state and registers actor_on_first_update; it subscribes to ap_squad_on_change (via RADIANT_CALLBACKS) but no longer starts or feeds the sweep. register() is write-through (maintains _handlers, _radiant_callbacks, _cascade_buf synchronously); engine subscription is deferred to actor_on_first_update.
+- ap_ext_cause_wounded registers its reactive generators against WOUNDED_CALLBACKS; it is a pure subscriber (detection lives in ap_core_callbacks).
+- ap_core_consumer registers actor_on_first_update. Does NOT subscribe to xbus yet.
+- ap_core_broker registers save/load callbacks, creates the 20s scripted-squad scan timer.
+- ap_core_hud resets statistics, registers first_update / option_change / net_destroy / GUI callbacks.
+- ap_core_map registers first_update (marker init) + server_entity_on_unregister (marker cleanup on entity death).
+- ap_core_compat registers load_state for save cleanup, registers ownership proxy (warfare).
+- ap_ext_cause_* / ap_ext_causes_* register generators with producer via register().
+- ap_ext_consequences_* register handlers with consumer via register(). Arrival handlers via consumer opts.
+- ap_ext_news registers compose timer.
+
+After phase 1: all generators and handlers are registered, _cascade_buf is fully populated (write-through from register()). No engine callbacks subscribed yet, no xbus subscriptions active. Subscription is deferred to actor_on_first_update so predicates do not run before the actor and supporting systems are live.
+
+### Phase 2: actor_on_first_update
+
+Game world and actor exist. Deferred init runs:
+
+- Producer subscribes callbacks (radiant: shared _on_radiant on ap_squad_on_change; reactive: per-callback dispatcher on engine callbacks) and sets _first_update_done. Late register() calls (post-first_update) subscribe new callbacks synchronously.
+- Consumer subscribes to xbus cause events.
+- Debug reads MCM log level (config now loaded), dumps MCM at DEBUG.
+- HUD clears stale map markers from previous session, starts marker timer if MCM map_markers is enabled. Activates statistics overlay if MCM statistics_position is not "off".
+
+actor_on_first_update fires on the first frame with a live actor. It fires on every level transition (not just game start), so handlers use a _subscribed guard to prevent duplicate registration. Named function references registered via RegisterScriptCallback are naturally deduplicated; the guard prevents redundant work.
+
+### Phase 3: on_game_load
+
+Fires after STATE_Read rebuilds all server entities from the save file. At this point alife_object(id) works and entity mutation is safe. Smart mutator re-applies conquered and infested smart data from _conquered_pending and _infested_pending (two-phase restore: load_state reads the data, on_game_load applies the mutations, because load_state fires before entities exist).
+
+Engine load sequence:
+
+1. load_state - save data read (m_data available). Entities do NOT exist yet. `alife_object(id)` returns nil; `level.get_start_time` AVs.
+2. STATE_Read - engine deserializes server entities, rebuilds smart terrain config from LTX.
+3. on_game_load - entities exist; mutations safe to apply.
+
+Migrations that need to clear engine state (e.g. `scripted_target` on orphan squads) must split into a phase A queue at load_state and a phase B drain at on_game_load. See `doc/standards/code-standards.md` Save Data Migrations for the pattern; `ap_core_compat.script` and `ap_ext_smart_mutator.script` are the reference implementations.
+
+---
+
+## Engine integration
+
+NPC behavior is produced by a four-layer engine chain. AP routes squads to destinations, reads the chain's output, and stays outside the chain itself.
+
+### The four layers
+
+| Layer | Subsystem | What it produces |
+|-------|-----------|------------------|
+| Content | smartcovers, patrol paths, animpoints (level .ltx) | the animation primitives a job can run |
+| Binding | gulag (smart_terrain.script + gulag_general.script) | npc_info[id].job per NPC, scored by priority + precondition |
+| Scheme | xr_logic + scheme modules (xr_walker, xr_camper, xr_sleeper, xr_animpoint, xr_smartcover, sr_*) | actions and evaluators registered on the NPC's motivation_action_manager |
+| Execution | GOAP action planner (action_planner_script.cpp) | the per-tick action selected against goal world state |
+
+### Write surface
+
+A single engine field: `squad.scripted_target` via `xsquad.acquire_squad` / `release_squad` / `reassert_target`. AP does not write to `npc_info`, `npc_by_job_section`, `job_info_by_job_type_id`, `db.storage[id].active_section` / `active_scheme` / `pstor`, `motivation_action_manager`, or any smart's `stalker_jobs` / `monster_jobs` tables. AP does not call `xr_logic.activate_by_section` or any scheme's `set_scheme` directly. AP does not push exclusive jobs.
+
+### Read surface
+
+| Source | xlibs wrapper | Reader |
+|--------|---------------|--------|
+| `smart.stalker_jobs` / `monster_jobs` | `xsmart.has_animated_stalker_jobs` | scan-time predicate per cause: reject stub-only smarts (job_type_id in {0, 1}) |
+| `smart.npc_info[id].job` | `xsmart.has_jobs_for` | arrival + mid-hold predicate: detect engine binding failure |
+| `smart.props` | `xsmart.accepts_faction` | scan-time faction gate (engine target_precondition Tier 1; covers stalker + mutant) |
+| `smart.faction` | direct field read | at-base detection (basekill / massacre / squadkill / wounded: `xsmart.is_base(smart) and smart.faction == squad.player_id`); engine sticky setter (smart_terrain.script:1209-1236) |
+| `SIMBOARD.smarts[id].squads` | `xsmart.iter_stationed_squads` / `has_squad_of_faction` / `has_enemy_squad` / `is_smart_empty` | physical-presence + hostility checks via is_stationed filter (current_action=1). Cap 5 safety belt. Cross-level safe. Drops sim-intent in-transit squads |
+
+Cause-side filters live in `ap_ext_causes_*.script`; each cause picks the predicate set that matches the activity (surge shelter, lair, base/unclaimed, has-anomaly, etc.).
+
+### Binding race
+
+Engine `select_npc_job` (smart_terrain.script:626-798) can fail to assign a job under two conditions:
+1. Full allocation. Every `stalker_jobs` entry is held by `npc_by_job_section` or rejected by `job_avail_to_npc`. `setup_logic` unregisters + re-registers the NPC; engine default idle pose loops.
+2. Precondition flip during the post-arrival hold. surge start/end (jobs 2/8/14/19), day↔night for sleeper (3), zombie state, `has_items_to_sell` for trader (15), `has_tech_items` for mechanic (16).
+
+AP detects both via `xsmart.has_jobs_for` and releases the squad cleanly. Mechanism in Squad Lifecycle → Scripted-squad scan steps 4 (arrival) and 6 (mid-hold). Released squads return to SIMBOARD autonomous targeting via `xsquad.release_squad` clearing `scripted_target`.
+
+### SIMBOARD bookkeeping
+
+AP-routed transitions update `SIMBOARD:assign_squad_to_smart` at two hooks: dispatch (`script_squad`, clearing the source roster with `nil` target before engine `sim_squad_scripted:specific_update` bumps `squad.smart_id` to the new target) and commit (`_commit_arrival`, adding the destination roster entry after `xsmart.has_jobs_for` accepts). `SIMBOARD.smarts[id].squads` therefore reflects actual squad placement for AP-routed squads. `has_squad_of_faction`, garrison floor, and faction-quota predicates all read truth. On despawn the engine's own `sim_squad_scripted:remove_squad` clears the roster (`SIMBOARD:assign_squad_to_smart(self, nil)`). Vanilla's own scripted re-homes (via the roster-blind `assign_smart`) are corrected globally by `ap_core_anomaly_fixes` (see Vanilla fixes).
+
+### Vanilla fixes
+
+`ap_core_anomaly_fixes` installs bugfix monkeypatches on vanilla Anomaly A-Life at `on_game_start`, each wrapping (never replacing) the original so it composes with any modpack overlay regardless of load order (see script-loading.md "Composing Wrappers"). A `_patched` flag makes install idempotent.
+
+Roster desync. Vanilla `sim_squad_scripted:specific_update` (script:289) and `:generic_update` (script:356) re-home a scripted squad through `self:assign_smart`, which sets `squad.smart_id` and re-registers NPC jobs but never updates `SIMBOARD.smarts[id].squads` / population. Any squad the engine re-targets this way -- AP's or vanilla's own -- leaves the roster undercounting, so `xsmart.has_capacity` / `is_smart_empty` read wrong. The fix wraps both methods: capture `smart_id` before the original, then call `xsmart.reconcile_squad_roster` after. The reconcile is table-state gated and therefore idempotent -- it corrects a roster-blind base (vanilla, Zona, EFP) and is a silent no-op on a base that already syncs (GAMMA's overlay). Only the SIMBOARD roster table is touched; job binding is left to the original.
+
+The chase override (`ap_core_chase`) also monkeypatches `sim_squad_scripted`, but to implement a feature (squad-target homing), not to fix a bug -- it patches different methods (`get_current_task` / `get_script_target`), so the two coexist without ordering concerns.
+
+---
+
+## Item flow
+
+The AP item flows: Supply Trader (buy/sell on arrival), Barter (two same-faction stalkers swap surplus for deficit and upgrade gear on arrival, no money), Stash Loot (squad takes from stash), Stash Fill (squad deposits surplus to stash), Corpse Loot Trim (an NPC keeps only a policy-bounded share of what it just looted from a body), and Faction Market (a faction's hub traders restock a bounded, rank-gated echo of what that faction's stalkers recently sold, minus a bounded share of what they recently bought). All of them load their LTX via `xinventory.load_policy`, classify inventory via `xinventory.get_category(item, opts)` / `xinventory.get_section_category(sec)`, and resolve untouchables through the same categorizer. All but the market move items between carriers on squad arrival. The market is the one read-side flow: it observes what the trade flow already did and re-materialises a slice of it for the player.
+
+The unified category model is the modernization step over Alundaio's `items\trade\gulag_job_trade_buy_sell.ltx` (per-section keep counts inside each tradeable item's LTX). Per-section meant every tradeable section had to declare its own buy_sell row, and modpacks adding items had to dirty the item files to participate. AP's `xinventory.get_category` reads engine-baked `_ITM` Parse_ITM buckets (outfit, helmet, artefact, device, money, grenade_ammo, ammo, eatable filtered to food/drink) plus hand-set predicates for the medical set (medkit, bandage, antirad, stim, pill) and grenades. A modpack medkit section gets `medkit` category automatically when the engine binds it to `kind=i_medical`. No per-modpack LTX maintenance, no item file edits — the policy operates on categories, the engine assigns categories to sections.
+
+Runtime untouchable checks layered in 1.7.5 (`xinventory.get_category:632-637`): runtime `story_id` via `get_object_story_id` (vanilla quest-tracker convention, `release_npc_inventory.script:81` precedent), `axr_companions.is_assigned_item(opts.npc_id, item:id())` (companion-gifted, `axr_companions.script:1300,1360` precedent), `se_load_var(item_id, "", "strapped_item")` (player-strapped, `itms_manager.script:338` precedent). Section-level untouchable (quest / anim / blacklisted) gates first via `get_section_category`. Equipped check uses `opts.equipped_ids`. All three runtime checks centralized in `get_category` so every consumer (trade, stash loot, stash fill, corpse loot trim, AlifeBalance inventory-balance) respects them without per-consumer code.
+
+`xinventory.load_policy(path, sections, specials_set)` is the shared LTX kernel. Each named section yields `{ entries, rules, specials }`. `entries` preserves declaration order (= BUY / LOOT priority); `rules` is the per-category hash for O(1) lookup; `specials` carries numeric keys named in `specials_set` (`profit_max`, `extras_max`, `fill_max`, ...). Consumer mods ship their own policy LTX under `configs/<mod>/<purpose>_policy.ltx`; the shape is fixed in xlibs, the values are owned by the mod. AlifePlus uses `ap_trade_policy.ltx` for trade, `ap_barter_policy.ltx` for barter, `ap_stash_policy.ltx` for stash, `ap_loot_policy.ltx` for corpse trim, and `ap_market_policy.ltx` for the faction market. AlifeBalance uses `ab_inventory_policy.ltx` for the inventory-balance cull pass.
+
+Per-flow policy lives in dedicated LTX files under `configs/alifeplus/`, DLTX-overridable.
+
+| Flow | Site | Policy | Behavior |
+|------|------|--------|----------|
+| Supply Trader | `ap_ext_consequences_needs.script` `_arrive_trade` -> `ap_ext_trade.trade` | `ap_trade_policy.ltx` blocks `[ap_trade_policy_rookie]` / `[ap_trade_policy_veteran]` split by `npc:character_rank() >= RANK_VETERAN` (12000) | Four phases: (1) PHASE 1 count NPC inventory per category. (2) PHASE 2 SELL iterates inventory and drops anything whose category count > max; transfers item to seller, credits NPC `floor(cost * 0.5)`; `iterate_surplus` mutates counts in place so PHASE 3 sees the post-sell totals. (3) PHASE 3 BUY walks policy entries in declaration order, fills any category whose count < min using post-sell cash: ammo via `_buy_ammo_tier` (per equipped slot's k_ap-sorted tier map, cheapest section in target tier, with degraded `_bad` / `_verybad` rounds filtered out via `_is_degraded_ammo` so NPCs never buy jammed ammo the weapon's `ammo_class` also lists), consumables via `_buy_consumable_category` (cheapest-first walk over `xinventory.get_category_sections`). (4) PHASE 4 profit cap: if (cash_after - cash_before) > `profit_max`, the excess transfers back to the seller. Only money path. SELL precedes BUY so the cash gained from selling spares funds the buy pass, not just the NPC's walked-in cash. |
+| Barter | `ap_ext_consequences_needs.script` `_arrive_action_barter` -> `ap_ext_barter.barter` | `ap_barter_policy.ltx` block `[ap_barter_policy]` (single uniform block, no per-rank, like `ap_stash_policy.ltx` / `ap_loot_policy.ltx`); trade's count-band rows minus gear, both stalkers classify against the same bands | Two directions (visitor -> peer, then peer -> visitor) sharing one MCM `barter_max_items` budget. Each direction runs (1) a count-band pass via `xinventory.iterate_surplus`: an item of a category the giver holds above its `max` (surplus) moves when the receiver holds it below its `min` (deficit), `transfer_item` only, no money; (2) a gear-upgrade pass over weapon / outfit / helmet (absent from the count bands): the giver's best spare of each kind, capped at the giver's own equipped cost so it never gives away its best (the "extra" rule; also blocks a top gun ping-ponging on the return pass), moves only when `get_cost` beats the receiver's equipped of that kind (weapons vs the receiver's most valuable equipped gun; the receiver keeps its old one). Peer resolved at arrival by `ap_core_util.get_peer_stalker_at_smart` (first alive scriptable stalker not in the arriving squad); no peer online -> NONE. Shares the `supply` drive and `last_supply_at` DTO with the trader causes, so a barter arrival stands the supply need down exactly as a trade does. |
+| Stash Loot | `ap_ext_consequences_stash.script` `_arrive_loot` | `ap_stash_policy.ltx` block `[ap_stash_policy]` (single uniform block, no per-rank) | Three gates: untouchable in stash -> skip whole stash (no loot, no clear). Crafting in stash AND MCM `consequence_stash_loot_skip_crafting` -> skip whole stash. Otherwise: per-category loot pass (any entry with min > 0, take from stash up to min). Non-ammo entries use section-only resolution and round-robin assignment. Ammo entries use per-member resolution (`xinventory.resolve_ammo_category`) to find a squad member whose equipped pistol or rifle takes the round; the matched member gets the loot. Extras pass takes top-N by `cost` from leftover stash sections (N = `extras_max`). Always clears the stash at end. Sections the squad does not take are destroyed by the clear. |
+| Stash Fill | `ap_ext_consequences_stash.script` `_arrive_fill` | same `ap_stash_policy.ltx` block | Deposits any category whose squad count exceeds policy max, total per-event capped by `fill_max`. Picks items from online squad members' inventories using per-member `get_category_opts` for ammo tier resolution. `treasure_manager` round-trips sections as section names only; stateful categories (weapon, outfit, helmet, device, ammo with non-default count) survive only the section name. |
+| Corpse Loot Trim | `ap_ext_loot_select.script` `_trim_npc_deferred` (reactive `npc_on_get_all_from_corpse`, deferred one frame via `CreateTimeEvent`) | `ap_loot_policy.ltx` block `[ap_loot_policy]` (single uniform block; loot uses `max` only, `min` ignored) | Records the item ids an NPC takes from a corpse (only when the engine will transfer them, lootable flag non-nil), then next frame classifies the looter's whole inventory and, per capped policy key, releases the cheapest looted members first (`get_cost` ascending) via `release_item` until the count is at/under max. Acts only on the just-looted set, so the kept loot is the highest-value and any standing excess is left to the AlifeBalance cull. Ammo-for-weapon is automatic via `get_category_opts` (equipped pistol/rifle tiers kept; `ammo_not_equipped` capped to delete). Online only; skips unscriptable looters (companions, story, traders, named). No money path, no save state. |
+
+The faction market, unlike the others, is not a squad-arrival move and has its own pipeline below.
+
+`ap_ext_consequences_needs.script` `_on_arrive` previously also ran a per-need item-consumption step (HUNGER ate food, HEAL used medkits, etc.); dropped per n477. Need satisfaction is now the arrival itself (DTO timestamp reset). The Supply Trader arrival action above is the only item-mutation flow under the Needs umbrella.
+
+Money moves only inside `ap_ext_trade.trade` (via `xcreature.transfer_money` and `xcreature.give_money`, both defensive against the engine `TransferMoney` u32 underflow at `script_game_object_inventory_owner.cpp:693`). See todo-demonized-exes.md n015 for the engine PR. The faction market moves no money of its own: it adds stock to a trader and overrides the engine's *displayed* price for tagged goods (`on_get_item_cost`); the player pays that premium through the normal engine buy, the same path as any other trader purchase.
+
+### Corpse loot ownership (ap_ext_loot_claim)
+
+A protection layer over vanilla corpse looting: a kill is reserved for its owner, enforced symmetrically in three directions. Distinct from loot_select; claim decides WHO may loot, select decides WHAT is kept. It moves no items and touches no money, only vetoing the vanilla loot path.
+
+The seam. Two hook points, no base-script edits:
+- `xr_corpse_detection.near_actor` (xevent hook), the per-corpse gate the engine calls inside every NPC's loot scan (`find_valid_target`). Half A and Flow C run here as one exclusion arbiter; when neither claims the corpse the wrapper falls through to the vanilla `npc_loot_distance` radius.
+- The actor's own input. Half B vetoes the player opening a claimed corpse via `on_before_key_press` (the USE-key pre-open veto, the only one that holds under the modded loot UI whose init_mode opens regardless of ret), with an `ActorMenu_on_item_before_move` backstop for take paths that skip the keystroke, plus Dot Marks callbacks when that addon is present.
+
+The three flows, each with its own MCM toggle, radius, and TTL, no master switch (recording gates on any flow being enabled):
+- Half A (loot_reserve_own): NPC looters skip a body the actor killed while the actor is near it. Companions obey the reservation by default (loot_include_companions on); turning it off exempts them so a companion may loot the actor's kills.
+- Half B (loot_block_npc): the actor cannot open a living NPC squad's kill; a PDA tip names the owner instead.
+- Flow C (loot_block_npc_vs_npc): a passing squad cannot strip another squad's kill while a member of the owning squad is near.
+
+The ledger. `_owner` maps victim id to { killer, squad, death game_sec }. An NPC kill is owned by the killer's SQUAD (any living member within radius holds the claim); a lone killer or the actor falls back to individual ownership. A ttl_table swept at 6 game hours, each flow honouring it only within its own freshness window (1 game hour default). Saved and loaded, with the game-clock import deferred to first update since `game_sec` AVs during load_state.
+
+Invariants:
+- One rule, three directions, identical logic per side.
+- Ownership is the killer's squad, not the individual; dropping one member never frees the body.
+- Companions, zombified killers, and story corpses never hold a claim against the actor.
+- Relation is read at block time, so a faction turning hostile lapses its claim live.
+- Every spoken line (the two yield tips, the claim warn) requires the voicing NPC within 30m of the body and the party it addresses, with line of sight to each (xcombat.sees_within, CHATTER_RANGE), so an NPC never comments on a kill it cannot see or one across the level. The veto still blocks, only the message is gated. The pass-up, which the player only overhears, additionally requires the actor within CHATTER_RANGE of the body.
+- Pure veto: no item transfer, no money, no save-side effect beyond the ledger.
+
+Release (current). A claim ends by time (per-flow freshness, then the 6h sweep) or by proximity (the owner squad or the actor leaving the radius). It does not end when the body is looted, so an emptied corpse stays claimed for the freshness window. The fair-release rework (todo-alifeplus-next.md) changes this to clear-on-loot and makes the near_actor wrapper authoritative over the vanilla radius; not yet implemented.
+
+### Faction market (ap_ext_market)
+
+In vanilla, what a trader sells the player and what NPCs sell a trader never meet. The player-facing stock is the trader's config alone: at each restock `trade_manager.update` calls `npc:buy_supplies(config, "[trader] buy_supplies")` (`trade_manager.script:154`), and the engine wipes the trader's whole inventory and respawns the `[supplies]` list. What NPCs sell a trader (vanilla `axr_trade_manager`, `transfer_item`) lands in that same inventory and is deleted by the very next `buy_supplies`, so it never reaches the player's buy panel. Player-facing trader stock and NPC trading are disjoint; nothing in vanilla connects them.
+
+ap_ext_market is the deliberate bridge that connects them, behavior vanilla does not have. It records what a faction's stalkers trade, then reshapes that faction's trader stock immediately after the restock: it injects a bounded, curated echo of what they sold and sells out a share of what they bought, so NPC trading finally decides part of what the player finds on the shelf. It changes no vanilla trade code and adds no trade UI; it only adds and removes stock in the window after each restock.
+
+The market is the read side of the trade flow. It moves no squad and no money. NPC stalkers use only the trade flow; the player uses only the market. Both market directions are named from the trader's perspective, the one party present in every event at his counter: what the trader bought from stalkers appears on his shelf for the player; what he sold to stalkers sells out of it. The sell-out is the exact mirror of injection: the same pipeline runs over the trader-sold FIFO and removes from the fresh stock instead of adding to it.
+
+Why a persisted record and not a literal transfer. The intuitive design is a real economy: hand the item a stalker sells straight to the trader, hand the item he buys straight back, no FIFO and no injection. It fails for two independent reasons. First, impermanence: a transferred item lands in the trader's real inventory but the next restock purges the whole ruck (`sell_useless_items` at `purchase_list.cpp:20`) and respawns the config list, so a handed-over item survives only until then. Second, and decisive, NPC trading is online-only. `ap_ext_trade.trade` needs two online game_objects; the seller is resolved by `get_service_npc_at_smart`, which returns an online NPC or nil (`ap_core_util.script:252`), and a smart is online only near the actor. A trade therefore fires only while the player is standing at that smart. A transfer-only shelf would show nothing but the trades the player happened to witness in person: sparse (a stalker routing to that exact trader and trading in the seconds the player watches is rare) and inconsistent (two visits to the same trader show unrelated state). A shelf must read the same on every visit without the player having seen the trade happen, and only a record that outlives the moment can do that. That record is the FIFO; delivering it at restock is the injection. The literal economy is not simpler-but-worse, it is unbuildable on online-only trading.
+
+Why faction-keyed and not per-trader. Keying the record to the exact seller (sold-here-shows-here) is tempting and would delete the distribution-claim machinery, but the faction key buys two properties that per-trader keying loses. Coverage: the trade seller is whatever service NPC the stalker's need routed him to, not necessarily a trader the player visits; faction keying redistributes onto that faction's curated hub traders (`xdata.npc_roles`, resolved in `_resolve_trader_role`), the ones the player actually shops at, so a sale made at a backwater smart still surfaces where it can be seen. Per-trader keying strands that value on traders the player may never open, reintroducing the rare/inconsistent failure above. Turnover resilience: a faction key survives a trader dying and respawning under a new id (warfare base captures replace the trader NPC outright); a trader-id key orphans its record on every such replacement. Faction is stable, trader id is not. Per-trader keying is the cleaner data model only if traders are stable and the player shops at the same smarts stalkers trade at; neither holds under warfare, so the faction layer is load-bearing, not decoration.
+
+```
+ap_ext_trade.trade (an NPC trades at a trader)
+  -> observe (xevent hook on ap_ext_trade.trade)
+       NPC sold  = trader bought  -> _trader_bought: per-faction bounded dedup FIFO
+       NPC bought = trader sold   -> _trader_sold: mirror FIFO, same shape and cap
+
+engine restock (a trader respawns its stock)
+  -> detect (Destockifier trader_on_restock callback, else trade_manager.update hook)
+       -> sell out: run the market filter over _trader_sold, release a share of each demanded
+          class (ammo by bullet type) from the fresh stock at random, claim it
+       -> inject: run the same market filter over _trader_bought, spawn the survivors
+            -> price (on_get_item_cost): tagged goods cost full base x the MCM premium
+                 -> release (timer): drop tagged goods past the window
+```
+
+The write side and the read side never touch each other directly. They meet only through the FIFOs.
+
+Principles:
+
+- Observe, never modify. The trade flow is read through a function hook on `ap_ext_trade.trade`; that function is unchanged. The market is a consumer of trade output, not a participant in trade.
+- Echo, not conservation, both directions. Every restock purges the trader's ruck (`purchase_list.cpp:20`) and respawns the config list, so the item a stalker sold is already gone and injection duplicates nothing. The same purge-and-respawn makes the sell-out self-healing: removal recurs each cycle while the section stays in the FIFO and can never permanently damage a trader.
+- One filter, two directions. Injection and the sell-out run the identical eligibility chain (whitelist and caps, role fit, player-rank roll, distribution claim); only the terminal action differs (spawn vs release). Each direction has its own whitelist block in `ap_market_policy.ltx`: `[ap_market_trader_buy]` for injection, `[ap_market_trader_sell]` for the sell-out, scoped to the ammo and medical staples NPCs actually buy and nothing else.
+- Disjoint per restock. The sell-out runs first and claims what it removes for the goods window, so injection never re-adds a sold-out section, in the same restock or at a sibling trader inside the window; some sections decrease, some increase.
+- Different stock per trader. A section injected or sold out at one trader is claimed for the goods window, so a sibling faction trader restocking inside that window acts on other sections.
+- Player-facing scarcity. One section, one trader, one short window, gated by the player's rank, at a premium. The gate evaluates the player, never the NPC.
+- No money path. The market adds stock and overrides the engine's displayed price for tagged goods; the player pays through the normal engine buy.
+
+FIFOs. Per faction, a bounded dedup FIFO of section names. A recurring section moves to the newest end; the oldest is evicted past the cap (`fifo_max`). The section is the only thing kept, since the restock pass re-derives cost, category, and rank from it. Both are plain tables saved and loaded unchanged, so they carry no clock and are safe at `load_state`, where `game_sec` would AV. `_trader_bought` feeds injection; `_trader_sold` is the identical shape feeding the sell-out, its entries persisting until FIFO-evicted by newer buys, and a sold-out section is claimed for the goods window exactly like an injected one.
+
+Persistence. The market state survives save/load: both FIFOs and the tagged-goods table (`item_id -> { trader_id, inject_time }`). The injected items are real server entities that the save already preserves; persisting the tag table alongside the FIFOs keeps their premium price and timed release across a reload, since a player reloads inside the goods window as a matter of course. At `load_state` only the tables are restored (no alife queries, which AV before entities exist); 1.8.0 saves stored the bought FIFO under the old `ledger` key, read as a fallback. At first update a validation pass drops any tag whose item the engine purged on an offline restock between save and load. A recycled id that survives validation is rejected at pricing time by the `parent == trader_id` guard in the cost hook, so premium never mis-applies.
+
+Inject filter. A trader-bought section reaches the shelf only if it survives, in order: the always-excluded set (bugged sections such as `grenade_smoke`), the distribution claim (unclaimed this window), the `[ap_market_trader_buy]` whitelist and its per-category cap, role fit (a medic stocks consumables, a general trader stocks all), and the player-rank roll (`xinventory.get_rank_chance`). The per-trader count is set in MCM (items per trader); the policy file supplies the per-category caps within that total. The default whitelist covers consumables, artefacts, devices, and grenades; the gear rows (`weapon`, `outfit`, `helmet`) ship commented out in `[ap_market_trader_buy]`, so gear is not injected unless an integrator uncomments them. Premium and spawn condition are MCM settings (Economy > Faction market), not policy specials.
+
+Sell-out filter. The same eligibility chain over `_trader_sold`, at the same restock before injection, against the `[ap_market_trader_sell]` whitelist (ammo, medkits, bandages, stims). Demand is matched to stock by sell-out class: ammo by bullet type (`ammo_9x18_fmj_verybad` -> `ammo_9x18_fmj`, so the degraded variants NPCs buy meet the clean rounds traders restock; `9x18_fmj` and `9x18_ap` stay separate), medical by category. The classes present in stock are shuffled and at most the per-trader count sells out. Per class, `floor(held x percent / 100)` items are released at random across the variants held (MCM trader sell-out slider, 20-100, default 30). The share rounds down, so scarce stock survives at low percentages; at 100% the class is wiped with no protection. Tagged market goods and the trader's equipped items are never counted or removed. Each distinct removed section is claimed for the goods window, which keeps injection off it, and the most-depleted class fires a PDA chatter line (`st_ap_chatter_market_short`) through the same channel as the restock chatter.
+
+Economy loop. Loot, trade, and market are one cycle. The corpse loot trim bounds what a stalker keeps off a body. The trade flow turns that surplus into cash and restocks the NPC's ammo, the loop the NPCs run for themselves. The market taps that flow and returns a rank-gated, premium slice to the player. The injected stock is bounded by what the faction actually sells, so it never exceeds the gear that faction fields. The sell-out closes the loop in the other direction: what the faction's stalkers buy for themselves thins the player-facing stock of the same sections.
+
+---
+
+## Squad Lifecycle
+
+ap_core_broker manages the full lifecycle: scripting, arrival detection, post-arrival wait, release.
+
+### Scripting
+
+script_squad(squad, smart, opts) sets scripted_target via xsquad.acquire_squad. scripted_target routes the squad to specific_update (direct A->B movement). AP clears __lock on acquisition; scripted_target alone is sufficient for routing. If another mod clears scripted_target between ticks, generic_update runs and the squad may be reassigned by SIMBOARD; reassert_target restores scripted_target within 20s. The squad is registered in _ap_scripted_squads with TTL, optional arrival handler, and wait duration.
+
+script_actor_target(squad) scripts a squad to pursue the player using engine-native actor targeting (no arrival detection).
+
+script_squad_target(squad, target_id, opts) scripts a squad to pursue another squad by id via continuous coordinate homing (the ap_core_chase hooks; see Chase pattern). No arrival detection - the chase ends when the target dies or the leash releases. Both chase forms set entry.is_chase and run the evaluate_chase leash on the periodic scan instead of the arrival/gulag flow.
+
+### Scripted-squad scan
+
+_update_scripted_squads runs every 20s via CreateTimeEvent. For each tracked squad:
+
+1. Entity check. xobject.se(squad_id). Gone -> remove from tracking. Catches squads that died or despawned between scans.
+2. Reassert. xsquad.reassert_target(squad, data.scripted_target). Restores scripted_target if another mod overwrote it; clears __lock. Vintar-class mods set these fields every tick on their own squads; AP reasserts every 20s on its squads.
+3. TTL. 7200 game-seconds. Expired -> unscript. Prevents permanently pinned squads.
+4. Arrival. xsmart.is_arrived(squad, smart). On arrival, dispatch the registered on_arrive function; then check engine job assignment via xsmart.has_jobs_for. If smart is online + on actor's level and any member has no job, unscript (release_no_jobs). If smart is offline or off-level, AP cannot observe job state and enters the wait state by default. This is the runtime-allocation half of the dispatch-viability check. The cause-side filter is the scan-time half: xsmart.has_animated_stalker_jobs excludes stub-only smarts at find_smart time so the dispatch never happens on structurally barren on-level targets; xsmart.has_jobs_for releases the squad if real slots ended up taken between dispatch and arrival.
+5. Wait. release_at = game_sec() + pre_release_gulag (default 300s). When game time exceeds release_at, unscript. Game time advances during sleep / time-skip and survives save/load.
+6. Mid-hold re-check. While the squad is in its pre_release_gulag wait, _update_pre_release_gulag re-runs xsmart.has_jobs_for every 20s (same is_on_actor_level gate as step 4). The engine may re-run select_npc_job during the wait on a precondition flip (surge transition, day/night flip for sleepers, zombie state, trader has_items_to_sell). If no eligible replacement job exists, npc_info[id].job becomes nil and the setup_logic freeze loop reactivates; the re-check unscripts early with release_no_jobs_mid_hold so the squad does not stand idle at a smart that no longer accepts it. For off-level smarts the gate short-circuits and the wait runs to expiry.
+
+### Activity record
+
+ap_core_record owns a 256-slot FIFO of dispatched consequences. Each record entry is one consequence dispatch on one squad. The substrate is shared by HUD markers, ap_ext_news compose, and external integrators (warfare).
+
+Write. ap_core_record.add_record(subject_squad, cause_key, consequence_key, opts) is the single entry point; consequence handlers call it after script_squad / script_actor_target SUCCESS. add_record captures display keys via _capture_side for subject + optional other (engine community string for stalker / zombified-stalker squads → faction_key; "st_ap_macros_species_" + xcreature.get_mutant_species(squad) for mutant squads → species_key; xsquad.get_commander_name → name) and writes the entry. Squad-derived keys are eager so dead/unregistered squads remain renderable. Smart, level, and game-hour-at-write stay lazy ids resolved at render.
+
+Substrate. _ap_record (xttltable.fifo, capacity 256, on_evict callback) holds entries keyed by monotonic cons_id. _record_assigned[squad_id] indexes the live entry per squad. _record_seq is the cons_id counter. Writing a new entry for a squad flips the previous entry's assigned flag to false before assigning the new one. _on_record_evict nulls _record_assigned only if the evicted entry was the live one (a flipped predecessor leaves no index entry to clean).
+
+Lifecycle. ap_core_record registers SERVER_ENTITY_ON_UNREGISTER and clears the record's assigned flag on entity death. HUD has its own SERVER_ENTITY_ON_UNREGISTER for marker cleanup; the two callbacks fire independently. Records persist beyond unscripting (the squad may be released but the record stays for query) until either the squad dies (clear_record) or the FIFO evicts.
+
+Query API (ap_core_record, mirrored on ap_api):
+
+| call | purpose |
+|------|---------|
+| record(subject_squad_id, cause, consequence, opts) | write entry, return cons_id |
+| get_record(opts) | most-recent entry matching filter (highest cons_id); { squad_id, assigned=true } hits the live index in O(1) |
+| get_records(opts) | all entries matching filter; assigned=true reads index, else full FIFO scan |
+| clear_record(squad_id) | flip assigned to false (called by SERVER_ENTITY_ON_UNREGISTER) |
+
+Entry schema (suffix convention: `_id` for ids, `_key` for translation keys, names are engine strings):
+- ids: `cons_id`, `squad_id`, `cause_id`, `other_squad_id`, `smart_id`, `level_id`
+- translation keys: `cause_key`, `consequence_key`, `action_key`, `subject_faction_key`, `subject_species_key`, `other_faction_key`, `other_species_key`
+- engine strings: `subject_name`, `other_name`
+- state/value: `assigned` (bool), `game_hours` (number)
+
+Translation keys are directly translatable via `game.translate_string`. Capture is engine-only: `xcreature.get_mutant_species(squad)` non-nil routes to `subject_species_key = "st_ap_macros_species_" .. species`; otherwise `subject_faction_key = squad.player_id` (vanilla XML covers stalker / zombified-stalker community strings). `subject_name = xsquad.get_commander_name(squad)`. Same rule for the optional other side.
+
+### Save / load
+
+_ap_scripted_squads persists to m_data.ap_core_broker; the activity record (FIFO entries walked via :each into a sequential array, plus the cons_id seq counter) persists separately to m_data.ap_core_record via ap_core_record's own SAVE_STATE / LOAD_STATE. Off-map session fields live on the scripted-squad entries themselves; there is no separate offmap save key. Engine-side scripted_target persists natively across save/load (sim_squad_scripted STATE_Write / STATE_Read). Arrival handler functions are transient - they are re-registered every load via consumer.register opts (the consumer wires on_arrive opts to broker.register_arrival_handler). On load, squads marked as arrived get release_at = 0 (immediate release on next scan); the FIFO rebuilds from the saved array via :set on each entry, and _record_assigned rebuilds from entries with assigned == true.
+
+### Off-map track
+
+A cause can flag a destination as off-map; the flag changes selection rules and rate-limiting while the lifecycle machinery stays shared with on-map dispatch. The engine itself handles the cross-level move through its own per-squad routing, including the offline/online transition for the level swap; at the destination the gulag binds jobs identically to on-map arrivals. The off-map hold uses the shortened `PRE_RELEASE_GULAG` value (600 game-sec).
+
+Off-map sessions live on the same `_ap_scripted_squads` entries as regular scripted dispatches; the broker has one collection, one scan, one source of truth. An off-map dispatch is a regular `script_squad(squad, smart, { offmap = true })` call that additionally initialises the session fields `{ offmap = true, dispatched_at }` via `_init_offmap_session`. There is no return leg: the squad travels out, holds the gulag briefly, and settles at the destination. The 20s scripted-squad scan calls `_scan_offmap_entry` for any entry with `data.offmap`, which runs only the despawn safety-net check.
+
+AlifePlus stacks safety layers on top of the engine capability:
+
+| Layer | Mechanism | Site |
+|-------|-----------|------|
+| Source-level rate | TTL counter (game-sec, persisted), cap `cfg.cause_max_offmap`, window `OFFMAP_WINDOW_SEC` (48 game-hours) | `ap_core_limiter` offmap counter (see Rate limiting) |
+| Adjacency narrowing | candidates narrowed to BFS-reachable neighbor levels, source level excluded; hop count from `_resolve_offmap_hops` (X-16 + Brain Scorcher + master rank) | `ap_ext_causes_needs.script`, `xlevel.get_neighbor_levels` |
+| Cross-level filter | prop-only / SIMBOARD / static-set predicates (`xsmart.is_base`, `xsmart.has_campfire`, `_is_unclaimed`, occupied-non-base); `has_animated_stalker_jobs` / dynamic `npc_info` omitted because `stalker_jobs` / `npc_info` are empty for off-actor-level smarts (`smart_terrain.script:462`) | offmap CAUSES entries in `ap_ext_causes_needs.script` |
+| Destination selection | `xsmart.find_first_smart` over the narrowed neighbor set (distance-free; foreign-level candidates share no comparable position frame) | `ap_core_util.find_first_smart` |
+| SIMBOARD bookkeeping | `SIMBOARD:assign_squad_to_smart` called at dispatch (source clear via nil target) and commit (destination add), so cross-level capacity / garrison / faction-quota queries read truth | `ap_core_broker` `script_squad` + `_commit_arrival` |
+| Settle terminal | after the gulag hold, `_unscript_squad` drops the AP entry and leaves the squad at the destination under vanilla AI | `ap_core_broker` `_update_gulag` |
+| Despawn safety net | offmap entries skip the generic `SCRIPTED_SQUAD_TTL`; `_check_offmap_despawn` reclaims a squad that never settled at `cfg.offmap_despawn_hours` (offline only, respects owner / permanent / active-role / task-target) | `ap_core_broker` `_check_offmap_despawn` |
+| Arrival check | shared `_commit_arrival` (`has_anchored_jobs` wrapping `xsmart.has_jobs_for`); short-circuits for off-actor-level smarts so the gulag hold runs to expiry | `ap_core_broker` `_commit_arrival` |
+
+Registration. `_init_offmap_session(data, squad_id, now)` sets `offmap = true` and `dispatched_at = now` on a fresh `script_squad` entry. No home level is captured -- the squad's origin is not tracked because it never returns to it.
+
+TTL. Off-map sessions have no scripted-squad TTL. The generic TTL exists to release scripts that don't reach their target on a reasonable schedule; an off-map trip can span multiple maps (an online stalker walking through level changers takes many game-hours), so the session lifetime is bounded by `cfg.offmap_despawn_hours` instead, owned by `_check_offmap_despawn`. `_update_scripted_squad` gates the TTL check on `not data.offmap`.
+
+Arrival. Off-map arrival is an ordinary arrival: `_run_arrival` runs the on_arrive handler (the trade / explore / social action) then `_commit_arrival`, which starts the gulag hold (`release_at = now + pre_release_gulag`, the shortened off-map value) and adds the destination roster entry. There is no off-map-specific arrival handling.
+
+Settle. `_update_gulag` releases at `release_at` via `_unscript_squad` for every entry (off-map and on-map alike): the AP entry is dropped and the squad becomes an ordinary vanilla resident of the destination smart. An off-map squad that cannot bind a job at commit, or loses one mid-hold, is released via `_release_to_dwell` instead, which clears the scripted fields but keeps `offmap` + `dispatched_at` so the despawn safety net can reclaim it.
+
+Re-dispatch preservation. `script_squad` preserves the off-map session across a non-offmap re-dispatch: if the existing entry has `offmap = true` and the new dispatch is non-offmap, `_preserve_offmap_session` carries `offmap` + `dispatched_at` into the new entry, so the despawn budget keeps counting from the original dispatch.
+
+Despawn safety net. `_check_offmap_despawn` reclaims a squad that never settled: it fires when `(now - data.dispatched_at) > cfg.offmap_despawn_hours * 3600` (default 168 game-hours = 7 days, MCM-tunable) and `not squad.online`. Online squads may be in transit or under player observation; they don't despawn. `is_protected` runs first so story / task / companion / warfare-owned squads are spared. Release goes through the engine's `sim_squad_scripted:remove_squad`, which clears the SIMBOARD roster on the way out.
+
+Save / load. The merged collection persists to `m_data.ap_core_broker.ap_scripted_squads`; session fields ride along on each entry. `dispatched_at` is an absolute game-second stamp, so it stays correct across save/load and time-skip. `SERVER_ENTITY_ON_UNREGISTER` clears the squad's entry. Two-phase recycled-id sweep: `_on_load_state` restores the dict from m_data (entities aren't loaded yet, no alife queries), and `_on_game_load` sweeps it via `xsquad.is_squad` to evict stale ids once `alife_object(id)` is valid. The engine recycles freed server-entity slots and SERVER_ENTITY_ON_UNREGISTER can be bypassed by some release paths (`alife_object_registry_inline.h:24-34` removes without firing on_unregister), so a saved squad_id may resolve to a different class (script_zone, item) after the original squad was released. The scan-time class check in `_update_scripted_squad` catches in-flight corruption that bypassed unregister mid-session.
+
+Broker-internal `is_offmap_dispatched(squad_id)` returns true when the squad's entry has `offmap = true`; the cause-side guard in `ap_ext_causes_needs.script` reads this to block off-map causes from re-publishing while the session is active.
+
+### Protection (ap_core_broker.is_protected)
+
+Delegates to xsquad.is_protected with five guard categories (`ap_core_broker._protection_opts`):
+
+| Category | Sub-reasons |
+|----------|-------------|
+| Ownership | exclude_filter = get_owner; reason IS_OWNED. Today: warfare proxy in ap_core_compat |
+| Scripted | engine scripted_target set; condlist; random_targets |
+| Permanent | story NPC; trader; named NPC; empty squad |
+| Active role | task giver; companion |
+| Task target | assault, bounty, hostage, delivery, dominance, rescue |
+
+script_squad does not check protection. It assumes upstream layers verified the squad. Direct callers outside the pipeline must check is_protected themselves.
+
+### Reactive preemption (interruptable flag)
+
+Radiant cadence accumulates AP-scripted squads. Reactive events (massacre, wounded, basekill, harvest, squadkill, alphakill) need an unscripted squad to dispatch their consequence; if the pool is exhausted by radiant scripts, reactive starves. Preemption: reactive consequences opt in to a fallback pass over AP's tracked pool, accepting squads marked interruptable.
+
+Interruptable flag. script_squad stores `opts.interruptable` on `_ap_scripted_squads[id].interruptable`. Every consequence dispatch sets the flag explicitly at the call site - there is no pipeline-level default contract:
+
+- `interruptable = true`: on-map needs, all instincts, and stash_ambush. Routine maintenance trips, deferrable.
+- `interruptable = false`: all reactions (massacre, wounded, basekill, squadkill, harvest, alphakill), the chase dispatch in ap_ext_common (move_actor_chasers, move_squad_chasers), area causes (conquer, swarm, infest), stash_loot, stash_fill, and the 3 off-map needs (supply_trader_offmap, social_offmap, job_explore_offmap). Reactions are in-flight responses; area mutations and stash item-actions have persistent on-arrival side effects worth preserving; off-map dispatches are committed cross-map trips that lose their destination if preempted outbound.
+
+The broker default is `true` only as a safety net; no caller relies on it.
+
+Two-pass find. ap_core_util.find_squads runs the standard protection-opts pass first. If the caller passes `opts.allow_preempt = true` AND the standard pass returns zero candidates, a second pass runs with opts built via `broker.build_preempt_opts`:
+
+- `source = _ap_scripted_squads` (iterate AP's small tracked pool, not SIMBOARD or the per-level cache)
+- `exclude_scripted = false` (do not reject scripted; we want interruptable ones)
+- `exclude_filter = _preempt_filter` (rejects external owners and squads with scripted_target set but not in _ap_scripted_squads)
+- `exclude_ids` = freshly-built set of AP-scripted squad ids where `data.interruptable == false` (keeps non-interruptable AP scripts out of the iteration entirely)
+
+Interruptable AP-scripted squads pass all gates and become candidates. xsquad.find_squads still applies permanent / active_role / task_target via the boolean opts, plus distance / faction / level / exclude_at_smart_id checks. Single pass, no recursive find.
+
+Release-and-rescript. script_squad already handles "already scripted" by calling xsquad.release_squad on the existing target before acquiring the new one (`broker.script_squad:446-452`). The preempt flow piggybacks: when the reactive picker selects an interruptable scripted squad and calls script_squad, the old radiant trip is dropped and the new reactive script replaces it.
+
+Bounded by negation. Reactive does not preempt reactive (reactive scripts carry `interruptable = false`). External scripts (warfare, story, task) are not touched (rejected at gate 1 by exclude_filter). Radiant pipeline is unchanged - it still scripts squads at the same cadence; reactive gets guaranteed access via fallback rather than via radiant throttling.
+
+### Coordination
+
+scripted_target is the squad control field. Setting it routes the squad to specific_update. AP no longer sets __lock (clears it on acquisition). scripted_target alone is sufficient; __lock was a redundant fallback guard. AP checks scripted_target at gate 2 (is_protected, via xsquad.is_scripted). Two alife mods that both check scripted_target before claiming a squad will not conflict.
+
+xsquad.acquire_squad sets scripted_target on acquire; xsquad.release_squad clears it on release; xsquad.reassert_target restores it if overwritten. The ownership registry (broker.register_owner) adds identity on top: it tells AP WHO owns a squad, not just that it's owned. Vintar-class mods reassert every tick on their own squads; AP reasserts every 20s. Warfare is registered by default in ap_core_compat.
+
+---
+
+## PDA map markers (ap_core_map)
+
+ap_core_map owns the marker lifecycle end-to-end via a private _marker_state[squad_id] = { cons_id, remove_at? } table. cons_id is the activity record monotonic id of the entry last rendered (cache miss when a fresh entry is recorded for the same squad). Marker timer fires every UPDATE_MARKERS_SEC = 10s (apply); validate runs on the same timer at VALIDATE_MARKERS_SEC = 20s cadence. Reads from ap_core_record. Owns no domain state.
+
+Apply pass. Iterates ap_core_record.get_records({assigned=true}) and calls _mark_squad on each. _mark_squad short-circuits when state.cons_id matches; otherwise resolves the action label via game.translate_string(entry.action_key) (the ACTION enum value is itself the localization id, e.g. "action:massacre_investigate" -> "Investigating a Massacre Site"). The marker label is a multi-line block built inline from record fields: action / `Subject: <name | translated species> (translated faction)` / optional `Other: ...` line when entry.other_squad_id is non-nil. xpda.mark_squad is called and _marker_state[squad_id] caches the cons_id.
+
+Validate pass. Iterates _marker_state itself. Three-stage chain per squad: get_record({squad_id, assigned=true}) -> xobject.se(squad_id) -> ap_core_broker.is_routing(squad_id). is_routing is true while AP actively directs the squad (a live scripted dispatch, or a squad/actor chase) and false for a released off-map dwell remnant or an alpha (no broker entry); it reads the broker entry, not the raw engine scripted_target field, which squad-target chases never set (they drive the get_script_target method hook, not the field). If any stage fails, starts a MARKER_LINGER_SEC = 60s linger timer (state.remove_at) with reason `evicted` (record gone), `dead` (server entity gone), or `unscripted` (no longer routed). When the linger expires, unmarks via xpda.unmark_squad and drops the slot. Entity death also triggers _on_server_entity_on_unregister (in ap_core_map) which unmarks immediately, no linger.
+
+Subject resolution. The record entry carries translation keys for both subject and other (`subject_faction_key`, `subject_species_key`, `subject_name`, plus the `other_*` mirror). ap_core_map calls game.translate_string on each `_key` at render time and runs an inline `_format_party` helper to compose `<name | translated species> (translated faction)`. No ext import.
+
+ALPHA_PROMOTE flow. Alpha squads write a record via ap_ext_consequences_alpha (calls add_record with CAUSE.ALPHA / CONSEQUENCE.ALPHA_PROMOTE) but never call script_squad. Their record is `assigned=true` so apply renders the marker. validate sees `not ap_core_broker.is_routing` (an alpha writes no broker entry) and starts linger after the next 20s pass; the marker fades MARKER_LINGER_SEC after promotion. Re-promotion (new alpha record) resets the cycle.
+
+Right-click teleport. ap_core_map registers `map_spot_menu_add_property` and `map_spot_menu_property_clicked`. Gate: `_marker_state[id] ~= nil` and `cfg.map_markers`; the menu item appears only on AP-rendered spots and only while markers are enabled. On click, `xobject.se(id).position` (the squad server-object's `o_Position`, synced from commander per `cse_alife_online_offline_group`) is the destination. Same level uses `db.actor:set_actor_position(pos)`; cross-level uses `ChangeLevel(pos, m_level_vertex_id, m_game_vertex_id, VEC_ZERO, true)` after a `m_level_vertex_id < INVALID_LEVEL_VERTEX_ID` guard. No combat / weight / bleed / surge gates; the feature rides on the `map_markers` MCM toggle (development tab) which is itself dev-tier.
+
+## Statistics overlay (ap_core_hud)
+
+Pipeline counters per pipeline (radiant, reactive). Track events, gate denials, cause publishes, consequence results, blocker breakdown. classify(result, is_radiant) routes each consequence result to the appropriate counter. UIStatsHUD renders the ledger in four sections (INCOMING, DENIED, EVALUATED, OUTCOME) with radiant and reactive columns and a sliding-window extra column: per-minute rates and denial percentages computed over the last ~60s of counter deltas (a 7-slot snapshot ring fed by the 10s dump), so the overlay shows now, not the session average. Three colors: aged cream for structure and neutral flow, muted green for OUTCOME values, muted red only on loss rows (the DENIED section and the limiter) and their nonzero percentages; RULES/SCAN rejections stay cream because they are the simulation deciding "not now", so red on screen always means something to look at. Rows: throttle (reactive 1/sec-per-type flood control) and balance (reactive on/off-map mix) under DENIED; the right column carries a "last 60s" header naming its clock. Font letterica16. Six screen positions via MCM. Hides on PDA, inventory, menus. Zero overhead when statistics_position is "off". Log dump every 10s ([STATS] TOTAL/MIN RADIANT and REACTIVE) with the same full-word labels the overlay uses.
+
+---
+
+## News
+
+ap_ext_news transforms AP event telemetry into stalker radio chatter via per-consequence templates in ui_st_ap_news.xml. There is no grammar engine. Presentation layer with one-way dataflow: pipeline emits, news consumes, news never writes back to pipeline state.
+
+### Write path (ap_core_record.add_record)
+
+Consequence SUCCESS calls ap_core_record.add_record(subject_squad, cause_key, consequence_key, opts). _capture_side(subject) and _capture_side(other) read engine fields and produce three display keys per side: faction_key (community string for stalker / zombified-stalker, nil for mutant), species_key ("st_ap_macros_species_" + xcreature.get_mutant_species, nil for stalker), name (xsquad.get_commander_name, nil for mutant). Squad-derived keys are eager. Smart, level, and event-time game hour are stored unchanged from opts (smart resolved lazily at compose time via xobject.se + xlibs resolvers).
+
+Every consequence dispatch produces one record. Pacing is the compose interval + dedup ring; news reads from the broker activity record.
+
+### Drain path (compose tick)
+
+Composer tick fires on an MCM-randomized interval (defaults 60-200s via news_interval_min_sec / _max_sec, slider range 1-600). Each tick:
+
+1. Read ap_core_record.get_records() (full FIFO scan), filter to unreported entries (entry.reported not set) on the player's current level whose age is within news_max_age_game_hours.
+2. Pick one at random (gossip, not sequential log).
+3. Pick a per-consequence template from the pool (st_ap_news_tpl_<consequence>_NNN), filter variants by required slots, random pick.
+4. Substitute slots.
+5. Pick a speaker via _pick_speaker.
+6. Dispatch via dynamic_news_manager:PushToChannel (or xpda.send during the cold-start window).
+7. Mark the entry via ap_core_record.mark_reported (sets entry.reported on the record; the flag persists with the entry across save/load). Same record never narrated twice.
+
+### Slots
+
+| Slot | Source |
+|------|--------|
+| #subject_faction# | game.translate_string(entry.subject_faction_key) (compose-time) |
+| #subject_name# | entry.subject_name (engine string, captured at add_record) |
+| #subject_species# | game.translate_string(entry.subject_species_key) (compose-time) |
+| #other_faction# | game.translate_string(entry.other_faction_key) |
+| #other_name# | entry.other_name |
+| #other_species# | game.translate_string(entry.other_species_key) |
+| #location# | xlevel.get_smart_display_name(xobject.se(smart_id)) (lazy) |
+| #level# | xlevel.get_level_name(level_id) (lazy) |
+| #ago# | hours-since game_hours: empty (recent), _ago_recent, or _ago_hours |
+
+_filter_variants drops variants whose required slot is empty before the random pick. _clean_output trims, collapses double spaces, removes orphan punctuation.
+
+### Speaker selection (_pick_speaker)
+
+Iterates db.OnlineStalkers once per tick and filters by:
+
+1. alive, hydrated game_object, IsStalker, not story NPC, not in combat (:best_enemy()).
+2. Canon channel restriction: dynamic_news_manager.channel_status[community] must be true. For player's faction this gates Monolith / Army / Greh / ISG to members only.
+3. Scope filter (news_scope MCM enum): own (community equals actor's), allies (own OR is_factions_friends), world (any non-enemy).
+4. alignment_human (humans only; mutants never speak).
+
+A random NPC is sampled from the filtered pool. Speaker's community becomes the channel: PushToChannel(speaker:character_community(), { Mg, Se, Ic, Snd="news", It="npc" }). No npc:see call (heavy, irrelevant for old gossip), no proximity cascade (events pre-filtered to the current level), no faction routing by subject - the speaker IS the channel.
+
+### Cold-start fallback
+
+When dynamic_news_manager.get_dynamic_news() returns nil (~27s window after game load), _dispatch falls back to xpda.send (direct give_game_news). Documented exception in library/modding/anti-patterns.md - canonical pattern, not the bypass anti-pattern.
+
+### Chatter (send_chatter)
+
+Immediate, localized one-off lines a producer pushes the instant something happens, instead of drained from the record queue. The producer hands a template pool prefix, a slots table, and selection context ({ level_id, faction }); send_chatter owns voice + render + send. Gates in order: cfg.chatter_enabled; subject on the player's current level (chatter is local); subject faction not at war with the player; a real-sec throttle (one line per cfg.chatter_interval_sec, os.clock, ephemeral - concurrent producers in one tick yield one line, the rest drop); template pool + variant filter (same _filter_variants as news); speaker via the same _pick_speaker the radio uses, with nil channel_status (delivery is direct to the actor, so the speaker's radio channel need not be receivable). No speaker -> not said. Delivery is xpda.send (immediate give_game_news), never dynamic_news_manager - chatter does not ride the delayed radio schedule. Templates live in ui_st_ap_chatter.xml (st_ap_chatter_<type>_NNN), separate per locale from the news pools. Two consumers, both in ap_ext_market: _try_chatter announces a notable restock (best injected section with cost >= CHATTER_MIN_COST) through pool st_ap_chatter_market, and _try_sellout_chatter announces a trader running short (the most-depleted sold-out class, no cost gate since ammo and medical are cheap) through pool st_ap_chatter_market_short. MCM: chatter_enabled (bool, default true), chatter_interval_sec (5-300, default 15), both under the news tab.
+
+### MCM
+
+news_enabled (bool master), news_interval_min_sec / news_interval_max_sec (int 1-600), news_scope (own / allies / world; default allies), news_max_age_game_hours (int 1-72, default 12). The composer randomizes the next delay between min/max bounds after every tick.
+
+### Trace codes (ap_core_const.TRACE)
+
+NONE (disabled or no entries), NO_TEMPLATES, NO_MSG, NO_SENDER, SENT.
+
+### Invariants
+
+- Squad-derived translation keys captured eagerly at add_record time. The engine value drives the slot: mutant squads get a species key (`st_ap_macros_species_<x>`), stalker / zombified-stalker squads get the raw community string (vanilla XML resolves). Smart / level / time stay lazy. Death-resilient: dead or unregistered squads remain renderable.
+- Storage is the activity record (ap_core_record). Gossip dedup is the entry.reported flag set by mark_reported; it persists with the entry and lapses only when the FIFO evicts. Template pools rebuild on locale change.
+- Empty slots are nil-safe. Variant filter rejects, or slot substitutes to empty string and _clean_output collapses the gap.
+- Channel routing is speaker-driven: speaker's community = channel. No subject-faction channel mapping, no per-consequence routing rules.
+- Events pre-filtered to level.current() before random pick. Speaker pool db.OnlineStalkers (overwhelmingly the player's level).
+- Templates immutable. Per-tick slot table builds fresh and is discarded after one substitution.
+- Locale switches mid-session leave records holding strings in the previous locale until natural eviction. Pragmatic accept.
+
+### Content
+
+ui_st_ap_news.xml ships per locale (eng, rus). Per-consequence templates plus mutant faction and species display plurals plus ago strings. Validator enforces id-set parity between locales.
+
+---
+
+## Domain layer
+
+### Tracker (ap_ext_tracker)
+
+Domain state manager.
+
+| State | Storage | Notes |
+|-------|---------|-------|
+| Killers | _ap_killers (kill counts per entity) | populated on squad_on_npc_death |
+| Alphas | _ap_alphas (level / kills / name) | only mutants become alphas; stalker rank handled natively by engine |
+| Alpha-dead grace | _ap_alpha_dead (xttltable TTL, 3600s) | is_alpha returns true during grace |
+| Stalker NEEDS DTO | _ap_stalker_needs (per squad, one timestamp per drive) | NEED_FIELDS in ap_ext_const |
+| Mutant INSTINCTS DTO | _ap_mutant_instincts (per squad, one timestamp per drive) | INSTINCT_FIELDS in ap_ext_const |
+| Squad OPPORTUNITY DTO | _ap_squad_opportunities (per squad, one timestamp per cause) | OPPORTUNITY_FIELDS in ap_ext_const: stash_loot, stash_ambush, stash_fill, area_conquer, area_swarm, area_infest |
+
+DTO ownership: only the owning generator writes; any cause generator may read (Cross-DTO read pattern). Save/load: m_data.ap_ext_tracker holds killers and alphas only. The three DTOs (NEEDS, INSTINCTS, OPPORTUNITY) are session-only - they reset to empty fifo_caches (capacity 100 each) on game start and on load, populated lazily by cause generators on first squad reference.
+
+ALPHA_PROMOTE marker integration is record-driven: ap_ext_consequences_alpha calls add_record with CONSEQUENCE.ALPHA_PROMOTE on the killer squad after a successful update_alpha. HUD picks the marker up via the standard get_records({assigned=true}) path and lingers it after promotion.
+
+### Smart Mutator (ap_ext_smart_mutator)
+
+Runtime smart terrain mutations, one descriptor-driven lifecycle (a `MUTATIONS` table + `_mutate` / `_update` / `_restore`): territory conquest (a faction), swarm (a mutant species), and infestation (a mutant species, higher count + species allowlist + per-level cap), all EXCLUSIVE spawn (sole ownership). A new mutation type is a descriptor entry, not a copied lifecycle. (n490 conquest overhaul: conquest and swarm were additive shared spawn before, made exclusive here.)
+
+#### Engine respawn pathways
+
+Two pathways (smart_terrain.script:246-304, 1657-1700):
+
+Pathway 1: LTX respawn_params (~460 smarts). Most smarts define spawn sections in LTX (e.g. spawn_stalker@advanced with spawn_squads = stalker_sim_squad_novice). These entries have NO .faction field. The respawn filter at line 1667 passes via self.faction_controlled == nil - ALL params fire regardless of who occupies the smart. Natural population baseline.
+
+Pathway 2: faction_controlled (~16 vanilla smarts). Smarts with faction_controlled in LTX generate respawn_params entries with .faction fields. The respawn filter gates spawning: if v.faction == self.faction. Changing self.faction switches which faction respawns. Engine's designed mechanism for dynamic territory control (smart_terrain.script:246-267).
+
+Faction resolution: check_smart_faction (smart_terrain.script:1209-1236) runs every update tick for online smarts. Counts IsStalker NPCs present and sets self.faction. When empty: self.faction = self.default_faction (nil for most smarts). Monsters (IsMonster) are invisible to this function; a smart occupied only by mutants reverts as if empty. Runs AFTER try_respawn in the update cycle (line 1279 vs 1253). Online smarts only.
+
+#### Conquest (exclusive spawn)
+
+conquer_smart(smart_id, faction) calls xsmart_spawn.set_exclusive_spawn_tiered(smart, "ap_conquest", faction, spawn_num), setting faction_controlled + faction so the engine respawn filter (smart_terrain.script:1667) passes ONLY the conqueror's entry - the smart respawns solely the winning faction and suppresses its original LTX spawns. Squad sections come from xsmart_spawn.SQUADS_BY_FACTION (stalker *_sim_squad_novice / advanced / veteran), capped by the level's danger tier (xlevel.get_danger_tier, curated 0-5 per level) cumulatively: rookie maps (Cordon, Marsh) field novice squads only, early maps novice/advanced, mid maps and everything north the full pool - the ceiling rises with the map, lower tiers always stay in, and unknown map-pack levels read as the shared mid default (xlevel.DANGER_TIER_DEFAULT: novice/advanced, no veterans). (The per-smart spawn_all_* sections were evaluated and rejected as the tier source: they encode respawn balance, not danger - Zaton/Jupiter respawn weak filler.) Respawn PACING is accelerate-only: a conquered smart repopulates on the world's own schedule (vanilla respawn_idle, ZCP's config, AlifeBalance delays), and the per-mutation MCM interval (mutator_area_conquest_respawn_minutes, default 120 game-minutes) is a floor on top of it. Once the interval elapses while the smart sits below its squad quota, AP nils the engine last_respawn_update so the next try_respawn fires (still radius-gated, never in the player's view). It only speeds a stalled world and never throttles a fast one. smart.respawn_idle is never written, so the floor bites on GAMMA (ZCP) and vanilla alike, and a zero interval opts out.
+
+Revert. clear_exclusive_spawn(smart, "ap_conquest") removes the entry and restores faction_controlled / smart.faction to defaults; the smart returns to its LTX spawns.
+
+Volatility. The engine rebuilds respawn_params from LTX and reverts faction (check_smart_faction) on load and every tick, so the entry and the faction are re-applied by the 60s scanner. Two-phase restore: load_state -> _pending; on_game_load applies after entities exist.
+
+Decay. cfg.mutator_area_conquest_decay_hours (default 48). Scanner clears expired entries (clear_exclusive_spawn); the smart returns to its original spawns. The outpost teardown rides the same step (see the Decay paragraph of the outpost section).
+
+Saturation gate. Enforced at cause time, not in the mutator, in two layers (user rulings 2026-08-01). CENSUS: a per-level squad census by community (built lazily from the ap_core_cache per-level bucket, cached CENSUS_TTL_SEC = 600 real seconds); _check_census_share passes with chance = 1 - the faction's share of the level's squads, so a zero-presence faction always passes, a small one usually, the dominant one rarely but never never (reject reason dominant_share). HOLD CAP: ap_ext_smart_mutator.conquest_count(faction, level_id) -- a pure ledger count, instant and deterministic -- rejects at cfg.cause_area_conquer_max_faction_smarts_per_level (default 3, MCM 1-6) live conquest entries per faction per level (reject reason max_faction_smarts). conquer_smart carries no cap of its own; same-faction re-conquest refreshes the timestamp. Restore does not re-check the cap; restored injections keep renewing via the 60s scanner and expire on their normal decay schedule.
+
+Takeover exclusion. A taken smart is never retaken: every area cause filter skips smarts holding any live mutation entry (ap_ext_smart_mutator.is_taken -- keyed so a same-identity re-hit still refreshes), and _mutate rejects cross-identity and cross-type hits as the enforcement. Takeovers end by decay only; wiping a holder's squads does not transfer ownership, the smart keeps respawning its holder until the entry expires. Applies uniformly to conquest, swarm, and infest.
+
+#### Outpost mini base (conquest only)
+
+A held conquer smart grows into a mini base: service NPCs (trader / barman / mechanic / medic, distinct roles) plus a resident guard detail. Gated by cfg.mutator_area_conquest_grow_services on top of the conquest toggle; swarm and infest do not grow services (mutants do not build). Everything an outpost is reduces to respawn rows + a pin + a trade registration -- there is no runtime job, no generated logic, and no model dressing in it. The only respawn-timing write is the accelerate-only floor (see Rows).
+
+File or runtime. Files name KINDS, the runtime names the PLACE:
+
+| Piece | Where | Why there |
+|---|---|---|
+| ap_service_<faction>_<role> squad sections | squad_descr_ap_services.ltx, 48 entries | SIMBOARD:create_squad resolves squad sections out of the system ini, which only loads real files at startup. A respawn row can name only a section that exists on disk. |
+| the sim_default_<faction>_<role> profile each section wraps | vanilla character_desc | Carries the service dialogs and mechanic_mode, parsed at profile load. An arbitrary NPC cannot be granted repair or heal at runtime. |
+| trade config per (faction, role) | vanilla items\trade\*.ltx | What the service buys and sells. We choose which file, xcreature.make_trader applies it. |
+| shelf caps + money bankroll per role | ap_outpost_stock_policy.ltx | A tuning table, read once at on_game_start. |
+| the respawn rows pointing at those sections | written into smart.respawn_params each scan | The engine rebuilds respawn_params from LTX on load and every tick. |
+
+Plan. Rolled ONCE at conquest (_roll_plan on the conquest entry): services = uniform 1..cfg.mutator_area_conquest_services_per_smart, clamped by the per-map budget cfg.mutator_area_conquest_services_max_per_level -- the budget is consumed at roll time, so an outpost conquered at map cap rolls 0 services and stays a garrison outpost, and decay frees budget for FUTURE conquests only (documented behavior). Roles are distinct, picked least-represented for the faction on the level (_pick_service_role, ties by SERVICE_ROLES order, trader first). guards = uniform 1..cfg.mutator_area_conquest_guards_per_smart (0 when the slider is 0). The plan is data on the entry (.services set + .guards count) and persists with it; a save without the guards field (pre-plan, or reset by the migration) rolls a fresh plan at restore.
+
+Rows. One faction-tagged passenger row per service role (set_exclusive_spawn_section: "ap_service_<role>" -> the 1-man squad section, num = 1) and one guard row ("ap_guard" -> the faction's danger-tier pool via xsmart_spawn.get_tiered_faction_squads, num = the plan's guard count). Rows are quotas with their own live counters: vanilla try_respawn fills each row to its num, one spawn per cycle, only with the actor beyond respawn_radius, and the counter decrements when a squad dies (sim_squad_scripted:on_unregister), so the engine itself replaces dead residents while the smart is held. Replacement PACING is accelerate-only: the world's own schedule (vanilla respawn_idle, ZCP's config, AlifeBalance delays) with the per-mutation MCM interval (mutator_area_*_respawn_minutes, default 120 game-minutes) as a floor -- once it elapses while a row sits below quota, AP nils the engine last_respawn_update to let the next try_respawn fire (radius-gated, never in view), never throttling a fast world. smart.respawn_idle is never written, so the floor bites on GAMMA and vanilla alike, and a zero interval opts out. Rows are re-written each 60s scan and at load (the engine wipes respawn_params). Guard rows use ordinary sim-squad sections and are population-factor scaled by the engine; service sections carry no `common` flag and are not.
+
+Birth. squad_on_npc_creation on an ap_service_ section sets rank 0 on the server object (_set_service_rank; the engine rerolls only on NO_RANK, so it persists -- the vanilla profiles roll hub-VIP 10000-20000, wrong for a killable field merchant and inflating the relation swing of his death). The deferred spawn handler classifies by respawn_point_prop_section: a service spawn is pinned (scripted_target = smart via xsquad.acquire_squad, ledgered in _held_squads with its section as identity) and armed (_arm_service: wpn_pm + ammo_9x18_fmj via xinventory.create_item, offline-capable -- the profiles ship an empty <supplies>); a guard-row spawn is pinned only; conquest-row spawns are never pinned and roam as ordinary sim squads. The pin has no expiry: scripted_target is the first branch of squad targeting, persists in the squad packet, and the 60s scan reasserts it (1 field read when already pinned). _resolve_held prunes recycled ids by section compare; the adopt sweep (_pin_stationed_services) re-pins a stationed service that missed its spawn pin. The resident lives on the smart's own vanilla jobs (camper, patrol, sniper) -- staying is guaranteed at squad level, movement inside the smart is vanilla base life, and no fixed counter point exists.
+
+Trade. On the scan, a held online service gets its role config once via xcreature.make_trader (trade_init only; the shelf stocks lazily on first use, like a hub trader), and a drifted config is re-inited: every job (re)assignment resets an NPC's trade config to trade_generic.ltx (xr_logic.script:113), so _try_stock compares cfg_ltx per scan and re-runs make_trader on a mismatch. Config per role: trader = the faction gear config (TRADER_CFG: army->trade_military, loner->trade_stalker_owl, ...), barman / medic / mechanic = trade_generic_*. The NPC keeps its FACTION community, so ap_ext_market and every AP-family system treat it as an ordinary faction trader and trade stays relation-gated. The below-hub preempt (_try_preempt_below_hub: effective = clamp(min(picked - penalty, cap), 1, picked), a single buy_supplies at the effective tier stamped in vanilla's saved shape) and the per-role stock filter ride the trade_manager.update wrapper as before. New on that wrapper: the money bankroll -- `money = N` per policy block (the loader's specials path) resets the service's wallet to N on every detected restock (_reset_bankroll, engine give_money delta), so the cash a player can extract by selling is capped per restock cycle; an absent row leaves engine money alone, logged at load.
+
+Stock filter. Below-hub caps the ammo/gear DEPTH; the stock policy caps the KINDS a service sells. ap_outpost_stock_policy.ltx (configs/alifeplus, DLTX-overridable) is loaded once at on_game_start via xinventory.load_policy into _stock_policy, keyed by ROLE: one [ap_outpost_stock_<role>] block each for trader, barman, mechanic and medic. Per role because a cap that suits a trader guts a specialist -- a barman's whole trade is food and drink, a medic's is medical, a mechanic's is tools and parts, and a single blanket block left each of them with a handful of items (field-measured 2026-07-26). A role whose block is missing or empty is not filtered, logged at load. After a restock is detected in _trade_update, _filter_stock is deferred ~1s (buy_supplies destroys + respawns the shelf and its items register over the next ticks, not the next frame) and walks the NPC's inventory: xinventory.get_category classifies each item, equipped and untouchable are skipped, ammo_* folds to the shelf key ammo_rounds_per_type, and items past their rule's cap are released. A plain category row is a SHELF TOTAL, ammo is the one per-type rule (rounds per ammo type), a row naming an item section overrides its category row, and an absent or empty file disarms the filter loudly rather than silently.
+
+Icon. Direct engine map spot per role: _ensure_service_icon adds the vanilla ui_pda2_<role>_location spot with its legend hint (the same table stalker_generic.reset_show_spot uses), gated like vanilla on goodwill > -1000. Every scheme reset REMOVES the spot first (stalker_generic.script:70) and nothing re-adds it without a level_spot key, so the scan re-adds when map_has_object_spot reads 0. Vanilla removes the spot on death; decay and the migration clear it explicitly (remove_level_spot per member).
+
+Addon visibility. trader_autoinject.get_trader_type reads the ACTIVE logic section's trade key and returns -1 without one (trader_autoinject.script:85-111); with no runtime job carrying the key, destockifier/injector-family addons would skip every outpost service. A function-level wrap answers a ledgered service's role constant (SUPPLIER / BARMAN / MECHANIC / MEDIC) directly and passes everyone else to the original; absent module (no such addon) probes nil and the wrap is skipped.
+
+Gates. The task pool and the hub dialogs (broker, valuables, documents, routes, encrypted PDA) are closed on SECTION identity (_is_service_npc: the ap_service_ squad-section prefix), not the ledger -- the profile carries dm_init_trader, the hub dialogs, and the broken Warfare task pool for life, so a leftover demoted at decay stays gated forever. Guards spawn as ordinary faction squads and never match.
+
+Generated-ini guard. Saves from the runtime-job era carry "*ap_service_spot_*" logic-ini names that resolve through db.dynamic_ltx with no fallback (xr_logic.script:1234-1236; a miss is an engine fatal at configure_schemes:81). No code builds those inis anymore, so the xevent.hook on get_customdata_or_ini_file restores the missing fallback: an unresolvable name loads empty logic and names the NPC at WARN, and the smart's next job pass re-seats him. Kept ONE release for old saves, then retires (new saves never write a generated-ini name).
+
+Legacy saves. ap_v187_to_v188_reset_outpost_plans (ap_core_compat): every ap_service_ squad in the world is purged at on_game_load (the _v186_to_v187 sweep reused -- entities exist there, not at load_state), every conquest entry's services set is cleared and its plan marker dropped so the mutator rolls a fresh plan at restore, service holds drop with their squads, and old pinned-guard holds (the retired forced-stay garrison) are queued for release back to the sim. Tables are mutated IN PLACE (the mutator captures them by reference at load_state; dispatch order is nondeterministic, axr_main.script:272); queued removals compare the saved section before deleting (freed ids are pooled and reused, xrServer.cpp:873).
+
+Kill. A killed service NPC would drop his whole shop stock (vanilla shields hub traders with invulnerability; death_manager has no trade-stock concept). _on_squad_npc_death subscribes to squad_on_npc_death (sim_squad_scripted.script:493), which hands the squad directly and fires BEFORE remove_npc strips the member's group_id (the engine npc_on_death_callback chain can null the squad lookup first -- field-confirmed 2026-07-25). On a held service (guards exempt) the corpse inventory is released item by item. Offline death has no game object; vanilla offline corpse cleanup handles it. The row's counter decrements through on_unregister and the engine spawns the replacement on the world's pacing.
+
+Decay. Remove OUR state and rows, leave the world alone (user rulings 2026-08-01). _release_holds_for_smart clears the service rows and the guard row; per-row engine counters are NEVER zeroed -- a leftover keeps its row's count until it dies, which resolves any later re-conquest naturally (the same faction finds its garrison counted, an enemy frees slots by killing them; no negative counters can form because nothing is force-zeroed). Guard squads stay behind untouched as ordinary residents holding the ruins (only their ledger entries drop). A service splits on squad.online: offline (nobody watching) -> deleted through the board path (_remove_service_squad, offline-safe, PDA spots cleared inside); online (player at the outpost) -> demoted in place by _unmake_service: trade config re-inited to trade_generic.ltx (a config change wipes the old registration, trade_manager.script:39-49), shop stock released keeping equipped items, PDA icon removed -- he stays standing as an ordinary armed stalker, and nothing ever vanishes in the player's view. The smart returns to its original spawns.
+
+#### Swarm (exclusive spawn, mutants)
+
+swarm_smart(smart_id, species) calls xsmart_spawn.set_exclusive_spawn(smart, "ap_swarm", species, spawn_num). Same takeover as conquest, with a mutant species instead of a faction: sets faction_controlled + faction so the engine gate (smart_terrain.script:1667) passes ONLY the swarm entry and suppresses the smart's original LTX spawns. Species comes from xsmart_spawn.SQUADS_BY_SPECIES (simulation_* sections), gated by the shared INFEST_SPECIES allowlist (descriptor allow + cause-side; see the Infestation section). Respawn pacing is the accelerate-only floor, same as conquest (mutator_area_swarm_respawn_minutes). Occupancy stays vanilla-normal (spawn_num default 2, the total a typical LTX smart holds across its entries); elevated numbers are infest's identity (default 4).
+
+Independence from conquest. _swarmed_smarts is a separate table from _conquered_smarts, and each round-trips through save/load on its own key. Both take exclusive ownership, so a smart carries at most one live takeover in practice: the is_smart_empty filter on both causes only targets unoccupied wild smarts, and the faction gate resolves to whichever faction or species the smart last took.
+
+Decay. cfg.mutator_area_swarm_decay_hours (default 48). Scanner checks xtime.game_sec() - swarmed_at and calls clear_exclusive_spawn on expired entries; the smart returns to its original spawns.
+
+Saturation gate. Same two layers as conquest, metered for mutants as a class: the census share check uses the level's MUTANT squad total (all mutant communities as one side -- per-community caps would let 7 monster_* communities each fill a quota), so mutants swarm more where they are few and less where they dominate (reject reason dominant_share); the hold cap is ap_ext_smart_mutator.swarm_count(level_id) -- all live swarm entries on the level -- against cfg.cause_area_swarm_max_faction_smarts_per_level (default 5, MCM 1-8). The infest cause additionally runs the same mutant-share check ahead of its own per-level entry cap.
+
+Volatility. Same as conquest: engine rebuilds respawn_params and reverts faction on STATE_Read and every tick. Two-phase restore via _swarmed_pending. 60s scanner re-applies via set_exclusive_spawn.
+
+#### Infestation (exclusive spawn)
+
+infest_smart(smart_id, faction, level_id) calls xsmart_spawn.set_exclusive_spawn(smart, "ap_infest", faction, spawn_num). Sets smart.faction_controlled to a non-nil value (activating the engine's faction gate at line 1667) and adds ONE respawn_params entry with a .faction field matching the infesting faction. LTX entries have no .faction so they fail the gate (nil == faction is false). Only the infest entry spawns. Exclusive replacement without deleting originals.
+
+Species allowlist. Only pack / lair species (INFEST_SPECIES: bloodsucker, snork, cat, dog, pseudodog, psy_dog, lurker, psysucker, fracture, boar) may take territory -- the list gates BOTH infest and swarm, in the descriptors (enforcement) and cause-side in _eligible_infest / _eligible_swarm (no wasted trips). Solo apex / psi bosses (gigant, chimera, burer, controller, poltergeist, karlik) never multiply onto a smart; trash mobs (rat, tushkano, flesh, zombie) never nest. The list equals the effective set: every entry passes the causes' feral/predator/aberrant alignment gate.
+
+Faction re-apply. check_smart_faction runs every tick on online smarts and counts only IsStalker NPCs - monsters invisible. When only mutants occupy an online smart, self.faction reverts to default_faction, breaking the faction gate match. 60s periodic scanner re-applies smart.faction via set_exclusive_spawn for all infested smarts.
+
+Per-level cap. can_infest_on_level(level_id) counts infested smarts with matching level_id. Rejects if count >= cfg.mutator_area_infest_max_per_level (default 3, MCM 1-5). The registry stays the meter here (unlike conquest/swarm): an infestation persists after its alpha squad leaves or dies, so stationed-squad occupancy would undercount it.
+
+Last-smart floor. Every area target filter in ap_ext_causes_area (conquer, swarm, all infest variants) rejects a smart when ap_ext_util.is_last_faction_smart(smart) is true - a community stationed there holds no other smart on that level, and taking it would erase that community's presence. For conquer and swarm the is_smart_empty gate already excludes held smarts; the explicit check makes the invariant hold on its own instead of depending on that filter shape. Infest is where it does live work, since infest targets can be occupied.
+
+Volatility. Same as conquest: engine rebuilds faction_controlled, faction, respawn_params from LTX on every load. Two-phase restore re-applies all three in _on_game_load. 60s scanner handles ongoing faction reversion for online smarts.
+
+Decay. Separate from conquest and swarm. cfg.mutator_area_infest_decay_hours (default 48). clear_exclusive_spawn reverts faction_controlled to nil, faction to default_faction, and removes the infest entry. Original LTX spawns resume on next try_respawn. Set to 0 to disable decay (permanent infestation).
+
+Interaction with conquest and swarm. The takeover exclusion (is_taken, see the Conquest section) means a smart holding any live entry is skipped by all three causes and _mutate rejects cross-type hits, so overlapping entries can no longer form; only a pre-exclusion save can carry them. On such a legacy overlap the faction gate passes whichever entry the 60s scan re-applied last (_update iterates MUTATIONS with pairs, winner between scans not defined) until the entries decay out.
+
+#### Object mutator (alpha combat identity)
+
+ap_ext_object_mutator owns what being an alpha means in combat; ap_ext_tracker owns who is an alpha. Five effects, each with its own MCM toggle (Creatures > Alpha -- the creature sibling of the smart-mutators tab):
+
+- Hit power dealt: an alpha's hits multiply by 1 + max_pct/100 * level/10 (mutator_alpha_hit_power_dealt_max_pct, default 15 -- a top alpha hits 15% harder, felt across a fight, never a one-shot). Applied at ALL victim seams: monster_on_before_hit, npc_on_before_hit, and actor_on_before_hit (the actor seam behind mutator_alpha_vs_player). The seams are the modded-exes before-hit callbacks with mutable shit.power; shit.draftsman identifies the attacker.
+- Hit power taken: hits ON an alpha multiply by 1 - max_pct/100 * level/10 (same cap shape, default 15).
+- Panic immunity: set_custom_panic_threshold(0) on the alpha, applied once per object lifetime at its first received hit -- own toggle, deliberately independent of the damage toggles (the pre-removal module only applied it inside the taken-reduction branch, so disabling that damage toggle silently killed immunity).
+- Trophy loot: at monster_on_loot_init a dead alpha's loot table gains its species hide (when the species has one) plus level-1 draws from the ALPHA_LOOT parts pool -- one guaranteed trophy, never a pelt stack. ALPHA_LOOT covers every promotable species, independent of the territorial allowlist.
+- Visual mark: a particle effect attached to the alpha's body via start_particles -- the in-game-approved dust shimmer (MARK_PARTICLES; the by-id pick is kept as machinery for future set growth; artefact auras deliberately absent -- they mean "artefact carrier", not "alpha"). Attach is guarded twice: only config-referenced particle names (a missing name is an engine fatal with no Lua existence check -- doc/library/modding/particles.md) and only bones the skeleton has (get_bone_id != BI_NONE, MARK_BONES preference order). Particles have no lifecycle of their own, so the module owns it: attach at promote and at monster_on_net_spawn (game load and every offline->online transition recreate the game object bare), stop at monster_on_death_callback (a corpse would emit forever), forget at unregister.
+
+Lifecycle mirrors the tracker's guards: effects set at alpha_promote (consequence handler), cleared on server_entity_on_unregister (id recycling), rebuilt from ap_ext_tracker.get_alphas() at actor_on_first_update (after the tracker's load sweep) and on option change (the rebuild prunes marks whose owner stopped being an alpha or whose toggle went off). Everything is event-driven -- the per-hit cost is a pure-Lua next() early-out while no alphas are alive, the net-spawn cost is a pure-Lua hash miss for non-alphas, and there is no timer and no per-frame work. History: these effects shipped once, were dropped in 5065d1f, and return with the vs-anyone dealt scaling (the dropped version scaled only mutant victims) and without the old global 0.5s throttle (it skipped most hits in any real fight, making the scaling stochastic).
+
+Player-side hit feedback (tinnitus / screen effects on alpha hits) was evaluated in-game and dropped 2026-07-24: too much for alphas -- the dust mark plus the damage identity carries it. xpp BLUR stays reserved for AlifeTactics suppression.
+
+---
+
+## Causes
+
+Per-cause inventory: see `ap_core_const.CAUSE` (canonical enum) and `ap_ext_cause_*.script` / `ap_ext_causes_*.script`. The generator contract (signature, self-gating, purity) is defined once under Pipeline -> Cause generator contract.
+
+### Cause classification
+
+Four categories, each with its own mechanic for when and how the cause fires:
+
+| Category | Mechanic | Cause | Consequence |
+|----------|----------|-------|-------------|
+| Reactions | engine event (death, pickup, healing) | builds payload from callback | perception scan from event position |
+| Opportunities | squad tick + look-around | find_* + state-classify eligible siblings + RULES cascade | act using payload |
+| Needs | squad tick + Hull score on stalker DTO | pick strongest drive | find satisfaction location + act |
+| Instincts | squad tick + Hull score on mutant DTO | pick strongest drive | find satisfaction location + act |
+
+Reactions are simple-mechanism (the engine callback IS the event). Opportunities, Needs, Instincts are radiant-mechanism (the squad tick is a heartbeat - only what the squad finds, scores, or picks IS the event).
+
+### Where finds live: 1 -> N expansion
+
+The find lives where 1 expands to N candidates.
+
+- Reactive: 1 event -> N witnesses -> consequence find_squads (responder SCAN). Some reactive consequences also find_smart (destination SCAN) before the responder scan.
+- Radiant: 1 squad -> 1 destination -> cause find_smart (destination SCAN). The SCAN lives in the cause generator; the consequence is action-only.
+
+Reactive expands over witnesses (consequence-side). Radiant expands over the world but resolves the destination in the cause; the consequence consumes the resolved destination from the published payload.
+
+### Theoretical foundations
+
+Radiant causes split by what the threshold MEANS, not by how it is implemented. Both shapes use the same architectural pattern (DTO timestamp + threshold gate + arrival reset) but encode different theories.
+
+Hull's drive reduction theory (1943). Behavior is driven by deprivation of a biological need. The longer the deprivation, the stronger the drive. Score formula (`_find_overdue_needs` in ap_ext_causes_needs.script): drive = weight * (elapsed / threshold)^2. Squared exponent makes overdue drives compete strongly against marginal ones. Used by NEEDS (stalker drives) and INSTINCTS (mutant drives). Threshold encodes how long the squad can tolerate the deprivation before the drive becomes urgent. Arrival action satisfies the drive and resets the timestamp.
+
+Charnov's marginal value theorem (1976), optimal foraging theory. A forager exploits a patch, moves on, and the patch recovers before the next visit becomes worthwhile. Gate is binary: elapsed > threshold. No drive scoring; the squad either revisits the patch or doesn't. Used by stash (fill, loot, ambush) and area (conquer, swarm, infest). Threshold encodes patch handling time + travel time + recovery time between visits. Arrival action resets the timestamp.
+
+DTO + timestamp + arrival-reset is the architectural shape both theories share. They differ in what the threshold means, not how it is implemented.
+
+### Multi-answer drive (radiant generator pattern)
+
+Each answer is a separate first-class cause paired 1:1 with its own consequence (sharing the noun per the radiant naming rule). "Multi-answer drive" is a code-structure quirk: a Hull-scored drive can be satisfied by any of several answers depending on squad identity (faction, species). The drive itself owns only the Hull threshold and the DTO timestamp field; everything else (toggle, alignment, personality traits, filter) belongs to the individual answers.
+
+The needs and instincts generators encode this as two tables:
+
+| Table | Holds | Example |
+|-------|-------|---------|
+| NEEDS / INSTINCTS | one entry per drive: Hull weight, threshold cfg key, period gating, DTO field name | { instinct = "slumber", field = "last_slumber_at", weight = 2.5, dormant_period = true, threshold_key = "cause_slumber_threshold" } |
+| CAUSES | one entry per specific cause (answer): cause const, short name, parent drive name, alignment subset, personality, filter | three slumber answers: slumber_field (cowardly, territory filter); slumber_lair (feral + predator, lair filter); slumber_surge (aberrant + predator, surge filter) |
+
+Picker flow inside _on_smart:
+
+1. Score every drive via Hull (_find_overdue_drives for instincts, _find_overdue_needs for needs).
+2. Sort overdue drives descending by drive score.
+3. Walk overdue drives top-down. For each drive, walk CAUSES entries with matching parent drive. Per cause: RULES (per-cause toggle, alignment subset, personality roll), then SCAN (filter + find_smart). First cause that publishes wins. Stop.
+4. Each generator's `_on_smart` caps its own internal cascade at RADIANT_MAX_SCANS_PER_GENERATOR SCAN reaches; RULES rejections are free.
+
+The DTO field is per-drive. When any of a drive's answers fires, the drive's timestamp resets (Hull drive reduction). Multiple answers compete to satisfy one drive.
+
+cfg key layout:
+
+- cause_<drive>_threshold: Hull threshold, one cfg key per drive (shared by every answer under that drive).
+- cause_<answer>_enabled: per-cause toggle, one cfg key per answer. For single-answer drives the answer name equals the drive name (feed, roam, pack, scatter), so the cfg key reads as cause_<drive>_enabled but is conceptually per-answer.
+- Personality clamp is global, not per-cause. PERSONALITY_FLOOR (0.10) and PERSONALITY_CEILING (0.70) constants in ap_ext_const. Applies uniformly to every personality roll.
+
+Used by ap_ext_causes_needs.script and ap_ext_causes_instincts.script (multi-answer slumber). State-classifier generators (stash, area) use a different selection mechanism: the world peek (find_stashes / find_smart) classifies which sibling causes are eligible by world state (empty/non-empty, items_count, alignment) and emits an ordered list. The cascade walks the list and tests each sibling's RULES (MVT threshold + personality); first sibling to pass RULES reaches the 1 SCAN slot and publishes. No Hull scoring - eligibility comes from world state, not drive deprivation.
+
+---
+
+## Consequences
+
+Per-consequence inventory: see `ap_core_const.CONSEQUENCE` / `ACTION` (canonical enums) and `ap_ext_consequences_*.script`. Reactive consequences carry their own RULES and SCAN. Radiant consequences are action-only - RULES and SCAN already happened in the cause generator.
+
+Handler contract: takes the cause payload, returns a result code. Domain gates (alignment, species, personality) live in cause generators for radiant and in consequence handlers for reactive - always in ext, never in core. Dispatch order: shuffled per cause publish (reactive only).
+
+### Consequence shapes
+
+Two shapes by cause type.
+
+Radiant: action-only. The cause generator delivered the squad and the destination smart in the payload. The handler routes the squad to the smart, registers the on-arrival action, calls ap_core_record.add_record to write the activity record (HUD marker + news compose), returns SUCCESS. No alignment, no species, no personality, no find - those happened in the cause generator.
+
+Reactive RESPOND. Three phases: RULES (alignment, species, personality, payload validation) -> SCAN (find responder squads, optionally a destination smart) -> ACTION (per responder, route and record). At least one responder routed = SUCCESS. Examples: massacre_investigate, massacre_scavenge, basekill_support, basekill_flee, wounded_hunt, wounded_help, harvest_rob, harvest_haunt, squadkill_revenge, alphakill_targeted.
+
+Reactive TRANSFORM. Two phases: RULES (payload validation, threshold or cap checks) -> ACTION (mutate state, register, dispatch on the entity in the cause payload). No responder loop. Examples: alpha_promote.
+
+Gate order within the RULES phase (where present): alignment -> species -> personality -> match -> validation.
+
+### Chase pattern
+
+Three reactive consequences (squadkill_revenge, harvest_rob, alphakill_targeted) pursue a non-stationary target. Two target kinds share one lifecycle:
+
+- Player target: `move_actor_chasers` -> `script_actor_target` sets `scripted_target = "actor"`, which the engine re-resolves to id 0 every update, so pursuit is continuous and the actor never "arrives".
+- Squad target: `move_squad_chasers` -> `script_squad_target` drives continuous coordinate homing. A squad id is not a natively-resolvable scripted target (vanilla `get_script_target` / `get_current_task` resolve only `"actor"` and smart names), so `ap_core_chase` installs two guarded `sim_squad_scripted` monkeypatches at on_game_start, both keyed on the broker `_ap_scripted_squads` registry (`entry.target_squad_id`):
+  - `get_current_task` builds a `CALifeSmartTerrainTask` from the target's live vertices each call. This is the only movement input the offline group brain consumes (`alife_online_offline_group_brain.cpp:80-84`), and it THROW2s on a nil task - the hook never returns nil (it returns a constructed task, or the captured original, which itself falls back to `get_alife_task`).
+  - `get_script_target` returns the target id so the online reach-task squad fallback fires (`xr_reach_task.script:251-254`) and `specific_update` keeps re-pinning `assigned_target_id`. Replacing the whole method also sidesteps the clean-vanilla numeric-id `obj:clsid()` crash (`sim_squad_scripted.script:139`).
+
+Both hooks delegate to the captured original for any squad without a chase entry, so they chain safely with warfare's identical `get_current_task` hook regardless of load order. The chaser homes until the target dies (`am_i_reached` is `npc_count()==0`); a combat death releases the chase. The smart-hop relay (`make_move_smart_chasers` / recursive `make_on_arrive`, which trailed a moving target by one smart-to-smart leg) is deleted.
+
+#### Leash
+
+`ap_core_util.evaluate_chase(squad, entry)` is the single retention decision for both chase kinds, returning `(verdict, reason)` with verdict in `VERDICT.{KEEP, PAUSE, RELEASE}`. It composes small offline-safe `is_*` predicates, RELEASE-before-PAUSE and cheap-before-expensive, short-circuiting on the first hit - the same `(bool, reason)` shape as the broker off-map despawn chain. Pure (no side effects), so the periodic scan and the dispatch both call it.
+
+- RELEASE: `_is_target_lost` (squad target gone or wiped; N/A for the actor), `_is_no_longer_enemy` (opt-in via `entry.check_relation` - faction chases set it, mutant species chases omit it because `is_factions_enemies` is false for undefined mutant pairs), `_is_target_story_protected` (target carries a story id), `_is_target_off_map` (chaser and target on different maps - stateless, so a chase never follows across a level change or leaks into the off-map session system).
+- PAUSE (resume when the condition clears): `_is_target_in_base` (target sheltered in a base smart), `xlevel.is_surge`. Every chaser pauses uniformly; no faction exemption.
+
+The scan (`ap_core_broker._update_chase`) acts on the verdict. RELEASE unscripts. PAUSE stops driving the engine target - the squad-target hook returns nil while paused, and the actor target is released and re-set on resume - with a min-hold (`CHASE_MIN_PAUSE_SEC`, hysteresis against base flicker) and a max-pause cap (`CHASE_MAX_PAUSE_SEC` -> release). KEEP resumes a paused chase and reasserts the actor target. The dispatch (`script_squad_target`) runs the same `evaluate_chase` on the proposed entry stub and refuses any start that is not KEEP. Both chase kinds also share the one ledger TTL (`SCRIPTED_SQUAD_TTL`), checked above the chase/smart split in the scan.
+
+Persistence is the seed only: `_ap_scripted_squads` stores `target_squad_id`; the hooks regenerate the task each tick, so the engine saves neither the task nor `assigned_target_id`. A chase survives save/load and resumes within one scan.
+
+### Domain gates
+
+Three gates filter who participates: alignment (hard, deterministic), species (hard, deterministic), personality (probability, non-deterministic). All three live in ext, never in core.
+
+- Alignment: can this faction do this consequence at all. Static set lookup.
+- Species: filters mutant kinds (cowardly, feral, predator, aberrant). Stalkers have no species and pass automatically. Resolved once per squad, cached.
+- Personality: rolls the probability of acting given relevant trait scores. avg(traits), clamped to [PERSONALITY_FLOOR, PERSONALITY_CEILING]. Inverted traits (only INV_AGGRESSION, INV_DISCIPLINE, INV_TERRITORY are defined) resolve as 1 - base before averaging.
+
+Not every consequence uses all three. Human-only consequences skip species. Some have no gates beyond the toggle. When gates are present, order is alignment -> species -> personality.
+
+Where they apply by cause type:
+
+- Radiant: gates run in the cause generator on the ticking squad. Squad is both sensor and responder.
+- Reactive same-faction: gates run in the consequence handler on the event faction (victim, wounded). Responders inherit that faction.
+- Reactive cross-faction: alignment set is passed as the responder filter to find_squads. Species and personality run per-responder inside the find loop.
+
+### Alignment
+
+Hard filter: can this faction do this consequence at all. Static hash sets in ap_ext_const, O(1) per check. Zombied is excluded from alignment_human and therefore from all human consequences globally.
+
+Human factions follow GSC's moral axis (Ai.doc:65-76, тип характера):
+
+| Table | Factions | GSC origin |
+|-------|----------|------------|
+| alignment_principled | dolg, army, monolith, isg | Principled: follows rules, organized |
+| alignment_selfserving | stalker, csky, ecolog, freedom, killer | Self-serving: independent, own goals |
+| alignment_unprincipled | stalker, freedom, killer, csky | Chaotic neutral: own rules, not criminal |
+| alignment_outlaw | bandit, renegade, greh | Chaotic evil: criminals |
+| alignment_human | every human faction, no zombied | Union of principled + selfserving + outlaw |
+| alignment_naturalist | stalker, csky, freedom, ecolog | AP subset: zone dwellers |
+
+Mutant species alignments follow GSC's creature groups (monstry.doc:4). Keyed by species string (xcreature.get_mutant_species), not engine faction:
+
+| Table | Species | GSC origin |
+|-------|---------|------------|
+| alignment_mutant | all monster factions | Fast gate for find_squads (engine player_id) |
+| alignment_mutant_cowardly | flesh, zombie, tushkano, rat, karlik | Timid, flees danger, bottom of food chain |
+| alignment_mutant_feral | dog, pseudodog, boar, snork, cat, gigant | Pack / herd, reactive aggression, brute apex |
+| alignment_mutant_predator | lurker, bloodsucker, psysucker, chimera, fracture | Solitary hunters, ambush, pursue wounded |
+| alignment_mutant_aberrant | controller, burer, poltergeist, psy_dog | Psychic, lair-bound, supernatural |
+
+Keying trap (read this before touching mutant alignment lookups). Two namespaces:
+
+- alignment_mutant: keyed by engine faction (squad.player_id, e.g. "monster_predatory_day"). Use [squad.player_id].
+- alignment_mutant_cowardly / _feral / _predator / _aberrant / _night / _day and any merge of them (e.g. _alignment_conquer_mutant, _alignment_lair, _alignment_pack): keyed by species string (xcreature.get_mutant_species result, e.g. "bloodsucker"). Use [species].
+
+The two namespaces have zero overlap. alignment_mutant_predator[squad.player_id] always returns nil - silent dead branch that looks correct because no error is raised. Check the table comment in ap_ext_const.script and the variable name in the call site (squad.player_id vs species). If a derived / merged table does not have an explicit comment, trace its inputs.
+
+Activity alignment axis (independent of behavioral axis, gates day / night cycle):
+
+| Table | Species | GSC origin |
+|-------|---------|------------|
+| alignment_mutant_night | bloodsucker, psysucker, lurker, chimera, zombie, fracture | monstry.doc: bloodsucker noch'yu vykhodit. Engine: monster_predatory_night, monster_zombied_night. |
+| alignment_mutant_day | all other species | Engine: monster_predatory_day, monster_zombied_day. Default for lair-bound species. |
+
+Consequences compose tables with xtable.merge (set union) and xtable.subtract (set difference) at module load.
+
+### Personality
+
+Probability layer: how likely is an eligible faction / species to act. Runs only after alignment passes. All checks happen in ext consequence code via ap_ext_util.check_personality, never in core.
+
+Stalker factions carry the traits aggression, greed, survival, perception, territory, relation, discipline; mutant species carry aggression, survival, territory, perception, relation. Each consequence declares at most 2 relevant traits. The check averages those traits for the faction / species and rolls math.random() against the result, clamped to [PERSONALITY_FLOOR, PERSONALITY_CEILING].
+
+Formula: chance = clamp(avg(relevant_traits), PERSONALITY_FLOOR, PERSONALITY_CEILING). PERSONALITY_FLOOR = 0.10, PERSONALITY_CEILING = 0.70 (ap_ext_const). No per-consequence weight. Floor ensures even unfavorable factions act occasionally; ceiling ensures even favorable factions fail sometimes.
+
+Inverted traits: traits prefixed with INV_ resolve as 1 - base_value before averaging. Used for behaviors driven by absence of a quality (fleeing gated by INV_DISCIPLINE + INV_TERRITORY: low discipline and low territorial attachment = more likely to flee). Only INV_AGGRESSION, INV_DISCIPLINE, INV_TERRITORY are defined (ap_ext_const).
+
+Trait value design: tiered values in 0.10 steps (0.10, 0.20, ..., 0.90) to ensure clean math. Survival is a flat band (0.40-0.60) for all factions and species. Biological needs are universal drives, not faction differentiators. Each value is a direct probability grounded in GSC lore (monstry.doc, Ai.doc).
+
+### Range tiers
+
+Every consequence searches within a range that matches the squad's awareness. Two tiers, grounded in GSC's PersonalEyeRange (EFC design docs, circa 2002) and validated against empirical smart terrain spacing (14 levels measured via TestZone, see doc/library/modding/level-geometry.md).
+
+| Tier | Constant | Distance | Who |
+|------|----------|----------|-----|
+| EyeRange | RANGE_EYE | 200m | all (line of sight) |
+| RadioRange | RANGE_RADIO | 500m | stalkers (PDA / radio) |
+| ScentRange | RANGE_SCENT | 500m | mutants (scent tracking) |
+
+EyeRange covers the p90 nearest-neighbor distance on 13 of 14 measured levels. A squad at any smart can see 1-3 neighboring smarts and several stashes within 200m. RadioRange and ScentRange cover the full operational radius. Same distance today (500m), independently tunable.
+
+Each cause type maps to a range based on how the squad learns about the opportunity:
+
+| Cause type | Stalker range | Mutant range | Rationale |
+|-----------|---------------|--------------|-----------|
+| Opportunities (stash, territory) | EyeRange | EyeRange | Squad sees what is nearby on arrival |
+| Reactions (kills, massacres, wounded) | RadioRange | ScentRange | Stalkers hear over radio, mutants smell blood |
+| Needs (hunger, sleep, shelter) | RadioRange | - | Squad knows campfire / trader locations from PDA |
+| Instincts (feed, sleep, explore) | - | ScentRange | Mutants track by scent across the area |
+
+Three tiers create a natural separation: opportunities are local and opportunistic (200m), stalker coordination reaches further via radio (500m), mutant hunting extends through scent (500m). You act on what you see, respond to what you hear, hunt what you smell.
+
+### Day / night cycle
+
+All radiant causes are gated by the active / dormant period system. Reactions are not. Drives (needs + instincts) declare a per-drive flag (active_period = true or dormant_period = true). Opportunities (stash, area) gate on active_period implicitly - every opportunity fires only when the squad's identity is in its active period.
+
+ap_ext_util.is_active_period(identity) resolves the current period for any species or community. Nocturnal species (alignment_mutant_night) are active at night (20:00-05:00). All others (stalkers, diurnal mutants) are active during day (05:00-20:00).
+
+Stalker needs:
+
+| Drive | Flag | Effect |
+|-------|------|--------|
+| hunger | active_period | day only |
+| sleep | dormant_period | night only |
+| rest | dormant_period | night only |
+| heal | active_period | day only |
+| shelter | dormant_period | night only |
+| supply | active_period | day only |
+| money | active_period | day only |
+| job | active_period | day only |
+| social | active_period | day only |
+
+Mutant instincts:
+
+| Drive | Flag | Effect |
+|-------|------|--------|
+| scatter | (none) | any time (transitional, moving to FLEE family per n102) |
+| feed | active_period | active period only |
+| slumber | dormant_period | dormant period only |
+| roam | active_period | active period only |
+| pack | active_period | active period only |
+
+Opportunities (no per-cause flag, all implicit active_period):
+
+| Cause | Effect |
+|-------|--------|
+| stash_loot / stash_ambush / stash_fill | stalkers active period (day) |
+| area_conquer | stalkers active period (day) |
+| area_swarm | mutant species active period (day for diurnal, night for nocturnal) |
+| area_infest | mutant species active period (day for diurnal, night for nocturnal) |
+
+---
+
+## Rules
+
+The rule set split into universal, radiant, and reactive. Terms (cause types, file shapes, result codes) are defined in Vocabulary and the Dispatch Pipeline.
+
+### Universal rules
+
+1. Core never imports ext. All domain logic reaches core through registered function references. Ext provides only behavior (predicate bodies, handler bodies, domain data); ext does not know about gates, events, or flow control. Flow (gate chains, evaluation policy, dispatch) is core.
+2. m_data accepts only primitives and tables of primitives. Functions, userdata, metatables are silently dropped on save.
+3. Every consequence returns one of SUCCESS, FAILED_RULES, FAILED_SCAN, FAILED_ACTION. Missing or malformed return = error.
+4. Published causes are always specific names (cause:hunger_campfire, cause:massacre). Umbrella names (NEEDS, REACTIONS) are categories, never published.
+5. Every cause has its own MCM toggle. No file-level master toggle.
+6. Every consequence has its own MCM toggle.
+7. News entries carry the published cause and consequence unchanged. Never an umbrella constant.
+8. Every cause registration declares a CAUSE_CATEGORY (REACTIONS, NEEDS, INSTINCTS, OPPORTUNITIES). Category drives rate-limit grouping; it is never published.
+9. Domain gates (alignment, species, personality) live in ext, never in core. Location depends on cause type - see radiant and reactive rules.
+10. Runtime smart terrain mutations are rebuilt from LTX on load. Two-phase restore re-applies them after entities exist.
+11. scripted_target overrides SIMBOARD's target_precondition. AP consequences enforce faction safety inline; runtime job availability is checked at arrival and re-checked during the gulag hold via xsmart.has_jobs_for.
+12. Many cause attempts fail by design - RULES (especially personality) make outcomes likely or unlikely. Variance comes from cascade ordering, not from clamping personality.
+13. One generator per family. Bundle when causes share input or scoring (Hull cascade over drives, state-classifier over a peek). Use separate generator files when causes have independent triggers or scans (every reactive cause has its own file).
+14. Cause publish contract: a generator must not publish if no consequence can act on the event. Causes serving a subset of alignments must filter at the cause level.
+
+### Radiant rules
+
+1. The actor is always the ticking squad. No actor scan in radiant.
+2. Cause and consequence are 1:1 and share the noun. Multi-answer drives split into multiple causes; each cause has its own 1:1 consequence.
+3. The cause generator owns RULES (toggle, alignment, personality, threshold) and SCAN (find_smart). The consequence is action-only - resolve squad and smart from the payload, route the squad, record the event, return SUCCESS.
+4. The generator cascades internally (cause-to-cause within the generator, top-down) and externally (generator-to-generator at the producer). Hull-scored generators (needs, instincts) order drives by Hull score and walk CAUSES under each overdue drive. State-classifier generators (stash, area) order siblings by world-state eligibility and walk them in that order. Both then cascade on RULES, first publish wins.
+5. No fallbacks inside a single cause. One SCAN with one filter. Variant outcomes are separate causes.
+6. Per-generator SCAN budget: RADIANT_MAX_SCANS_PER_GENERATOR = 1. A slot is consumed only when a cause passes RULES and reaches its world SCAN (find_smart / find_squads). RULES rejections (toggle, alignment, personality, threshold, period) are free and do not count. At most one SCAN reach per `_on_smart` call; any subsequent cause that reaches SCAN returns BUDGET_EXHAUSTED. Budget is local to one `_on_smart` invocation and resets on the next call. Internal tuning, not MCM.
+7. Stalker and mutant get separate causes for the same world state - needs (stalker) and instincts (mutant) are distinct families with distinct DTOs.
+8. CONFIGS factory is the default consequence file shape. _set is vestigial for radiant.
+9. on_arrive: the DTO reset is unconditional (online or offline - the abstract state advances either way). World mutation (item consume, trade, inventory operations) runs only when online.
+
+### Reactive rules
+
+1. A reactive cause subscribes to one engine callback or one callback-family constant. Callback families collapse multiple engine paths into one logical cause: HARVEST_CALLBACKS = { ACTOR_ON_ITEM_TAKE, NPC_ON_ITEM_TAKE }, WOUNDED_CALLBACKS = { AP_NPC_MEDKIT_USE, ACTOR_ON_ITEM_USE }.
+2. Cause:consequence is 1:N. Multiple consequences fan out independently per publish.
+3. RULES split across three locations:
+   - Cause-level event RULES: universal event criteria (does this event qualify for publishing at all). Runs once per event. Fail = no publish.
+   - Consequence-level event RULES: per-consequence event criteria (does THIS consequence apply to this event). Runs once per consequence dispatch. Fail = skip this consequence.
+   - Per-responder RULES: per-responder identity filter (personality, species). Runs per responder during the cascade.
+4. Consequence shapes: RESPOND (find responder squads, dispatch each) or TRANSFORM (act directly on the cause-target entity, no responder loop). RESPOND consequences may run two SCANs - destination SCAN (find_smart) and responder SCAN (find_squads) - typically destination first since responder SCAN may use destination to exclude already-arrived squads.
+5. Responder SCAN returns up to a per-consequence configurable max_count (default 2).
+6. Stalker and mutant get separate consequences subscribed to the same cause. massacre fires both massacre_investigate (stalkers) and massacre_scavenge (mutants) independently.
+7. Per-publish consequence cap: REACTIVE_MAX_CONSEQUENCES_PER_CAUSE = 2. One unit = one consequence run, independent of how many responders the consequence cascaded through.
+8. _set is the natural file shape for hand-written quirks (varying SCAN filters, varying actions, varying per-responder logic). CONFIGS factory only when consequence bodies are uniform.
+
+---
+
+## Integration API
+
+AlifePlus exposes three levels of integration for external mods. See integration.md for full examples and code templates.
+
+![Integration Levels](img/integration-levels.png)
+
+### Level 1: Listen (xbus subscriber)
+
+Subscribe to cause events via xbus. No AP code dependency - xlibs only.
+
+```lua
+xbus.subscribe("cause:massacre", function(data)
+    -- data.position, data.level_id, data.squad_id
+end, "my_mod")
+```
+
+The heartbeat itself is public: ap_core_callbacks fires `ap_squad_on_change` through the vanilla callback registry for every squad in the Zone (including squads AP refuses to touch), so a co-installed mod subscribes natively. The event exists only when AlifePlus is installed, since AlifePlus declares and fires it:
+
+```lua
+RegisterScriptCallback("ap_squad_on_change", function(squad, changed, prev, curr)
+    -- changed: array of field names ("gvid", "online", "smart_id", "action"),
+    -- nil = round-robin turn with no transition
+    -- prev/curr: last and current 4-field snapshots; read-only, do not retain references
+end)
+```
+
+### Level 2: Register (pipeline participant)
+
+Register a cause generator with ap_core_producer.register(config, generator) and a consequence handler with ap_core_consumer.register(name, config, handler). The framework handles gates, protection, rate limiting, tracing, arrival, and cleanup.
+
+| Parameter | Producer | Consumer |
+|-----------|----------|----------|
+| name | (handler ref dedupes) | Consequence identifier (also used as trace key, rate limit key, arrival key) |
+| config.callback | Engine callback name | - |
+| config.cause_type | RADIANT or REACTIVE | - |
+| config.category | CAUSE_CATEGORY enum (REACTIONS / NEEDS / INSTINCTS / OPPORTUNITIES). Required. Drives per-category rate-limit grouping | - |
+| config.event | - | Cause event to subscribe to |
+| config.condition | - | Optional pre-gate (typically MCM enabled flag) |
+| config.on_arrive | - | Optional arrival handler function |
+| handler | Predicate function (self-gates per-category rate) | Consequence handler function |
+
+### Level 3: Coordinate (external mod integration)
+
+Register a squad ownership filter to prevent AP from scripting squads your mod controls.
+
+```lua
+ap_core_broker.register_owner("my_mod", function(squad)
+    return squad.my_mod_flag == true
+end)
+```
+
+Squads matching any registered ownership filter are excluded from AP at the protection gate (producer), in find_squads results (consequence), and via get_owner queries. Gated by MCM allow_external_ownership. Warfare is registered by default in ap_core_compat.
+
+Activity record queries (Coordinate level): foreign integrators that need to know what AP is currently doing on a squad call ap_api.get_record({squad_id, assigned=true}) for the live entry, or ap_api.get_records(opts) for a bulk filter. Each entry carries denormalized display facts (subject_*, other_*) so callers do not re-resolve faction or species. Integrators that need the live scripted-squad set call ap_api.get_scripted_squads().

@@ -1,0 +1,88 @@
+--- ap_ext_consequences_squadkill: SQUADKILL responses
+--- squadkill_revenge: nearby friendly squads pursue the killer (chase pattern with on_arrive)
+
+local xobject, xconst, xtable = xobject, xconst, xtable
+local game_relations, get_actor_true_community = game_relations, get_actor_true_community
+local ap_core_debug, ap_core_record, ap_core_consumer, ap_core_util, ap_ext_util = ap_core_debug, ap_core_record, ap_core_consumer, ap_core_util, ap_ext_util
+
+local RESULT = ap_core_const.RESULT
+local REASON = ap_core_const.REASON
+local CAUSE = ap_core_const.CAUSE
+local CONSEQUENCE = ap_core_const.CONSEQUENCE
+local ACTION = ap_core_const.ACTION
+local PERSONALITY = ap_ext_const.PERSONALITY
+
+local LOG_INIT = ap_core_debug.bracket(CONSEQUENCE.SQUADKILL_REVENGE)
+
+local cfg = ap_core_mcm.cfg
+
+local _alignment_revenge = xtable.merge(ap_ext_const.alignment_unprincipled, ap_ext_const.alignment_outlaw)
+local _personality_revenge = { PERSONALITY.AGGRESSION, PERSONALITY.RELATION }
+
+-- Revenge chase helpers (only used by _handler_revenge)
+
+local _move_actor_chasers = ap_ext_common.move_actor_chasers
+
+local _move_squad_chasers = ap_ext_common.move_squad_chasers
+
+local function _handler_revenge(event_data)
+    if not ap_ext_util.check_alignment(_alignment_revenge, event_data.victim_faction) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT, community = event_data.victim_faction }
+    end
+    if not ap_ext_util.check_personality(_personality_revenge, event_data.victim_faction) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.LOW_PERSONALITY }
+    end
+    local killer_squad_id = event_data.killer_squad_id
+    local is_player_kill = event_data.killer_id and event_data.killer_id == xconst.ACTOR_ENTITY_ID
+    local victim_faction, position, level_id = event_data.victim_faction, event_data.position, event_data.level_id
+
+    if not killer_squad_id and not is_player_kill then return { code = RESULT.FAILED_RULES, reason = REASON.NO_KILLER_SQUAD } end
+    if not position or not victim_faction then return { code = RESULT.FAILED_RULES, reason = REASON.NO_POS } end
+    if is_player_kill and not game_relations.is_factions_enemies(victim_faction, get_actor_true_community()) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.FRIENDLY_FACTION }
+    end
+    if not is_player_kill and event_data.killer_faction
+        and not game_relations.is_factions_enemies(victim_faction, event_data.killer_faction) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.FRIENDLY_FACTION }
+    end
+
+    local avengers = ap_core_util.find_squads(position, {
+        factions = { [victim_faction] = true },
+        min_distance = ap_core_const.RADIUS_CLOSE_MAX, max_distance = ap_core_const.RANGE_RADIO,
+        level_id = level_id, max_count = cfg.consequence_squadkill_revenge_max_squads,
+        exclude_squad_id = event_data.squad_id,
+        allow_preempt = true,
+    })
+    local target_squad = not is_player_kill and xobject.se(killer_squad_id) or nil
+    local moved = {}
+    local code, reason = RESULT.SUCCESS, nil
+    if #avengers == 0 then
+        code, reason = RESULT.FAILED_SCAN, REASON.NO_SQUAD
+    elseif not is_player_kill and not target_squad then
+        code, reason = RESULT.FAILED_SCAN, REASON.NO_KILLER_SQUAD
+    else
+        if is_player_kill then
+            _move_actor_chasers(avengers, moved, { check_relation = true })
+        else
+            _move_squad_chasers(avengers, killer_squad_id, moved, { check_relation = true })
+        end
+        if #moved == 0 then code, reason = RESULT.FAILED_ACTION, REASON.MOVE_FAILED end
+    end
+    if code ~= RESULT.SUCCESS then return { code = code, reason = reason } end
+    for i = 1, #moved do
+        ap_core_record.add_record(moved[i], CAUSE.SQUADKILL, CONSEQUENCE.SQUADKILL_REVENGE, {
+            action_key = ACTION.SQUADKILL_REVENGE,
+            other_squad = target_squad,
+            level_id = level_id,
+        })
+    end
+    return { code = RESULT.SUCCESS }
+end
+
+function on_game_start()
+    ap_core_consumer.register(CONSEQUENCE.SQUADKILL_REVENGE, {
+        event = CAUSE.SQUADKILL,
+        condition = function() return cfg.consequence_squadkill_revenge_enabled end,
+    }, _handler_revenge)
+    ap_core_debug.info(LOG_INIT .. " Initialized: 1 consequence (revenge)")
+end

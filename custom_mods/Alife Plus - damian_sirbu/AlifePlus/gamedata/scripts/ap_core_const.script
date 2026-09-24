@@ -1,0 +1,463 @@
+--- ap_core_const: Enums, result codes, and shared constants
+
+--- Rate-limit window durations (counts configurable in MCM)
+CAUSE_WINDOW_SEC = 60
+CONSEQUENCE_WINDOW_SEC = 60
+GLOBAL_CONSEQUENCE_WINDOW_SEC = 60
+
+--- Offmap balance window (game seconds). Caps cumulative offmap dispatches per source map.
+--- Mirrors framework pattern: pipeline windows are const, only caps are MCM-exposed.
+OFFMAP_WINDOW_SEC = 48 * 3600
+
+--- Per-causer reaction window (game seconds). Caps how many reactive causes one source entity
+--- (killer / patient / taker, actor or NPC) may trigger before the window expires. Fixed window,
+--- MCM-exposed cap (cause_max_per_causer). Stops a single causer (the actor on a hostile map like
+--- Radar) from saturating every reactive cause attributed to its id.
+CAUSER_WINDOW_SEC = 1 * 3600
+
+--- Rank thresholds (per anomaly/configs/creatures/game_relations.ltx:7).
+--- Compare with `>=` against engine character_rank() to gate veteran+ behaviors.
+RANK_VETERAN = 12000
+
+--- Trade-context fallback cost when a section omits the `cost` field. Matches vanilla
+--- axr_trade_manager.script(236,303,550). xr_corpse_detection uses 0 in loot-detection
+--- context; this constant is the trade default only.
+DEFAULT_TRADE_COST = 30
+
+--- Reactive event distributor interval (seconds, hardcoded -- per callback type)
+REACTIVE_EVENT_INTERVAL_SEC = 1
+
+--- Reactive pacer burst capacity (tokens, hardcoded -- per callback type). Engine death events
+--- are correlated (a grenade or anomaly kills a squad in one frame); capacity must cover a full
+--- squad wipe so edge-triggered causes (squadkill last-member death, alphakill) see their trigger
+--- and cluster causes (massacre, basekill) count every death. The refill rate above still bounds
+--- the sustained average at 1/sec.
+REACTIVE_EVENT_BURST = 5
+
+--- Scripted squad TTL (game seconds, 2 hours)
+SCRIPTED_SQUAD_TTL = 7200
+
+--- Pre-release gulag durations (game seconds). Squad stays at smart for engine gulag job assignment.
+PRE_RELEASE_GULAG_DEFAULT = 300
+PRE_RELEASE_GULAG = {
+    HUNGER_CAMPFIRE = 1200,
+    SLEEP_CAMPFIRE = 10800,
+    REST_CAMPFIRE = 1800,
+    HEAL_SHELTER = 1800,
+    SHELTER_INDOOR = 7200,
+    SHELTER_OUTDOOR = 1800,
+    MONEY_HARVEST = 3600,
+    MONEY_HUNT = 3600,
+    SUPPLY_TRADER = 900,
+    SUPPLY_TRADER_OFFMAP = 600,
+    BARTER = 900,
+    BARTER_OFFMAP = 600,
+    JOB_OUTPOST = 7200,
+    JOB_EXPLORE = 3600,
+    JOB_EXPLORE_OFFMAP = 600,
+    JOB_RESEARCH = 3600,
+    SOCIAL_CAMPFIRE = 1800,
+    SOCIAL_BASE = 3600,
+    SOCIAL_OFFMAP = 600,
+    AREA_CONQUER = 7200,
+    AREA_SWARM = 14400,
+    MASSACRE_SCAVENGE = 1800,
+    MASSACRE_INVESTIGATE = 1200,
+    MASSACRE_LOOT = 1800,
+    SQUADKILL_REVENGE = 300,
+    BASEKILL_SUPPORT = 1800,
+    BASEKILL_FLEE = 3600,
+    WOUNDED_HELP = 300,
+    WOUNDED_HUNT = 300,
+    HARVEST_ROB = 300,
+    HARVEST_HAUNT = 600,
+    ALPHAKILL_TARGETED = 300,
+    STASH_LOOT = 300,
+    STASH_AMBUSH = 7200,
+    STASH_FILL = 300,
+    FEED = 3600,
+    SLUMBER_FIELD = 10800,
+    SLUMBER_LAIR = 10800,
+    SLUMBER_SURGE = 10800,
+    ROAM = 3600,
+    PACK = 3600,
+    SCATTER = 1800,
+    AREA_INFEST = 7200,
+}
+
+--- Scripted squad scan cycle interval (seconds)
+UPDATE_SCRIPTED_SQUADS_SEC = 10
+
+--- X-Ray callback names
+CALLBACK = {
+    -- Cause triggers (via producer)
+    AP_SQUAD_ON_CHANGE = "ap_squad_on_change",
+    SQUAD_ON_NPC_DEATH = "squad_on_npc_death",
+    SQUAD_ON_AFTER_LEVEL_CHANGE = "squad_on_after_level_change",
+    AP_NPC_MEDKIT_USE = "ap_npc_medkit_use",
+    ACTOR_ON_ITEM_USE = "actor_on_item_use",
+    ACTOR_ON_ITEM_TAKE = "actor_on_item_take",
+    NPC_ON_ITEM_TAKE = "npc_on_item_take",
+    ACTOR_MENU_ON_ITEM_BEFORE_MOVE = "ActorMenu_on_item_before_move",
+    ACTOR_MENU_ON_TRADE_STARTED = "ActorMenu_on_trade_started",
+    ON_BEFORE_KEY_PRESS = "on_before_key_press",
+    -- Lifecycle
+    ACTOR_ON_FIRST_UPDATE = "actor_on_first_update",
+    SAVE_STATE = "save_state",
+    LOAD_STATE = "load_state",
+    ON_GAME_LOAD = "on_game_load",
+    ON_OPTION_CHANGE = "on_option_change",
+    -- Death
+    NPC_ON_DEATH_CALLBACK = "npc_on_death_callback",
+    MONSTER_ON_DEATH_CALLBACK = "monster_on_death_callback",
+    NPC_ON_HIT_CALLBACK = "npc_on_hit_callback",
+    -- Combat (modded-exes before-hit seams; shit.power is mutable)
+    NPC_ON_BEFORE_HIT = "npc_on_before_hit",
+    MONSTER_ON_BEFORE_HIT = "monster_on_before_hit",
+    ACTOR_ON_BEFORE_HIT = "actor_on_before_hit",
+    -- Loot
+    NPC_ON_GET_ALL_FROM_CORPSE = "npc_on_get_all_from_corpse",
+    MONSTER_ON_LOOT_INIT = "monster_on_loot_init",
+    -- Trade / market
+    ON_GET_ITEM_COST = "on_get_item_cost",
+    -- Lifecycle (net spawn re-application, HUD cleanup, GUI visibility)
+    MONSTER_ON_NET_SPAWN = "monster_on_net_spawn",
+    ACTOR_ON_NET_DESTROY = "actor_on_net_destroy",
+    GUI_ON_SHOW = "GUI_on_show",
+    GUI_ON_HIDE = "GUI_on_hide",
+    -- External / non-AP callbacks
+    SERVER_ENTITY_ON_REGISTER = "server_entity_on_register",
+    SERVER_ENTITY_ON_UNREGISTER = "server_entity_on_unregister",
+    SQUAD_ON_NPC_CREATION = "squad_on_npc_creation",
+    ON_TRY_RESPAWN = "on_try_respawn",
+    MCM_OPTION_RESTORE_DEFAULT = "mcm_option_restore_default",
+    MAP_SPOT_MENU_ADD_PROPERTY = "map_spot_menu_add_property",
+    MAP_SPOT_MENU_PROPERTY_CLICKED = "map_spot_menu_property_clicked",
+    ON_LOCALIZATION_CHANGE = "on_localization_change",
+    -- Dot Marks (Catspaw) pre-action callbacks; AP vetoes claimed-corpse access through them
+    DOTMARKS_ON_MANUAL_INTERACT_RELEASE = "dotmarks_on_manual_interact_release",
+    DOTMARKS_ON_BEFORE_SECONDARY_ACTION = "dotmarks_on_before_secondary_action",
+}
+
+--- Cause type classification (radiant = ambient A-Life, reactive = world event response)
+--- Pipeline-mechanism axis: how the producer schedules predicate evaluation.
+CAUSE_TYPE = { RADIANT = "radiant", REACTIVE = "reactive" }
+
+--- Cause category classification (behavioral axis, parallel to CAUSE_TYPE).
+--- What kind of squad behavior the cause represents. Drives the per-category rate-limit
+--- counter key and MCM organization. Each cause declares its category at register time and
+--- self-gates against its `cause_max_<category>` MCM cap via ap_core_limiter.
+--- Future parallel axes (attack/flee, expansive/contracting) get their own enums — never
+--- overload CAUSE_CATEGORY. ap_api forces foreign causes to pick from this set.
+CAUSE_CATEGORY = {
+    REACTIONS     = "category:reactions",
+    NEEDS         = "category:needs",
+    INSTINCTS     = "category:instincts",
+    OPPORTUNITIES = "category:opportunities",
+}
+
+--- Radiant cause callbacks (all radiant causes register on these).
+--- AP_SQUAD_ON_CHANGE is a synthetic callback declared in ap_core_callbacks.script, fired
+--- when a squad's observable state changed or its round-robin keepalive came due; the sweep
+--- installs itself at on_game_start. It supersedes polling the vanilla squad_on_update
+--- firehose (6624/min, 99.94% discarded by the old gate chain).
+RADIANT_CALLBACKS = {
+    CALLBACK.AP_SQUAD_ON_CHANGE,
+}
+
+--- Reactive callback families (one logical event has multiple engine paths).
+--- Cause registers the same predicate against every callback in its family.
+HARVEST_CALLBACKS = {
+    CALLBACK.ACTOR_ON_ITEM_TAKE,
+    CALLBACK.NPC_ON_ITEM_TAKE,
+}
+WOUNDED_CALLBACKS = {
+    CALLBACK.AP_NPC_MEDKIT_USE,
+    CALLBACK.ACTOR_ON_ITEM_USE,
+}
+
+--- Pipeline caps (internal tuning, not MCM).
+--- REACTIVE_MAX_CONSEQUENCES_PER_CAUSE: consumer ceiling on consequences fired per reactive cause publish.
+--- RADIANT_MAX_SCANS_PER_GENERATOR: ceiling on SCAN reaches inside a single radiant generator
+---   invocation (one _on_smart call). RULES rejections stay free; only causes that pass RULES and
+---   enter their world SCAN (find_smart / find_squads) consume a slot. Resets every _on_smart call.
+REACTIVE_MAX_CONSEQUENCES_PER_CAUSE = 2
+RADIANT_MAX_SCANS_PER_GENERATOR = 1
+
+--- Result codes: consequence handler return values (template method phases)
+--- Handlers return SUCCESS, FAILED_RULES, FAILED_SCAN, FAILED_ACTION.
+--- DISABLED is consumer-only (condition pre-gate, never returned by handlers).
+RESULT = {
+    SUCCESS = "success",
+    FAILED_RULES = "failed_rules",
+    FAILED_SCAN = "failed_scan",
+    FAILED_ACTION = "failed_action",
+    DISABLED = "disabled",
+}
+
+--- News-compose result codes (diagnostic, not pipeline flow)
+TRACE = {
+    OK = "ok",
+    NONE = "none",
+    EMPTY = "empty",
+    NO_SMART = "no_smart",
+    NO_ITEMS = "no_items",
+    NO_MSG = "no_msg",
+    NO_SENDER = "no_sender",
+    SENT = "sent",
+    NO_TEMPLATES = "no_templates",
+}
+
+--- Distance thresholds (meters)
+RADIUS_CLOSE_MAX = 50
+RADIUS_DISTANT_MAX = 500
+
+--- Range tiers (meters). Grounded in GSC PersonalEyeRange (EFC design docs) and
+--- empirical level geometry measurements (doc/library/modding/level-geometry.md).
+--- EyeRange: line-of-sight, local awareness. Opportunities (stash, area).
+--- RadioRange: PDA radio for stalkers. Reactions, needs.
+--- ScentRange: scent tracking for mutants. Instincts, mutant-only reactions.
+RANGE_EYE = 200
+RANGE_RADIO = 500
+RANGE_SCENT = 500
+
+--- Game-hours to seconds conversion (xtime.game_sec uses seconds; MCM thresholds use hours).
+HOURS_TO_SECONDS = 3600
+
+--- Harvest pickup cooldown per artefact section (os.clock seconds, 2 hours)
+HARVEST_COOLDOWN_SEC = 7200
+
+--- Map marker type
+MARKER_ACTIVE = "blue_location"
+MARKER_LINGER_SEC = 60
+
+--- Cause event names. Specific causes are what predicates publish and consequences subscribe to.
+--- Reactive (one cause per callback): ALPHA, ALPHAKILL, MASSACRE, SQUADKILL, BASEKILL, WOUNDED, HARVEST.
+--- Radiant (one umbrella file -> N specific causes via predicate-side picker): NEEDS family, INSTINCTS family,
+--- STASH family, AREA family. Each radiant umbrella publishes only its specific per-action
+--- causes; the umbrella name itself is never published or subscribed to as an event.
+CAUSE = {
+    ALPHA = "cause:alpha",
+    ALPHAKILL = "cause:alphakill",
+    MASSACRE = "cause:massacre",
+    SQUADKILL = "cause:squadkill",
+    BASEKILL = "cause:basekill",
+    WOUNDED = "cause:wounded",
+    HARVEST = "cause:harvest",
+    -- NEEDS family (radiant, Hull drive-reduction scoring)
+    HUNGER_CAMPFIRE  = "cause:hunger_campfire",
+    SLEEP_CAMPFIRE   = "cause:sleep_campfire",
+    REST_CAMPFIRE    = "cause:rest_campfire",
+    HEAL_SHELTER     = "cause:heal_shelter",
+    SHELTER_INDOOR   = "cause:shelter_indoor",
+    SHELTER_OUTDOOR  = "cause:shelter_outdoor",
+    SUPPLY_TRADER    = "cause:supply_trader",
+    SUPPLY_TRADER_OFFMAP = "cause:supply_trader_offmap",
+    BARTER           = "cause:barter",
+    BARTER_OFFMAP    = "cause:barter_offmap",
+    MONEY_HARVEST    = "cause:money_harvest",
+    MONEY_HUNT       = "cause:money_hunt",
+    JOB_OUTPOST      = "cause:job_outpost",
+    JOB_EXPLORE      = "cause:job_explore",
+    JOB_EXPLORE_OFFMAP = "cause:job_explore_offmap",
+    JOB_RESEARCH     = "cause:job_research",
+    SOCIAL_CAMPFIRE  = "cause:social_campfire",
+    SOCIAL_BASE      = "cause:social_base",
+    SOCIAL_OFFMAP    = "cause:social_offmap",
+    -- INSTINCTS family (radiant Hull-scored)
+    SCATTER         = "cause:scatter",
+    FEED            = "cause:feed",
+    SLUMBER_FIELD   = "cause:slumber_field",
+    SLUMBER_LAIR    = "cause:slumber_lair",
+    SLUMBER_SURGE   = "cause:slumber_surge",
+    ROAM            = "cause:roam",
+    PACK            = "cause:pack",
+    -- STASH family (radiant MVT timestamps + state-classifier picker)
+    STASH_LOOT   = "cause:stash_loot",
+    STASH_AMBUSH = "cause:stash_ambush",
+    STASH_FILL   = "cause:stash_fill",
+    -- AREA family (radiant MVT timestamps + priority-gate picker per alignment)
+    AREA_CONQUER = "cause:area_conquer",
+    AREA_SWARM   = "cause:area_swarm",
+    AREA_INFEST  = "cause:area_infest",
+}
+
+--- Skip reasons (causes and consequences)
+REASON = {
+    -- argument validation
+    NIL_ARGS          = "nil_args",
+    NIL_SQUAD         = "nil_squad",
+    NO_KILLER         = "no_killer",
+    NO_VICTIM         = "no_victim",
+    NIL_OR_DEAD       = "nil_or_dead",
+    NO_ACTOR          = "no_actor",
+    -- location / environment
+    NO_LEVEL_ID       = "no_level_id",
+    NO_SMART          = "no_smart",
+    NO_POS            = "no_pos",
+    NO_STASH_NEARBY   = "no_stash_nearby",
+    -- faction / alignment
+    WRONG_ALIGNMENT   = "wrong_alignment",
+    NO_FACTION        = "no_faction",
+    -- threshold / state
+    BELOW_THRESHOLD   = "below_threshold",
+    NO_BRANCH         = "no_branch",
+    BUDGET_EXHAUSTED  = "budget_exhausted",
+    OFFMAP_EXHAUSTED  = "offmap_exhausted",
+    CAUSER_EXHAUSTED  = "causer_exhausted",
+    NO_OFFMAP_REACH   = "no_offmap_reach",
+    OFFMAP_ALREADY_DISPATCHED = "offmap_already_dispatched",
+    MAX_INFEST_PER_LEVEL = "max_infest_per_level",
+    MAX_FACTION_SMARTS = "max_faction_smarts",
+    DOMINANT_SHARE    = "dominant_share",
+    SQUAD_ALIVE       = "squad_alive",
+    NO_PROMOTION      = "no_promotion",
+    LOW_KILLS         = "low_kills",
+    NOT_AT_BASE       = "not_at_base",
+    AT_BASE           = "at_base",
+    WRONG_PERIOD      = "wrong_period",
+    DISABLED          = "disabled",
+    ON_COOLDOWN       = "on_cooldown",
+    -- identity (causes/producer: blocked at gate)
+    IS_OWNED                = "is_owned",
+    NOT_A_SQUAD             = "not_a_squad",
+    NOT_ALPHA         = "not_alpha",
+    NOT_HEALING       = "not_healing",
+    NOT_ARTEFACT      = "not_artefact",
+    -- squad lookup
+    NO_SQUAD          = "no_squad",
+    NO_ELIGIBLE_SQUAD = "no_eligible_squad",
+    -- tracker
+    MOVE_FAILED       = "move_failed",
+    REGISTER_FAILED   = "register_failed",
+    INVALID_SMART     = "invalid_smart",
+    -- consequence
+    NO_TRADER         = "no_trader",
+    NO_PEER           = "no_peer",
+    NO_KILLER_SQUAD   = "no_killer_squad",
+    MAX_ALPHAS        = "max_alphas",
+    ALPHA_PROMOTED    = "alpha_promoted",
+    NO_TARGET_SQUAD   = "no_target_squad",
+    FILL_FAILED       = "fill_failed",
+    FRIENDLY_FACTION  = "friendly_faction",
+    LOW_PERSONALITY   = "low_personality",
+    LOW_TACTICS       = "low_tactics",
+    STALKER_EXCLUDED  = "stalker_excluded",
+    ALL_FILTERED      = "all_filtered",
+    -- chase leash (evaluate_chase release/pause reasons; AT_BASE reused for safe-haven pause)
+    TARGET_LOST       = "target_lost",
+    NO_LONGER_ENEMY   = "no_longer_enemy",
+    STORY_PROTECTED   = "story_protected",
+    LEFT_MAP          = "left_map",
+    SURGE             = "surge",
+}
+
+--- evaluate_chase verdicts: KEEP = continue, PAUSE = hold (resume when the condition clears),
+--- RELEASE = drop the script and return the squad to autonomous sim.
+VERDICT = {
+    KEEP    = "keep",
+    PAUSE   = "pause",
+    RELEASE = "release",
+}
+
+--- Consequence identifiers (trace operations + rate-limit keys)
+CONSEQUENCE = {
+    ALPHA_PROMOTE = "consequence:alpha_promote",
+    ALPHAKILL_TARGETED = "consequence:alphakill_targeted",
+    MASSACRE_SCAVENGE = "consequence:massacre_scavenge",
+    MASSACRE_INVESTIGATE = "consequence:massacre_investigate",
+    MASSACRE_LOOT = "consequence:massacre_loot",
+    STASH_AMBUSH = "consequence:stash_ambush",
+    STASH_LOOT = "consequence:stash_loot",
+    STASH_FILL = "consequence:stash_fill",
+    SQUADKILL_REVENGE = "consequence:squadkill_revenge",
+    BASEKILL_SUPPORT = "consequence:basekill_support",
+    BASEKILL_FLEE = "consequence:basekill_flee",
+    WOUNDED_HUNT = "consequence:wounded_hunt",
+    WOUNDED_HELP = "consequence:wounded_help",
+    AREA_CONQUER = "consequence:area_conquer",
+    AREA_SWARM = "consequence:area_swarm",
+    AREA_INFEST = "consequence:area_infest",
+    HARVEST_ROB = "consequence:harvest_rob",
+    HARVEST_HAUNT = "consequence:harvest_haunt",
+    HUNGER_CAMPFIRE = "consequence:hunger_campfire",
+    SLEEP_CAMPFIRE = "consequence:sleep_campfire",
+    REST_CAMPFIRE = "consequence:rest_campfire",
+    HEAL_SHELTER = "consequence:heal_shelter",
+    SHELTER_INDOOR = "consequence:shelter_indoor",
+    SHELTER_OUTDOOR = "consequence:shelter_outdoor",
+    MONEY_HARVEST = "consequence:money_harvest",
+    MONEY_HUNT = "consequence:money_hunt",
+    SUPPLY_TRADER = "consequence:supply_trader",
+    SUPPLY_TRADER_OFFMAP = "consequence:supply_trader_offmap",
+    BARTER = "consequence:barter",
+    BARTER_OFFMAP = "consequence:barter_offmap",
+    JOB_OUTPOST = "consequence:job_outpost",
+    JOB_EXPLORE = "consequence:job_explore",
+    JOB_EXPLORE_OFFMAP = "consequence:job_explore_offmap",
+    JOB_RESEARCH = "consequence:job_research",
+    SOCIAL_CAMPFIRE = "consequence:social_campfire",
+    SOCIAL_BASE = "consequence:social_base",
+    SOCIAL_OFFMAP = "consequence:social_offmap",
+    FEED = "consequence:feed",
+    SLUMBER_FIELD = "consequence:slumber_field",
+    SLUMBER_LAIR = "consequence:slumber_lair",
+    SLUMBER_SURGE = "consequence:slumber_surge",
+    ROAM = "consequence:roam",
+    PACK = "consequence:pack",
+    SCATTER = "consequence:scatter",
+}
+
+--- Action identifiers (player-facing label, localization id).
+--- Consequence handlers pass action = ACTION.X to ap_core_record.add_record; the activity
+--- record stores it as action_key, and HUD/news/external translate via game.translate_string.
+--- Localized strings live in gamedata/configs/text/<lang>/ui_st_ap_macros.xml.
+ACTION = {
+    ALPHA_PROMOTE        = "action:alpha_promote",
+    ALPHAKILL_TARGETED   = "action:alphakill_targeted",
+    MASSACRE_SCAVENGE    = "action:massacre_scavenge",
+    MASSACRE_INVESTIGATE = "action:massacre_investigate",
+    MASSACRE_LOOT        = "action:massacre_loot",
+    STASH_AMBUSH         = "action:stash_ambush",
+    STASH_LOOT           = "action:stash_loot",
+    STASH_FILL           = "action:stash_fill",
+    SQUADKILL_REVENGE    = "action:squadkill_revenge",
+    BASEKILL_SUPPORT     = "action:basekill_support",
+    BASEKILL_FLEE        = "action:basekill_flee",
+    WOUNDED_HUNT         = "action:wounded_hunt",
+    WOUNDED_HELP         = "action:wounded_help",
+    AREA_CONQUER         = "action:area_conquer",
+    AREA_SWARM           = "action:area_swarm",
+    AREA_INFEST          = "action:area_infest",
+    HARVEST_ROB          = "action:harvest_rob",
+    HARVEST_HAUNT        = "action:harvest_haunt",
+    HUNGER_CAMPFIRE      = "action:hunger_campfire",
+    SLEEP_CAMPFIRE       = "action:sleep_campfire",
+    REST_CAMPFIRE        = "action:rest_campfire",
+    HEAL_SHELTER         = "action:heal_shelter",
+    SHELTER_INDOOR       = "action:shelter_indoor",
+    SHELTER_OUTDOOR      = "action:shelter_outdoor",
+    MONEY_HARVEST        = "action:money_harvest",
+    MONEY_HUNT           = "action:money_hunt",
+    SUPPLY_TRADER        = "action:supply_trader",
+    SUPPLY_TRADER_OFFMAP = "action:supply_trader_offmap",
+    BARTER               = "action:barter",
+    BARTER_OFFMAP        = "action:barter_offmap",
+    JOB_OUTPOST          = "action:job_outpost",
+    JOB_EXPLORE          = "action:job_explore",
+    JOB_EXPLORE_OFFMAP   = "action:job_explore_offmap",
+    JOB_RESEARCH         = "action:job_research",
+    SOCIAL_CAMPFIRE      = "action:social_campfire",
+    SOCIAL_BASE          = "action:social_base",
+    SOCIAL_OFFMAP        = "action:social_offmap",
+    FEED                 = "action:feed",
+    SLUMBER_FIELD        = "action:slumber_field",
+    SLUMBER_LAIR         = "action:slumber_lair",
+    SLUMBER_SURGE        = "action:slumber_surge",
+    ROAM                 = "action:roam",
+    PACK                 = "action:pack",
+    SCATTER              = "action:scatter",
+}
+
+--- Squad current_action values (src: sim_squad_scripted.script)
+SQUAD_ACTION = { [0] = "MOVING", [1] = "REACHED" }

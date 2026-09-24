@@ -1,0 +1,139 @@
+--- ap_ext_consequences_harvest: Harvest consequences (rob + haunt)
+--- harvest_rob: outlaws pursue artefact taker (chase)
+--- harvest_haunt: aberrant mutants converge on pickup site
+
+local ipairs, xobject = ipairs, xobject
+local game_relations, get_actor_true_community = game_relations, get_actor_true_community
+local ap_core_debug, ap_ext_common, ap_core_record, ap_core_consumer, ap_core_util, ap_ext_util = ap_core_debug, ap_ext_common, ap_core_record, ap_core_consumer, ap_core_util, ap_ext_util
+
+local RESULT = ap_core_const.RESULT
+local REASON = ap_core_const.REASON
+local CAUSE = ap_core_const.CAUSE
+local CONSEQUENCE = ap_core_const.CONSEQUENCE
+local ACTION = ap_core_const.ACTION
+local PERSONALITY = ap_ext_const.PERSONALITY
+
+local LOG_INIT = ap_core_debug.bracket(CAUSE.HARVEST)
+
+local cfg = ap_core_mcm.cfg
+
+local _alignment_rob = ap_ext_const.alignment_outlaw
+local _personality_rob = { PERSONALITY.GREED, PERSONALITY.AGGRESSION }
+
+local _alignment_haunt = ap_ext_const.alignment_mutant
+local _species_haunt = ap_ext_const.alignment_mutant_aberrant
+local _personality_haunt = { PERSONALITY.PERCEPTION, PERSONALITY.TERRITORY }
+
+--- harvest_rob: outlaws chase artefact taker
+
+local _move_actor_chasers = ap_ext_common.move_actor_chasers
+
+local _move_squad_chasers = ap_ext_common.move_squad_chasers
+
+-- Keep chasers hostile to the taker's community that pass the rob personality roll.
+local function _eligible_robbers(chasers, target_community)
+    local robbers = {}
+    for _, squad in ipairs(chasers) do
+        if game_relations.is_factions_enemies(squad.player_id, target_community)
+            and ap_ext_util.check_personality(_personality_rob, squad.player_id) then
+            robbers[#robbers + 1] = squad
+        end
+    end
+    return robbers
+end
+
+local function _handler_rob(event_data)
+    local taker_is_player = event_data.taker_is_player
+    local taker_squad_id = event_data.taker_squad_id
+    local position, level_id = event_data.position, event_data.level_id
+    if not position then return { code = RESULT.FAILED_RULES, reason = REASON.NO_POS } end
+
+    local target_squad, target_community
+    if taker_is_player then
+        target_community = get_actor_true_community()
+    else
+        target_squad = xobject.se(taker_squad_id)
+        if not target_squad then return { code = RESULT.FAILED_SCAN, reason = REASON.NO_TARGET_SQUAD } end
+        target_community = target_squad.player_id
+    end
+
+    local chasers = ap_core_util.find_squads(position, {
+        factions = _alignment_rob,
+        min_distance = ap_core_const.RADIUS_CLOSE_MAX, max_distance = ap_core_const.RANGE_RADIO,
+        level_id = level_id, max_count = cfg.consequence_harvest_rob_max_squads,
+        exclude_squad_id = event_data.taker_squad_id,
+        allow_preempt = true,
+    })
+    local robbers = _eligible_robbers(chasers, target_community)
+    local moved = {}
+    local code, reason = RESULT.SUCCESS, nil
+    if #chasers == 0 then
+        code, reason = RESULT.FAILED_SCAN, REASON.NO_SQUAD
+    elseif #robbers == 0 then
+        code, reason = RESULT.FAILED_RULES, REASON.NO_ELIGIBLE_SQUAD
+    else
+        if taker_is_player then
+            _move_actor_chasers(robbers, moved, { check_relation = true })
+        else
+            _move_squad_chasers(robbers, taker_squad_id, moved, { check_relation = true })
+        end
+        if #moved == 0 then code, reason = RESULT.FAILED_ACTION, REASON.MOVE_FAILED end
+    end
+    if code ~= RESULT.SUCCESS then return { code = code, reason = reason } end
+    for i = 1, #moved do
+        ap_core_record.add_record(moved[i], CAUSE.HARVEST, CONSEQUENCE.HARVEST_ROB, {
+            action_key = ACTION.HARVEST_ROB,
+            other_squad = target_squad,
+            level_id = level_id,
+        })
+    end
+    return { code = RESULT.SUCCESS }
+end
+
+--- harvest_haunt: aberrant mutants converge on pickup site
+
+local function _handler_haunt(event_data)
+    local position, level_id = event_data.position, event_data.level_id
+    if not position then return { code = RESULT.FAILED_RULES, reason = REASON.NO_POS } end
+
+    local target_smart = ap_core_util.find_smart(position, { level_id = level_id, max_distance = ap_core_const.RANGE_SCENT })
+    local moved, last_reason
+    local code, reason = RESULT.SUCCESS, nil
+    if not target_smart then
+        code, reason = RESULT.FAILED_SCAN, REASON.NO_SMART
+    else
+        local candidates = ap_core_util.find_squads(position, {
+            factions = _alignment_haunt,
+            min_distance = ap_core_const.RADIUS_CLOSE_MAX, max_distance = ap_core_const.RANGE_SCENT,
+            level_id = level_id, max_count = cfg.consequence_harvest_haunt_max_squads,
+            exclude_at_smart_id = target_smart.id,
+            allow_preempt = true,
+        })
+        local squads = ap_ext_util.filter_mutant_squads(candidates, _species_haunt, _personality_haunt)
+        moved, last_reason = ap_ext_common.move_squads(squads, target_smart, { rush = cfg.consequence_harvest_haunt_rush, interruptable = false })
+        if #candidates == 0 then code, reason = RESULT.FAILED_SCAN, REASON.NO_SQUAD
+        elseif #squads == 0 then code, reason = RESULT.FAILED_RULES, REASON.NO_ELIGIBLE_SQUAD
+        elseif #moved == 0 then code, reason = RESULT.FAILED_ACTION, (last_reason or REASON.MOVE_FAILED) end
+    end
+    if code ~= RESULT.SUCCESS then return { code = code, reason = reason } end
+    for i = 1, #moved do
+        ap_core_record.add_record(moved[i], CAUSE.HARVEST, CONSEQUENCE.HARVEST_HAUNT, {
+            action_key = ACTION.HARVEST_HAUNT,
+            other_squad = event_data.taker_squad,
+            smart = target_smart, level_id = level_id,
+        })
+    end
+    return { code = RESULT.SUCCESS }
+end
+
+function on_game_start()
+    ap_core_consumer.register(CONSEQUENCE.HARVEST_ROB, {
+        event = CAUSE.HARVEST,
+        condition = function() return cfg.consequence_harvest_rob_enabled end,
+    }, _handler_rob)
+    ap_core_consumer.register(CONSEQUENCE.HARVEST_HAUNT, {
+        event = CAUSE.HARVEST,
+        condition = function() return cfg.consequence_harvest_haunt_enabled end,
+    }, _handler_haunt)
+    ap_core_debug.info(LOG_INIT .. " Initialized (harvest_rob, harvest_haunt)")
+end
