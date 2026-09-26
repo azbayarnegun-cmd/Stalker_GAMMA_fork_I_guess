@@ -1,0 +1,64 @@
+-- Natural Recovery v1.0.0 settings.
+
+local defaults = {
+    enabled = true,
+    rate_healthy = 0.10,        -- overall HP per in-game hour, all limbs at max
+    rate_damaged = 0.03,        -- overall HP per in-game hour, limbs damaged
+    damaged_threshold = 60,     -- % of total limb points needed for the damaged tier
+    core_min = 6,               -- head and torso points needed for the damaged tier
+    use_ceiling = true,         -- natural recovery stops at limb condition %
+    combat_delay = 60,          -- real seconds after taking damage before recovery resumes
+    block_bleeding = true,
+    satiety_min = 0.15,         -- 0 disables the hunger check
+    thirst_max = 3,             -- thirst indicator level (0-4) that blocks; 5 disables
+    radiation_max = 0.10,       -- 1 disables the radiation check
+    heal_while_sleeping = true,
+    debug_log = false,
+}
+
+function get_config(key)
+    if ui_mcm then
+        local value = ui_mcm.get("natural_recovery/" .. key)
+        if value ~= nil then return value end
+    end
+    return defaults[key]
+end
+
+function on_mcm_load()
+    return {
+        id = "natural_recovery",
+        sh = true,
+        gr = {
+            { id = "enabled", type = "check", val = 1, def = true },
+
+            { id = "line1", type = "line" },
+
+            { id = "rate_healthy", type = "track", val = 2,
+              min = 0, max = 0.5, step = 0.01, prec = 2, def = 0.10 },
+            { id = "rate_damaged", type = "track", val = 2,
+              min = 0, max = 0.5, step = 0.01, prec = 2, def = 0.03 },
+            { id = "damaged_threshold", type = "track", val = 2,
+              min = 0, max = 100, step = 5, def = 60 },
+            { id = "core_min", type = "track", val = 2,
+              min = 0, max = 11, step = 1, def = 6 },
+            { id = "use_ceiling", type = "check", val = 1, def = true },
+            { id = "heal_while_sleeping", type = "check", val = 1, def = true },
+
+            { id = "line2", type = "line" },
+
+            { id = "combat_delay", type = "track", val = 2,
+              min = 0, max = 300, step = 5, def = 60 },
+            { id = "block_bleeding", type = "check", val = 1, def = true },
+            { id = "satiety_min", type = "track", val = 2,
+              min = 0, max = 0.5, step = 0.05, prec = 2, def = 0.15 },
+            { id = "thirst_max", type = "track", val = 2,
+              min = 1, max = 5, step = 1, def = 3 },
+            { id = "radiation_max", type = "track", val = 2,
+              min = 0, max = 1, step = 0.05, prec = 2, def = 0.10 },
+
+            { id = "line3", type = "line" },
+
+            { id = "debug_log", type = "check", val = 1, def = false },
+        },
+    }
+end

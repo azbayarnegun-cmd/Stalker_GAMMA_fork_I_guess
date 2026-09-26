@@ -1,0 +1,202 @@
+--[[
+	Natural Recovery v1.0.0 - standalone add-on for GAMMA
+
+	Slowly restores OVERALL health (the red bar, 0.0-1.0) based on how healthy
+	the limbs are in GAMMA's body health system (zzz_player_injuries):
+
+	  healthy  all limbs at max                        -> rate_healthy per in-game hour
+	  damaged  total >= damaged_threshold %, head and
+	           torso >= core_min, no limb at 0          -> rate_damaged per in-game hour
+	  badly    anything worse                           -> no recovery
+
+	Optional ceiling: natural recovery never raises HP above limb condition %
+	(total limb points / max limb points). Meds are needed to go higher.
+
+	Blocked while bleeding, recently hit, starving, dehydrated or irradiated.
+	Works in in-game time, so sleep and time skips count. During sleep the
+	limb healing of zzz_player_injuries (1 point per hour, head -> torso ->
+	right arm -> left arm -> right leg -> left leg) is replayed hour by hour so
+	limbs heal first and overall HP follows.
+
+	Reads zzz_player_injuries.health / maxhp; changes no GAMMA files.
+]]
+
+local LIMBS = { "head", "torso", "rightarm", "leftarm", "rightleg", "leftleg" }
+local UPDATE_MS = 1000          -- real ms between awake updates
+local MAX_TICK_SEC = 600        -- larger in-game jumps are time skips, not awake time
+
+local last_update = 0
+local last_game_time = nil
+local last_hit = -1e9
+local awake_limbs = nil         -- limb snapshot taken while awake (used for sleep)
+
+local function cfg(key)
+	if natural_recovery_mcm and natural_recovery_mcm.get_config then
+		local ok, v = pcall(natural_recovery_mcm.get_config, key)
+		if ok and v ~= nil then return v end
+	end
+	return nil
+end
+
+local function dbg(fmt, ...)
+	if cfg("debug_log") then
+		printf("[natural_recovery] " .. fmt, ...)
+	end
+end
+
+-- Limb data -------------------------------------------------------------------
+
+local function read_limbs()
+	local bhs = zzz_player_injuries
+	if not (bhs and type(bhs.health) == "table" and type(bhs.maxhp) == "table") then
+		return nil
+	end
+	local cur, max = {}, {}
+	for _, k in ipairs(LIMBS) do
+		local c, m = tonumber(bhs.health[k]), tonumber(bhs.maxhp[k])
+		if not (c and m) then return nil end
+		cur[k], max[k] = c, m
+	end
+	return cur, max
+end
+
+-- Returns rate per in-game hour and the HP ceiling (0-1) for a limb state.
+local function evaluate(cur, max)
+	local total, total_max, broken, full = 0, 0, false, true
+	for _, k in ipairs(LIMBS) do
+		total = total + cur[k]
+		total_max = total_max + max[k]
+		if cur[k] <= 0 then broken = true end
+		if cur[k] < max[k] then full = false end
+	end
+	local ratio = total_max > 0 and (total / total_max) or 0
+	local ceiling = cfg("use_ceiling") and ratio or 1
+
+	if full then
+		return cfg("rate_healthy") or 0.10, ceiling, "healthy"
+	end
+	local core_min = cfg("core_min") or 6
+	if (not broken)
+		and ratio * 100 >= (cfg("damaged_threshold") or 60)
+		and cur.head >= core_min and cur.torso >= core_min then
+		return cfg("rate_damaged") or 0.03, ceiling, "damaged"
+	end
+	return 0, ceiling, "badly hurt"
+end
+
+-- Blocking conditions -----------------------------------------------------------
+
+local function blocked()
+	local actor = db.actor
+	if cfg("block_bleeding") and (actor.bleeding or 0) > 0 then return "bleeding" end
+	if time_global() - last_hit < (cfg("combat_delay") or 60) * 1000 then return "recently hit" end
+
+	local sat_min = cfg("satiety_min") or 0
+	if sat_min > 0 and (actor.satiety or 1) < sat_min then return "hungry" end
+
+	local thirst_max = cfg("thirst_max") or 5
+	if thirst_max <= 4 and actor_status_thirst and actor_status_thirst.get_water_deprivation then
+		local ok, lvl = pcall(actor_status_thirst.get_water_deprivation, true)
+		if ok and lvl and lvl >= thirst_max then return "thirsty" end
+	end
+
+	local rad_max = cfg("radiation_max") or 1
+	if rad_max < 1 and (actor.radiation or 0) > rad_max then return "irradiated" end
+	return nil
+end
+
+local function heal_towards(amount, ceiling)
+	local hp = db.actor.health
+	if amount <= 0 or hp >= ceiling then return 0 end
+	local add = math.min(amount, ceiling - hp)
+	db.actor:change_health(add)
+	return add
+end
+
+local function is_sleeping()
+	return has_alife_info("actor_is_sleeping") or has_alife_info("sleep_active")
+end
+
+-- Awake recovery ------------------------------------------------------------------
+
+local function actor_on_update()
+	local now = time_global()
+	if now - last_update < UPDATE_MS then return end
+	last_update = now
+
+	local gt = game.get_game_time()
+	if not last_game_time then last_game_time = gt return end
+	local elapsed = gt:diffSec(last_game_time)
+	last_game_time = gt
+
+	if not cfg("enabled") or is_sleeping() then return end
+	if elapsed <= 0 or elapsed > MAX_TICK_SEC then return end
+	if not (db.actor and db.actor:alive()) then return end
+
+	local cur, max = read_limbs()
+	if not cur then return end
+	awake_limbs = cur
+
+	local reason = blocked()
+	if reason then return end
+
+	local rate, ceiling = evaluate(cur, max)
+	heal_towards(rate * elapsed / 3600, ceiling)
+end
+
+-- Sleep recovery ------------------------------------------------------------------
+
+local function apply_sleep(hours)
+	if not (db.actor and db.actor:alive()) then return true end
+	local _, max = read_limbs()
+	local start = awake_limbs
+	if not (max and start) then return true end
+
+	local cur = {}
+	for k, v in pairs(start) do cur[k] = v end
+
+	local total_added = 0
+	for _ = 1, hours do
+		-- replay zzz_player_injuries: 1 limb point per hour, fixed order
+		for _, k in ipairs(LIMBS) do
+			if cur[k] < max[k] then
+				cur[k] = math.min(max[k], cur[k] + 1)
+				break
+			end
+		end
+		if not blocked() then
+			local rate, ceiling = evaluate(cur, max)
+			total_added = total_added + heal_towards(rate, ceiling)
+		end
+	end
+	dbg("slept %s h, overall HP +%.3f", tostring(hours), total_added)
+	return true
+end
+
+local function actor_on_sleep(hours)
+	if not (cfg("enabled") and cfg("heal_while_sleeping")) then return end
+	hours = math.floor(tonumber(hours) or 0)
+	if hours <= 0 then return end
+	-- run after the other sleep handlers (hunger, thirst, limb healing)
+	CreateTimeEvent("natural_recovery", "sleep", 0.2, apply_sleep, hours)
+end
+
+-- Hits / lifecycle --------------------------------------------------------------------
+
+local function actor_on_before_hit(s_hit)
+	if s_hit and (s_hit.power or 0) > 0 then
+		last_hit = time_global()
+	end
+end
+
+local function reset_clock()
+	last_game_time = nil
+	last_update = 0
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_update", actor_on_update)
+	RegisterScriptCallback("actor_on_sleep", actor_on_sleep)
+	RegisterScriptCallback("actor_on_before_hit", actor_on_before_hit)
+	RegisterScriptCallback("actor_on_first_update", reset_clock)
+end
