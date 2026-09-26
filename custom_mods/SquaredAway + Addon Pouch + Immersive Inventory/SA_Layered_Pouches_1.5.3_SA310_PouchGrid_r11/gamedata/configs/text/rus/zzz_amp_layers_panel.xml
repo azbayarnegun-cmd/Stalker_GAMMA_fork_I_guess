@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+    <string id="st_amp_panel_title"><text>КРЕПЛЕНИЯ ПОДСУМКОВ</text></string>
+    <string id="st_amp_panel_hint"><text>Нажмите на свободный слот, чтобы выбрать носитель.</text></string>
+    <string id="st_amp_panel_choose"><text>Теперь ПКМ по подсумку: "Установить в экипировку".</text></string>
+    <string id="st_amp_panel_rig"><text>РАЗГРУЗКА</text></string>
+    <string id="st_amp_panel_outfit"><text>КОСТЮМ</text></string>
+    <string id="st_amp_panel_belt"><text>ПОДСУМКИ ПОЯСА</text></string>
+    <string id="st_amp_panel_backpack"><text>РЮКЗАК</text></string>
+    <string id="st_amp_panel_absent"><text>НЕ ЭКИПИРОВАН</text></string>
+    <string id="st_amp_panel_belt_platform"><text>МОДУЛЬНЫЙ ПОЯС</text></string>
+    <string id="st_amp_side_title"><text>ПОДСУМКИ</text></string>
+</string_table>

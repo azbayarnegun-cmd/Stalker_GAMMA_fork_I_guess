@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+  <string id="st_sa_hunters_kit_name">
+    <text>Hunter's kit</text>
+  </string>
+  <string id="st_sa_hunters_kit_descr">
+    <text>A wide game bag with a wipe-clean liner, for what you carry back from a hunt.\n\nHolds only raw mutant meat, trophies, hides and organs. Cooked or Zone-produced food belongs in a Sustainment Pouch. Fits a backpack.</text>
+  </string>
+</string_table>

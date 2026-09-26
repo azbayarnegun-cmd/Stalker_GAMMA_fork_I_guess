@@ -1,0 +1,16 @@
+local DEFAULTS = {
+    layers_enable = true,
+    layers_debug = false,
+}
+
+function on_mcm_load()
+    return {
+        id = "AmpLayers",
+        gr = {
+            { id = "layers_general", sh = true, gr = {
+                { id = "layers_enable", type = "check", val = 1, def = DEFAULTS.layers_enable },
+                { id = "layers_debug", type = "check", val = 1, def = DEFAULTS.layers_debug },
+            } },
+        },
+    }
+end

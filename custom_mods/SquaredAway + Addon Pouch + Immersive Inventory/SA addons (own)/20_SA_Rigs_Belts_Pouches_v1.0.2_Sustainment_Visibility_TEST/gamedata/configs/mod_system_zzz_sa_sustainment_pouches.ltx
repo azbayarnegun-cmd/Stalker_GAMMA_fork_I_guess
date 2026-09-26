@@ -1,0 +1,41 @@
+; Three backpack-only food-and-drink organisers.
+; The existing amplayer_sustainment_pouch remains the Hunter's Kit.
+
+[amplayer_sustainment_pouch_t1]:amplayer_universal_pouch_s
+amp_box_takes = food
+amp_box_w = 2
+amp_box_h = 2
+amp_box_stack = 1
+amp_box_kg = 5
+amp_layer_pouch = provisions
+inv_name = st_sa_sustainment_t1_name
+inv_name_short = st_sa_sustainment_t1_name
+description = st_sa_sustainment_t1_descr
+cost = 3500
+$spawn = "equipment\layered\sustainment pouch small"
+
+[amplayer_sustainment_pouch_t2]:amplayer_sustainment_pouch_t1
+amp_box_takes = food
+amp_box_w = 2
+amp_box_h = 3
+amp_box_stack = 1
+amp_box_kg = 8
+amp_layer_pouch = provisions
+inv_name = st_sa_sustainment_t2_name
+inv_name_short = st_sa_sustainment_t2_name
+description = st_sa_sustainment_t2_descr
+cost = 6000
+$spawn = "equipment\layered\sustainment pouch"
+
+[amplayer_sustainment_pouch_t3]:amplayer_sustainment_pouch_t2
+amp_box_takes = food
+amp_box_w = 2
+amp_box_h = 4
+amp_box_stack = 1
+amp_box_kg = 10
+amp_layer_pouch = provisions
+inv_name = st_sa_sustainment_t3_name
+inv_name_short = st_sa_sustainment_t3_name
+description = st_sa_sustainment_t3_descr
+cost = 9000
+$spawn = "equipment\layered\sustainment pouch large"

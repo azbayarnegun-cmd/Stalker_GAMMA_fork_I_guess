@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+
+	<string id="ui_mcm_menu_AmpGrid">
+		<text>Zone Grid 0.11.0-prototype</text>
+	</string>
+
+	<string id="ui_mcm_title_AmpGrid">
+		<text>Zone Grid 0.11.0-prototype</text>
+	</string>
+
+	<string id="ui_mcm_menu_grid_general">
+		<text>Zone Grid - build 0.65.0-test</text>
+	</string>
+
+	<string id="ui_mcm_menu_AmpGrid_grid_general">
+		<text>General - build 0.11.0-prototype</text>
+	</string>
+
+	<string id="ui_mcm_title_grid_general">
+		<text>General - build 0.11.0-prototype</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_enable">
+		<text>Limit what you can carry by space</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_enable">
+		<text>Limit what you can carry by space</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_enable">
+		<text>Limit what you can carry by space</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_drop">
+		<text>Put what will not fit on the ground</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_drop">
+		<text>Put what will not fit on the ground</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_drop">
+		<text>Put what will not fit on the ground</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_border">
+		<text>Draw the edge of the grid</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_border">
+		<text>Draw the edge of the grid</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_border">
+		<text>Draw the edge of the grid</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_stack">
+		<text>Let some items share a square</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_stack">
+		<text>Let some items share a square</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_stack">
+		<text>Let some items share a square</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_split_key">
+		<text>Take one off a stack you are holding</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_split_key">
+		<text>Take one off a stack you are holding</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_split_key">
+		<text>Take one off a stack you are holding</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_stack_mult">
+		<text>Stack sizes, per cent of the file</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_stack_mult">
+		<text>Stack sizes, per cent of the file</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_stack_mult">
+		<text>Stack sizes, per cent of the file</text>
+	</string>
+
+
+
+
+	<string id="ui_mcm_AmpGrid_grid_pack">
+		<text>Cells your backpack gives you</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_pack">
+		<text>Cells your backpack gives you</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_pack">
+		<text>Cells your backpack gives you</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_bare">
+		<text>Cells in your own pouches (always yours)</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_bare">
+		<text>Cells in your own pouches (always yours)</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_bare">
+		<text>Cells in your own pouches (always yours)</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_w_bare">
+		<text>Pouches width (4 = no rifle fits)</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_w_bare">
+		<text>Pouches width (4 = no rifle fits)</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_w_bare">
+		<text>Pouches width (4 = no rifle fits)</text>
+	</string>
+
+
+
+
+	<string id="ui_mcm_AmpGrid_grid_w_pack">
+		<text>Backpack width</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_w_pack">
+		<text>Backpack width</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_w_pack">
+		<text>Backpack width</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_border">
+		<text>Draw the edge of each section</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_border">
+		<text>Draw the edge of each section</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_border">
+		<text>Draw the edge of each section</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_debug">
+		<text>Write what it decides to the log</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_debug">
+		<text>Write what it decides to the log</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_debug">
+		<text>Write what it decides to the log</text>
+	</string>
+
+	<string id="st_grid_no_room">
+		<text>No room - dropped at your feet</text>
+	</string>
+
+	<string id="st_grid_kept">
+		<text>No room for the magazine from your gun - kept, but not shown until you make space</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general">
+		<text>Zone Grid</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_enable">
+		<text>Limit what you can carry by space</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_drop">
+		<text>Put what will not fit on the ground</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_border">
+		<text>Draw the edge of the grid</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_stack">
+		<text>Let some items share a square</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_split_key">
+		<text>Take one off a stack you are holding</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_stack_mult">
+		<text>Stack sizes, per cent of the file</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_pack">
+		<text>Cells your backpack gives you</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_bare">
+		<text>Cells in your own pouches (always yours)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_w_bare">
+		<text>Pouches width (4 = no rifle fits)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_w_pack">
+		<text>Backpack width</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_debug">
+		<text>Write what it decides to the log</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_balance">
+		<text>Debug Balancing: name what is under the cursor</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_balance">
+		<text>Debug Balancing: name what is under the cursor</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_balance">
+		<text>Debug Balancing: name what is under the cursor</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_balance">
+		<text>Debug Balancing: name what is under the cursor</text>
+	</string>
+
+
+
+	<string id="ui_mcm_menu_squared_away">
+		<text>Squared Away</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_stack_fresh">
+		<text>Keep food and drink of different freshness in separate squares</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_new_glow">
+		<text>Highlight newly picked-up items until you look at them</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_autorot">
+		<text>Turn things to make them fit</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_autorot_desc">
+		<text>An arriving item may lie on its side when that is the only way it fits - a 2x1 box of cartridges into a 1x2 gap. Last resort only: nothing that fits as it is is ever turned, and nothing gets into a section its upright width was refused from. Turn it back by hand and that is remembered instead.</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_mark_full">
+		<text>Mark what will not fit</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_mark_full_desc">
+		<text>In a body's or a stash's list, a red ground behind anything there is no room for in your bag right now - counting piles it could join, not only free squares. It answers the question you are asking while you look at a corpse: what of this can I take.</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_full">
+		<text>When there is no room</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_full_desc">
+		<text>Drop under player is what has always happened: it comes in and what does not fit ends up on the ground. Block refuses it instead - taking from a body or a stash, including Take All, simply does not happen and the item stays where it is. A thing you walk over cannot be refused: the engine takes it before any script is asked, so those still land at your feet.</text>
+	</string>
+
+	<string id="squared_away_grid_general_grid_full_lst_grid_full_drop">
+		<text>Drop under player</text>
+	</string>
+
+	<string id="squared_away_grid_general_grid_full_lst_grid_full_block">
+		<text>Block pickup/loot</text>
+	</string>
+
+	<string id="ui_mcm_lst_grid_full_drop">
+		<text>Drop under player</text>
+	</string>
+
+	<string id="ui_mcm_lst_grid_full_block">
+		<text>Block pickup/loot</text>
+	</string>
+
+	<string id="st_grid_no_room_left">
+		<text>No room - left where it was</text>
+	</string>
+
+</string_table>

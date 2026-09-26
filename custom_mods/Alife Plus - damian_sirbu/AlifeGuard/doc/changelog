@@ -1,0 +1,183 @@
+1.3.1
+  Summary: Inventory Guard, trader stock purge, sanitizer setting, offline culling fix
+
+  Offline Guard
+    - Fixed re-processing an over-crowded region it could not thin any further, doing background work each pass with nothing to remove.
+
+  Smart Sanitizer
+    - Changed the sanitizer to run on its own setting, so save-crash protection stays active even when the Online Guard is turned off.
+
+  Inventory Guard
+    - Added Inventory Guard: bounds NPC inventory hoarding so anti-loot addons are no longer needed. Moved from AlifeBalance, where it was called Inventory Balance, with identical behavior.
+      A lightweight scanner walks online stalkers one per frame, releasing the surplus above per-category limits and rescanning each NPC at most twice per game-day.
+      Companions, story characters, and named NPCs are never touched. Service NPCs matched by role (including runtime-spawned traders, mechanics, medics, and barmen) are excluded from the per-category trim.
+      Per-category limits live in configs/alifeguard/ag_inventory_policy.ltx, moved from AlifeBalance's ab_inventory_policy.ltx (DLTX-overridable).
+    - Added a trader stock condition purge: worn-out weapons, outfits, and helmets below a condition threshold are released from trader inventories,
+      so a long selling session no longer piles junk stock toward the engine's alife object cap.
+      Covers traders, mechanics, medics, and barmen (including runtime-spawned ones) on the same scanner cadence. Stock at or above the threshold stays for sale,
+      and the trader's equipped gear, quest items, consumables, ammo, and money are never touched. Toggle and threshold in MCM under Inventory Guard.
+
+1.3.0
+  Summary: Offline guard, companion protection, platform status, localization, fixes
+
+  - Added Offline Guard: caps A-Life density on other levels so a hub no longer spikes the count.
+    A lightweight scan constantly checks offline squads by position and thins any region over its trigger to its target. Named NPCs, commanders, and protected squads are never removed.
+  - Companions are now always protected from culling, online and offline, whatever the task toggle.
+  - Added a platform status line in MCM with a live xlibs and engine compatibility verdict.
+  - Fixed a load crash when xlibs is outdated, showing an update-xlibs message instead of an error.
+  - Added Russian localization for the Offline Guard tab, cleanup tips, and MCM reset confirmation.
+
+1.2.7
+  Summary: AOEngine compatibility, fewer engine warnings, MCM reset moved
+
+  - Added AOEngine v0.55+ support.
+  - Fixed a burst of "trying to use a destroyed object" warnings logged when a creature despawns during a cleanup cycle.
+  - Moved the Reset button to the bottom of the Development tab in MCM.
+
+1.2.6
+  Summary: MCM reset crash fix, reset warning
+
+  - Reset to defaults no longer crashes on click on certain executables
+  - Added warning above reset button to save or discard pending MCM changes first.
+
+1.2.5
+  Summary: Task giver protection, crash hardening, MCM tab restructure, Reset button, notification sound, button cleanup
+
+  Protection
+    - Task givers no longer released by cleanup (no more "Mission Failed" on PDA Taskboard tasks).
+      Covers PDA Taskboard task members via xlibs squad-members iteration.
+      Covers orphan NPCs that are active task givers via xcreature.is_task_giver.
+    - Crash hardening around stale squad references and recycled server-entity ids during release.
+
+  Notifications
+    - PDA cleanup messages now show 3 lore-flavoured Zone-as-actor lines.
+
+  MCM
+    - MCM now has three tabs: Online Guard (entity limits, protection), Smart Sanitizer, Development.
+      Reset to defaults button on Development tab restores all settings to factory state in one click.
+      Migration path for the restructure: old keys orphan in MCM storage but no longer apply.
+    - Added Notification sound toggle on Online Guard for a brief ambient cue when cleanup fires.
+    - Removed Show status, Delete common, Delete all squads buttons (cycles run automatically).
+    - Removed Sanitize now, Force cleanup buttons (periodic cycles handle these).
+
+  Compatibility
+    - xlibs 1.7.1 dependency (xsquad task-giver iteration, xsound one-shot play).
+
+1.2.0
+  Summary: Smart Sanitizer clamps corrupted respawn counters on smart terrains. Prevents save crashes, starvations and infinite spawn loops or spawn caused by spawner and despawner mods.
+  Core:
+    Added: Smart Sanitizer. Clamps negative or non-numeric values in smart.already_spawned[k] counters. Runs once on game load after STATE_Read but before the alife pump, and every 300 seconds during play. Pure Lua table walk over SIMBOARD.smarts. Sub-millisecond on 50-200 smarts.
+    Added: Post-load sanitize via actor_on_reinit. Cleans counters restored from save before try_respawn reads them. Runs before the 65534-objects-per-update boot burst would feed corrupted counters into the respawn loop.
+    Fixed: Save crash from negative already_spawned counter. The packet writer at smart_terrain.script:955 casts to unsigned 8-bit. Negative values produced CTD. Sanitizer clamps to 0 before next save.
+    Fixed: Infinite respawn loop from negative already_spawned counter. The respawn gate at smart_terrain.script:1696 reads max > num. Negative num made the comparison always true. Sanitizer clamps to 0.
+  MCM:
+    Added: Smart Sanitizer subsection on the Development tab. Toggle (default on), interval slider (60 to 1800 seconds, default 300), and immediate-sanitize diagnostic button.
+  Localization:
+    Added: 7 EN + 7 RU strings for the Smart Sanitizer subsection.
+
+1.1.1
+  Core:
+    Changed: population scan uses xcreature.online_iter() instead of game_objects_iter (no longer crashes without Demonized exes)
+  Compatibility:
+    Removed: modded exes requirement. Works with vanilla Anomaly 1.5.3, Demonized, Demonized MT, AOEngine. Tested with GAMMA, EFP, Zona.
+
+1.1.0
+  Summary: Squad-aware culling, round-robin fairness, hysteresis, 4-tier priority, structured tracing
+
+  Core:
+    Changed: culling redesigned around squads, not individual entities
+    Changed: entities grouped by squad, non-commanders thinned first, commanders last
+    Changed: removals distributed evenly across factions and mutant types via round-robin
+    Changed: 4-tier priority: unscripted members -> scripted members -> unscripted commanders -> scripted commanders
+    Added: hysteresis buffer separates trigger threshold from cull target (default: trigger 80, cull to 70)
+    Added: scripted squads (AlifePlus, warfare, Guards Spawner) deprioritized across both member and commander tiers
+
+  Protection:
+    Changed: protection unified at squad level via xsquad.is_protected (story, trader, task giver, companion, bounty/hostage)
+    Changed: duplicate per-NPC bounty/hostage scan removed, covered by squad-level is_task_target
+    Added: companion squads protected (previously only individual companion NPCs caught)
+    Added: positive-only TTL cache on squad protection (120s, no false negatives, cleared on config change)
+    Fixed: named NPCs as non-commander squad members now caught by per-member is_unscriptable fallback
+
+  Performance:
+    Changed: squad-level checks replace per-NPC scans, fewer bridge calls per entity
+    Changed: uncached per-entity task_giver O(t) scan eliminated, replaced by cached squad-level check
+
+  MCM:
+    Changed: two-tab layout (General + Development)
+    Changed: log level dropdown (ERROR/WARN/INFO/DEBUG) replaces debug_log toggle
+    Changed: diagnostics and population reset moved to Development tab
+    Added: hysteresis buffer slider (0-50, step 5, default 10)
+    Added: per-squad culling toggle (default on, disabling reverts to v1.0 flat behavior)
+    Added: round-robin fairness toggle (default on, disabling allows one faction to lose everything first)
+
+  Internal:
+    Added: xtrace IDs per cycle for structured log correlation
+    Added: per-phase timing in log output (collect, queue build, release spread)
+    Changed: log format standardized to [PHASE] [tid=N] key=value [Xms]
+
+1.0.10
+  Changed: xlibs 1.2.5 dependency.
+
+1.0.9
+  Gameplay:
+    Changed: default online guard threshold from 70 to 80
+  Diagnostics:
+    Added: per-operation timing traces (collect, sort, per-release) when debug_log enabled
+  Compatibility:
+    Added: task target squad protection (assault, bounty, hostage, delivery squads never released)
+    Fixed: task target squad check running on monsters (wasted luabind calls)
+    Fixed: delete_common_squads removing bounty/hostage quest targets
+  MCM:
+    Added: version displayed at startup (mod + xlibs)
+    Changed: MCM visual refresh
+    Fixed: Russian MCM encoding restored (windows-1251)
+  X-Ray & xlibs:
+    Added: xsquad.is_task_target for O(1) task squad detection (replaces per-entity bounty scan)
+    Added: log deadbanding reduces repeated lines in busy areas
+    Fixed: release_squads crash on stale SIMBOARD IDs after repopulate
+    Fixed: find_online_squads no longer re-evaluates rejected squads
+  Performance:
+    Changed: entity removal spread across frames via xslice (zero stutter, 0.05ms average per release)
+
+1.0.8
+  xlibs 1.2.3 dependency.
+
+1.0.7
+  Changed: xlibs dependency updated to 1.2.1
+
+1.0.6
+  Changed: default online guard threshold from 40 to 70
+  Changed: MCM config access performance optimization
+  Added: MCM reset button support
+  Added: MCM label cleanup
+  Fixed: smaller performance optimizations
+
+1.0.5
+  Fixed: dependency gate uses exact version match instead of string comparison
+
+1.0.4
+  Task giver protection fix and debug tracing.
+  Fixed: sim task givers unprotected (task_giver_id is squad ID, not NPC ID)
+  Added: debug log traces for all protection decisions and released entity sections
+
+1.0.3
+  Dependency gate and Russian translation.
+  Added: dependency gate - clear error message if xlibs is missing or outdated
+  Added: Russian translation
+
+1.0.2
+  Fixed: bounty and hostage task targets protected from release
+
+1.0.1
+  Fixed console log spam during entity iteration and release.
+  Fixed: alive() and release callstack spam on non-creature objects
+  Fixed: missing check_interval default
+
+1.0.0
+  First release. Online entity limiter with MCM configuration.
+  Added: online guard with distance-based removal
+  Added: entity protection (traders, companions, story, tasks)
+  Added: MCM buttons (status, cleanup, delete common, delete all)
+  Added: immersive PDA notifications
+  Added: debug logging

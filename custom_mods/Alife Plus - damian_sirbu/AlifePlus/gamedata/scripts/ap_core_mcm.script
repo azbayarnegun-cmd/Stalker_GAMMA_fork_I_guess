@@ -1,0 +1,1642 @@
+--- ap_core_mcm: MCM defaults, config reader, and menu builder
+local type, RegisterScriptCallback = type, RegisterScriptCallback
+
+defaults = {
+    -- Event Pipeline. alife_rate + alife_ratio feed the ap_core_callbacks squad sweep intake
+    -- (total ap_squad_on_change fires per minute, and their current-level vs background
+    -- mix); the radiant gates downstream are budget peek -> protection only.
+    alife_ratio = 8,
+    alife_rate = 5,
+    allow_external_ownership = true,
+    cause_max_reactions = 20,
+    cause_max_per_causer = 1,
+    cause_max_needs = 20,
+    cause_max_instincts = 20,
+    cause_max_opportunities = 20,
+    consequence_max_events = 2,
+    global_consequence_max_events = 5,
+
+    -- News (PDA gossip composer)
+    news_enabled = true,
+    chatter_enabled = true,
+    chatter_interval_sec = 15,
+    news_interval_min_sec = 60,
+    news_interval_max_sec = 200,
+    news_scope = "allies",
+    news_max_age_game_hours = 12,
+
+    -- Cause: Alpha
+    cause_alpha_enabled = true,
+    cause_alpha_kills_per_level = 3,
+
+    -- Cause: Alphakill
+    cause_alphakill_enabled = true,
+
+    -- Cause: Massacre
+    cause_massacre_enabled = true,
+    cause_massacre_threshold = 3,
+    cause_massacre_decay_time = 300,
+
+    -- Cause: Stash
+    cause_stash_loot_enabled = true,
+    cause_stash_ambush_enabled = true,
+    cause_stash_fill_enabled = true,
+    cause_stash_loot_threshold = 6,
+    cause_stash_ambush_threshold = 12,
+    cause_stash_fill_threshold = 12,
+    cause_stash_ambush_min_items = 3,
+
+    -- Cause: Squadkill
+    cause_squadkill_enabled = true,
+
+    -- Cause: Basekill
+    cause_basekill_enabled = true,
+    cause_basekill_threshold = 2,
+    cause_basekill_decay_time = 300,
+
+    -- Cause: Harvest
+    cause_harvest_enabled = true,
+
+    -- Cause: Wounded
+    cause_wounded_enabled = true,
+
+    -- Cause: Needs (thresholds in game-hours; enable is per-cause below)
+    cause_hunger_threshold = 8,
+    cause_sleep_threshold = 16,
+    cause_rest_threshold = 4,
+    cause_heal_threshold = 12,
+    cause_shelter_threshold = 48,
+    cause_money_threshold = 24,
+    cause_supply_threshold = 12,
+    cause_job_threshold = 18,
+    cause_social_threshold = 36,
+    cause_hunger_campfire_enabled = true,
+    cause_sleep_campfire_enabled = true,
+    cause_rest_campfire_enabled = true,
+    cause_heal_shelter_enabled = true,
+    cause_shelter_indoor_enabled = true,
+    cause_shelter_outdoor_enabled = true,
+    cause_supply_trader_enabled = true,
+    cause_money_harvest_enabled = true,
+    cause_money_hunt_enabled = true,
+    cause_job_outpost_enabled = true,
+    cause_job_explore_enabled = true,
+    cause_job_research_enabled = true,
+    cause_social_campfire_enabled = true,
+    cause_social_base_enabled = true,
+    cause_social_offmap_enabled = true,
+    cause_supply_trader_offmap_enabled = true,
+    cause_barter_enabled = true,
+    cause_barter_offmap_enabled = true,
+    cause_job_explore_offmap_enabled = true,
+
+    -- World: offmap balance cap (dispatches per source map per OFFMAP_WINDOW_SEC)
+    cause_max_offmap = 2,
+
+    -- World: offmap adjacency reach (base hops + bonuses per story / rank milestone)
+    offmap_base_hops = 0,
+    offmap_extra_map_x16 = 1,
+    offmap_extra_map_radar = 1,
+    offmap_extra_map_rank = 1,
+
+    -- World: offmap lifecycle timings (in-zone hours)
+    offmap_despawn_hours = 168,
+
+    -- Cause: Instincts (5 drives, slumber multi-answer)
+    cause_scatter_enabled = true,
+    cause_feed_enabled = true,
+    cause_roam_enabled = true,
+    cause_pack_enabled = true,
+    cause_scatter_threshold = 12,
+    cause_feed_threshold = 12,
+    cause_slumber_threshold = 12,
+    cause_roam_threshold = 12,
+    cause_pack_threshold = 24,
+    cause_slumber_field_enabled = true,
+    cause_slumber_lair_enabled = true,
+    cause_slumber_surge_enabled = true,
+
+    -- Consequence: instincts (7 entries, action-only)
+    consequence_scatter_enabled = true,
+    consequence_scatter_rush = true,
+    consequence_feed_enabled = true,
+    consequence_feed_rush = false,
+    consequence_slumber_field_enabled = true,
+    consequence_slumber_field_rush = false,
+    consequence_slumber_lair_enabled = true,
+    consequence_slumber_lair_rush = false,
+    consequence_slumber_surge_enabled = true,
+    consequence_slumber_surge_rush = false,
+    consequence_roam_enabled = true,
+    consequence_roam_rush = false,
+    consequence_pack_enabled = true,
+    consequence_pack_rush = false,
+
+    -- Cause: Area
+    cause_area_conquer_enabled = true,
+    cause_area_conquer_threshold = 24,
+    cause_area_conquer_max_faction_smarts_per_level = 3,
+    cause_area_swarm_enabled = true,
+    cause_area_swarm_threshold = 24,
+    cause_area_swarm_max_faction_smarts_per_level = 5,
+    cause_area_infest_enabled = true,
+    cause_area_infest_threshold = 24,
+
+    -- Consequence: Area Conquer
+    consequence_area_conquer_enabled = true,
+    consequence_area_conquer_rush = false,
+
+    -- Consequence: Area Swarm
+    consequence_area_swarm_enabled = true,
+    consequence_area_swarm_rush = false,
+
+    -- Consequence: Area Infest
+    consequence_area_infest_enabled = true,
+    consequence_area_infest_rush = false,
+
+    -- Consequence: Alpha Promote
+    consequence_alpha_promote_enabled = true,
+    consequence_alpha_promote_max_alphas = 40,
+
+    -- Consequence: Alphakill Targeted
+    consequence_alphakill_targeted_enabled = true,
+    consequence_alphakill_targeted_rush = true,
+    consequence_alphakill_targeted_max_squads = 3,
+
+    -- Consequence: Massacre Scavenge
+    consequence_massacre_scavenge_enabled = true,
+    consequence_massacre_scavenge_rush = true,
+    consequence_massacre_scavenge_max_squads = 2,
+
+    -- Consequence: Massacre Investigate
+    consequence_massacre_investigate_enabled = true,
+    consequence_massacre_investigate_rush = true,
+    consequence_massacre_investigate_max_squads = 2,
+
+    -- Consequence: Massacre Loot
+    consequence_massacre_loot_enabled = true,
+    consequence_massacre_loot_rush = true,
+    consequence_massacre_loot_max_squads = 2,
+
+    -- Consequence: Stash Ambush
+    consequence_stash_ambush_enabled = true,
+    consequence_stash_ambush_rush = false,
+
+    -- Consequence: Stash Loot
+    consequence_stash_loot_enabled = true,
+    consequence_stash_loot_rush = false,
+    consequence_stash_loot_skip_crafting = true,
+
+    -- Consequence: Stash Fill
+    consequence_stash_fill_enabled = true,
+    consequence_stash_fill_rush = false,
+
+    -- Consequence: Squadkill Revenge
+    consequence_squadkill_revenge_enabled = true,
+    consequence_squadkill_revenge_rush = true,
+    consequence_squadkill_revenge_max_squads = 2,
+
+    -- Consequence: Basekill Support
+    consequence_basekill_support_enabled = true,
+    consequence_basekill_support_rush = true,
+    consequence_basekill_support_max_squads = 2,
+
+    -- Consequence: Basekill Flee
+    consequence_basekill_flee_enabled = true,
+    consequence_basekill_flee_rush = true,
+    consequence_basekill_flee_max_squads = 2,
+
+    -- Consequence: Wounded Hunt
+    consequence_wounded_hunt_enabled = true,
+    consequence_wounded_hunt_rush = true,
+    consequence_wounded_hunt_max_squads = 2,
+
+    -- Consequence: Wounded Faction Help
+    consequence_wounded_help_enabled = true,
+    consequence_wounded_help_rush = true,
+    consequence_wounded_help_max_squads = 2,
+
+    -- Consequence: Harvest Rob
+    consequence_harvest_rob_enabled = true,
+    consequence_harvest_rob_rush = true,
+    consequence_harvest_rob_max_squads = 2,
+
+    -- Consequence: Harvest Haunt
+    consequence_harvest_haunt_enabled = true,
+    consequence_harvest_haunt_rush = false,
+    consequence_harvest_haunt_max_squads = 2,
+
+    -- Consequence: Hunger Campfire
+    consequence_hunger_campfire_enabled = true,
+    consequence_hunger_campfire_rush = false,
+
+    -- Consequence: Sleep Campfire
+    consequence_sleep_campfire_enabled = true,
+    consequence_sleep_campfire_rush = false,
+
+    -- Consequence: Rest Campfire
+    consequence_rest_campfire_enabled = true,
+    consequence_rest_campfire_rush = false,
+
+    -- Consequence: Heal Shelter
+    consequence_heal_shelter_enabled = true,
+    consequence_heal_shelter_rush = false,
+
+    -- Consequence: Shelter Indoor
+    consequence_shelter_indoor_enabled = true,
+    consequence_shelter_indoor_rush = false,
+
+    -- Consequence: Shelter Outdoor
+    consequence_shelter_outdoor_enabled = true,
+    consequence_shelter_outdoor_rush = false,
+
+    -- Consequence: Money Harvest
+    consequence_money_harvest_enabled = true,
+    consequence_money_harvest_rush = false,
+
+    -- Consequence: Money Hunt
+    consequence_money_hunt_enabled = true,
+    consequence_money_hunt_rush = false,
+
+    -- Consequence: Supply Trader
+    consequence_supply_trader_enabled = true,
+    consequence_supply_trader_rush = false,
+    consequence_supply_trader_arrive_action_enabled = true,
+
+    -- Consequence: Job Outpost
+    consequence_job_outpost_enabled = true,
+    consequence_job_outpost_rush = false,
+
+    -- Consequence: Job Explore
+    consequence_job_explore_enabled = true,
+    consequence_job_explore_rush = false,
+
+    -- Consequence: Job Research
+    consequence_job_research_enabled = true,
+    consequence_job_research_rush = false,
+
+    -- Consequence: Social Campfire
+    consequence_social_campfire_enabled = true,
+    consequence_social_campfire_rush = false,
+
+    -- Consequence: Social Base
+    consequence_social_base_enabled = true,
+    consequence_social_base_rush = false,
+
+    -- Consequence: Social Offmap (cross-map sibling of social_base)
+    consequence_social_offmap_enabled = true,
+    consequence_social_offmap_rush = false,
+
+    -- Consequence: Supply Trader Offmap (cross-map sibling of supply_trader)
+    consequence_supply_trader_offmap_enabled = true,
+    consequence_supply_trader_offmap_rush = false,
+    consequence_supply_trader_offmap_arrive_action_enabled = true,
+
+    -- Consequence: Barter (peer item swap, no money)
+    consequence_barter_enabled = true,
+    consequence_barter_rush = false,
+    consequence_barter_arrive_action_enabled = true,
+
+    -- Consequence: Barter Offmap (cross-map sibling of barter)
+    consequence_barter_offmap_enabled = true,
+    consequence_barter_offmap_rush = false,
+    consequence_barter_offmap_arrive_action_enabled = true,
+
+    -- Consequence: Job Explore Offmap (cross-map sibling of job_explore)
+    consequence_job_explore_offmap_enabled = true,
+    consequence_job_explore_offmap_rush = false,
+
+    -- Area conquest (exclusive spawn / sole ownership, human factions). Outpost plan sliders:
+    -- services/guards rolled once per conquest; respawn_minutes paces refills (game-minutes).
+    mutator_area_conquest_mutate_smart = true,
+    mutator_area_conquest_spawn_num = 2,
+    mutator_area_conquest_decay_hours = 120,
+    mutator_area_conquest_grow_services = true,
+    mutator_area_conquest_services_per_smart = 1,
+    mutator_area_conquest_guards_per_smart = 1,
+    mutator_area_conquest_services_max_per_level = 3,
+    mutator_area_conquest_respawn_minutes = 120,
+    mutator_area_conquest_trader_supplies_penalty = 1,
+    mutator_area_conquest_trader_supplies_tier = 4,
+
+    -- Area swarm (exclusive spawn / sole ownership, mutant species)
+    mutator_area_swarm_mutate_smart = true,
+    mutator_area_swarm_spawn_num = 2,
+    mutator_area_swarm_decay_hours = 48,
+    mutator_area_swarm_respawn_minutes = 120,
+
+    -- Area infest (exclusive spawn replacement; elevated numbers are its identity)
+    mutator_area_infest_mutate_smart = true,
+    mutator_area_infest_max_per_level = 3,
+    mutator_area_infest_spawn_num = 4,
+    mutator_area_infest_decay_hours = 48,
+    mutator_area_infest_respawn_minutes = 120,
+
+    -- Creature mutator: Alpha (ap_ext_object_mutator; combat identity of the earned alpha status).
+    -- max_pct = TOTAL percent at alpha level 10; per-level effect scales linearly.
+    mutator_alpha_hit_power_dealt_enabled = true,
+    mutator_alpha_hit_power_dealt_max_pct = 15,
+    mutator_alpha_hit_power_taken_enabled = true,
+    mutator_alpha_hit_power_taken_max_pct = 15,
+    mutator_alpha_vs_player = true,
+    mutator_alpha_panic_immunity_enabled = true,
+    mutator_alpha_loot_enabled = true,
+    mutator_alpha_mark_enabled = true,
+
+    -- Economy: loot ownership + trade resolution
+    loot_reserve_own_enabled = true,
+    loot_reserve_own_radius = 150,
+    loot_reserve_own_ttl = 1,
+    loot_include_companions = true,
+    loot_block_npc_enabled = true,
+    loot_block_npc_radius = 150,
+    loot_block_npc_ttl = 1,
+    loot_block_npc_vs_npc_enabled = true,
+    loot_block_npc_vs_npc_radius = 150,
+    loot_block_npc_vs_npc_ttl = 1,
+    loot_select_enabled = true,
+    trade_profit_max = 5000,
+    barter_max_items = 5,
+
+    -- Economy: faction market (ap_ext_market)
+    market_enabled = true,
+    market_items_per_trader = 4,
+    market_window_hours = 12,
+    market_premium = 5.0,
+    market_item_condition = 0.9,
+    market_trader_sell_percent = 30,
+
+    -- Development
+    log_level = "WARN",
+    log_flush = false,
+    map_markers = false,
+    statistics_position = "off",
+    world_trace_enabled = false,
+
+}
+
+-- Stateless profile: disables the mechanics that mutate trader stocks, area spawn tables,
+-- and stash contents. Squads still dispatch and travel; only the payload at the destination
+-- is skipped. supply_trader and supply_trader_offmap have arrive_action toggles (gated in
+-- ap_ext_consequences_needs.script via _make_on_arrive). stash_loot and stash_fill have no
+-- arrive_action split, so the whole consequence flag is off (dispatch and item move bundle
+-- at ap_ext_consequences_stash.script:99,213). hunger_campfire, rest_campfire, heal_shelter,
+-- job_outpost, social_campfire, social_base have no arrive_action toggle in the current
+-- ruleset, so this profile does not gate them.
+local stateless_overrides = {
+    -- Arrive-action toggles (trade + barter; gated in ap_ext_consequences_needs.script:_make_on_arrive)
+    consequence_supply_trader_arrive_action_enabled = false,
+    consequence_supply_trader_offmap_arrive_action_enabled = false,
+    consequence_barter_arrive_action_enabled = false,
+    consequence_barter_offmap_arrive_action_enabled = false,
+    -- Area mutator spawn toggles (the actual spawn-table mutation step). grow_services is
+    -- double-gated behind conquest's mutate_smart, but stays explicitly off so re-enabling
+    -- Inject spawns alone does not silently bring outpost services back.
+    mutator_area_conquest_mutate_smart = false,
+    mutator_area_conquest_grow_services = false,
+    mutator_area_swarm_mutate_smart = false,
+    mutator_area_infest_mutate_smart = false,
+    -- Stash item flows (whole consequence; no arrive-action split exists for stash)
+    consequence_stash_loot_enabled = false,
+    consequence_stash_fill_enabled = false,
+    -- Corpse loot ownership (three flows: reserve own kills, block looting NPC kills, block NPC-vs-NPC)
+    loot_reserve_own_enabled = false,
+    loot_block_npc_enabled = false,
+    loot_block_npc_vs_npc_enabled = false,
+    -- Corpse loot trim (NPC keeps only policy-allowed loot; deletes the rest)
+    loot_select_enabled = false,
+    -- Faction market (trader stock injection + sell-out removal; one flag gates both directions)
+    market_enabled = false,
+    -- Alpha creature modifications (damage dealt/taken scaling, panic immunity, corpse trophy
+    -- injection, body mark). Promotion tracking stays; only the payload on the mutant is skipped.
+    mutator_alpha_hit_power_dealt_enabled = false,
+    mutator_alpha_vs_player = false,
+    mutator_alpha_hit_power_taken_enabled = false,
+    mutator_alpha_panic_immunity_enabled = false,
+    mutator_alpha_loot_enabled = false,
+    mutator_alpha_mark_enabled = false,
+}
+
+local _key_to_tab = {
+    log_level = "development",
+    log_flush = "development",
+    map_markers = "development",
+    statistics_position = "development",
+    world_trace_enabled = "development",
+    alife_ratio = "framework",
+    alife_rate = "framework",
+    allow_external_ownership = "framework",
+    cause_max_reactions = "framework",
+    cause_max_per_causer = "framework",
+    cause_max_needs = "framework",
+    cause_max_instincts = "framework",
+    cause_max_opportunities = "framework",
+    consequence_max_events = "framework",
+    global_consequence_max_events = "framework",
+    news_enabled = "news",
+    chatter_enabled = "news",
+    chatter_interval_sec = "news",
+    news_interval_min_sec = "news",
+    news_interval_max_sec = "news",
+    news_scope = "news",
+    news_max_age_game_hours = "news",
+    loot_reserve_own_enabled = "economy/loot",
+    loot_reserve_own_radius = "economy/loot",
+    loot_reserve_own_ttl = "economy/loot",
+    loot_include_companions = "economy/loot",
+    loot_block_npc_enabled = "economy/loot",
+    loot_block_npc_radius = "economy/loot",
+    loot_block_npc_ttl = "economy/loot",
+    loot_block_npc_vs_npc_enabled = "economy/loot",
+    loot_block_npc_vs_npc_radius = "economy/loot",
+    loot_block_npc_vs_npc_ttl = "economy/loot",
+    loot_select_enabled = "economy/loot_policy",
+    trade_profit_max = "economy/trade",
+    barter_max_items = "economy/barter",
+    market_enabled = "economy/market",
+    market_items_per_trader = "economy/market",
+    market_window_hours = "economy/market",
+    market_premium = "economy/market",
+    market_item_condition = "economy/market",
+    market_trader_sell_percent = "economy/market",
+    cause_alpha_enabled = "causes/reactions",
+    cause_alpha_kills_per_level = "causes/reactions",
+    cause_alphakill_enabled = "causes/reactions",
+    cause_massacre_enabled = "causes/reactions",
+    cause_massacre_threshold = "causes/reactions",
+    cause_massacre_decay_time = "causes/reactions",
+    cause_stash_loot_enabled = "causes/opportunities",
+    cause_stash_ambush_enabled = "causes/opportunities",
+    cause_stash_fill_enabled = "causes/opportunities",
+    cause_stash_loot_threshold = "causes/opportunities",
+    cause_stash_ambush_threshold = "causes/opportunities",
+    cause_stash_fill_threshold = "causes/opportunities",
+    cause_stash_ambush_min_items = "causes/opportunities",
+    cause_squadkill_enabled = "causes/reactions",
+    cause_basekill_enabled = "causes/reactions",
+    cause_basekill_threshold = "causes/reactions",
+    cause_basekill_decay_time = "causes/reactions",
+    cause_harvest_enabled = "causes/reactions",
+    cause_wounded_enabled = "causes/reactions",
+    cause_hunger_threshold = "causes/needs",
+    cause_sleep_threshold = "causes/needs",
+    cause_rest_threshold = "causes/needs",
+    cause_heal_threshold = "causes/needs",
+    cause_shelter_threshold = "causes/needs",
+    cause_money_threshold = "causes/needs",
+    cause_supply_threshold = "causes/needs",
+    cause_job_threshold = "causes/needs",
+    cause_social_threshold = "causes/needs",
+    cause_hunger_campfire_enabled = "causes/needs",
+    cause_sleep_campfire_enabled = "causes/needs",
+    cause_rest_campfire_enabled = "causes/needs",
+    cause_heal_shelter_enabled = "causes/needs",
+    cause_shelter_indoor_enabled = "causes/needs",
+    cause_shelter_outdoor_enabled = "causes/needs",
+    cause_supply_trader_enabled = "causes/needs",
+    cause_money_harvest_enabled = "causes/needs",
+    cause_money_hunt_enabled = "causes/needs",
+    cause_job_outpost_enabled = "causes/needs",
+    cause_job_explore_enabled = "causes/needs",
+    cause_job_research_enabled = "causes/needs",
+    cause_social_campfire_enabled = "causes/needs",
+    cause_social_base_enabled = "causes/needs",
+    cause_social_offmap_enabled = "causes/needs",
+    cause_supply_trader_offmap_enabled = "causes/needs",
+    cause_barter_enabled = "causes/needs",
+    cause_barter_offmap_enabled = "causes/needs",
+    cause_job_explore_offmap_enabled = "causes/needs",
+    cause_max_offmap = "world/offmap",
+    offmap_base_hops = "world/offmap",
+    offmap_extra_map_x16 = "world/offmap",
+    offmap_extra_map_radar = "world/offmap",
+    offmap_extra_map_rank = "world/offmap",
+    offmap_despawn_hours = "world/offmap",
+    cause_scatter_enabled = "causes/instincts",
+    cause_feed_enabled = "causes/instincts",
+    cause_roam_enabled = "causes/instincts",
+    cause_pack_enabled = "causes/instincts",
+    cause_scatter_threshold = "causes/instincts",
+    cause_feed_threshold = "causes/instincts",
+    cause_slumber_threshold = "causes/instincts",
+    cause_roam_threshold = "causes/instincts",
+    cause_pack_threshold = "causes/instincts",
+    cause_slumber_field_enabled = "causes/instincts",
+    cause_slumber_lair_enabled = "causes/instincts",
+    cause_slumber_surge_enabled = "causes/instincts",
+    consequence_scatter_enabled = "consequences/scatter",
+    consequence_scatter_rush = "consequences/scatter",
+    consequence_feed_enabled = "consequences/feed",
+    consequence_feed_rush = "consequences/feed",
+    consequence_slumber_field_enabled = "consequences/slumber_field",
+    consequence_slumber_field_rush = "consequences/slumber_field",
+    consequence_slumber_lair_enabled = "consequences/slumber_lair",
+    consequence_slumber_lair_rush = "consequences/slumber_lair",
+    consequence_slumber_surge_enabled = "consequences/slumber_surge",
+    consequence_slumber_surge_rush = "consequences/slumber_surge",
+    consequence_roam_enabled = "consequences/roam",
+    consequence_roam_rush = "consequences/roam",
+    consequence_pack_enabled = "consequences/pack",
+    consequence_pack_rush = "consequences/pack",
+    cause_area_conquer_enabled = "causes/opportunities",
+    cause_area_conquer_threshold = "causes/opportunities",
+    cause_area_conquer_max_faction_smarts_per_level = "causes/opportunities",
+    cause_area_swarm_enabled = "causes/opportunities",
+    cause_area_swarm_threshold = "causes/opportunities",
+    cause_area_swarm_max_faction_smarts_per_level = "causes/opportunities",
+    cause_area_infest_enabled = "causes/opportunities",
+    cause_area_infest_threshold = "causes/opportunities",
+    consequence_area_conquer_enabled = "consequences/area_conquer",
+    consequence_area_conquer_rush = "consequences/area_conquer",
+    consequence_area_swarm_enabled = "consequences/area_swarm",
+    consequence_area_swarm_rush = "consequences/area_swarm",
+    consequence_area_infest_enabled = "consequences/area_infest",
+    consequence_area_infest_rush = "consequences/area_infest",
+    mutator_area_infest_mutate_smart = "mutators/infest",
+    mutator_area_infest_max_per_level = "mutators/infest",
+    mutator_area_infest_spawn_num = "mutators/infest",
+    mutator_area_infest_decay_hours = "mutators/infest",
+    mutator_area_infest_respawn_minutes = "mutators/infest",
+    mutator_alpha_hit_power_dealt_enabled = "creatures/alpha",
+    mutator_alpha_hit_power_dealt_max_pct = "creatures/alpha",
+    mutator_alpha_hit_power_taken_enabled = "creatures/alpha",
+    mutator_alpha_hit_power_taken_max_pct = "creatures/alpha",
+    mutator_alpha_vs_player = "creatures/alpha",
+    mutator_alpha_panic_immunity_enabled = "creatures/alpha",
+    mutator_alpha_loot_enabled = "creatures/alpha",
+    mutator_alpha_mark_enabled = "creatures/alpha",
+    consequence_alpha_promote_enabled = "consequences/alpha_promote",
+    consequence_alpha_promote_max_alphas = "consequences/alpha_promote",
+    consequence_alphakill_targeted_enabled = "consequences/alphakill_targeted",
+    consequence_alphakill_targeted_rush = "consequences/alphakill_targeted",
+    consequence_alphakill_targeted_max_squads = "consequences/alphakill_targeted",
+    consequence_massacre_scavenge_enabled = "consequences/massacre_scavenge",
+    consequence_massacre_scavenge_rush = "consequences/massacre_scavenge",
+    consequence_massacre_scavenge_max_squads = "consequences/massacre_scavenge",
+    consequence_massacre_investigate_enabled = "consequences/massacre_investigate",
+    consequence_massacre_investigate_rush = "consequences/massacre_investigate",
+    consequence_massacre_investigate_max_squads = "consequences/massacre_investigate",
+    consequence_massacre_loot_enabled = "consequences/massacre_loot",
+    consequence_massacre_loot_rush = "consequences/massacre_loot",
+    consequence_massacre_loot_max_squads = "consequences/massacre_loot",
+    consequence_stash_ambush_enabled = "consequences/stash_ambush",
+    consequence_stash_ambush_rush = "consequences/stash_ambush",
+    consequence_stash_loot_enabled = "consequences/stash_loot",
+    consequence_stash_loot_rush = "consequences/stash_loot",
+    consequence_stash_loot_skip_crafting = "consequences/stash_loot",
+    consequence_stash_fill_enabled = "consequences/stash_fill",
+    consequence_stash_fill_rush = "consequences/stash_fill",
+    consequence_squadkill_revenge_enabled = "consequences/squadkill_revenge",
+    consequence_squadkill_revenge_rush = "consequences/squadkill_revenge",
+    consequence_squadkill_revenge_max_squads = "consequences/squadkill_revenge",
+    consequence_basekill_support_enabled = "consequences/basekill_support",
+    consequence_basekill_support_rush = "consequences/basekill_support",
+    consequence_basekill_support_max_squads = "consequences/basekill_support",
+    consequence_basekill_flee_enabled = "consequences/basekill_flee",
+    consequence_basekill_flee_rush = "consequences/basekill_flee",
+    consequence_basekill_flee_max_squads = "consequences/basekill_flee",
+    consequence_wounded_hunt_enabled = "consequences/wounded_hunt",
+    consequence_wounded_hunt_rush = "consequences/wounded_hunt",
+    consequence_wounded_hunt_max_squads = "consequences/wounded_hunt",
+    consequence_wounded_help_enabled = "consequences/wounded_help",
+    consequence_wounded_help_rush = "consequences/wounded_help",
+    consequence_wounded_help_max_squads = "consequences/wounded_help",
+    mutator_area_conquest_mutate_smart = "mutators/conquest",
+    mutator_area_conquest_spawn_num = "mutators/conquest",
+    mutator_area_conquest_decay_hours = "mutators/conquest",
+    mutator_area_conquest_grow_services = "mutators/conquest",
+    mutator_area_conquest_services_per_smart = "mutators/conquest",
+    mutator_area_conquest_guards_per_smart = "mutators/conquest",
+    mutator_area_conquest_services_max_per_level = "mutators/conquest",
+    mutator_area_conquest_respawn_minutes = "mutators/conquest",
+    mutator_area_conquest_trader_supplies_penalty = "mutators/conquest",
+    mutator_area_conquest_trader_supplies_tier = "mutators/conquest",
+    mutator_area_swarm_mutate_smart = "mutators/swarm",
+    mutator_area_swarm_spawn_num = "mutators/swarm",
+    mutator_area_swarm_decay_hours = "mutators/swarm",
+    mutator_area_swarm_respawn_minutes = "mutators/swarm",
+    consequence_harvest_rob_enabled = "consequences/harvest_rob",
+    consequence_harvest_rob_rush = "consequences/harvest_rob",
+    consequence_harvest_rob_max_squads = "consequences/harvest_rob",
+    consequence_harvest_haunt_enabled = "consequences/harvest_haunt",
+    consequence_harvest_haunt_rush = "consequences/harvest_haunt",
+    consequence_harvest_haunt_max_squads = "consequences/harvest_haunt",
+    consequence_hunger_campfire_enabled = "consequences/hunger_campfire",
+    consequence_hunger_campfire_rush = "consequences/hunger_campfire",
+    consequence_sleep_campfire_enabled = "consequences/sleep_campfire",
+    consequence_sleep_campfire_rush = "consequences/sleep_campfire",
+    consequence_rest_campfire_enabled = "consequences/rest_campfire",
+    consequence_rest_campfire_rush = "consequences/rest_campfire",
+    consequence_heal_shelter_enabled = "consequences/heal_shelter",
+    consequence_heal_shelter_rush = "consequences/heal_shelter",
+    consequence_shelter_indoor_enabled = "consequences/shelter_indoor",
+    consequence_shelter_indoor_rush = "consequences/shelter_indoor",
+    consequence_shelter_outdoor_enabled = "consequences/shelter_outdoor",
+    consequence_shelter_outdoor_rush = "consequences/shelter_outdoor",
+    consequence_money_harvest_enabled = "consequences/money_harvest",
+    consequence_money_harvest_rush = "consequences/money_harvest",
+    consequence_money_hunt_enabled = "consequences/money_hunt",
+    consequence_money_hunt_rush = "consequences/money_hunt",
+    consequence_supply_trader_enabled = "consequences/supply_trader",
+    consequence_supply_trader_rush = "consequences/supply_trader",
+    consequence_supply_trader_arrive_action_enabled = "consequences/supply_trader",
+    consequence_job_outpost_enabled = "consequences/job_outpost",
+    consequence_job_outpost_rush = "consequences/job_outpost",
+    consequence_job_explore_enabled = "consequences/job_explore",
+    consequence_job_explore_rush = "consequences/job_explore",
+    consequence_job_research_enabled = "consequences/job_research",
+    consequence_job_research_rush = "consequences/job_research",
+    consequence_social_campfire_enabled = "consequences/social_campfire",
+    consequence_social_campfire_rush = "consequences/social_campfire",
+    consequence_social_base_enabled = "consequences/social_base",
+    consequence_social_base_rush = "consequences/social_base",
+    consequence_social_offmap_enabled = "consequences/social_offmap",
+    consequence_social_offmap_rush = "consequences/social_offmap",
+    consequence_supply_trader_offmap_enabled = "consequences/supply_trader_offmap",
+    consequence_supply_trader_offmap_rush = "consequences/supply_trader_offmap",
+    consequence_supply_trader_offmap_arrive_action_enabled = "consequences/supply_trader_offmap",
+    consequence_barter_enabled = "consequences/barter",
+    consequence_barter_rush = "consequences/barter",
+    consequence_barter_arrive_action_enabled = "consequences/barter",
+    consequence_barter_offmap_enabled = "consequences/barter_offmap",
+    consequence_barter_offmap_rush = "consequences/barter_offmap",
+    consequence_barter_offmap_arrive_action_enabled = "consequences/barter_offmap",
+    consequence_job_explore_offmap_enabled = "consequences/job_explore_offmap",
+    consequence_job_explore_offmap_rush = "consequences/job_explore_offmap",
+    btn_reset_all = "development",
+    btn_reset_stateless = "development",
+}
+
+local _path_builder = function(key)
+    local tab = _key_to_tab[key]
+    return tab and ("ap/" .. tab .. "/" .. key) or nil
+end
+cfg, get_config, load_config = xmcm.create_config("ap", defaults, _path_builder)
+
+-- functor_ui receives the UI_MCM instance as trailing arg (ui_mcm.script:1435).
+-- functor would receive nothing. MCM 1.7.2fix leaves the file-local GUI nil on fresh opens
+-- (only Open_to sets it, and Reset_last_opt skips Open_to when last_path is nil), so
+-- ui_mcm.get_gui() returns nil. functor_ui sidesteps that bug.
+-- MCM keeps file-local opt_temp (pending widget edits) at ui_mcm.script:175. Any widget
+-- the user touched before clicking the profile button is still there, and On_Accept at
+-- ui_mcm.script:2393 writes opt_temp AFTER our config writes, partially un-applying the
+-- profile. On_Discard flushes opt_temp and closes the dialog; same path the Cancel button
+-- takes. gui.owner:SetMsg is the same top-of-screen call MCM uses at ui_mcm.script:2528
+-- for its built-in "changes done" message; works in main menu and pause menu both.
+local function _apply_profile(gui, overrides, msg)
+    local config = axr_main.config
+    for k, v in pairs(defaults) do
+        local path = _path_builder(k)
+        if path then
+            local val = v
+            if overrides and overrides[k] ~= nil then val = overrides[k] end
+            config:w_value("mcm", path, val)
+        end
+    end
+    config:save()
+    load_config()
+    -- Without this, consumer-local caches stay stale until the next on_option_change.
+    SendScriptCallback(ap_core_const.CALLBACK.MCM_OPTION_RESTORE_DEFAULT)
+    if gui then
+        if gui.owner and gui.owner.SetMsg then
+            gui.owner:SetMsg(msg, 5)
+        end
+        -- Close via On_Cancel, not On_Discard. On_Discard calls Reset_opt -> scroll_opt:Clear
+        -- at ui_mcm.script:949, which destroys the btn_reset button while its click handler
+        -- is still on the stack; C++ dispatcher returns into the freed control and SEH-fires
+        -- on some exe builds (e.g. modified vanilla 1.5.3). On_Cancel only calls HideDialog +
+        -- Unregister_UI -- scroll_opt children stay alive long enough for the handler to
+        -- unwind. Trade-off: opt_temp is not cleared (vanilla Cancel-without-prompt parity).
+        -- If the user touched widgets before clicking reset, those edits remain pending and
+        -- will be re-applied on the next On_Accept.
+        if gui.On_Cancel then
+            gui:On_Cancel()
+        end
+    end
+    if db.actor then
+        news_manager.send_tip(db.actor, msg, nil, nil, 5000)
+    end
+end
+
+function btn_reset_all(gui)
+    _apply_profile(gui, nil, game.translate_string("st_ap_reset_all_done"))
+end
+
+function btn_reset_stateless(gui)
+    _apply_profile(gui, stateless_overrides, game.translate_string("st_ap_reset_stateless_done"))
+end
+
+local function _slide(txt)
+    return {
+        id = "title", type = "slide", link = "ap_mcm_banner",
+        text = txt, size = { 512, 50 }, spacing = 20
+    }
+end
+
+local function _desc(txt)
+    return { id = "desc", type = "desc", text = txt }
+end
+
+local function _tag(txt)
+    return { id = "tag", type = "desc", text = txt, clr = {180, 150, 140, 110} }
+end
+
+local function _check(key)
+    return { id = key, type = "check", val = 1, def = defaults[key] }
+end
+
+local function _track(key, mn, mx, st)
+    return { id = key, type = "track", val = 2, min = mn, max = mx, step = st, def = defaults[key] }
+end
+
+local function _list(key, content)
+    return { id = key, type = "list", val = 0, def = defaults[key], content = content }
+end
+
+function on_mcm_load()
+    return {
+        id = "ap",
+        gr = {
+            {
+                id = "framework",
+                sh = true,
+                gr = {
+                    _slide("ui_mcm_ap_framework_title"),
+                    _desc("ui_mcm_ap_framework_desc"),
+                    _track("alife_ratio", -10, 10, 1),
+                    _track("alife_rate", 1, 60, 1),
+                    _track("cause_max_reactions", 1, 100, 1),
+                    _track("cause_max_needs", 1, 100, 1),
+                    _track("cause_max_instincts", 1, 100, 1),
+                    _track("cause_max_opportunities", 1, 100, 1),
+                    _track("consequence_max_events", 1, 100, 1),
+                    _track("global_consequence_max_events", 1, 20, 1),
+                    _track("cause_max_per_causer", 1, 20, 1),
+                    _check("allow_external_ownership"),
+
+                    -- Platform footer (self-contained builder in _ap_deps, not xlibs)
+                    { id = "div_footer", type = "line" },
+                    { id = "platform", type = "desc", text = "ui_mcm_xmcm_footer",
+                        ui_hook_functor = { _ap_deps.platform_functor() }, clr = {255, 212, 201, 168} },                },
+            },
+            {
+                id = "world",
+                gr = {
+                    {
+                        id = "offmap",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_world_offmap_title"),
+                            _desc("ui_mcm_ap_world_offmap_desc"),
+                            _track("cause_max_offmap", 1, 10, 1),
+                            _track("offmap_base_hops", 0, 3, 1),
+                            _track("offmap_extra_map_x16", 0, 3, 1),
+                            _track("offmap_extra_map_radar", 0, 3, 1),
+                            _track("offmap_extra_map_rank", 0, 3, 1),
+                            _track("offmap_despawn_hours", 24, 720, 1),
+                        },
+                    },
+                },
+            },
+            {
+                id = "mutators",
+                gr = {
+                    {
+                        id = "conquest",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_mutators_conquest_title"),
+                            _desc("ui_mcm_ap_mutators_conquest_desc"),
+                            _check("mutator_area_conquest_mutate_smart"),
+                            _track("mutator_area_conquest_spawn_num", 1, 5, 1),
+                            _track("mutator_area_conquest_decay_hours", 0, 168, 4),
+                            _check("mutator_area_conquest_grow_services"),
+                            _track("mutator_area_conquest_services_per_smart", 1, 3, 1),
+                            _track("mutator_area_conquest_guards_per_smart", 0, 3, 1),
+                            _track("mutator_area_conquest_services_max_per_level", 1, 8, 1),
+                            _track("mutator_area_conquest_respawn_minutes", 1, 720, 1),
+                            _track("mutator_area_conquest_trader_supplies_penalty", 0, 4, 1),
+                            _track("mutator_area_conquest_trader_supplies_tier", 1, 5, 1),
+                        },
+                    },
+                    {
+                        id = "swarm",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_mutators_swarm_title"),
+                            _desc("ui_mcm_ap_mutators_swarm_desc"),
+                            _check("mutator_area_swarm_mutate_smart"),
+                            _track("mutator_area_swarm_spawn_num", 1, 5, 1),
+                            _track("mutator_area_swarm_decay_hours", 0, 168, 4),
+                            _track("mutator_area_swarm_respawn_minutes", 1, 720, 1),
+                        },
+                    },
+                    {
+                        id = "infest",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_mutators_infest_title"),
+                            _desc("ui_mcm_ap_mutators_infest_desc"),
+                            _check("mutator_area_infest_mutate_smart"),
+                            _track("mutator_area_infest_max_per_level", 1, 5, 1),
+                            _track("mutator_area_infest_spawn_num", 1, 5, 1),
+                            _track("mutator_area_infest_decay_hours", 0, 168, 4),
+                            _track("mutator_area_infest_respawn_minutes", 1, 720, 1),
+                        },
+                    },
+                },
+            },
+            {
+                id = "creatures",
+                gr = {
+                    {
+                        id = "alpha",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_creatures_alpha_title"),
+                            _desc("ui_mcm_ap_creatures_alpha_desc"),
+                            _check("mutator_alpha_hit_power_dealt_enabled"),
+                            _track("mutator_alpha_hit_power_dealt_max_pct", 0, 30, 5),
+                            _check("mutator_alpha_hit_power_taken_enabled"),
+                            _track("mutator_alpha_hit_power_taken_max_pct", 0, 30, 5),
+                            _check("mutator_alpha_vs_player"),
+                            _check("mutator_alpha_panic_immunity_enabled"),
+                            _check("mutator_alpha_loot_enabled"),
+                            _check("mutator_alpha_mark_enabled"),
+                        },
+                    },
+                },
+            },
+            {
+                id = "economy",
+                gr = {
+                    {
+                        id = "loot",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_economy_loot_title"),
+                            _desc("ui_mcm_ap_economy_loot_desc"),
+                            _check("loot_reserve_own_enabled"),
+                            _track("loot_reserve_own_radius", 10, 150, 10),
+                            _track("loot_reserve_own_ttl", 1, 6, 1),
+                            _check("loot_include_companions"),
+                            _check("loot_block_npc_enabled"),
+                            _track("loot_block_npc_radius", 10, 150, 10),
+                            _track("loot_block_npc_ttl", 1, 6, 1),
+                            _check("loot_block_npc_vs_npc_enabled"),
+                            _track("loot_block_npc_vs_npc_radius", 10, 150, 10),
+                            _track("loot_block_npc_vs_npc_ttl", 1, 6, 1),
+                        },
+                    },
+                    {
+                        id = "loot_policy",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_economy_loot_policy_title"),
+                            _desc("ui_mcm_ap_economy_loot_policy_desc"),
+                            _check("loot_select_enabled"),
+                        },
+                    },
+                    {
+                        id = "trade",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_economy_trade_title"),
+                            _desc("ui_mcm_ap_economy_trade_desc"),
+                            _track("trade_profit_max", 0, 20000, 500),
+                        },
+                    },
+                    {
+                        id = "barter",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_economy_barter_title"),
+                            _desc("ui_mcm_ap_economy_barter_desc"),
+                            _track("barter_max_items", 0, 20, 1),
+                        },
+                    },
+                    {
+                        id = "market",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_economy_market_title"),
+                            _desc("ui_mcm_ap_economy_market_desc"),
+                            _check("market_enabled"),
+                            _track("market_items_per_trader", 0, 20, 1),
+                            _track("market_window_hours", 1, 48, 1),
+                            _track("market_premium", 1, 20, 0.5),
+                            _track("market_item_condition", 0.05, 1, 0.05),
+                            _track("market_trader_sell_percent", 20, 100, 5),
+                        },
+                    },
+                },
+            },
+            {
+                id = "news",
+                sh = true,
+                gr = {
+                    _slide("ui_mcm_ap_news_title"),
+                    _desc("ui_mcm_ap_news_desc"),
+                    _check("news_enabled"),
+                    _track("news_interval_min_sec", 1, 600, 1),
+                    _track("news_interval_max_sec", 1, 600, 1),
+                    _list("news_scope", {
+                        {"own",    "own"},
+                        {"allies", "allies"},
+                        {"world",  "world"},
+                    }),
+                    _track("news_max_age_game_hours", 1, 72, 1),
+                    { id = "div_chatter", type = "line" },
+                    _check("chatter_enabled"),
+                    _track("chatter_interval_sec", 5, 300, 5),
+                },
+            },
+            {
+                id = "causes",
+                gr = {
+                    {
+                        id = "reactions",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_causes_reactions_title"),
+                            _tag("ui_mcm_ap_causes_alpha_tag"),
+                            _check("cause_alpha_enabled"),
+                            _track("cause_alpha_kills_per_level", 1, 10, 1),
+                            { id = "div_alphakill", type = "line" },
+                            _tag("ui_mcm_ap_causes_alphakill_tag"),
+                            _check("cause_alphakill_enabled"),
+                            { id = "div_massacre", type = "line" },
+                            _tag("ui_mcm_ap_causes_massacre_tag"),
+                            _check("cause_massacre_enabled"),
+                            _track("cause_massacre_threshold", 1, 10, 1),
+                            _track("cause_massacre_decay_time", 60, 600, 30),
+                            { id = "div_squadkill", type = "line" },
+                            _tag("ui_mcm_ap_causes_squadkill_tag"),
+                            _check("cause_squadkill_enabled"),
+                            { id = "div_basekill", type = "line" },
+                            _tag("ui_mcm_ap_causes_basekill_tag"),
+                            _check("cause_basekill_enabled"),
+                            _track("cause_basekill_threshold", 1, 10, 1),
+                            _track("cause_basekill_decay_time", 60, 600, 30),
+                            { id = "div_wounded", type = "line" },
+                            _tag("ui_mcm_ap_causes_wounded_tag"),
+                            _check("cause_wounded_enabled"),
+                            { id = "div_harvest", type = "line" },
+                            _tag("ui_mcm_ap_causes_harvest_tag"),
+                            _check("cause_harvest_enabled"),
+                        },
+                    },
+                    {
+                        id = "opportunities",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_causes_opportunities_title"),
+                            _tag("ui_mcm_ap_causes_area_conquer_tag"),
+                            _check("cause_area_conquer_enabled"),
+                            _track("cause_area_conquer_threshold", 0.1, 168, 0.1),
+                            _track("cause_area_conquer_max_faction_smarts_per_level", 1, 6, 1),
+                            { id = "div_area_swarm", type = "line" },
+                            _tag("ui_mcm_ap_causes_area_swarm_tag"),
+                            _check("cause_area_swarm_enabled"),
+                            _track("cause_area_swarm_threshold", 0.1, 168, 0.1),
+                            _track("cause_area_swarm_max_faction_smarts_per_level", 1, 8, 1),
+                            { id = "div_area_infest", type = "line" },
+                            _tag("ui_mcm_ap_causes_area_infest_tag"),
+                            _check("cause_area_infest_enabled"),
+                            _track("cause_area_infest_threshold", 0.1, 168, 0.1),
+                            { id = "div_stash_loot", type = "line" },
+                            _tag("ui_mcm_ap_causes_stash_loot_tag"),
+                            _check("cause_stash_loot_enabled"),
+                            _track("cause_stash_loot_threshold", 0.1, 168, 0.1),
+                            { id = "div_stash_ambush", type = "line" },
+                            _tag("ui_mcm_ap_causes_stash_ambush_tag"),
+                            _check("cause_stash_ambush_enabled"),
+                            _track("cause_stash_ambush_threshold", 0.1, 168, 0.1),
+                            _track("cause_stash_ambush_min_items", 1, 10, 1),
+                            { id = "div_stash_fill", type = "line" },
+                            _tag("ui_mcm_ap_causes_stash_fill_tag"),
+                            _check("cause_stash_fill_enabled"),
+                            _track("cause_stash_fill_threshold", 0.1, 168, 0.1),
+                        },
+                    },
+                    {
+                        id = "instincts",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_causes_instincts_title"),
+                            _tag("ui_mcm_ap_causes_instincts_scatter_tag"),
+                            _check("cause_scatter_enabled"),
+                            { id = "div_feed", type = "line" },
+                            _tag("ui_mcm_ap_causes_instincts_feed_tag"),
+                            _check("cause_feed_enabled"),
+                            { id = "div_slumber_field", type = "line" },
+                            _tag("ui_mcm_ap_causes_instincts_slumber_field_tag"),
+                            _check("cause_slumber_field_enabled"),
+                            { id = "div_slumber_lair", type = "line" },
+                            _tag("ui_mcm_ap_causes_instincts_slumber_lair_tag"),
+                            _check("cause_slumber_lair_enabled"),
+                            { id = "div_slumber_surge", type = "line" },
+                            _tag("ui_mcm_ap_causes_instincts_slumber_surge_tag"),
+                            _check("cause_slumber_surge_enabled"),
+                            { id = "div_roam", type = "line" },
+                            _tag("ui_mcm_ap_causes_instincts_roam_tag"),
+                            _check("cause_roam_enabled"),
+                            { id = "div_pack", type = "line" },
+                            _tag("ui_mcm_ap_causes_instincts_pack_tag"),
+                            _check("cause_pack_enabled"),
+                            { id = "div_drives", type = "line" },
+                            _track("cause_scatter_threshold", 0.1, 48, 0.1),
+                            { id = "div_feed_threshold", type = "line" },
+                            _track("cause_feed_threshold", 0.1, 48, 0.1),
+                            { id = "div_slumber_threshold", type = "line" },
+                            _track("cause_slumber_threshold", 0.1, 48, 0.1),
+                            { id = "div_roam_threshold", type = "line" },
+                            _track("cause_roam_threshold", 0.1, 48, 0.1),
+                            { id = "div_pack_threshold", type = "line" },
+                            _track("cause_pack_threshold", 0.1, 48, 0.1),
+                        },
+                    },
+                    {
+                        id = "needs",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_causes_needs_title"),
+                            _tag("ui_mcm_ap_causes_needs_hunger_campfire_tag"),
+                            _check("cause_hunger_campfire_enabled"),
+                            { id = "div_sleep_campfire", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_sleep_campfire_tag"),
+                            _check("cause_sleep_campfire_enabled"),
+                            { id = "div_rest_campfire", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_rest_campfire_tag"),
+                            _check("cause_rest_campfire_enabled"),
+                            { id = "div_heal_shelter", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_heal_shelter_tag"),
+                            _check("cause_heal_shelter_enabled"),
+                            { id = "div_shelter_indoor", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_shelter_indoor_tag"),
+                            _check("cause_shelter_indoor_enabled"),
+                            { id = "div_shelter_outdoor", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_shelter_outdoor_tag"),
+                            _check("cause_shelter_outdoor_enabled"),
+                            { id = "div_supply_trader", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_supply_trader_tag"),
+                            _check("cause_supply_trader_enabled"),
+                            { id = "div_supply_trader_offmap", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_supply_trader_offmap_tag"),
+                            _check("cause_supply_trader_offmap_enabled"),
+                            { id = "div_barter", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_barter_tag"),
+                            _check("cause_barter_enabled"),
+                            { id = "div_barter_offmap", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_barter_offmap_tag"),
+                            _check("cause_barter_offmap_enabled"),
+                            { id = "div_money_harvest", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_money_harvest_tag"),
+                            _check("cause_money_harvest_enabled"),
+                            { id = "div_money_hunt", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_money_hunt_tag"),
+                            _check("cause_money_hunt_enabled"),
+                            { id = "div_job_outpost", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_job_outpost_tag"),
+                            _check("cause_job_outpost_enabled"),
+                            { id = "div_job_explore", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_job_explore_tag"),
+                            _check("cause_job_explore_enabled"),
+                            { id = "div_job_explore_offmap", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_job_explore_offmap_tag"),
+                            _check("cause_job_explore_offmap_enabled"),
+                            { id = "div_job_research", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_job_research_tag"),
+                            _check("cause_job_research_enabled"),
+                            { id = "div_social_campfire", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_social_campfire_tag"),
+                            _check("cause_social_campfire_enabled"),
+                            { id = "div_social_base", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_social_base_tag"),
+                            _check("cause_social_base_enabled"),
+                            { id = "div_social_offmap", type = "line" },
+                            _tag("ui_mcm_ap_causes_needs_social_offmap_tag"),
+                            _check("cause_social_offmap_enabled"),
+                            { id = "div_drives", type = "line" },
+                            _track("cause_hunger_threshold", 0.1, 48, 0.1),
+                            { id = "div_sleep_threshold", type = "line" },
+                            _track("cause_sleep_threshold", 0.1, 48, 0.1),
+                            { id = "div_rest_threshold", type = "line" },
+                            _track("cause_rest_threshold", 0.1, 48, 0.1),
+                            { id = "div_heal_threshold", type = "line" },
+                            _track("cause_heal_threshold", 0.1, 48, 0.1),
+                            { id = "div_shelter_threshold", type = "line" },
+                            _track("cause_shelter_threshold", 0.1, 96, 0.1),
+                            { id = "div_supply_threshold", type = "line" },
+                            _track("cause_supply_threshold", 0.1, 48, 0.1),
+                            { id = "div_money_threshold", type = "line" },
+                            _track("cause_money_threshold", 0.1, 48, 0.1),
+                            { id = "div_job_threshold", type = "line" },
+                            _track("cause_job_threshold", 0.1, 48, 0.1),
+                            { id = "div_social_threshold", type = "line" },
+                            _track("cause_social_threshold", 0.1, 48, 0.1),
+                        },
+                    },
+                },
+            },
+            {
+                id = "consequences",
+                gr = {
+                    {
+                        id = "alpha_promote",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_alpha_promote_title"),
+                            _tag("ui_mcm_ap_consequences_alpha_promote_tag"),
+                            _check("consequence_alpha_promote_enabled"),
+                            _track("consequence_alpha_promote_max_alphas", 0, 300, 5),
+                        },
+                    },
+                    {
+                        id = "alphakill_targeted",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_alphakill_targeted_title"),
+                            _tag("ui_mcm_ap_consequences_alphakill_targeted_tag"),
+                            _check("consequence_alphakill_targeted_enabled"),
+                            _check("consequence_alphakill_targeted_rush"),
+                            _track("consequence_alphakill_targeted_max_squads", 1, 10, 1),
+                        },
+                    },
+                    {
+                        id = "massacre_scavenge",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_massacre_scavenge_title"),
+                            _tag("ui_mcm_ap_consequences_massacre_scavenge_tag"),
+                            _check("consequence_massacre_scavenge_enabled"),
+                            _check("consequence_massacre_scavenge_rush"),
+                            _track("consequence_massacre_scavenge_max_squads", 1, 20, 1),
+                        },
+                    },
+                    {
+                        id = "massacre_investigate",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_massacre_investigate_title"),
+                            _tag("ui_mcm_ap_consequences_massacre_investigate_tag"),
+                            _check("consequence_massacre_investigate_enabled"),
+                            _check("consequence_massacre_investigate_rush"),
+                            _track("consequence_massacre_investigate_max_squads", 1, 20, 1),
+                        },
+                    },
+                    {
+                        id = "massacre_loot",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_massacre_loot_title"),
+                            _tag("ui_mcm_ap_consequences_massacre_loot_tag"),
+                            _check("consequence_massacre_loot_enabled"),
+                            _check("consequence_massacre_loot_rush"),
+                            _track("consequence_massacre_loot_max_squads", 1, 20, 1),
+                        },
+                    },
+                    {
+                        id = "stash_ambush",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_stash_ambush_title"),
+                            _tag("ui_mcm_ap_consequences_stash_ambush_tag"),
+                            _check("consequence_stash_ambush_enabled"),
+                            _check("consequence_stash_ambush_rush"),
+                        },
+                    },
+                    {
+                        id = "stash_loot",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_stash_loot_title"),
+                            _tag("ui_mcm_ap_consequences_stash_loot_tag"),
+                            _check("consequence_stash_loot_enabled"),
+                            _check("consequence_stash_loot_rush"),
+                            _check("consequence_stash_loot_skip_crafting"),
+                        },
+                    },
+                    {
+                        id = "stash_fill",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_stash_fill_title"),
+                            _tag("ui_mcm_ap_consequences_stash_fill_tag"),
+                            _check("consequence_stash_fill_enabled"),
+                            _check("consequence_stash_fill_rush"),
+                        },
+                    },
+                    {
+                        id = "squadkill_revenge",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_squadkill_revenge_title"),
+                            _tag("ui_mcm_ap_consequences_squadkill_revenge_tag"),
+                            _check("consequence_squadkill_revenge_enabled"),
+                            _check("consequence_squadkill_revenge_rush"),
+                            _track("consequence_squadkill_revenge_max_squads", 1, 20, 1),
+                        },
+                    },
+                    {
+                        id = "basekill_support",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_basekill_support_title"),
+                            _tag("ui_mcm_ap_consequences_basekill_support_tag"),
+                            _check("consequence_basekill_support_enabled"),
+                            _check("consequence_basekill_support_rush"),
+                            _track("consequence_basekill_support_max_squads", 1, 20, 1),
+                        },
+                    },
+                    {
+                        id = "basekill_flee",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_basekill_flee_title"),
+                            _tag("ui_mcm_ap_consequences_basekill_flee_tag"),
+                            _check("consequence_basekill_flee_enabled"),
+                            _check("consequence_basekill_flee_rush"),
+                            _track("consequence_basekill_flee_max_squads", 1, 20, 1),
+                        },
+                    },
+                    {
+                        id = "wounded_hunt",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_wounded_hunt_title"),
+                            _tag("ui_mcm_ap_consequences_wounded_hunt_tag"),
+                            _check("consequence_wounded_hunt_enabled"),
+                            _check("consequence_wounded_hunt_rush"),
+                            _track("consequence_wounded_hunt_max_squads", 1, 20, 1),
+                        },
+                    },
+                    {
+                        id = "wounded_help",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_wounded_help_title"),
+                            _tag("ui_mcm_ap_consequences_wounded_help_tag"),
+                            _check("consequence_wounded_help_enabled"),
+                            _check("consequence_wounded_help_rush"),
+                            _track("consequence_wounded_help_max_squads", 1, 20, 1),
+                        },
+                    },
+                    {
+                        id = "area_conquer",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_area_conquer_title"),
+                            _tag("ui_mcm_ap_consequences_area_conquer_tag"),
+                            _check("consequence_area_conquer_enabled"),
+                            _check("consequence_area_conquer_rush"),
+                        },
+                    },
+                    {
+                        id = "area_swarm",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_area_swarm_title"),
+                            _tag("ui_mcm_ap_consequences_area_swarm_tag"),
+                            _check("consequence_area_swarm_enabled"),
+                            _check("consequence_area_swarm_rush"),
+                        },
+                    },
+                    {
+                        id = "harvest_rob",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_harvest_rob_title"),
+                            _tag("ui_mcm_ap_consequences_harvest_rob_tag"),
+                            _check("consequence_harvest_rob_enabled"),
+                            _check("consequence_harvest_rob_rush"),
+                            _track("consequence_harvest_rob_max_squads", 1, 20, 1),
+                        },
+                    },
+                    {
+                        id = "harvest_haunt",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_harvest_haunt_title"),
+                            _tag("ui_mcm_ap_consequences_harvest_haunt_tag"),
+                            _check("consequence_harvest_haunt_enabled"),
+                            _check("consequence_harvest_haunt_rush"),
+                            _track("consequence_harvest_haunt_max_squads", 1, 20, 1),
+                        },
+                    },
+                    {
+                        id = "hunger_campfire",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_hunger_campfire_title"),
+                            _tag("ui_mcm_ap_consequences_hunger_campfire_tag"),
+                            _check("consequence_hunger_campfire_enabled"),
+                            _check("consequence_hunger_campfire_rush"),
+                        },
+                    },
+                    {
+                        id = "sleep_campfire",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_sleep_campfire_title"),
+                            _tag("ui_mcm_ap_consequences_sleep_campfire_tag"),
+                            _check("consequence_sleep_campfire_enabled"),
+                            _check("consequence_sleep_campfire_rush"),
+                        },
+                    },
+                    {
+                        id = "rest_campfire",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_rest_campfire_title"),
+                            _tag("ui_mcm_ap_consequences_rest_campfire_tag"),
+                            _check("consequence_rest_campfire_enabled"),
+                            _check("consequence_rest_campfire_rush"),
+                        },
+                    },
+                    {
+                        id = "heal_shelter",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_heal_shelter_title"),
+                            _tag("ui_mcm_ap_consequences_heal_shelter_tag"),
+                            _check("consequence_heal_shelter_enabled"),
+                            _check("consequence_heal_shelter_rush"),
+                        },
+                    },
+                    {
+                        id = "shelter_indoor",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_shelter_indoor_title"),
+                            _tag("ui_mcm_ap_consequences_shelter_indoor_tag"),
+                            _check("consequence_shelter_indoor_enabled"),
+                            _check("consequence_shelter_indoor_rush"),
+                        },
+                    },
+                    {
+                        id = "shelter_outdoor",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_shelter_outdoor_title"),
+                            _tag("ui_mcm_ap_consequences_shelter_outdoor_tag"),
+                            _check("consequence_shelter_outdoor_enabled"),
+                            _check("consequence_shelter_outdoor_rush"),
+                        },
+                    },
+                    {
+                        id = "money_harvest",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_money_harvest_title"),
+                            _tag("ui_mcm_ap_consequences_money_harvest_tag"),
+                            _check("consequence_money_harvest_enabled"),
+                            _check("consequence_money_harvest_rush"),
+                        },
+                    },
+                    {
+                        id = "money_hunt",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_money_hunt_title"),
+                            _tag("ui_mcm_ap_consequences_money_hunt_tag"),
+                            _check("consequence_money_hunt_enabled"),
+                            _check("consequence_money_hunt_rush"),
+                        },
+                    },
+                    {
+                        id = "supply_trader",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_supply_trader_title"),
+                            _tag("ui_mcm_ap_consequences_supply_trader_tag"),
+                            _check("consequence_supply_trader_enabled"),
+                            _check("consequence_supply_trader_rush"),
+                            _check("consequence_supply_trader_arrive_action_enabled"),
+                        },
+                    },
+                    {
+                        id = "supply_trader_offmap",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_supply_trader_offmap_title"),
+                            _tag("ui_mcm_ap_consequences_supply_trader_offmap_tag"),
+                            _check("consequence_supply_trader_offmap_enabled"),
+                            _check("consequence_supply_trader_offmap_rush"),
+                            _check("consequence_supply_trader_offmap_arrive_action_enabled"),
+                        },
+                    },
+                    {
+                        id = "barter",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_barter_title"),
+                            _tag("ui_mcm_ap_consequences_barter_tag"),
+                            _check("consequence_barter_enabled"),
+                            _check("consequence_barter_rush"),
+                            _check("consequence_barter_arrive_action_enabled"),
+                        },
+                    },
+                    {
+                        id = "barter_offmap",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_barter_offmap_title"),
+                            _tag("ui_mcm_ap_consequences_barter_offmap_tag"),
+                            _check("consequence_barter_offmap_enabled"),
+                            _check("consequence_barter_offmap_rush"),
+                            _check("consequence_barter_offmap_arrive_action_enabled"),
+                        },
+                    },
+                    {
+                        id = "job_outpost",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_job_outpost_title"),
+                            _tag("ui_mcm_ap_consequences_job_outpost_tag"),
+                            _check("consequence_job_outpost_enabled"),
+                            _check("consequence_job_outpost_rush"),
+                        },
+                    },
+                    {
+                        id = "job_explore",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_job_explore_title"),
+                            _tag("ui_mcm_ap_consequences_job_explore_tag"),
+                            _check("consequence_job_explore_enabled"),
+                            _check("consequence_job_explore_rush"),
+                        },
+                    },
+                    {
+                        id = "job_explore_offmap",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_job_explore_offmap_title"),
+                            _tag("ui_mcm_ap_consequences_job_explore_offmap_tag"),
+                            _check("consequence_job_explore_offmap_enabled"),
+                            _check("consequence_job_explore_offmap_rush"),
+                        },
+                    },
+                    {
+                        id = "job_research",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_job_research_title"),
+                            _tag("ui_mcm_ap_consequences_job_research_tag"),
+                            _check("consequence_job_research_enabled"),
+                            _check("consequence_job_research_rush"),
+                        },
+                    },
+                    {
+                        id = "social_campfire",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_social_campfire_title"),
+                            _tag("ui_mcm_ap_consequences_social_campfire_tag"),
+                            _check("consequence_social_campfire_enabled"),
+                            _check("consequence_social_campfire_rush"),
+                        },
+                    },
+                    {
+                        id = "social_base",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_social_base_title"),
+                            _tag("ui_mcm_ap_consequences_social_base_tag"),
+                            _check("consequence_social_base_enabled"),
+                            _check("consequence_social_base_rush"),
+                        },
+                    },
+                    {
+                        id = "social_offmap",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_social_offmap_title"),
+                            _tag("ui_mcm_ap_consequences_social_offmap_tag"),
+                            _check("consequence_social_offmap_enabled"),
+                            _check("consequence_social_offmap_rush"),
+                        },
+                    },
+                    {
+                        id = "scatter",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_scatter_title"),
+                            _tag("ui_mcm_ap_consequences_scatter_tag"),
+                            _check("consequence_scatter_enabled"),
+                            _check("consequence_scatter_rush"),
+                        },
+                    },
+                    {
+                        id = "feed",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_feed_title"),
+                            _tag("ui_mcm_ap_consequences_feed_tag"),
+                            _check("consequence_feed_enabled"),
+                            _check("consequence_feed_rush"),
+                        },
+                    },
+                    {
+                        id = "slumber_field",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_slumber_field_title"),
+                            _tag("ui_mcm_ap_consequences_slumber_field_tag"),
+                            _check("consequence_slumber_field_enabled"),
+                            _check("consequence_slumber_field_rush"),
+                        },
+                    },
+                    {
+                        id = "slumber_lair",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_slumber_lair_title"),
+                            _tag("ui_mcm_ap_consequences_slumber_lair_tag"),
+                            _check("consequence_slumber_lair_enabled"),
+                            _check("consequence_slumber_lair_rush"),
+                        },
+                    },
+                    {
+                        id = "slumber_surge",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_slumber_surge_title"),
+                            _tag("ui_mcm_ap_consequences_slumber_surge_tag"),
+                            _check("consequence_slumber_surge_enabled"),
+                            _check("consequence_slumber_surge_rush"),
+                        },
+                    },
+                    {
+                        id = "roam",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_roam_title"),
+                            _tag("ui_mcm_ap_consequences_roam_tag"),
+                            _check("consequence_roam_enabled"),
+                            _check("consequence_roam_rush"),
+                        },
+                    },
+                    {
+                        id = "pack",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_pack_title"),
+                            _tag("ui_mcm_ap_consequences_pack_tag"),
+                            _check("consequence_pack_enabled"),
+                            _check("consequence_pack_rush"),
+                        },
+                    },
+                    {
+                        id = "area_infest",
+                        sh = true,
+                        gr = {
+                            _slide("ui_mcm_ap_consequences_area_infest_title"),
+                            _tag("ui_mcm_ap_consequences_area_infest_tag"),
+                            _check("consequence_area_infest_enabled"),
+                            _check("consequence_area_infest_rush"),
+                        },
+                    },
+                },
+            },
+            {
+                id = "development",
+                sh = true,
+                gr = {
+                    _slide("ui_mcm_ap_development_title"),
+                    _desc("ui_mcm_ap_development_desc"),
+                    _list("log_level", {
+                        {"ERROR", "error"},
+                        {"WARN", "warn"},
+                        {"INFO", "info"},
+                        {"DEBUG", "debug"},
+                    }),
+                    _check("log_flush"),
+                    _list("statistics_position", {
+                        {"off", "off"},
+                        {"top_left", "top_left"},
+                        {"top_right", "top_right"},
+                        {"center_left", "center_left"},
+                        {"center_right", "center_right"},
+                        {"bottom_left", "bottom_left"},
+                        {"bottom_right", "bottom_right"},
+                    }),
+                    _check("map_markers"),
+                    _check("world_trace_enabled"),
+                    { id = "div_reset", type = "line" },
+                    { id = "warn_reset", type = "desc", text = "ui_mcm_ap_development_reset_warning", clr = {255, 240, 200, 80} },
+                    { id = "btn_reset_all", type = "button", functor_ui = { btn_reset_all } },
+                    { id = "btn_reset_stateless", type = "button", functor_ui = { btn_reset_stateless } },
+
+                },
+            },
+        },
+    }
+end
+
+function on_game_start()
+    load_config()
+    RegisterScriptCallback(ap_core_const.CALLBACK.ON_OPTION_CHANGE, load_config)
+    RegisterScriptCallback(ap_core_const.CALLBACK.MCM_OPTION_RESTORE_DEFAULT, load_config)
+end

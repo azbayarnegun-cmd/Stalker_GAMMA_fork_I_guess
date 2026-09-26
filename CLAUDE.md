@@ -52,6 +52,14 @@ All paths are relative to `G.A.M.M.A/modpack_addons/`.
 
 Design pillars (from README / Patchnotes): the Zone gets harder and more rewarding further north; weapon and armor trading is removed; gear progression is gated by toolkits found in rare stashes; guns found on enemies need repairs and parts; health is tracked per limb; artefacts are strengthened by combining them; the North opens after the Miracle Machine and Brain Scorcher.
 
+## Custom mods (`custom_mods/`)
+
+The user's own mods, run on top of GAMMA; see `custom_mods/README.md` for the layout and index table. They are **not** in `modlist.txt` or `modpack_maker_list.txt`.
+- One folder per mod: `custom_mods/<Mod Name> - <Author>/gamedata/...`, plus an optional `NOTES.md` (source, version, MO2 position, local changes).
+- When a mod is added or changed, update the index table in `custom_mods/README.md`.
+- Before editing a custom mod, check which of its `gamedata/` paths are also shipped by `G.A.M.M.A/modpack_addons/*`, since the same override rule applies. Its MO2 position (in `NOTES.md`) decides which file wins.
+- Big binaries in `custom_mods/` are Git LFS objects (`.gitattributes`). Git LFS isn't installed in cloud sessions, so those files show up as small pointer files. Only edit text files (`.script`, `.ltx`, `.xml`).
+
 ## Working conventions
 
 - Upstream accepts PRs to **`dev2`**. In this fork, work happens on `claude/*` branches.

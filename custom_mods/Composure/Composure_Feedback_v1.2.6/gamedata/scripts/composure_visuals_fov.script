@@ -1,0 +1,72 @@
+-- Owns FOV capture, narrowing, and exact restoration.
+
+local base_fov = nil
+local applied_fov = nil
+local observed_fov = nil
+local external_override = false
+
+local function clamp(v, lo, hi)
+    if v < lo then return lo end
+    if v > hi then return hi end
+    return v
+end
+
+local function read_fov()
+    if not get_console_cmd then return nil end
+    local ok, value = pcall(get_console_cmd, 2, "fov")
+    if not ok then return nil end
+    return tonumber(value)
+end
+
+local function write_fov(value)
+    if not exec_console_cmd then return false end
+    local ok = pcall(exec_console_cmd, string.format("fov %.3f", value))
+    if ok then applied_fov = value end
+    return ok
+end
+
+function reset_baseline()
+    base_fov = read_fov() or base_fov or 65
+    applied_fov = nil
+    observed_fov = base_fov
+    external_override = false
+    return base_fov
+end
+
+function sync(state)
+    if not base_fov then reset_baseline() end
+    observed_fov = read_fov() or observed_fov
+    local active = state.fov.enabled and state.fov.reduction > 0.001
+    if not active then
+        if applied_fov and base_fov and not external_override then write_fov(base_fov) end
+        applied_fov = nil
+        if observed_fov and observed_fov >= 45 and observed_fov <= 120 then base_fov = observed_fov end
+        external_override = false
+        return true
+    end
+    if applied_fov and observed_fov and math.abs(observed_fov - applied_fov) > 0.5 then
+        external_override = true
+        applied_fov = nil
+    end
+    if external_override then
+        if observed_fov and math.abs(observed_fov - base_fov) <= 0.5 then external_override = false
+        else return true end
+    end
+    local target = math.max(45, base_fov - state.fov.reduction)
+    local current = applied_fov or base_fov
+    local step = 8 * clamp(state.dt or 0.1, 0, 0.5)
+    if current < target then current = math.min(current + step, target)
+    else current = math.max(current - step, target) end
+    return write_fov(current)
+end
+
+function cleanup()
+    if applied_fov and base_fov and not external_override then write_fov(base_fov) end
+    applied_fov = nil
+    external_override = false
+    return true
+end
+
+function get_status()
+    return { base_fov = base_fov, applied_fov = applied_fov, observed_fov = observed_fov, external_override = external_override }
+end

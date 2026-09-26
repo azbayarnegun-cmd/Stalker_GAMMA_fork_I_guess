@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<string_table>
+  <string id="st_sa_canister_t1_name"><text>Single Canister Pouch</text></string>
+  <string id="st_sa_canister_t1_descr"><text>A backpack-mounted carrier for Toxic Air oxygen tanks. Its 3x1 internal grid holds up to three tanks. Tanks retain their original Toxic Air behavior while stored. Crafting the larger carrier consumes this pouch, which must be empty and removed first.</text></string>
+  <string id="st_sa_canister_t2_name"><text>Double Canister Pouch</text></string>
+  <string id="st_sa_canister_t2_descr"><text>A reinforced backpack-mounted carrier for Toxic Air oxygen tanks. Its 3x2 internal grid holds up to six tanks. Crafted by upgrading an empty Single Canister Pouch.</text></string>
+</string_table>

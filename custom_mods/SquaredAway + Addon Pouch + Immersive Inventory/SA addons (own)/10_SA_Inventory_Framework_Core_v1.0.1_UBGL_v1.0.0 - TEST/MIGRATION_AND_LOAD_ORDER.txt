@@ -1,0 +1,30 @@
+CONSOLIDATED SA STACK - MIGRATION
+
+Disable the old standalone SA addons numbered 00 through 68. Do not keep an
+old copy merely because MO2 marks it overwritten; shared scripts and numbered
+config slots must have one owner in the consolidated build.
+
+Load order, lower entries winning:
+  SquaredAway 3.1.0-test
+  SA Layered Pouches 1.5.3 SA310 PouchGrid r11
+  GAMMA Mags Reloaded 1.05 / AmmoCheck Enhanced
+  SA Inventory Framework & Compatibility v1.0.1
+  SA Rigs, Belts & Pouches v1.0.1
+  SA Equipment Balance v1.0.1                 optional
+  SA Combat Access & QuickWheel v1.0.0        optional
+  SA Immersive Inventory Access v1.0.0        optional, last
+
+Before updating, remove and empty fitted Sustainment Pouches. Their progression
+is now wide-first: 2x1, 2x2, 3x2, 4x2. Existing item section IDs are preserved;
+no new game is required. Fully restart the game after changing the mod list.
+
+Do not combine this stack with:
+  SA_Pouch_Progression_Routing_Complete
+  SA_Default_Pouches_Trader_Removal
+  SA_Rigs_Pouches_Balance
+  SA_Pouch_Missing_Tiers standalone
+  SA_Pouch_Economy_Sheet standalone
+  SA_Pouch_Family_Recipes standalone
+  SA_Pouch_Trader_Distribution standalone
+
+The same functions are already integrated into the five consolidated packages.

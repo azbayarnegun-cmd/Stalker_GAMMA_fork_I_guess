@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<string_table>
+  <string id="st_sa_sustainment_t1_name"><text>Small sustainment pouch</text></string>
+  <string id="st_sa_sustainment_t1_descr"><text>A compact backpack-mounted organiser for ordinary and Zone-produced food and drinks. Holds four unstacked items in a 2x2 grid. Mutant meat and trophies belong in a Hunter's Kit.</text></string>
+  <string id="st_sa_sustainment_t2_name"><text>Sustainment pouch</text></string>
+  <string id="st_sa_sustainment_t2_descr"><text>A backpack-mounted organiser for ordinary and Zone-produced food and drinks. Holds six unstacked items in a 2x3 grid. Crafted by upgrading an empty Small sustainment pouch.</text></string>
+  <string id="st_sa_sustainment_t3_name"><text>Large sustainment pouch</text></string>
+  <string id="st_sa_sustainment_t3_descr"><text>A large backpack-mounted organiser for ordinary and Zone-produced food and drinks. Holds eight unstacked items in a 2x4 grid. Crafted by upgrading an empty Sustainment pouch.</text></string>
+</string_table>

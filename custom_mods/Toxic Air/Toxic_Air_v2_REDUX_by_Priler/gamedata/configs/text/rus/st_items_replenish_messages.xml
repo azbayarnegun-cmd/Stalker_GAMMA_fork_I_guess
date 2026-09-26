@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+
+	<string id="st_not_same_tank">
+		<text>%c[d_red]Для перекачки запаса воздуха необходимы одинаковые кислородные баллоны!</text>
+	</string>
+
+	<string id="st_not_same_filter">
+		<text>%c[d_red]Для переборки фильтров в один необходимы два одинаковых фильтра!</text>
+	</string>
+	
+	<string id="st_filter_timer_warning">
+		<text>%c[d_red]ОПАСНОСТЬ: СРОЧНО ЗАМЕНИТЕ ФИЛЬТР ПРОТИВОГАЗА!</text>
+	</string>
+
+	<string id="st_filter_timer_warning2">
+		<text>%c[d_red]Внимание: Фильтр противогаза на исходе.</text>
+	</string>
+	
+	<string id="st_filter_on">
+		<text>%c[d_cyan]Фильтр установлен.</text>
+	</string>
+	
+	<string id="st_filter_on_tanks_removed">
+		<text>%c[d_cyan]Фильтр установлен: кислородные баллоны сняты ...</text>
+	</string>
+	
+	<string id="st_tanks_removed">
+		<text>Кислородные баллоны сняты с пояса.</text>
+	</string>
+
+	<string id="st_already_has_equipment">
+		<!-- Backwards compatibility (unused) -->
+		<text>%c[d_red]На вас уже надет кислородный баллон, либо в маске установлен фильтр, либо отсутствует подходящая маска/шлем!</text>
+	</string>
+
+	<string id="st_no_headgear">
+		<text>%c[d_red]Для использования кислородного баллона необходимо надеть подходящий шлем или маску!</text>
+	</string>
+
+	<string id="st_has_filter_equipped">
+		<text>%c[d_red]Чтобы подключить кислородный баллон, сначала снимите фильтр!</text>
+	</string>
+
+	<string id="st_has_tank_equipped">
+		<text>%c[d_red]На вас уже надет кислородный баллон!</text>
+	</string>
+	
+</string_table>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<string_table>
+    <string id="ui_mcm_menu_composure_feedback_test"><text>Composure Feedback - Live Test</text></string>
+    <string id="ui_mcm_composure_feedback_test_enabled"><text>Enable live test value</text></string>
+    <string id="ui_mcm_composure_feedback_test_enabled_desc"><text>Overrides the value seen by Feedback only. It previews HUD, breathing, heartbeat, visuals, and thoughts without changing saved Composure.</text></string>
+    <string id="ui_mcm_composure_feedback_test_value"><text>Live test Composure</text></string>
+    <string id="ui_mcm_composure_feedback_test_value_desc"><text>Effective 0-100 value used by all Feedback systems while live testing is enabled.</text></string>
+    <string id="ui_mcm_composure_feedback_test_show_banner"><text>Show TEST label on HUD</text></string>
+    <string id="ui_mcm_composure_feedback_test_show_banner_desc"><text>Marks the HUD detail line so the presentation-only override cannot be mistaken for the saved value.</text></string>
+</string_table>

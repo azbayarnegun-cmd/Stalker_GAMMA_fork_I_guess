@@ -1,0 +1,48 @@
+-- Owns short, event-only camera pulses. No continuous camera movement.
+
+local CAMERA_ID = 56110
+local active_until = 0
+local active_kind = nil
+
+local files = {
+    fatigue = "camera_effects\\fatigue.anm",
+    shell_shock = "camera_effects\\shell_shock.anm",
+    shock = "camera_effects\\earthquake_00.anm",
+}
+
+local function now_ms()
+    if time_global then return time_global() end
+    return 0
+end
+
+local function remove()
+    if level and level.remove_cam_effector then pcall(level.remove_cam_effector, CAMERA_ID) end
+    active_until, active_kind = 0, nil
+end
+
+function trigger(kind, intensity, duration)
+    local file = files[kind]
+    if not file then return false, "unknown camera event" end
+    remove()
+    if not level or not level.add_cam_effector then return false, "camera API unavailable" end
+    local strength = math.max(0.1, math.min(1, tonumber(intensity) or 1))
+    local seconds = math.max(0.15, math.min(3, tonumber(duration) or (0.35 + strength * 0.65)))
+    local ok, err = pcall(level.add_cam_effector, file, CAMERA_ID, false, "")
+    if not ok then return false, err end
+    active_kind, active_until = kind, now_ms() + seconds * 1000
+    return true
+end
+
+function sync()
+    if active_kind and now_ms() >= active_until then remove() end
+    return true
+end
+
+function cleanup()
+    remove()
+    return true
+end
+
+function get_status()
+    return { active = active_kind ~= nil, kind = active_kind, remaining_ms = math.max(0, active_until - now_ms()) }
+end

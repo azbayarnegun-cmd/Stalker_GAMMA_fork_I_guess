@@ -1,0 +1,27 @@
+SA Layered Pouches 1.5.3 / SquaredAway 3.1.0 - Pouch Grid r11
+
+Full replacement Layered Pouches package. Keep SquaredAway 3.1.0 enabled.
+Disable earlier Layered Pouches ports (including r10) and their separate
+rig/QAW hotfixes. Install this as a NEW mod, not a merge over an old patch.
+Load after SquaredAway 3.1.0, Sota UI, Quick Action Wheel and GAMMA Wheel Balance.
+The three zzz_amp* / zzz_armor_mag_pouches scripts supplied here must win
+their MO2 file conflicts. Quit and restart the game after changing mods.
+
+r11 fixes a source-level difference from the working 2.13.2 pair:
+the 3.1.0 deferred-display guard could skip an empty side-view grid rebuild.
+The addon now directly rebuilds its complete pouch snapshot, even when empty.
+Backpack deferred loading is unchanged. Targeted transfers and their ownership
+transaction remain; r10's whole-area auto-routing is NOT included.
+Existing r9 backpack-first loot, Use and QAW code is retained, not newly verified.
+README.txt and PATCH*.txt are historical r9 notes, not r11 test claims.
+
+Validation: Lua source parsing and source-backed deferred-guard regression test.
+No X-Ray engine is available here; this is NOT an in-game-verified fix.
+The supplied logs establish rejection, but do not record the deferred flags,
+so this defect cannot yet be confirmed as the sole cause in your installation.
+
+Test on a backup save: fit a medical pouch, drag one bandage to an empty cell,
+then move it back. Try an incompatible item and confirm it remains in the bag.
+Close/reopen inventory and repeat. Do not change autoloot or wheel settings.
+If it still fails, send the new log: r11 records footprint, target pouch,
+filter/capacity result, grid rows and deferred state at rejection.

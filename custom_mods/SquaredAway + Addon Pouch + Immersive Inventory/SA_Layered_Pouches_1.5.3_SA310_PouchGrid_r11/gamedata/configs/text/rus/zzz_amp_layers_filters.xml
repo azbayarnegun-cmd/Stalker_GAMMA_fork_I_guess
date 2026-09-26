@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+    <string id="st_amp_panel_filter_magazine"><text>Магазины</text></string>
+    <string id="st_amp_panel_filter_grenade"><text>Гранаты</text></string>
+    <string id="st_amp_panel_filter_medical"><text>Медикаменты</text></string>
+    <string id="st_amp_panel_filter_admin"><text>Документы и устройства</text></string>
+    <string id="st_amp_panel_filter_ammo"><text>Боеприпасы</text></string>
+    <string id="st_amp_panel_filter_sustainment"><text>Еда и напитки</text></string>
+    <string id="st_amp_panel_filter_dump"><text>Пустые магазины</text></string>
+    <string id="st_amp_panel_filter_parts"><text>Запчасти</text></string>
+    <string id="st_amp_panel_filter_universal"><text>Универсальный</text></string>
+    <string id="st_amp_panel_filter_unknown"><text>Неизвестный фильтр</text></string>
+</string_table>

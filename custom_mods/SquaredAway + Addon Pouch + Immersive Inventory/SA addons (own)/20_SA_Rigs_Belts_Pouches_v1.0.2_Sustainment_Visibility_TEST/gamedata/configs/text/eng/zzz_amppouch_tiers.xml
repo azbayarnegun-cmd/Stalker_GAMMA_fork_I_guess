@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+  <string id="st_amppouch_g1_name">
+    <text>Utility pouch</text>
+  </string>
+  <string id="st_amppouch_g1_descr">
+    <text>One green square.\n\nFood, drink, devices and bandages are quick from a green pocket.\n\nFits a chest rig's pouch slot.</text>
+  </string>
+  <string id="st_amppouch_g2_name">
+    <text>Utility pouch (2)</text>
+  </string>
+  <string id="st_amppouch_g2_descr">
+    <text>Two green squares.\n\nFood, drink, devices and bandages are quick from a green pocket.\n\nFits a chest rig's pouch slot.</text>
+  </string>
+  <string id="st_amppouch_g3_name">
+    <text>Utility pouch (3)</text>
+  </string>
+  <string id="st_amppouch_g3_descr">
+    <text>Three green squares.\n\nFood, drink, devices and bandages are quick from a green pocket.\n\nFits a chest rig's pouch slot.</text>
+  </string>
+  <string id="st_amppouch_g4_name">
+    <text>Utility pouch (4)</text>
+  </string>
+  <string id="st_amppouch_g4_descr">
+    <text>Four green squares.\n\nFood, drink, devices and bandages are quick from a green pocket.\n\nFits a chest rig's pouch slot.</text>
+  </string>
+  <string id="st_amppouch_y1_name">
+    <text>Magazine pouch</text>
+  </string>
+  <string id="st_amppouch_y1_descr">
+    <text>One magazine pocket.\n\nNothing is quick from a yellow pocket, and a reload draws from it.\n\nFits a chest rig's pouch slot.</text>
+  </string>
+  <string id="st_amppouch_y2_name">
+    <text>Long magazine pouch</text>
+  </string>
+  <string id="st_amppouch_y2_descr">
+    <text>One deep magazine pocket - a long stick stands up in it.\n\nNothing is quick from a yellow pocket, and a reload draws from it.\n\nFits a chest rig's pouch slot.</text>
+  </string>
+  <string id="st_amppouch_y3_name">
+    <text>Twin magazine pouch</text>
+  </string>
+  <string id="st_amppouch_y3_descr">
+    <text>Two magazine pockets.\n\nNothing is quick from a yellow pocket, and a reload draws from it.\n\nFits a chest rig's pouch slot.</text>
+  </string>
+  <string id="st_amppouch_y4_name">
+    <text>Twin long magazine pouch</text>
+  </string>
+  <string id="st_amppouch_y4_descr">
+    <text>Two deep magazine pockets. Six squares, the most of any pouch.\n\nNothing is quick from a yellow pocket, and a reload draws from it.\n\nFits a chest rig's pouch slot.</text>
+  </string>
+  <string id="st_amppouch_y5_name">
+    <text>Drum pouch</text>
+  </string>
+  <string id="st_amppouch_y5_descr">
+    <text>One wide pocket. The only pouch a drum will go in.\n\nNothing is quick from a yellow pocket, and a reload draws from it.\n\nFits a chest rig's pouch slot.</text>
+  </string>
+  <string id="st_amppouch_r1_name">
+    <text>Medic's pouch</text>
+  </string>
+  <string id="st_amppouch_r1_descr">
+    <text>One red square - the pocket a medkit is fast from.\n\nEverything green takes, plus every other medicine - and a medkit is fast only from here.\n\nFits a chest rig's pouch slot.</text>
+  </string>
+  <string id="st_amppouch_r2_name">
+    <text>Field medic's pouch</text>
+  </string>
+  <string id="st_amppouch_r2_descr">
+    <text>Two red squares.\n\nEverything green takes, plus every other medicine - and a medkit is fast only from here.\n\nFits a chest rig's pouch slot.</text>
+  </string>
+</string_table>

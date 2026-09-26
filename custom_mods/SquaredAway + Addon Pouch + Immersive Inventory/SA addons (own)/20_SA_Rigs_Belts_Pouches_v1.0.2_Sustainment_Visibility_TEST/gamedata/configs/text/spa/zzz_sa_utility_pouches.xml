@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+  <string id="st_sa_utility_pouch_t1_name">
+    <text>Field Utility Pouch</text>
+  </string>
+  <string id="st_sa_utility_pouch_t1_descr">
+    <text>A compact 2x2 modular pouch for knives and essential field tools. Accepts knives, multitools, Swiss knives, bolts and matches only. Fits every carrier that accepts a Universal Pouch.</text>
+  </string>
+  <string id="st_sa_utility_pouch_t2_name">
+    <text>Extended Utility Pouch</text>
+  </string>
+  <string id="st_sa_utility_pouch_t2_descr">
+    <text>An extended 3x2 modular pouch for knives and essential field tools. Accepts knives, multitools, Swiss knives, bolts and matches only. Fits every carrier that accepts a Universal Pouch.</text>
+  </string>
+</string_table>

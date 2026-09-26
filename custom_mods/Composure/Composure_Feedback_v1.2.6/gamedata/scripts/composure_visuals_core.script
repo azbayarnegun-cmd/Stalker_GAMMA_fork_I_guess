@@ -1,0 +1,515 @@
+--[[
+    Composure Visuals v1.2.1 controller.
+    Reads composure_framework.get_snapshot(); never mutates composure.
+--]]
+
+local VERSION = "1.2.1"
+local REQUIRED_FRAMEWORK_API = 2
+local OWNER = "composure_visuals"
+local LOG = "[composure_visuals:v1.2.1]"
+
+local callbacks_registered = false
+local listeners_registered = false
+local last_update_ms = nil
+local last_tier = nil
+local compatibility = {}
+local module_errors = {}
+local last_state = nil
+local last_diagnostic_ms = nil
+local combat_reaction_status = {
+    count = 0,
+    last_event = nil,
+    last_intensity = 0,
+    last_duration = 0,
+    last_composure = nil,
+    last_at_ms = 0,
+}
+local last_combat_camera_ms = 0
+
+local compatibility_presets = {
+    scope = { scale = 0.15, block_blur = true, block_fov = true, block_camera = true },
+    binoculars = { scale = 0.15, block_blur = true, block_fov = true, block_camera = true },
+    pda = { scale = 0, darkness_scale = 0, block_vignette = true, block_blur = true, block_fov = true, block_camera = true },
+    night_vision = { scale = 0.60, darkness_scale = 0, block_blur = true },
+    scripted_camera = { scale = 0.50, block_fov = true, block_camera = true },
+    severe_psy = { scale = 0.25, block_blur = true, block_camera = true },
+    emission = { scale = 0.25, block_blur = true, block_camera = true },
+    underground = { darkness_scale = 0.25 },
+    night = { darkness_scale = 0.35 },
+}
+
+local function now_ms()
+    if time_global then return time_global() end
+    return 0
+end
+
+local function log(fmt, ...)
+    local ok, message = pcall(string.format, fmt, ...)
+    printf(LOG .. " " .. (ok and message or tostring(fmt)))
+end
+
+local function cfg(key, fallback)
+    if composure_visuals_mcm and composure_visuals_mcm.get_config then
+        local ok, value = pcall(composure_visuals_mcm.get_config, key)
+        if ok and value ~= nil then return value end
+    end
+    return fallback
+end
+
+local function effective_snapshot(snapshot)
+    if composure_feedback_test and composure_feedback_test.apply_snapshot then
+        local ok, result = pcall(composure_feedback_test.apply_snapshot, snapshot)
+        if ok and type(result) == "table" then return result end
+    end
+    return snapshot
+end
+
+local function debug_log(fmt, ...)
+    if cfg("debug_log", false) then log(fmt, ...) end
+end
+
+local function clamp(v, lo, hi)
+    if v < lo then return lo end
+    if v > hi then return hi end
+    return v
+end
+
+local function smoothstep(v)
+    v = clamp(v, 0, 1)
+    return v * v * (3 - 2 * v)
+end
+
+local function framework_ready()
+    if not composure_framework or not composure_framework.supports or not composure_framework.get_snapshot then return false end
+    local ok, supported = pcall(composure_framework.supports, REQUIRED_FRAMEWORK_API)
+    return ok and supported == true
+end
+
+local function safe_call(name, object, method, ...)
+    if not object or type(object[method]) ~= "function" then return false end
+    local ok, result, detail = pcall(object[method], ...)
+    if not ok or result == false then
+        module_errors[name] = (module_errors[name] or 0) + 1
+        local count = module_errors[name]
+        if count == 1 or count % 50 == 0 then
+            log("%s.%s failed (%d): %s", name, method, count, tostring(ok and detail or result))
+        end
+        return false
+    end
+    return true, result
+end
+
+local function profile_settings()
+    local profile = math.floor(tonumber(cfg("profile", 1)) or 1)
+    if profile == 0 then
+        return { id = "subtle", scale = 0.65, vignette = true, combat_scale = 0.70, combat_camera = true }
+    elseif profile == 2 then
+        return { id = "cinematic", scale = 1.15, vignette = true, blur = true, darkness = true, fov = true, events = true, camera = true, combat_scale = 1.15, combat_camera = true }
+    elseif profile == 3 then
+        return { id = "accessibility", scale = 0.40, vignette = true, combat_scale = 0.35, combat_camera = false }
+    end
+    return { id = "default", scale = 1.0, vignette = true, blur = true, darkness = true, fov = true, combat_scale = 1.0, combat_camera = true }
+end
+
+local function prune_compatibility()
+    local now = now_ms()
+    for id, entry in pairs(compatibility) do
+        if entry.expires_at and now >= entry.expires_at then compatibility[id] = nil end
+    end
+end
+
+function set_compatibility_flag(id, active, opts)
+    if type(id) ~= "string" or id == "" then return false end
+    if active == false then compatibility[id] = nil; return true end
+    opts = opts or {}
+    local preset = compatibility_presets[id] or {}
+    local function flag(key)
+        if opts[key] ~= nil then return opts[key] == true end
+        return preset[key] == true
+    end
+    local ttl = tonumber(opts.ttl)
+    compatibility[id] = {
+        id = id,
+        owner = tostring(opts.owner or "external"),
+        scale = clamp(tonumber(opts.scale ~= nil and opts.scale or preset.scale) or 1, 0, 1),
+        darkness_scale = clamp(tonumber(opts.darkness_scale ~= nil and opts.darkness_scale or preset.darkness_scale) or 1, 0, 1),
+        block_vignette = flag("block_vignette"),
+        block_blur = flag("block_blur"),
+        block_fov = flag("block_fov"),
+        block_camera = flag("block_camera"),
+        expires_at = ttl and ttl > 0 and (now_ms() + ttl * 1000) or nil,
+    }
+    return true
+end
+
+function clear_compatibility_flag(id)
+    local existed = compatibility[id] ~= nil
+    compatibility[id] = nil
+    return existed
+end
+
+function clear_compatibility_owner(owner)
+    local count = 0
+    for id, entry in pairs(compatibility) do
+        if entry.owner == owner then compatibility[id] = nil; count = count + 1 end
+    end
+    return count
+end
+
+local function compatibility_state()
+    prune_compatibility()
+    local state = { scale = 1, darkness_scale = 1, block_vignette = false, block_blur = false, block_fov = false, block_camera = false, active = {} }
+    for id, entry in pairs(compatibility) do
+        state.scale = math.min(state.scale, entry.scale)
+        state.darkness_scale = math.min(state.darkness_scale, entry.darkness_scale)
+        state.block_vignette = state.block_vignette or entry.block_vignette
+        state.block_blur = state.block_blur or entry.block_blur
+        state.block_fov = state.block_fov or entry.block_fov
+        state.block_camera = state.block_camera or entry.block_camera
+        table.insert(state.active, id)
+    end
+    table.sort(state.active)
+    return state
+end
+
+function get_compatibility_state()
+    return compatibility_state()
+end
+
+local function blur_file(value)
+    if value >= 40 then return nil end
+    return "blur2.ppe"
+end
+
+local function make_state(snapshot, dt)
+    local actual_value = clamp(tonumber(snapshot.value) or 100, 0, 100)
+    local preview = cfg("preview_enabled", false) == true
+    local preview_intensity = clamp(tonumber(cfg("preview_intensity", 60)) or 60, 0, 100)
+    local value = preview and clamp(55 - preview_intensity * 0.54, 1, 55) or actual_value
+    local profile = profile_settings()
+    local compat = compatibility_state()
+    local start = clamp(tonumber(cfg("fov_start", 54)) or 54, 40, 54)
+    local stress = smoothstep((55 - value) / 54)
+    local low = smoothstep((40 - value) / 39)
+    local breaking = smoothstep((16 - value) / 15)
+    local scale = profile.scale * compat.scale
+    local no_effect = value >= 55 or cfg("enabled", true) == false
+    local vignette_ok = profile.vignette and cfg("enable_vignette", true) and not compat.block_vignette and not no_effect
+    local blur_ok = profile.blur and cfg("enable_blur", true) and not compat.block_blur and not no_effect
+    local dark_ok = profile.darkness and cfg("enable_darkness", true) and not no_effect
+    local fov_ok = profile.fov and cfg("enable_fov", false) and not compat.block_fov and not no_effect
+    local vignette_scale = tonumber(cfg("vignette_scale", 1)) or 1
+    local spread_scale = tonumber(cfg("vignette_spread_scale", 1)) or 1
+    local opacity_cap = clamp(tonumber(cfg("overlay_max_opacity", 0.55)) or 0.55, 0, 1)
+    local corner = clamp((0.08 * stress + 0.34 * low + 0.18 * breaking) * scale * vignette_scale, 0, opacity_cap)
+    local expand = clamp((0.10 * stress + 0.55 * low + 0.35 * breaking) * scale * spread_scale, 0, 1)
+    local blur = clamp((0.30 * low + 0.18 * breaking) * scale * (tonumber(cfg("blur_scale", 1)) or 1), 0, 0.48)
+    local darkness_cap = clamp(tonumber(cfg("darkness_max", 0.08)) or 0.08, 0, 0.20)
+    local darkness = clamp((0.025 * low + 0.065 * breaking) * scale * (tonumber(cfg("darkness_scale", 1)) or 1) * compat.darkness_scale, 0, darkness_cap)
+    local fov_curve = smoothstep((start + 1 - value) / math.max(1, start))
+    local reduction = clamp((tonumber(cfg("fov_max_reduction", 6)) or 6), 0, 15) * fov_curve * compat.scale
+    return {
+        value = value, actual_value = actual_value, preview = preview, tier = snapshot.tier, dt = dt, profile = profile.id, compatibility = compat,
+        vignette = { enabled = vignette_ok, corner = corner, expand = expand, opacity = corner, spread = expand, console_enabled = false },
+        ppe = { blur_enabled = blur_ok, blur = blur, blur_file = blur_file(value), darkness_enabled = dark_ok, darkness = darkness },
+        fov = { enabled = fov_ok, reduction = reduction },
+    }
+end
+
+local function permissions()
+    local profile = profile_settings()
+    local compat = compatibility_state()
+    return {
+        distortion = profile.events and cfg("enable_event_distortion", false),
+        camera = profile.camera and cfg("enable_camera_pulses", false) and not compat.block_camera,
+    }
+end
+
+function trigger(effect, intensity, duration)
+    if type(effect) ~= "string" then return false, "effect is required" end
+    local allowed = permissions()
+    if effect == "fatigue" or effect == "shell_shock" or effect == "shock" then
+        if not allowed.camera then return false, "camera pulses disabled or suppressed" end
+        return safe_call("camera", composure_visuals_camera, "trigger", effect, intensity, duration)
+    end
+    if effect == "blackout" then
+        return safe_call("ppe", composure_visuals_ppe, "trigger", effect, intensity, duration)
+    end
+    if not allowed.distortion then return false, "distortion disabled or suppressed" end
+    return safe_call("ppe", composure_visuals_ppe, "trigger", effect, intensity, duration)
+end
+
+local function on_visual_event(event_name, payload)
+    local data = type(payload) == "table" and payload.metadata or nil
+    if type(data) ~= "table" then return end
+    local effect = data.effect or data.kind
+    if event_name == "composure_visuals.fade" and not effect then effect = "blackout" end
+    trigger(effect, data.intensity, data.duration)
+end
+
+local function combat_reactivity(value)
+    value = clamp(tonumber(value) or 100, 0, 100)
+    -- Calm actors still register danger, but low Composure makes the same event
+    -- feel much sharper. The 0.18 floor keeps high-Composure feedback readable.
+    local stress = smoothstep((85 - value) / 84)
+    return 0.18 + 0.82 * stress
+end
+
+local function current_feedback_snapshot()
+    if not framework_ready() then return nil end
+    local ok, snapshot = pcall(composure_framework.get_snapshot)
+    if not ok or type(snapshot) ~= "table" then return nil end
+    return effective_snapshot(snapshot)
+end
+
+local function combat_profile_scale()
+    local profile = profile_settings()
+    local user_scale = clamp(tonumber(cfg("combat_reaction_scale", 1.0)) or 1.0, 0, 2.0)
+    return profile, user_scale * (tonumber(profile.combat_scale) or 1.0)
+end
+
+local function trigger_combat_edge(opacity, spread, duration)
+    if cfg("combat_edge_pulse", true) ~= true then return false end
+    local compat = compatibility_state()
+    if compat.block_vignette then return false end
+    return safe_call("overlay", composure_visuals_overlay, "trigger_pulse", opacity, spread, duration)
+end
+
+local function trigger_combat_camera(kind, intensity, duration, priority)
+    if cfg("combat_camera_pulses", true) ~= true then return false end
+    local profile = profile_settings()
+    if profile.combat_camera == false then return false end
+    local compat = compatibility_state()
+    if compat.block_camera then return false end
+
+    local now = now_ms()
+    local minimum_gap = priority >= 3 and 80 or (priority == 2 and 120 or 180)
+    if priority < 3 and now - last_combat_camera_ms < minimum_gap then return false end
+
+    local status = nil
+    if composure_visuals_camera and type(composure_visuals_camera.get_status) == "function" then
+        local status_ok, status_value = pcall(composure_visuals_camera.get_status)
+        if status_ok then status = status_value end
+    end
+    if status and status.active then
+        if kind == "fatigue" and (status.kind == "shock" or status.kind == "shell_shock") then return false end
+        if kind == "shock" and status.kind == "shell_shock" then return false end
+    end
+
+    local ok = safe_call("camera", composure_visuals_camera, "trigger", kind, intensity, duration)
+    if ok then last_combat_camera_ms = now end
+    return ok
+end
+
+local function record_combat_reaction(event_name, value, intensity, duration)
+    combat_reaction_status.count = combat_reaction_status.count + 1
+    combat_reaction_status.last_event = event_name
+    combat_reaction_status.last_intensity = intensity
+    combat_reaction_status.last_duration = duration
+    combat_reaction_status.last_composure = value
+    combat_reaction_status.last_at_ms = now_ms()
+end
+
+local function edge_strength(key)
+    return clamp(tonumber(cfg(key, 1.0)) or 1.0, 0, 2.0)
+end
+
+local function edge_duration_scale()
+    return clamp(tonumber(cfg("combat_edge_duration", 1.0)) or 1.0, 0.5, 2.0)
+end
+
+local function on_combat_event(event_name, payload)
+    if cfg("enabled", true) ~= true or cfg("enable_combat_reactions", true) ~= true then return end
+    local snapshot = current_feedback_snapshot()
+    if not snapshot then return end
+    local data = type(payload) == "table" and payload.metadata or nil
+    if type(data) ~= "table" then data = {} end
+
+    local value = clamp(tonumber(snapshot.value) or 100, 0, 100)
+    local reaction = combat_reactivity(value)
+    local profile, scale = combat_profile_scale()
+    local edge_profile_scale = clamp(tonumber(profile.combat_scale) or 1.0, 0, 1.25)
+    if scale <= 0 then return end
+
+    if event_name == "combat.near_miss" then
+        local extreme = data.extreme == true
+        local stage = clamp(math.floor(tonumber(data.diminishing_stage) or 1), 1, 3)
+        local stage_scale = 1.0 - (stage - 1) * 0.15
+        local base = (extreme and 0.72 or 0.42) * stage_scale
+        local intensity = clamp(base * (0.55 + 0.75 * reaction) * scale, 0.08, 1.0)
+
+        -- v1.2.1: combat edge feedback is deliberately more readable than the
+        -- passive vignette. It attacks instantly in overlay.trigger_pulse(),
+        -- then the normal Visuals update loop owns the fade.
+        local camera_duration = extreme and (0.40 + 0.20 * reaction) or (0.25 + 0.10 * reaction)
+        camera_duration = clamp(camera_duration, extreme and 0.40 or 0.25, extreme and 0.60 or 0.35)
+        local duration = camera_duration * edge_duration_scale()
+        local strength = edge_strength(extreme and "extreme_near_miss_strength" or "near_miss_edge_strength")
+        local opacity = (extreme and (0.25 + 0.15 * intensity) or (0.12 + 0.10 * intensity)) * strength * edge_profile_scale
+        local spread = (extreme and (0.58 + 0.20 * intensity) or (0.38 + 0.18 * intensity)) * math.min(1.35, 0.75 + 0.25 * strength)
+        opacity = clamp(opacity, 0, 0.75)
+        spread = clamp(spread, 0, 1)
+
+        trigger_combat_edge(opacity, spread, duration)
+        trigger_combat_camera(extreme and "shock" or "fatigue", intensity, camera_duration, extreme and 2 or 1)
+        record_combat_reaction(extreme and "combat.near_miss.extreme" or event_name, value, intensity, duration)
+        debug_log("combat reaction event=%s composure=%.1f intensity=%.2f edge=%.2f duration=%.2f", tostring(event_name), value, intensity, opacity, duration)
+        return
+    end
+
+    if event_name == "combat.actor_hit" then
+        local health_loss = clamp(tonumber(data.health_loss_percent) or 0, 0, 100)
+        local severity = clamp(health_loss / 20, 0.25, 1.0)
+        local intensity = clamp((0.52 + 0.48 * reaction) * (0.78 + 0.22 * severity) * scale, 0.18, 1.0)
+        local camera_duration = clamp(0.45 + 0.25 * reaction, 0.45, 0.70)
+        local duration = camera_duration * edge_duration_scale()
+        local strength = edge_strength("hit_edge_strength")
+        local opacity = clamp((0.30 + 0.20 * intensity) * strength * edge_profile_scale, 0, 0.75)
+        local spread = clamp((0.64 + 0.20 * intensity) * math.min(1.35, 0.75 + 0.25 * strength), 0, 1)
+
+        trigger_combat_edge(opacity, spread, duration)
+        trigger_combat_camera("shell_shock", intensity, camera_duration, 3)
+        record_combat_reaction(event_name, value, intensity, duration)
+        debug_log("combat reaction event=%s composure=%.1f hit=%.1f%% intensity=%.2f edge=%.2f duration=%.2f", tostring(event_name), value, health_loss, intensity, opacity, duration)
+    end
+end
+
+local function register_listeners()
+    if listeners_registered or not framework_ready() then return end
+    local ok = composure_framework.register_listener("composure_visuals.pulse", "visuals.pulse", on_visual_event, { owner = OWNER, priority = 0 })
+    local ok2 = composure_framework.register_listener("composure_visuals.fade", "visuals.fade", on_visual_event, { owner = OWNER, priority = 0 })
+    local ok3 = composure_framework.register_listener("combat.near_miss", "visuals.combat_near_miss", on_combat_event, { owner = OWNER, priority = 0 })
+    local ok4 = composure_framework.register_listener("combat.actor_hit", "visuals.combat_actor_hit", on_combat_event, { owner = OWNER, priority = 0 })
+    listeners_registered = ok == true and ok2 == true and ok3 == true and ok4 == true
+end
+
+local function unregister_listeners()
+    if composure_framework and composure_framework.unregister_listener then
+        pcall(composure_framework.unregister_listener, "composure_visuals.pulse", "visuals.pulse")
+        pcall(composure_framework.unregister_listener, "composure_visuals.fade", "visuals.fade")
+        pcall(composure_framework.unregister_listener, "combat.near_miss", "visuals.combat_near_miss")
+        pcall(composure_framework.unregister_listener, "combat.actor_hit", "visuals.combat_actor_hit")
+    end
+    listeners_registered = false
+end
+
+local function cleanup()
+    safe_call("overlay", composure_visuals_overlay, "cleanup")
+    safe_call("vignette", composure_visuals_vignette, "cleanup")
+    safe_call("ppe", composure_visuals_ppe, "cleanup")
+    safe_call("fov", composure_visuals_fov, "cleanup")
+    safe_call("camera", composure_visuals_camera, "cleanup")
+    last_update_ms, last_tier, last_state = nil, nil, nil
+end
+
+local function refresh_config()
+    cleanup()
+end
+
+local function module_status(object)
+    if object and type(object.get_status) == "function" then
+        local ok, result = pcall(object.get_status)
+        if ok then return result end
+    end
+    return nil
+end
+
+function get_diagnostics()
+    return {
+        version = VERSION, framework_ready = framework_ready(), state = last_state,
+        compatibility = compatibility_state(), module_errors = module_errors,
+        overlay = module_status(composure_visuals_overlay),
+        vignette = module_status(composure_visuals_vignette),
+        ppe = module_status(composure_visuals_ppe),
+        fov = module_status(composure_visuals_fov),
+        camera = module_status(composure_visuals_camera),
+        combat_reactions = combat_reaction_status,
+    }
+end
+
+function debug_dump(source)
+    local d = get_diagnostics()
+    local s = d.state
+    log("DIAG source=%s framework=%s version=%s", tostring(source or "manual"), tostring(d.framework_ready), VERSION)
+    if not s then log("DIAG no active visual state"); return d end
+    log("DIAG composure=%.1f effective=%.1f tier=%s profile=%s preview=%s backend=%s", s.actual_value, s.value, tostring(s.tier), s.profile, tostring(s.preview), tostring(cfg("vignette_backend", 0)))
+    log("DIAG targets vignette=%.3f spread=%.3f blur=%.3f darkness=%.3f fov=%.3f", s.vignette.opacity, s.vignette.spread, s.ppe.blur, s.ppe.darkness, s.fov.reduction)
+    if d.overlay then log("DIAG overlay active=%s opacity=%.3f spread=%.3f peak=%.3f remaining_ms=%d immediate=%d error=%s", tostring(d.overlay.active), tonumber(d.overlay.opacity) or 0, tonumber(d.overlay.spread) or 0, tonumber(d.overlay.pulse_peak_opacity) or 0, tonumber(d.overlay.pulse_remaining_ms) or 0, tonumber(d.overlay.immediate_renders) or 0, tostring(d.overlay.error)) end
+    if d.combat_reactions then log("DIAG combat count=%d last=%s intensity=%.2f duration=%.2f composure=%s", tonumber(d.combat_reactions.count) or 0, tostring(d.combat_reactions.last_event), tonumber(d.combat_reactions.last_intensity) or 0, tonumber(d.combat_reactions.last_duration) or 0, tostring(d.combat_reactions.last_composure)) end
+    if d.fov then log("DIAG fov base=%s applied=%s observed=%s external_override=%s", tostring(d.fov.base_fov), tostring(d.fov.applied_fov), tostring(d.fov.observed_fov), tostring(d.fov.external_override)) end
+    log("DIAG compatibility=%s module_errors=%s", table.concat(s.compatibility.active, ","), tostring(next(module_errors) ~= nil))
+    return d
+end
+
+local function on_key_press(key)
+    local diagnostic_key = math.floor(tonumber(cfg("diagnostic_key", 63)) or 63)
+    if key == diagnostic_key then debug_dump("key") end
+end
+
+local function on_actor_update()
+    local now = now_ms()
+    local interval = clamp(tonumber(cfg("update_ms", 100)) or 100, 50, 500)
+    if last_update_ms and now - last_update_ms < interval then return end
+    local dt = last_update_ms and clamp((now - last_update_ms) / 1000, 0, 0.5) or interval / 1000
+    last_update_ms = now
+    if not framework_ready() then
+        if last_tier ~= nil then cleanup(); last_update_ms = now end
+        return
+    end
+    register_listeners()
+    local ok, snapshot = pcall(composure_framework.get_snapshot)
+    if not ok or type(snapshot) ~= "table" then
+        if last_tier ~= nil then cleanup(); last_update_ms = now end
+        return
+    end
+    snapshot = effective_snapshot(snapshot)
+    local state = make_state(snapshot, dt)
+    local backend = math.floor(tonumber(cfg("vignette_backend", 0)) or 0)
+    local overlay_requested = state.vignette.enabled and (backend == 0 or backend == 1)
+    local overlay_ok = false
+    if overlay_requested then overlay_ok = safe_call("overlay", composure_visuals_overlay, "sync", state, true) == true
+    else safe_call("overlay", composure_visuals_overlay, "sync", state, false) end
+    state.vignette.console_enabled = state.vignette.enabled and (backend == 2 or (backend == 0 and not overlay_ok))
+    safe_call("vignette", composure_visuals_vignette, "sync", state)
+    safe_call("ppe", composure_visuals_ppe, "sync", state)
+    safe_call("fov", composure_visuals_fov, "sync", state)
+    safe_call("camera", composure_visuals_camera, "sync", state)
+    last_state = state
+    if cfg("debug_log", false) and (not last_diagnostic_ms or now - last_diagnostic_ms >= 2000) then
+        last_diagnostic_ms = now
+        debug_dump("periodic")
+    end
+    if state.tier == "breaking_point" and last_tier ~= "breaking_point" and cfg("breaking_entry_pulse", false) then
+        trigger("fatigue", 0.5, 0.6)
+    end
+    if state.tier == "pass_out" and last_tier ~= "pass_out" then
+        trigger("blackout", 1.0, 2.5)
+    end
+    last_tier = state.tier
+end
+
+local function on_first_update()
+    cleanup()
+    safe_call("fov", composure_visuals_fov, "reset_baseline")
+    register_listeners()
+end
+
+local function on_level_changing()
+    cleanup()
+    unregister_listeners()
+    compatibility = {}
+end
+
+function get_version() return VERSION end
+
+function on_game_start()
+    if callbacks_registered then return end
+    callbacks_registered = true
+    RegisterScriptCallback("on_option_change", refresh_config)
+    RegisterScriptCallback("actor_on_first_update", on_first_update)
+    RegisterScriptCallback("actor_on_update", on_actor_update)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("on_level_changing", on_level_changing)
+    RegisterScriptCallback("actor_on_net_destroy", on_level_changing)
+    log("v%s initialized; Framework API %d required", VERSION, REQUIRED_FRAMEWORK_API)
+end

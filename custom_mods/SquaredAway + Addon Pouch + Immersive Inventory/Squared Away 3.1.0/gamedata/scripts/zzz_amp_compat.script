@@ -1,0 +1,168 @@
+--[[
+	Armor Mag Pouches + Zone Grid - compatibility guards
+
+	WHAT THIS IS FOR, exactly:
+
+	  LUA error: unusable_parts_handler.script:85:
+	      attempt to index global 'zzz_rax_sortingplus_mcm' (a nil value)
+	  ... 17 : [C  ] start_trade
+
+	Every trader, every time. It is not this mod's code and not this
+	mod's bug - but it IS this mod's fault that you met it, because this
+	mod asks you to switch SortingPlus off, and two GAMMA scripts read
+	SortingPlus without ever asking whether it is there:
+
+	  unusable_parts_handler.script       lines 85 and 87
+	      never_handle_favorites and zzz_rax_sortingplus_mcm.is_favorite(sec)
+	      always_handle_junk     and zzz_rax_sortingplus_mcm.is_junk(sec)
+
+	  indirect_parts_favoriter.script     lines 111 and 115
+	      zzz_rax_sortingplus_mcm.is_favorite(sec)
+	      zzz_rax_sortingplus_mcm.set_favorite(sec, ...)
+
+	Both of those files check OTHER optional mods properly - the line
+	right below the crash guards zzz_craft_use_in_tooltip_mcm with an
+	`and` - so this is an oversight rather than a design.
+
+	WHAT IT DOES NOT DO, and this is the important half:
+
+	It does NOT invent a `zzz_rax_sortingplus_mcm` global. That was the
+	obvious fix and it is the wrong one. Half a dozen other mods use
+	that global's EXISTENCE as the test for "is SortingPlus installed" -
+	the dot marks mod, the inventory antifreeze, the icon packs - and a
+	convincing fake would answer yes to all of them and send each one
+	down a path meant for a mod that is not running. Faking a thing to
+	stop one crash is how you buy five.
+
+	Instead the two functions that read it without asking are wrapped so
+	that they answer "no" instead of raising. With SortingPlus off,
+	nothing is a favourite and nothing is junk, which is the truth: that
+	information lives in SortingPlus and there is nowhere else to get it.
+
+	The practical effect on those two mods:
+
+	  * the unusable parts handler still sells worn-out parts at a
+	    trader, by condition, exactly as it does now - it just cannot
+	    also skip your favourites or sweep your junk
+	  * favouriting a part through the parts favoriter does nothing
+
+	IT ONLY ACTS WHEN SORTINGPLUS IS ABSENT. Turn SortingPlus back on
+	and this file wraps nothing at all.
+
+	IF YOU WOULD RATHER NOT HAVE THIS AT ALL: delete this one file, and
+	then either turn off "G_FLAT's Unusable Parts Handler" or untick
+	both "never handle favorites" and "always handle junk" in its MCM
+	page - Lua stops at the first false, so with those two off the
+	crashing line is never reached.
+--]]
+
+local VERSION = "1.0.0"
+
+local function log(fmt, ...)
+	local ok, s = pcall(string.format, fmt, ...)
+	printf("[AMP-COMPAT] %s", ok and s or tostring(fmt))
+end
+
+-- Already wrapped, keyed by "module.function". Wrapping twice would
+-- build a chain of pcalls that grows every time this runs.
+local done = {}
+
+-- ============================================================
+-- READING ANOTHER MOD'S TABLE
+--
+-- A BARE global read, not rawget. Anomaly loads a script the first time
+-- its name is looked up, so rawget answers nil for a mod that is
+-- installed and simply has not been touched yet - which would make this
+-- file do nothing and the crash come back.
+--
+-- Through pcall because the same lookup is what has to answer "not
+-- installed" for a name with no file behind it.
+-- ============================================================
+function mod_table(name)
+	if type(name) ~= "string" then return nil end
+
+	local ok, t = pcall(function() return _G[name] end)
+	if ok and type(t) == "table" then return t end
+	return nil
+end
+
+-- ============================================================
+-- ANSWER, DO NOT RAISE
+--
+-- The wrapped call keeps working for everyone who has SortingPlus; for
+-- everyone who does not, the error that would have taken the game down
+-- becomes `fallback` and one line in the log.
+--
+-- Logged ONCE per function. This runs inside a trade window, on every
+-- item in your inventory.
+-- ============================================================
+function guard(mod_name, fn_name, fallback)
+	local key = tostring(mod_name) .. "." .. tostring(fn_name)
+	if done[key] then return true end
+
+	local m = mod_table(mod_name)
+	if not m then return false end
+
+	local base = m[fn_name]
+	if type(base) ~= "function" then return false end
+
+	done[key] = true
+	local told = false
+
+	m[fn_name] = function(...)
+		local ok, res = pcall(base, ...)
+		if ok then return res end
+
+		if not told then
+			told = true
+			log("%s needs SortingPlus and it is off: %s", key, tostring(res))
+		end
+		return fallback
+	end
+
+	return true
+end
+
+-- ============================================================
+-- THE LIST
+--
+-- Each entry is one function that reads SortingPlus without asking.
+-- Add to it rather than writing another wrapper: everything here has
+-- the same cause and the same answer.
+-- ============================================================
+local UNGUARDED = {
+	-- Crashes every trader. This is the one that was reported.
+	{ "unusable_parts_handler",  "is_unusable_part", false },
+
+	-- Same author, same oversight, one right-click away.
+	{ "indirect_parts_favoriter", "is_favorite",     false },
+	{ "indirect_parts_favoriter", "toggle_favorite", nil   },
+}
+
+function install()
+	-- SORTINGPLUS IS THERE: nothing to guard, and nothing to log about
+	-- either. This file exists for the case where it is not.
+	if mod_table("zzz_rax_sortingplus_mcm") then return 0 end
+
+	local n = 0
+	for i = 1, #UNGUARDED do
+		local e = UNGUARDED[i]
+		if guard(e[1], e[2], e[3]) then n = n + 1 end
+	end
+
+	if n > 0 then
+		log("SortingPlus is off; %s call%s into it guarded",
+			tostring(n), (n == 1) and "" or "s")
+	end
+
+	return n
+end
+
+function on_game_start()
+	-- ON FIRST UPDATE, not here. Every other mod has had its own game
+	-- start by then, so a table this file wants to wrap is finished
+	-- being built - and the crash it is guarding cannot happen before
+	-- an inventory exists to open.
+	RegisterScriptCallback("actor_on_first_update", install)
+	log("version %s ready", VERSION)
+end

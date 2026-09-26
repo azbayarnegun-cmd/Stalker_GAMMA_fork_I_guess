@@ -1,0 +1,102 @@
+; AlifePlus trade policy, all rows in the visiting STALKER's perspective: min = he buys up to,
+; max = he sells above, one inventory band per key (the counterpart file, ap_market_policy.ltx,
+; is the trader's perspective). Two stalker tiers split by RANK_VETERAN (12000, per ap_core_const).
+; Entry order in each block = BUY priority (top entries fill first; cash exhausted = stop).
+; Min/max counted in rounds for ammo categories (per xinventory D5), items otherwise.
+; Combat ammo: buy floor = 1 box (15 rifle / 16 pistol), sell ceiling = 3-box CAP (45 / 48),
+; so trade tops a short NPC up but never sells the looted boxes it carries. Rookies buy no AP.
+; Sell-only categories use min=0, max=0 -- min=0 means count<0 never triggers buy.
+; Pre-filter ("untouchable" + "equipped") bypasses policy entirely; never reached here.
+; A row key is either a category (medkit, grenade, ...) or a single item section. An item uses
+; its section's rule when that section is listed, otherwise its category's rule; an item that
+; matches no row is left alone. weapon, outfit, and helmet are sell-only (min 0, max 0): an NPC
+; clears all surplus gear (the sale releases the item; see ap_ext_trade) and never buys gear back.
+; These rows govern NPC inventory only; they do not affect what the player buys. A trader's
+; player-facing stock is his own config, wiped and respawned every restock, unrelated to what NPCs
+; sell him (the restock deletes that regardless). The one path from NPC trading to the player's
+; shelf is the faction market echo, which leaves weapon/outfit/helmet uninjected (ap_market_policy.ltx).
+; So do NOT delete these rows to "block gear": gear never reaches the player through trading anyway;
+; deleting them only makes NPCs hoard surplus weapons.
+; Grenades are listed individually here so smoke (grenade_smoke)
+; can be left out entirely -- trade never buys or sells it (engine crash on NPC throw). Smoke is
+; purged from NPCs by the AlifeBalance cull, which names it. Ammo in rounds, items otherwise.
+
+[ap_trade_policy_rookie]
+ammo_slot_3_t1    = 15, 45
+ammo_slot_2_t1    = 16, 48
+ammo_slot_3_t2    = 0, 45
+ammo_slot_2_t2    = 0, 48
+ammo_not_equipped = 0, 0
+grenade_f1        = 0, 0
+grenade_rgd5      = 0, 0
+grenade_gd-05     = 0, 0
+grenade_ammo      = 0, 0
+medkit            = 1, 3
+bandage           = 1, 3
+stim              = 0, 1
+antirad           = 1, 2
+pill              = 0, 2
+food              = 1, 2
+drink             = 1, 2
+weapon            = 0, 0
+outfit            = 0, 0
+helmet            = 0, 0
+artefact          = 0, 1
+device            = 0, 0
+; Carried gear an NPC keeps rather than trades away: one artefact, one binoculars, one NVG stay
+; on the body, everything above that moves normally. The section rows exist because binoculars
+; classify as "weapon" and night-vision torches as "device", both sell-only categories, so
+; without their own row they would always be cleared.
+wpn_binoc         = 0, 1
+device_torch_nv_1 = 0, 1
+device_torch_nv_2 = 0, 1
+device_torch_nv_3 = 0, 1
+; Armour plates an NPC keeps rather than sells: same carve-out reason as binoc/NVG.
+af_kevlar         = 0, 1
+af_plates         = 0, 1
+af_kevlar_up      = 0, 1
+af_plates_up      = 0, 1
+fieldcraft_plate_attch = 0, 1
+money             = 0, 0
+crafting          = 0, 0
+other             = 0, 0
+
+[ap_trade_policy_veteran]
+ammo_slot_3_t1    = 15, 45
+ammo_slot_2_t1    = 16, 48
+ammo_slot_3_t2    = 15, 45
+ammo_slot_2_t2    = 16, 48
+ammo_not_equipped = 0, 0
+grenade_f1        = 1, 3
+grenade_rgd5      = 1, 3
+grenade_gd-05     = 1, 3
+grenade_ammo      = 0, 0
+medkit            = 2, 3
+bandage           = 2, 5
+stim              = 0, 2
+antirad           = 1, 2
+pill              = 1, 3
+food              = 1, 3
+drink             = 1, 2
+weapon            = 0, 0
+outfit            = 0, 0
+helmet            = 0, 0
+artefact          = 0, 1
+device            = 0, 0
+; Carried gear an NPC keeps rather than trades away: one artefact, one binoculars, one NVG stay
+; on the body, everything above that moves normally. The section rows exist because binoculars
+; classify as "weapon" and night-vision torches as "device", both sell-only categories, so
+; without their own row they would always be cleared.
+wpn_binoc         = 0, 1
+device_torch_nv_1 = 0, 1
+device_torch_nv_2 = 0, 1
+device_torch_nv_3 = 0, 1
+; Armour plates an NPC keeps rather than sells: same carve-out reason as binoc/NVG.
+af_kevlar         = 0, 1
+af_plates         = 0, 1
+af_kevlar_up      = 0, 1
+af_plates_up      = 0, 1
+fieldcraft_plate_attch = 0, 1
+money             = 0, 0
+crafting          = 1, 3
+other             = 0, 0

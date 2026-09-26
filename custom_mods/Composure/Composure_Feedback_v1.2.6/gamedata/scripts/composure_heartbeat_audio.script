@@ -1,0 +1,145 @@
+-- Sound-object owner for Composure Heartbeat v1.0.2.
+
+local SOUND_PATH = "composure_heartbeat\\heartbeat"
+local LOG = "[composure_heartbeat:v1:audio]"
+
+local pool = {}
+local pool_index = 1
+local backend = 0
+local create_attempts = 0
+local create_successes = 0
+local play_attempts = 0
+local play_successes = 0
+local last_error = nil
+
+local function clamp(v, lo, hi)
+    v = tonumber(v) or 0
+    if v < lo then return lo end
+    if v > hi then return hi end
+    return v
+end
+
+local function stop_sound(sound)
+    if not sound then return end
+    pcall(function()
+        if sound:playing() then sound:stop() end
+    end)
+end
+
+local function clear_pool()
+    for index = 1, #pool do stop_sound(pool[index]) end
+    pool = {}
+    pool_index = 1
+end
+
+local function make_sound()
+    create_attempts = create_attempts + 1
+    if sound_object == nil then
+        last_error = "sound_object unavailable"
+        return nil
+    end
+    local ok, sound = pcall(function() return sound_object(SOUND_PATH) end)
+    if not ok or not sound then
+        last_error = "sound creation failed: " .. tostring(sound)
+        return nil
+    end
+    create_successes = create_successes + 1
+    return sound
+end
+
+local function ensure_pool()
+    if #pool > 0 then return true end
+    for index = 1, 3 do
+        local sound = make_sound()
+        if sound then pool[#pool + 1] = sound end
+    end
+    if #pool == 0 then return false, last_error end
+    last_error = nil
+    return true
+end
+
+local function actor_position()
+    if db and db.actor then
+        local ok, position = pcall(function() return db.actor:position() end)
+        if ok and position then return position end
+    end
+    return vector():set(0, 0, 0)
+end
+
+-- Proven GAMMA pattern: start a normal 2D sound and then apply its live
+-- volume/frequency properties. This is the default because some builds report
+-- play_no_feedback success without producing audible output.
+local function play_reliable_scaled(sound, volume, frequency)
+    return pcall(function()
+        if sound:playing() then sound:stop() end
+        sound:play(db.actor, 0, sound_object.s2d)
+        sound.volume = volume
+        sound.frequency = frequency
+    end)
+end
+
+local function play_standard(sound)
+    return pcall(function()
+        if sound:playing() then sound:stop() end
+        sound:play(db.actor, 0, sound_object.s2d)
+    end)
+end
+
+local function play_native_no_feedback(sound, volume, frequency)
+    local position = actor_position()
+    return pcall(function()
+        sound:play_no_feedback(db.actor, sound_object.s2d, 0, position, volume, frequency)
+    end)
+end
+
+function configure(new_backend, force)
+    local selected = math.floor(clamp(new_backend, 0, 2) + 0.5)
+    if force or selected ~= backend then
+        backend = selected
+        clear_pool()
+    end
+    return ensure_pool()
+end
+
+function play(volume, frequency, label)
+    if not db or not db.actor then return false, "actor unavailable" end
+    local ready, detail = ensure_pool()
+    if not ready then return false, detail end
+    local sound = pool[pool_index]
+    pool_index = pool_index + 1
+    if pool_index > #pool then pool_index = 1 end
+    local vol = clamp(volume, 0, 2)
+    local freq = clamp(frequency or 1, 0.5, 2)
+    play_attempts = play_attempts + 1
+    local ok, err
+    if backend == 1 then ok, err = play_standard(sound)
+    elseif backend == 2 then ok, err = play_native_no_feedback(sound, vol, freq)
+    else ok, err = play_reliable_scaled(sound, vol, freq) end
+    if not ok then ok, err = play_reliable_scaled(sound, vol, freq) end
+    if not ok then ok, err = play_standard(sound) end
+    if not ok then
+        last_error = tostring(err)
+        return false, last_error
+    end
+    play_successes = play_successes + 1
+    last_error = nil
+    return true
+end
+
+function cleanup()
+    clear_pool()
+    return true
+end
+
+function get_status()
+    return {
+        path = SOUND_PATH,
+        backend = backend,
+        objects = #pool,
+        create_attempts = create_attempts,
+        create_successes = create_successes,
+        play_attempts = play_attempts,
+        play_successes = play_successes,
+        error = last_error,
+    }
+end

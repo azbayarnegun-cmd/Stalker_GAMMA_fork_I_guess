@@ -1,0 +1,447 @@
+-- Composure Status Thoughts v1.0.0.
+-- Passive, read-only first-person text presentation for Composure Feedback.
+
+local VERSION = "1.0.2"
+local REQUIRED_FRAMEWORK_API = 2
+local LOG = "[composure_thoughts:v1]"
+
+local WINDOW = nil
+local callbacks_registered = false
+local next_roll_ms = nil
+local last_event_ms = 0
+local next_event_allowed_ms = 0
+
+local pools = {
+    high = {
+        "I feel ready for whatever comes.",
+        "My head is clear.",
+        "I can handle this.",
+        "For once, my nerves are quiet.",
+    },
+    medium_high = {
+        "My nerves are holding.",
+        "Stay alert. Keep moving.",
+        "I still have control.",
+        "The Zone has not gotten to me yet.",
+    },
+    medium = {
+        "I feel steady enough.",
+        "Keep breathing. Stay focused.",
+        "Something feels wrong, but I can manage.",
+        "No reason to panic.",
+        "One step at a time.",
+    },
+    medium_low = {
+        "I'm starting to lose focus.",
+        "Every sound feels too close.",
+        "I need a moment to breathe.",
+        "My hands will not stay still.",
+        "The Zone is getting inside my head.",
+        "I should find somewhere safe.",
+    },
+    low = {
+        "I'm barely holding myself together.",
+        "I can hear my heart pounding.",
+        "I need to get out of here.",
+        "Everything is closing in.",
+        "I cannot think straight.",
+        "Something is watching me.",
+        "Do not freeze. Keep moving.",
+    },
+    breaking_point = {
+        "I need to get out. Now.",
+        "I cannot breathe.",
+        "This is too much.",
+        "My body is moving before I can think.",
+        "The edges are going dark.",
+        "There is nowhere safe.",
+        "Do not stop.",
+    },
+    pass_out = {
+        "Everything is fading away.",
+        "I cannot stay awake.",
+        "...",
+    },
+}
+
+local panic_words = { "MOVE", "RUN", "BREATHE", "NOT HERE", "GET OUT", "TOO CLOSE", "NOW" }
+
+-- Stable, short line for the minimalist Check HUD.  Thoughts Extended may
+-- replace this script; HUD v3.3 has the same fallback contract.
+function get_status_description(snapshot)
+    local tier = type(snapshot) == "table" and snapshot.tier or "medium"
+    if tier == "high" then return "Clear and collected." end
+    if tier == "medium_high" then return "Calm and focused." end
+    if tier == "medium" then return "Holding steady." end
+    if tier == "medium_low" then return "Starting to unravel." end
+    if tier == "low" then return "Struggling to stay composed." end
+    if tier == "breaking_point" then return "Barely holding together." end
+    return "Everything is fading."
+end
+
+local function cfg(key, fallback)
+    if composure_thoughts_mcm and composure_thoughts_mcm.get_config then
+        local ok, value = pcall(composure_thoughts_mcm.get_config, key)
+        if ok and value ~= nil then return value end
+    end
+    return fallback
+end
+
+local function log(fmt, ...)
+    if not cfg("debug_log", false) then return end
+    local ok, message = pcall(string.format, fmt, ...)
+    printf(LOG .. " " .. (ok and message or tostring(fmt)))
+end
+
+local function clamp(value, low, high)
+    value = tonumber(value) or 0
+    if value < low then return low end
+    if value > high then return high end
+    return value
+end
+
+local function framework_ready()
+    if not composure_framework or not composure_framework.supports or not composure_framework.get_snapshot then
+        return false
+    end
+    local ok, supported = pcall(composure_framework.supports, REQUIRED_FRAMEWORK_API)
+    return ok and supported == true
+end
+
+local function effective_snapshot(snapshot)
+    if composure_feedback_test and composure_feedback_test.apply_snapshot then
+        local ok, result = pcall(composure_feedback_test.apply_snapshot, snapshot)
+        if ok and type(result) == "table" then return result end
+    end
+    return snapshot
+end
+
+local function gameplay_input_free()
+    if not is_hud_free then return true end
+    local ok, free = pcall(is_hud_free)
+    return not ok or free == true
+end
+
+local function state_color(tier, alpha, slot)
+    local red, green, blue = 226, 226, 220
+    if tier == "medium_low" then red, green, blue = 230, 196, 164 end
+    if tier == "low" then red, green, blue = 232, 156, 132 end
+    if tier == "breaking_point" or tier == "pass_out" then red, green, blue = 235, 105, 96 end
+    local shade = (slot - 1) * 5
+    return GetARGB(math.floor(clamp(alpha, 0, 1) * 255),
+        clamp(red - shade, 0, 255), clamp(green - shade, 0, 255), clamp(blue - shade, 0, 255))
+end
+
+local function close_window()
+    if not WINDOW then return end
+    if get_hud and get_hud() then pcall(function() get_hud():RemoveDialogToRender(WINDOW) end) end
+    WINDOW = nil
+end
+
+class "ComposureThoughtsWindow" (CUIScriptWnd)
+
+function ComposureThoughtsWindow:__init() super()
+    self:SetWndRect(Frect():set(0, 0, 1024, 768))
+    self:SetAutoDelete(true)
+    self.xml = CScriptXmlInit()
+    self.xml:ParseFile("ui_composure_thoughts.xml")
+    self.slots = {}
+    for index = 1, 5 do
+        self.slots[index] = self.xml:InitTextWnd("thought_" .. tostring(index), self)
+        self.slots[index]:Show(false)
+    end
+    self.records = {}
+    self.done = false
+end
+
+function ComposureThoughtsWindow:__finalize()
+end
+
+local slot_layouts = {
+    [1] = { 3 },
+    [2] = { 2, 4 },
+    [3] = { 2, 3, 4 },
+    [4] = { 1, 2, 4, 5 },
+    [5] = { 1, 2, 3, 4, 5 },
+}
+
+-- Each message midpoint is anchored to the configured ellipse outline.
+-- The area inside the ellipse is deliberately never sampled.
+local function random_centers(count)
+    local centers = {}
+    local horizontal = clamp(cfg("horizontal_spread", 140), 0, 240)
+    local vertical = clamp(cfg("vertical_spread", 155), 40, 260)
+    for index = 1, count do
+        local chosen = nil
+        for attempt = 1, 24 do
+            local angle = math.random() * math.pi * 2
+            local candidate = {
+                x = 512 + math.cos(angle) * horizontal,
+                y = 374 + math.sin(angle) * vertical,
+            }
+            local separated = true
+            for _, existing in ipairs(centers) do
+                local dx, dy = candidate.x - existing.x, candidate.y - existing.y
+                if dx * dx + dy * dy < 58 * 58 then separated = false; break end
+            end
+            if separated then chosen = candidate; break end
+        end
+        local fallback_angle = ((index - 1) / math.max(1, count)) * math.pi * 2
+        centers[index] = chosen or {
+            x = 512 + math.cos(fallback_angle) * horizontal,
+            y = 374 + math.sin(fallback_angle) * vertical,
+        }
+    end
+    return centers
+end
+
+function ComposureThoughtsWindow:Apply(messages, tier)
+    local now = time_global()
+    local duration_ms = clamp(cfg("duration", 3.8), 2, 8) * 1000
+    local layout = slot_layouts[#messages] or slot_layouts[1]
+    local randomized = cfg("random_positions", true) == true
+    local centers = randomized and random_centers(#messages) or nil
+    self.records = {}
+    self.done = false
+    for index = 1, 5 do self.slots[index]:Show(false) end
+    for index, message in ipairs(messages) do
+        local slot_index = randomized and index or layout[index]
+        local start_ms = now + (index - 1) * 180
+        local finish_ms = start_ms + duration_ms + math.random(-250, 250)
+        local slot = self.slots[slot_index]
+        if randomized then
+            local center = centers[index]
+            slot:SetWndPos(vector2():set(center.x - slot:GetWidth() * 0.5, center.y - slot:GetHeight() * 0.5))
+        end
+        slot:SetText(message)
+        slot:SetTextColor(state_color(tier, 0, slot_index))
+        slot:Show(true)
+        self.records[#self.records + 1] = {
+            slot = slot,
+            slot_index = slot_index,
+            start_ms = start_ms,
+            finish_ms = finish_ms,
+            tier = tier,
+            center = centers and centers[index] or nil,
+        }
+    end
+end
+
+function ComposureThoughtsWindow:Update()
+    CUIScriptWnd.Update(self)
+    local now = time_global()
+    local alive = false
+    for _, record in ipairs(self.records) do
+        local alpha = 0
+        if now >= record.start_ms and now < record.finish_ms then
+            alive = true
+            local fade_in = clamp((now - record.start_ms) / 550, 0, 1)
+            local fade_out = clamp((record.finish_ms - now) / 900, 0, 1)
+            alpha = math.min(fade_in, fade_out)
+        end
+        record.slot:SetTextColor(state_color(record.tier, alpha, record.slot_index))
+        record.slot:Show(alpha > 0.01)
+    end
+    if not alive and #self.records > 0 then self.done = true end
+end
+
+local function ensure_window()
+    if WINDOW then return true end
+    if not db or not db.actor or not get_hud or not get_hud() then return false end
+    local ok, window = pcall(ComposureThoughtsWindow)
+    if not ok or not window then
+        log("window construction failed: %s", tostring(window))
+        return false
+    end
+    local added, err = pcall(function() get_hud():AddDialogToRender(window) end)
+    if not added then
+        log("render registration failed: %s", tostring(err))
+        return false
+    end
+    WINDOW = window
+    return true
+end
+
+local function shuffled_copy(source)
+    local result = {}
+    for _, text in ipairs(source or {}) do result[#result + 1] = text end
+    for index = #result, 2, -1 do
+        local other = math.random(1, index)
+        result[index], result[other] = result[other], result[index]
+    end
+    return result
+end
+
+local function intensity_for(value)
+    return clamp((70 - clamp(value, 0, 100)) / 69, 0, 1)
+end
+
+local function desired_count(snapshot)
+    if snapshot.tier == "pass_out" then return 1 end
+    local intensity = intensity_for(snapshot.value)
+    local count = 1 + math.floor(intensity * 4 + 0.20)
+    return math.floor(clamp(count, 1, clamp(cfg("maximum_visible", 5), 1, 5)))
+end
+
+local function event_message(record)
+    if not record or type(record.data) ~= "table" then return nil end
+    local data = record.data
+    local metadata = type(data.metadata) == "table" and data.metadata or {}
+    if type(metadata.flavor) == "string" and metadata.flavor ~= "" then return metadata.flavor end
+    local actual = tonumber(data.actual) or 0
+    if actual > 0 then return "I can feel myself settling down." end
+    if data.category == "combat" then return "That was too close." end
+    if data.category == "consumable" then return "I need this to work." end
+    return "That shook me more than it should have."
+end
+
+local function build_messages(snapshot, cause_event)
+    local tier = snapshot.tier or "medium"
+    local source = shuffled_copy(pools[tier] or pools.medium)
+    local count = desired_count(snapshot)
+    local messages = {}
+    local event_text = event_message(cause_event)
+    if event_text then messages[#messages + 1] = event_text end
+    local index = 1
+    while #messages < count and #source > 0 do
+        messages[#messages + 1] = source[index]
+        index = index + 1
+        if index > #source then index = 1 end
+    end
+    if cfg("low_caps", true) and (tier == "low" or tier == "breaking_point") and count >= 2 then
+        local caps_index = math.random(math.max(2, #messages - 1), #messages)
+        messages[caps_index] = panic_words[math.random(1, #panic_words)]
+    end
+    return messages
+end
+
+local function schedule_next(snapshot, failed_roll)
+    local minimum = clamp(cfg("minimum_cooldown", 18), 5, 60)
+    local maximum = clamp(cfg("maximum_cooldown", 95), 30, 180)
+    if maximum < minimum then maximum = minimum end
+    local intensity = intensity_for(snapshot and snapshot.value or 65)
+    local seconds = maximum - (maximum - minimum) * intensity
+    if failed_roll then seconds = math.min(seconds * 0.35, 25) end
+    seconds = seconds * (0.85 + math.random() * 0.30)
+    next_roll_ms = time_global() + seconds * 1000
+end
+
+local function show_group(snapshot, cause_event, source)
+    if not cfg("enabled", true) or type(snapshot) ~= "table" then return false end
+    if snapshot.value > 69 and not cfg("show_above_medium", true) and source ~= "test" then return false end
+    if not gameplay_input_free() and source ~= "test" then return false end
+    close_window()
+    if not ensure_window() then return false end
+    local messages = build_messages(snapshot, cause_event)
+    WINDOW:Apply(messages, snapshot.tier or "medium")
+    log("trigger=%s tier=%s value=%.1f count=%d", tostring(source), tostring(snapshot.tier), tonumber(snapshot.value) or 0, #messages)
+    schedule_next(snapshot, false)
+    return true
+end
+
+local function newest_meaningful_event(snapshot)
+    if not cfg("event_thoughts", true) then return nil end
+    local threshold = clamp(cfg("event_threshold", 2), 0.5, 10)
+    local newest = nil
+    for _, record in ipairs(snapshot.recent_events or {}) do
+        local event_time = tonumber(record.time_ms) or 0
+        local data = record.data
+        if record.event == "delta_applied" and event_time > last_event_ms and type(data) == "table"
+            and data.kind ~= "continuous" and math.abs(tonumber(data.actual) or 0) >= threshold then
+            if not newest or event_time > (tonumber(newest.time_ms) or 0) then newest = record end
+        end
+    end
+    return newest
+end
+
+local function mark_current_events(snapshot)
+    for _, record in ipairs(snapshot.recent_events or {}) do
+        last_event_ms = math.max(last_event_ms, tonumber(record.time_ms) or 0)
+    end
+end
+
+local function on_first_update()
+    close_window()
+    if not framework_ready() then return end
+    local ok, snapshot = pcall(composure_framework.get_snapshot)
+    if ok and type(snapshot) == "table" then
+        snapshot = effective_snapshot(snapshot)
+        mark_current_events(snapshot)
+        schedule_next(snapshot, false)
+    end
+end
+
+local function update_impl()
+    if WINDOW and WINDOW.done then close_window() end
+    if not cfg("enabled", true) or not framework_ready() or not db or not db.actor then
+        close_window()
+        return
+    end
+    local ok, snapshot = pcall(composure_framework.get_snapshot)
+    if not ok or type(snapshot) ~= "table" then return end
+    snapshot = effective_snapshot(snapshot)
+
+    local event = newest_meaningful_event(snapshot)
+    if event then
+        last_event_ms = math.max(last_event_ms, tonumber(event.time_ms) or 0)
+        if time_global() >= next_event_allowed_ms then
+            next_event_allowed_ms = time_global() + 8000
+            show_group(snapshot, event, "event")
+            return
+        end
+    end
+    mark_current_events(snapshot)
+
+    if not cfg("automatic", true) then return end
+    if not next_roll_ms then schedule_next(snapshot, false); return end
+    if time_global() < next_roll_ms or WINDOW then return end
+    local intensity = intensity_for(snapshot.value)
+    local chance = 0.06 + intensity * 0.84
+    if snapshot.value > 69 then chance = 0.04 end
+    if math.random() <= chance then
+        show_group(snapshot, nil, "automatic")
+    else
+        log("automatic roll failed tier=%s chance=%.2f", tostring(snapshot.tier), chance)
+        schedule_next(snapshot, true)
+    end
+end
+
+local function on_actor_update()
+    local ok, err = pcall(update_impl)
+    if not ok then
+        log("update failed: %s", tostring(err))
+        close_window()
+    end
+end
+
+local function on_key_press(key)
+    if key ~= tonumber(cfg("test_key", 64)) or not cfg("enabled", true) or not framework_ready() then return end
+    local ok, snapshot = pcall(composure_framework.get_snapshot)
+    if ok and type(snapshot) == "table" then show_group(effective_snapshot(snapshot), nil, "test") end
+end
+
+local function on_option_change()
+    close_window()
+    next_roll_ms = nil
+end
+
+function get_version() return VERSION end
+
+function show_test()
+    if not framework_ready() then return false end
+    local ok, snapshot = pcall(composure_framework.get_snapshot)
+    if not ok or type(snapshot) ~= "table" then return false end
+    return show_group(effective_snapshot(snapshot), nil, "api_test")
+end
+
+function on_game_start()
+    if callbacks_registered then return end
+    callbacks_registered = true
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("actor_on_first_update", on_first_update)
+    RegisterScriptCallback("actor_on_update", on_actor_update)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("on_level_changing", close_window)
+    RegisterScriptCallback("actor_on_net_destroy", close_window)
+    printf(LOG .. " v%s initialized", VERSION)
+end

@@ -1,0 +1,62 @@
+-- Composure Status Thoughts v1 settings inside Composure Feedback.
+
+local KEY_F6 = (DIK_keys and DIK_keys.DIK_F6) or 64
+
+local defaults = {
+    enabled = true,
+    automatic = true,
+    maximum_visible = 5,
+    random_positions = true,
+    horizontal_spread = 140,
+    vertical_spread = 155,
+    duration = 3.8,
+    minimum_cooldown = 18,
+    maximum_cooldown = 95,
+    event_thoughts = true,
+    event_threshold = 2,
+    low_caps = true,
+    show_above_medium = true,
+    test_key = KEY_F6,
+    debug_log = false,
+}
+
+function get_config(key)
+    if ui_mcm and ui_mcm.get then
+        local ok, value = pcall(ui_mcm.get, "composure_thoughts/" .. key)
+        if ok and value ~= nil then return value end
+    end
+    return defaults[key]
+end
+
+function on_mcm_load()
+    return {
+        id = "composure_thoughts",
+        sh = true,
+        gr = {
+            { id = "enabled", type = "check", val = 1, def = true },
+            { id = "automatic", type = "check", val = 1, def = true },
+            { id = "maximum_visible", type = "track", val = 2,
+              min = 1, max = 5, step = 1, def = 5 },
+            { id = "random_positions", type = "check", val = 1, def = true },
+            { id = "horizontal_spread", type = "track", val = 2,
+              min = 0, max = 240, step = 10, def = 140 },
+            { id = "vertical_spread", type = "track", val = 2,
+              min = 40, max = 260, step = 10, def = 155 },
+            { id = "duration", type = "track", val = 2,
+              min = 2, max = 8, step = 0.5, prec = 1, def = 3.8 },
+            { id = "minimum_cooldown", type = "track", val = 2,
+              min = 5, max = 60, step = 1, def = 18 },
+            { id = "maximum_cooldown", type = "track", val = 2,
+              min = 30, max = 180, step = 5, def = 95 },
+            { id = "line1", type = "line" },
+            { id = "event_thoughts", type = "check", val = 1, def = true },
+            { id = "event_threshold", type = "track", val = 2,
+              min = 0.5, max = 10, step = 0.5, prec = 1, def = 2 },
+            { id = "low_caps", type = "check", val = 1, def = true },
+            { id = "show_above_medium", type = "check", val = 1, def = true },
+            { id = "line2", type = "line" },
+            { id = "test_key", type = "key_bind", val = 2, def = KEY_F6 },
+            { id = "debug_log", type = "check", val = 1, def = false },
+        },
+    }
+end

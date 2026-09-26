@@ -1,0 +1,631 @@
+; ------------ tanks ----------------------
+[af_oxygen_tank_1]:af_base
+$spawn				                               = "artefacts\af_frames"
+kind			                               = i_attach
+class				                               = SCRPTART  	; будет подпрыгивать
+visual                                             = dynamics\weapons\mask_filter\oxygen_tank_1
+description			                               = st_af_oxygen_tank_1_descr
+inv_name			                               = st_af_oxygen_tank_1_name
+inv_name_short			                           = st_af_oxygen_tank_1_name
+inv_weight			                               = 4.13
+icons_texture                                      = ui\ui_oxygen_tank
+inv_grid_x			                               = 4
+inv_grid_y			                               = 0
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 2500		; ( (air_immunity * 2200 + irl_hours * 200 - weight * 100)^(1 + tier * 0.01) ) + shock_immunity * 2000
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+script_binding                           = toxic_air.bind
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+hit_absorbation_sect		                       = af_oxygen_tank_1_absorbation
+attach_angle_offset		                           = 1.922,1.551,-0.740   
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 0.41
+flow_rate												= 0.0001334
+
+tier = 1
+
+[af_oxygen_tank_1_absorbation]
+burn_immunity 			                           = 0
+strike_immunity 		                           = 0
+shock_immunity 			                           = -0.087
+wound_immunity 			                           = 0
+radiation_immunity 		                           = 0
+telepatic_immunity 		                           = 0
+chemical_burn_immunity 		                       = 0
+explosion_immunity 			                       = 0
+fire_wound_immunity  		                       = 0
+
+[af_oxygen_tank_1soviet]:af_base
+$spawn				                               = "artefacts\af_frames"
+kind			                               = i_attach
+class				                               = SCRPTART  	; будет подпрыгивать
+visual                                             = dynamics\weapons\mask_filter\oxygen_tank_2
+description			                               = st_af_oxygen_tank_1soviet_descr
+inv_name			                               = st_af_oxygen_tank_1soviet_name
+inv_name_short			                           = st_af_oxygen_tank_1soviet_name
+inv_weight			                               = 1.2
+icons_texture                                      = ui\ui_oxygen_tank2
+inv_grid_x			                               = 4
+inv_grid_y			                               = 0
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 2038
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+script_binding                           = toxic_air.bind
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+hit_absorbation_sect		                       = af_oxygen_tank_1soviet_absorbation
+attach_angle_offset		                           = 1.922,1.551,-0.740   
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 0.25
+flow_rate												= 0.0000926
+
+tier = 1
+
+[af_oxygen_tank_1soviet_absorbation]
+burn_immunity 			                           = 0
+strike_immunity 		                           = 0
+shock_immunity 			                           = 0
+wound_immunity 			                           = 0
+radiation_immunity 		                           = 0
+telepatic_immunity 		                           = 0
+chemical_burn_immunity 		                       = 0.097
+explosion_immunity 			                       = 0
+fire_wound_immunity  		                       = 0
+
+
+[af_oxygen_tank_2]:af_base
+$spawn				                               = "artefacts\af_frames"
+kind			                               = i_attach
+class				                               = SCRPTART  	; будет подпрыгивать
+visual                                             = dynamics\weapons\mask_filter\oxygen_tank_2
+description			                               = st_af_oxygen_tank_2_descr
+inv_name			                               = st_af_oxygen_tank_2_name
+inv_name_short			                           = st_af_oxygen_tank_2_name
+inv_weight			                               = 6.51
+icons_texture                                      = ui\ui_oxygen_tank
+inv_grid_x			                               = 3
+inv_grid_y			                               = 0
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 1438
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+script_binding                           = toxic_air.bind
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+attach_angle_offset		                           = 1.922,1.551,-0.740   
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 0.59
+flow_rate												= 0.0000926
+
+tier = 2
+
+
+[af_oxygen_tank_3]:af_base
+$spawn				                               = "artefacts\af_frames"
+kind			                               = i_attach
+class				                               = SCRPTART  	; будет подпрыгивать
+visual                                             = dynamics\weapons\mask_filter\oxygen_tank_3
+description			                               = st_af_oxygen_tank_3_descr
+inv_name			                               = st_af_oxygen_tank_3_name
+inv_name_short			                           = st_af_oxygen_tank_3_name
+inv_weight			                               = 6.9
+icons_texture                                      = ui\ui_oxygen_tank
+inv_grid_x			                               = 3
+inv_grid_y			                               = 1
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 3551
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+script_binding                           = toxic_air.bind
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+attach_angle_offset		                           = 1.922,1.551,-0.740   
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 1.1
+flow_rate												= 0.0001853
+
+tier = 3
+
+[af_oxygen_tank_3military]:af_base
+$spawn				                               = "artefacts\af_frames"
+kind			                               = i_attach
+class				                               = SCRPTART  	; будет подпрыгивать
+visual                                             = dynamics\weapons\mask_filter\oxygen_tank_3
+description			                               = st_af_oxygen_tank_3military_descr
+inv_name			                               = st_af_oxygen_tank_3military_name
+inv_name_short			                           = st_af_oxygen_tank_3military_name
+inv_weight			                               = 1.6
+icons_texture                                      = ui\ui_oxygen_tank2
+inv_grid_x			                               = 3
+inv_grid_y			                               = 1
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 7138
+jump_height			                               = 0.0
+det_show_particles		                           = artefact\af_thermal_show
+det_hide_particles		                           = artefact\af_thermal_hide
+particles_bone			                           = joint2
+af_rank				                               = 0
+script_binding                           = toxic_air.bind
+lights_enabled                                     = false
+trail_light_color 		                           = 0.9,0.4,0.2
+trail_light_range 		                           = 2.0
+attach_angle_offset		                           = 1.922,1.551,-0.740   
+attach_position_offset                             = 0.15,0.002,0.25
+attach_bone_name		                           = bip01_r_hand
+auto_attach			                               = false
+use_condition                            		       = true
+auto_attach                                            = false 
+allow_repair                             		       = false
+anim_item                                              = false
+release_on_first_update							       = false
+
+power_critical							 		       = 0.05
+condition_bar									       = power_progess_bar
+use2_functor                					       = item_device.menu_battery
+use2_action_functor         					       = item_device.func_battery
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 1.1
+flow_rate												= 0.0000826
+
+tier = 3
+
+; ------------ filters ----------------------
+[af_mask_filter_homemade]:identity_immunities,tch_device
+$spawn				                               = "artefacts\af_frames"
+kind								                   = i_tool
+class 								= II_ATTCH
+cform				                                   = skeleton
+visual                                             = dynamics\weapons\mask_filter\filter_model_1_word
+description			                               = st_af_mask_filter_homemade_descr
+inv_name			                               = st_af_mask_filter_homemade_name
+inv_name_short			                           = st_af_mask_filter_homemade_name
+inv_weight			                               = 0.407
+icons_texture                                      = ui\ui_oxygen_tank2
+inv_grid_x			                               = 2
+inv_grid_y			                               = 4
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 712	; -1 avg h	; (air_immunity * 500 + irl_hours_avg * 400 - weight * 50)^(1 + 5 * tier * 0.01)
+script_binding                           = toxic_air.bind
+attach_angle_offset		                               = 0.440521, 1.378287, -0.644026
+attach_position_offset	                               = 0.104196, -0.010821, 0.076969
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+bone_name				                               = bip01_r_hand
+position_offset			                               = 0.0,0.0,0.0
+angle_offset			                               = 1.570790,1.570790,3.92699
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 0.5
+flow_rate												= 0.00027
+flow_factor											= 0.9
+
+tier = 1
+
+[af_mask_filter_ms4]:identity_immunities,tch_device
+$spawn				                               = "artefacts\af_frames"
+kind								                   = i_tool
+class 								= II_ATTCH
+cform				                                   = skeleton
+visual                                             = dynamics\weapons\mask_filter\filter_model_1_word
+description			                               = st_af_mask_filter_ms4_descr
+inv_name			                               = st_af_mask_filter_ms4_name
+inv_name_short			                           = st_af_mask_filter_ms4_name
+inv_weight			                               = 0.337
+icons_texture                                      = ui\ui_oxygen_tank2
+inv_grid_x			                               = 2
+inv_grid_y			                               = 0
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 2313	; -1 avg h	; (air_immunity * 500 + irl_hours_avg * 400 - weight * 50)^(1 + 5 * tier * 0.01)
+script_binding                           = toxic_air.bind
+attach_angle_offset		                               = 0.440521, 1.378287, -0.644026
+attach_position_offset	                               = 0.104196, -0.010821, 0.076969
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+bone_name				                               = bip01_r_hand
+position_offset			                               = 0.0,0.0,0.0
+angle_offset			                               = 1.570790,1.570790,3.92699
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 0.18
+flow_rate												= 0.00033
+flow_factor											= 0.65
+
+tier = 1
+
+[af_mask_filter_1]:identity_immunities,tch_device
+$spawn				                               = "artefacts\af_frames"
+kind								                   = i_tool
+class 								= II_ATTCH
+cform				                                   = skeleton
+visual                                             = dynamics\weapons\mask_filter\filter_model_1_word
+description			                               = st_af_mask_filter_1_descr
+inv_name			                               = st_af_mask_filter_1_name
+inv_name_short			                           = st_af_mask_filter_1_name
+inv_weight			                               = 0.335
+icons_texture                                      = ui\ui_oxygen_tank
+inv_grid_x			                               = 2
+inv_grid_y			                               = 1
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 1713	; -1 avg h	; (air_immunity * 500 + irl_hours_avg * 400 - weight * 50)^(1 + 5 * tier * 0.01)
+script_binding                           = toxic_air.bind
+attach_angle_offset		                               = 0.440521, 1.378287, -0.644026
+attach_position_offset	                               = 0.104196, -0.010821, 0.076969
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+bone_name				                               = bip01_r_hand
+position_offset			                               = 0.0,0.0,0.0
+angle_offset			                               = 1.570790,1.570790,3.92699
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 0.18
+flow_rate												= 0.00047
+flow_factor											= 0.9
+
+tier = 1
+
+[af_mask_filter_1sci]:identity_immunities,tch_device
+$spawn				                               = "artefacts\af_frames"
+kind								                   = i_tool
+class 								= II_ATTCH
+cform				                                   = skeleton
+visual                                             = dynamics\weapons\mask_filter\filter_model_1_word
+description			                               = st_af_mask_filter_m58_descr
+inv_name			                               = st_af_mask_filter_m58_name
+inv_name_short			                           = st_af_mask_filter_m58_name
+inv_weight			                               = 0.205
+icons_texture                                      = ui\ui_oxygen_tank2
+inv_grid_x			                               = 2
+inv_grid_y			                               = 1
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 2813	; -1 avg h	; (air_immunity * 500 + irl_hours_avg * 400 - weight * 50)^(1 + 5 * tier * 0.01)
+script_binding                           = toxic_air.bind
+attach_angle_offset		                               = 0.440521, 1.378287, -0.644026
+attach_position_offset	                               = 0.104196, -0.010821, 0.076969
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+bone_name				                               = bip01_r_hand
+position_offset			                               = 0.0,0.0,0.0
+angle_offset			                               = 1.570790,1.570790,3.92699
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 0.2
+flow_rate												= 0.00067
+flow_factor											= 0.9
+
+tier = 1
+
+[af_mask_filter_dp1]:identity_immunities,tch_device
+$spawn				                               = "artefacts\af_frames"
+kind								                   = i_tool
+class 								= II_ATTCH
+cform				                                   = skeleton
+visual                                             = dynamics\weapons\mask_filter\filter_model_1_word
+description			                               = st_af_mask_filter_dp1_descr
+inv_name			                               = st_af_mask_filter_dp1_name
+inv_name_short			                           = st_af_mask_filter_dp1_name
+inv_weight			                               = 0.67
+icons_texture                                      = ui\ui_oxygen_tank2
+inv_grid_x			                               = 0
+inv_grid_y			                               = 1
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 1890	; -1 avg h	; (air_immunity * 500 + irl_hours_avg * 400 - weight * 50)^(1 + 5 * tier * 0.01)
+script_binding                           = toxic_air.bind
+attach_angle_offset		                               = 0.440521, 1.378287, -0.644026
+attach_position_offset	                               = 0.104196, -0.010821, 0.076969
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+bone_name				                               = bip01_r_hand
+position_offset			                               = 0.0,0.0,0.0
+angle_offset			                               = 1.570790,1.570790,3.92699
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 0.17
+flow_rate												= 0.00033
+flow_factor											= 0.65
+
+tier = 1
+
+[af_mask_filter_2]:identity_immunities,tch_device
+$spawn				                               = "artefacts\af_frames"
+kind								                   = i_tool
+class 								= II_ATTCH
+cform				                                   = skeleton
+visual                                             = dynamics\weapons\mask_filter\filter_model_2_word
+description			                               = st_af_mask_filter_2_descr
+inv_name			                               = st_af_mask_filter_2_name
+inv_name_short			                           = st_af_mask_filter_2_name
+inv_weight			                               = 0.47
+icons_texture                                      = ui\ui_oxygen_tank
+inv_grid_x			                               = 1
+inv_grid_y			                               = 0
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 2317		; -1.5 avg h
+script_binding                           = toxic_air.bind
+attach_angle_offset		                               = 0.440521, 1.378287, -0.644026
+attach_position_offset	                               = 0.104196, -0.010821, 0.076969
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+bone_name				                               = bip01_r_hand
+position_offset			                               = 0.0,0.0,0.0
+angle_offset			                               = 1.570790,1.570790,3.92699
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 0.42
+flow_rate												= 0.00033
+flow_factor											= 0.65
+
+tier = 2
+
+[af_mask_filter_2dolg]:identity_immunities,tch_device
+$spawn				                               = "artefacts\af_frames"
+kind								                   = i_tool
+class 								= II_ATTCH
+cform				                                   = skeleton
+visual                                             = dynamics\weapons\mask_filter\filter_model_3_word
+description			                               = st_af_mask_filter_2dolg_descr
+inv_name			                               = st_af_mask_filter_2dolg_name
+inv_name_short			                           = st_af_mask_filter_2dolg_name
+inv_weight			                               = 0.52
+icons_texture                                      = ui\ui_oxygen_tank
+inv_grid_x			                               = 1
+inv_grid_y			                               = 2
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 2617		; -1.5 avg h
+script_binding                           = toxic_air.bind
+attach_angle_offset		                               = 0.440521, 1.378287, -0.644026
+attach_position_offset	                               = 0.104196, -0.010821, 0.076969
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+bone_name				                               = bip01_r_hand
+position_offset			                               = 0.0,0.0,0.0
+angle_offset			                               = 1.570790,1.570790,3.92699
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 0.52
+flow_rate												= 0.00042
+flow_factor											= 0.77
+
+tier = 2
+
+
+[af_mask_filter_mof6]:identity_immunities,tch_device
+$spawn				                               = "artefacts\af_frames"
+kind								                   = i_tool
+class 								= II_ATTCH
+cform				                                   = skeleton
+visual                                             = dynamics\weapons\mask_filter\filter_model_1_word
+description			                               = st_af_mask_filter_mof6_descr
+inv_name			                               = st_af_mask_filter_mof6_name
+inv_name_short			                           = st_af_mask_filter_mof6_name
+inv_weight			                               = 0.39
+icons_texture                                      = ui\ui_oxygen_tank2
+inv_grid_x			                               = 1
+inv_grid_y			                               = 0
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 3011	; -1 avg h	; (air_immunity * 500 + irl_hours_avg * 400 - weight * 50)^(1 + 5 * tier * 0.01)
+script_binding                           = toxic_air.bind
+attach_angle_offset		                               = 0.440521, 1.378287, -0.644026
+attach_position_offset	                               = 0.104196, -0.010821, 0.076969
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+bone_name				                               = bip01_r_hand
+position_offset			                               = 0.0,0.0,0.0
+angle_offset			                               = 1.570790,1.570790,3.92699
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 0.42
+flow_rate												= 0.00043
+flow_factor											= 0.67
+
+tier = 2
+
+[af_mask_filter_3]:identity_immunities,tch_device
+$spawn				                               = "artefacts\af_frames"
+kind								                   = i_tool
+class 								= II_ATTCH
+cform				                                   = skeleton
+visual                                             = dynamics\weapons\mask_filter\filter_model_3_word
+description			                               = st_af_mask_filter_3_descr
+inv_name			                               = st_af_mask_filter_3_name
+inv_name_short			                           = st_af_mask_filter_3_name
+inv_weight			                               = 0.65
+icons_texture                                      = ui\ui_oxygen_tank
+inv_grid_x			                               = 0
+inv_grid_y			                               = 2
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 2777		; - 2.5 avg h
+script_binding                           = toxic_air.bind
+attach_angle_offset		                               = 0.440521, 1.378287, -0.644026
+attach_position_offset	                               = 0.104196, -0.010821, 0.076969
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+bone_name				                               = bip01_r_hand
+position_offset			                               = 0.0,0.0,0.0
+angle_offset			                               = 1.570790,1.570790,3.92699
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 0.6
+flow_rate												= 0.000122
+flow_factor											= 0.5
+
+tier = 3
+
+[af_mask_filter_fp5]:identity_immunities,tch_device
+$spawn				                               = "artefacts\af_frames"
+kind								                   = i_tool
+class 								= II_ATTCH
+cform				                                   = skeleton
+visual                                             = dynamics\weapons\mask_filter\filter_model_3_word
+description			                               = st_af_mask_filter_fp5_descr
+inv_name			                               = st_af_mask_filter_fp5_name
+inv_name_short			                           = st_af_mask_filter_fp5_name
+inv_weight			                               = 0.65
+icons_texture                                      = ui\ui_oxygen_tank2
+inv_grid_width     = 1
+inv_grid_height    = 1
+inv_grid_x         = 0
+inv_grid_y         = 2
+
+cost				                               = 2777		; - 2.5 avg h
+script_binding                           = toxic_air.bind
+attach_angle_offset		                               = 0.440521, 1.378287, -0.644026
+attach_position_offset	                               = 0.104196, -0.010821, 0.076969
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+bone_name				                               = bip01_r_hand
+position_offset			                               = 0.0,0.0,0.0
+angle_offset			                               = 1.570790,1.570790,3.92699
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 0.55
+flow_rate												= 0.000102
+flow_factor											= 0.4
+
+tier = 3
+
+[af_mask_filter_r18]:identity_immunities,tch_device
+$spawn				                               = "artefacts\af_frames"
+kind								                   = i_tool
+class 								= II_ATTCH
+cform				                                   = skeleton
+visual                                             = dynamics\weapons\mask_filter\filter_model_2_word
+description			                               = st_af_mask_filter_r18_descr
+inv_name			                               = st_af_mask_filter_r18_name
+inv_name_short			                           = st_af_mask_filter_r18_name
+inv_weight			                               = 0.3
+icons_texture                                      = ui\ui_oxygen_tank2
+inv_grid_x			                               = 2
+inv_grid_y			                               = 3
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 1900		; - 2.5 avg h
+script_binding                           = toxic_air.bind
+attach_angle_offset		                               = 0.440521, 1.378287, -0.644026
+attach_position_offset	                               = 0.104196, -0.010821, 0.076969
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+bone_name				                               = bip01_r_hand
+position_offset			                               = 0.0,0.0,0.0
+angle_offset			                               = 1.570790,1.570790,3.92699
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 0.6
+flow_rate												= 0.0122
+flow_factor											= 0.9
+
+tier = 3
+
+[af_mask_filter_3isg]:identity_immunities,tch_device
+$spawn				                               = "artefacts\af_frames"
+kind								                   = i_tool
+class 								= II_ATTCH
+cform				                                   = skeleton
+visual                                             = dynamics\weapons\mask_filter\filter_model_3_word
+description			                               = st_af_mask_filter_3isg_descr
+inv_name			                               = st_af_mask_filter_3isg_name
+inv_name_short			                           = st_af_mask_filter_3isg_name
+inv_weight			                               = 0.55
+icons_texture                                      = ui\ui_oxygen_tank
+inv_grid_x			                               = 0
+inv_grid_y			                               = 0
+inv_grid_width		                               = 1
+inv_grid_height		                               = 1
+cost				                               = 5300		; - 2.5 avg h
+script_binding                           = toxic_air.bind
+attach_angle_offset		                               = 0.440521, 1.378287, -0.644026
+attach_position_offset	                               = 0.104196, -0.010821, 0.076969
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+bone_name				                               = bip01_r_hand
+position_offset			                               = 0.0,0.0,0.0
+angle_offset			                               = 1.570790,1.570790,3.92699
+use_condition										= true
+
+artefact_activation_seq		                       = af_activation_bold
+
+air_immunity												= 0.8
+flow_rate												= 0.00033
+flow_factor											= 0.65
+
+tier = 3

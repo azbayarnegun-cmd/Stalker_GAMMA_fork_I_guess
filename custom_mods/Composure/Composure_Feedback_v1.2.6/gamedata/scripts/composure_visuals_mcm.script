@@ -1,0 +1,123 @@
+-- Composure Visuals v1.2.1 settings and MCM definition.
+
+local KEY_F5 = (DIK_keys and DIK_keys.DIK_F5) or 63
+
+local defaults = {
+    enabled = true,
+    profile = 1,
+    update_ms = 100,
+    enable_vignette = true,
+    vignette_backend = 0,
+    vignette_scale = 1.0,
+    vignette_spread_scale = 1.0,
+    overlay_max_opacity = 0.55,
+    enable_blur = true,
+    blur_scale = 1.0,
+    enable_darkness = true,
+    darkness_scale = 1.0,
+    darkness_max = 0.08,
+    enable_fov = false,
+    fov_start = 54,
+    fov_max_reduction = 6.0,
+    enable_event_distortion = true,
+    enable_camera_pulses = true,
+    breaking_entry_pulse = false,
+    enable_combat_reactions = true,
+    combat_reaction_scale = 1.0,
+    combat_edge_pulse = true,
+    near_miss_edge_strength = 1.0,
+    extreme_near_miss_strength = 1.0,
+    hit_edge_strength = 1.0,
+    combat_edge_duration = 1.0,
+    combat_camera_pulses = true,
+    preview_enabled = false,
+    preview_intensity = 60,
+    diagnostic_key = KEY_F5,
+    debug_log = false,
+}
+
+function get_config(key)
+    if ui_mcm and ui_mcm.get then
+        local ok, value = pcall(ui_mcm.get, "composure_visuals/" .. key)
+        if ok and value ~= nil then return value end
+    end
+    return defaults[key]
+end
+
+function get_defaults()
+    local out = {}
+    for key, value in pairs(defaults) do out[key] = value end
+    return out
+end
+
+function on_mcm_load()
+    return {
+        id = "composure_visuals",
+        sh = true,
+        gr = {
+            { id = "enabled", type = "check", val = 1, def = true },
+            { id = "profile", type = "list", val = 2, def = 1,
+              content = {
+                  { 0, "ui_mcm_composure_visuals_profile_subtle" },
+                  { 1, "ui_mcm_composure_visuals_profile_default" },
+                  { 2, "ui_mcm_composure_visuals_profile_cinematic" },
+                  { 3, "ui_mcm_composure_visuals_profile_accessibility" },
+              } },
+            { id = "line1", type = "line" },
+            { id = "enable_vignette", type = "check", val = 1, def = true },
+            { id = "vignette_backend", type = "list", val = 2, def = 0,
+              content = {
+                  { 0, "ui_mcm_composure_visuals_backend_auto" },
+                  { 1, "ui_mcm_composure_visuals_backend_overlay" },
+                  { 2, "ui_mcm_composure_visuals_backend_shader" },
+                  { 3, "ui_mcm_composure_visuals_backend_disabled" },
+              } },
+            { id = "vignette_scale", type = "track", val = 2,
+              min = 0, max = 3.0, step = 0.05, prec = 2, def = 1.0 },
+            { id = "vignette_spread_scale", type = "track", val = 2,
+              min = 0, max = 2.0, step = 0.05, prec = 2, def = 1.0 },
+            { id = "overlay_max_opacity", type = "track", val = 2,
+              min = 0, max = 1.00, step = 0.05, prec = 2, def = 0.55 },
+            { id = "enable_blur", type = "check", val = 1, def = true },
+            { id = "blur_scale", type = "track", val = 2,
+              min = 0, max = 1.5, step = 0.05, prec = 2, def = 1.0 },
+            { id = "enable_darkness", type = "check", val = 1, def = true },
+            { id = "darkness_scale", type = "track", val = 2,
+              min = 0, max = 1.5, step = 0.05, prec = 2, def = 1.0 },
+            { id = "darkness_max", type = "track", val = 2,
+              min = 0, max = 0.20, step = 0.01, prec = 2, def = 0.08 },
+            { id = "line2", type = "line" },
+            { id = "enable_fov", type = "check", val = 1, def = false },
+            { id = "fov_start", type = "track", val = 2,
+              min = 40, max = 54, step = 1, def = 54 },
+            { id = "fov_max_reduction", type = "track", val = 2,
+              min = 0, max = 15, step = 0.5, prec = 1, def = 6.0 },
+            { id = "line3", type = "line" },
+            { id = "enable_event_distortion", type = "check", val = 1, def = true },
+            { id = "enable_camera_pulses", type = "check", val = 1, def = true },
+            { id = "breaking_entry_pulse", type = "check", val = 1, def = false },
+            { id = "line4", type = "line" },
+            { id = "enable_combat_reactions", type = "check", val = 1, def = true },
+            { id = "combat_reaction_scale", type = "track", val = 2,
+              min = 0, max = 2.0, step = 0.05, prec = 2, def = 1.0 },
+            { id = "combat_edge_pulse", type = "check", val = 1, def = true },
+            { id = "near_miss_edge_strength", type = "track", val = 2,
+              min = 0, max = 2.0, step = 0.05, prec = 2, def = 1.0 },
+            { id = "extreme_near_miss_strength", type = "track", val = 2,
+              min = 0, max = 2.0, step = 0.05, prec = 2, def = 1.0 },
+            { id = "hit_edge_strength", type = "track", val = 2,
+              min = 0, max = 2.0, step = 0.05, prec = 2, def = 1.0 },
+            { id = "combat_edge_duration", type = "track", val = 2,
+              min = 0.5, max = 2.0, step = 0.05, prec = 2, def = 1.0 },
+            { id = "combat_camera_pulses", type = "check", val = 1, def = true },
+            { id = "line5", type = "line" },
+            { id = "preview_enabled", type = "check", val = 1, def = false },
+            { id = "preview_intensity", type = "track", val = 2,
+              min = 0, max = 100, step = 5, def = 60 },
+            { id = "diagnostic_key", type = "key_bind", val = 2, def = KEY_F5 },
+            { id = "update_ms", type = "track", val = 2,
+              min = 50, max = 500, step = 50, def = 100 },
+            { id = "debug_log", type = "check", val = 1, def = false },
+        },
+    }
+end

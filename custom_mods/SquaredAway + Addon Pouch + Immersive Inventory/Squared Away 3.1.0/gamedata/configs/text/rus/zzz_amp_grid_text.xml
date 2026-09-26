@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+
+	<string id="ui_mcm_menu_AmpGrid">
+		<text>Zone Grid 0.11.0-прототип</text>
+	</string>
+
+	<string id="ui_mcm_title_AmpGrid">
+		<text>Zone Grid 0.11.0-прототип</text>
+	</string>
+
+	<string id="ui_mcm_menu_grid_general">
+		<text>Zone Grid - build 0.65.0-test</text>
+	</string>
+
+	<string id="ui_mcm_menu_AmpGrid_grid_general">
+		<text>Общие - сборка 0.11.0-прототип</text>
+	</string>
+
+	<string id="ui_mcm_title_grid_general">
+		<text>Общие - сборка 0.11.0-прототип</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_enable">
+		<text>Ограничивать переносимый груз доступным местом</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_enable">
+		<text>Ограничивать переносимый груз доступным местом</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_enable">
+		<text>Ограничивать переносимый груз доступным местом</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_drop">
+		<text>Класть то, что не помещается, на землю</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_drop">
+		<text>Класть то, что не помещается, на землю</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_drop">
+		<text>Класть то, что не помещается, на землю</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_border">
+		<text>Показывать границы сетки</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_border">
+		<text>Показывать границы сетки</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_border">
+		<text>Показывать границы сетки</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_stack">
+		<text>Разрешить некоторым предметам занимать одну клетку</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_stack">
+		<text>Разрешить некоторым предметам занимать одну клетку</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_stack">
+		<text>Разрешить некоторым предметам занимать одну клетку</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_split_key">
+		<text>Брать один предмет из стопки в руке</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_split_key">
+		<text>Брать один предмет из стопки в руке</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_split_key">
+		<text>Брать один предмет из стопки в руке</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_stack_mult">
+		<text>Размеры стопок, процент от файла</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_stack_mult">
+		<text>Размеры стопок, процент от файла</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_stack_mult">
+		<text>Размеры стопок, процент от файла</text>
+	</string>
+
+
+
+
+	<string id="ui_mcm_AmpGrid_grid_pack">
+		<text>Клетки, предоставляемые рюкзаком</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_pack">
+		<text>Клетки, предоставляемые рюкзаком</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_pack">
+		<text>Клетки, предоставляемые рюкзаком</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_bare">
+		<text>Клетки в собственных подсумках (всегда доступны вам)</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_bare">
+		<text>Клетки в собственных подсумках (всегда доступны вам)</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_bare">
+		<text>Клетки в собственных подсумках (всегда доступны вам)</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_w_bare">
+		<text>Ширина подсумков (4 = винтовка не помещается)</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_w_bare">
+		<text>Ширина подсумков (4 = винтовка не помещается)</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_w_bare">
+		<text>Ширина подсумков (4 = винтовка не помещается)</text>
+	</string>
+
+
+
+
+	<string id="ui_mcm_AmpGrid_grid_w_pack">
+		<text>Ширина рюкзака</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_w_pack">
+		<text>Ширина рюкзака</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_w_pack">
+		<text>Ширина рюкзака</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_border">
+		<text>Показывать границы каждого раздела</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_border">
+		<text>Показывать границы каждого раздела</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_border">
+		<text>Показывать границы каждого раздела</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_debug">
+		<text>Записывать принятые решения в журнал</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_debug">
+		<text>Записывать принятые решения в журнал</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_debug">
+		<text>Записывать принятые решения в журнал</text>
+	</string>
+
+	<string id="st_grid_no_room">
+		<text>Нет места, предмет сброшен к вашим ногам</text>
+	</string>
+
+	<string id="st_grid_kept">
+		<text>Нет места для магазина из вашего оружия: он сохранён, но не отображается, пока вы не освободите место</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general">
+		<text>Zone Grid</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_enable">
+		<text>Ограничивать переносимый груз доступным местом</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_drop">
+		<text>Класть то, что не помещается, на землю</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_border">
+		<text>Показывать границы сетки</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_stack">
+		<text>Разрешить некоторым предметам занимать одну клетку</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_split_key">
+		<text>Брать один предмет из стопки в руке</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_stack_mult">
+		<text>Размеры стопок, процент от файла</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_pack">
+		<text>Клетки, предоставляемые рюкзаком</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_bare">
+		<text>Клетки в собственных подсумках (всегда доступны вам)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_w_bare">
+		<text>Ширина подсумков (4 = винтовка не помещается)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_w_pack">
+		<text>Ширина рюкзака</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_debug">
+		<text>Записывать принятые решения в журнал</text>
+	</string>
+
+	<string id="ui_mcm_menu_squared_away">
+		<text>Squared Away</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_stack_fresh">
+		<text>Хранить еду и напитки с разной свежестью в отдельных клетках</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_new_glow">
+		<text>Подсвечивать недавно подобранные предметы, пока вы их не осмотрите</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_autorot">
+		<text>Поворачивать предметы, чтобы они помещались</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_autorot_desc">
+		<text>Поступающий предмет может быть уложен на бок, если это единственный способ его разместить, например коробка патронов 2x1 в свободное место 1x2. Это крайняя мера: предметы, которые помещаются в исходном положении, никогда не поворачиваются, а предмет не помещается в раздел, если его исходная ширина была для него запрещена. Поверните его обратно вручную, и это положение будет запомнено.</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_mark_full">
+		<text>Помечать то, что не помещается</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_mark_full_desc">
+		<text>В списке тела или тайника красный фон за предметом означает, что сейчас для него нет места в вашем рюкзаке. При этом учитываются стопки, к которым он может присоединиться, а не только свободные клетки. Это отвечает на вопрос, который возникает при обыске тела: что из этого я могу забрать.</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_full">
+		<text>Когда нет места</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_full_desc">
+		<text>«Сбросить под игроком» означает стандартное поведение: предмет подбирается, а то, что не помещается, оказывается на земле. «Запретить подбор/добычу» вместо этого не позволяет забрать предмет из тела или тайника, включая «Взять всё», и предмет остаётся на месте. Предмет, который вы подбираете, проходя по нему, нельзя заблокировать: движок забирает его до вызова какого-либо скрипта, поэтому такие предметы всё равно оказываются у ваших ног.</text>
+	</string>
+
+	<string id="squared_away_grid_general_grid_full_lst_grid_full_drop">
+		<text>Сбросить под игроком</text>
+	</string>
+
+	<string id="squared_away_grid_general_grid_full_lst_grid_full_block">
+		<text>Запретить подбор/добычу</text>
+	</string>
+
+	<string id="ui_mcm_lst_grid_full_drop">
+		<text>Сбросить под игроком</text>
+	</string>
+
+	<string id="ui_mcm_lst_grid_full_block">
+		<text>Запретить подбор/добычу</text>
+	</string>
+
+	<string id="st_grid_no_room_left">
+		<text>Нет места, предмет оставлен на прежнем месте</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_grid_general_grid_balance">
+		<text>Отладка баланса: назвать то, что под курсором</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_balance">
+		<text>Отладка баланса: назвать то, что под курсором</text>
+	</string>
+
+	<string id="ui_mcm_AmpGrid_grid_general_grid_balance">
+		<text>Отладка баланса: назвать то, что под курсором</text>
+	</string>
+
+	<string id="ui_mcm_grid_general_grid_balance">
+		<text>Отладка баланса: назвать то, что под курсором</text>
+	</string>
+
+</string_table>

@@ -1,0 +1,14 @@
+<w>
+    <soft x="0" y="0" width="1024" height="768" stretch="1">
+        <texture>ui\composure_visuals\vignette_soft</texture>
+    </soft>
+    <medium x="0" y="0" width="1024" height="768" stretch="1">
+        <texture>ui\composure_visuals\vignette_medium</texture>
+    </medium>
+    <strong x="0" y="0" width="1024" height="768" stretch="1">
+        <texture>ui\composure_visuals\vignette_strong</texture>
+    </strong>
+    <severe x="0" y="0" width="1024" height="768" stretch="1">
+        <texture>ui\composure_visuals\vignette_severe</texture>
+    </severe>
+</w>

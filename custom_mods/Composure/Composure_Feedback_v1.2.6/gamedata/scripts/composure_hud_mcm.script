@@ -1,0 +1,121 @@
+-- Composure HUD v3 display settings.
+
+local defaults = {
+    enabled = true,
+    show_detailed_diagnostics = false,
+    show_value_v125 = false,
+    show_bar_v125 = true,
+    show_direction_v125 = true,
+    live_show_rates = true,
+    live_show_modifiers = true,
+    live_max_causes = 5,
+    live_show_combat = true,
+    show_top_text = true,
+    show_instant_pulse = true,
+    fade_in = 0.75,
+    visible_duration = 4.0,
+    fade_out = 1.25,
+    refresh_ms = 150,
+    trend_smoothing = 1.0,
+    trend_deadzone = 0.05,
+    direction_delay = 0.30,
+    threshold_1 = 0.25,
+    threshold_2 = 0.75,
+    threshold_3 = 1.50,
+    threshold_4 = 3.00,
+    horizontal_offset = 0,
+    vertical_offset = 0,
+    maximum_opacity = 100,
+    tester_enabled = false,
+    tester_step = 3,
+    check_key = (DIK_keys and DIK_keys.DIK_F10) or 68,
+    tester_decrease_key = (DIK_keys and DIK_keys.DIK_MINUS) or 12,
+    tester_increase_key = (DIK_keys and DIK_keys.DIK_EQUALS) or 13,
+    debug_log = false,
+}
+
+local KEY_MINUS = (DIK_keys and DIK_keys.DIK_MINUS) or 12
+local KEY_EQUALS = (DIK_keys and DIK_keys.DIK_EQUALS) or 13
+
+function get_config(key)
+    if ui_mcm and ui_mcm.get then
+        local ok, value = pcall(ui_mcm.get, "composure_hud/" .. key)
+        if ok and value ~= nil then return value end
+    end
+    return defaults[key]
+end
+
+function on_mcm_load()
+    return {
+        id = "composure_hud",
+        sh = true,
+        gr = {
+            { id = "enabled", type = "check", val = 1, def = true },
+            { id = "line1", type = "line" },
+
+            { id = "show_detailed_diagnostics", type = "check", val = 1, def = false },
+            { id = "live_show_rates", type = "check", val = 1, def = true },
+            { id = "live_show_modifiers", type = "check", val = 1, def = true },
+            { id = "live_max_causes", type = "track", val = 2,
+              min = 1, max = 8, step = 1, def = 5 },
+            { id = "live_show_combat", type = "check", val = 1, def = true },
+
+            { id = "line2", type = "line" },
+
+            { id = "show_bar_v125", type = "check", val = 1, def = true },
+            { id = "show_value_v125", type = "check", val = 1, def = false },
+            { id = "show_direction_v125", type = "check", val = 1, def = true },
+            { id = "show_top_text", type = "check", val = 1, def = true },
+            { id = "show_instant_pulse", type = "check", val = 1, def = true },
+
+            { id = "line3", type = "line" },
+
+            { id = "fade_in", type = "track", val = 2,
+              min = 0.05, max = 3, step = 0.05, prec = 2, def = 0.75 },
+            { id = "visible_duration", type = "track", val = 2,
+              min = 0.5, max = 15, step = 0.5, prec = 1, def = 4.0 },
+            { id = "fade_out", type = "track", val = 2,
+              min = 0.05, max = 4, step = 0.05, prec = 2, def = 1.25 },
+            { id = "refresh_ms", type = "track", val = 2,
+              min = 50, max = 1000, step = 50, def = 150 },
+
+            { id = "line4", type = "line" },
+
+            { id = "trend_smoothing", type = "track", val = 2,
+              min = 0.1, max = 3, step = 0.1, prec = 1, def = 1.0 },
+            { id = "trend_deadzone", type = "track", val = 2,
+              min = 0, max = 0.5, step = 0.01, prec = 2, def = 0.05 },
+            { id = "direction_delay", type = "track", val = 2,
+              min = 0, max = 1.5, step = 0.05, prec = 2, def = 0.30 },
+            { id = "threshold_1", type = "track", val = 2,
+              min = 0.05, max = 2, step = 0.05, prec = 2, def = 0.25 },
+            { id = "threshold_2", type = "track", val = 2,
+              min = 0.10, max = 4, step = 0.05, prec = 2, def = 0.75 },
+            { id = "threshold_3", type = "track", val = 2,
+              min = 0.20, max = 8, step = 0.10, prec = 2, def = 1.50 },
+            { id = "threshold_4", type = "track", val = 2,
+              min = 0.50, max = 15, step = 0.25, prec = 2, def = 3.00 },
+
+            { id = "line6", type = "line" },
+
+            { id = "horizontal_offset", type = "track", val = 2,
+              min = -300, max = 300, step = 5, def = 0 },
+            { id = "vertical_offset", type = "track", val = 2,
+              min = -20, max = 300, step = 5, def = 0 },
+            { id = "maximum_opacity", type = "track", val = 2,
+              min = 20, max = 100, step = 5, def = 100 },
+
+            { id = "line7", type = "line" },
+
+            { id = "tester_enabled", type = "check", val = 1, def = false },
+            { id = "check_key", type = "key_bind", val = 2, def = (DIK_keys and DIK_keys.DIK_F10) or 68 },
+            { id = "tester_step", type = "track", val = 2,
+              min = 1, max = 10, step = 1, def = 3 },
+            { id = "tester_decrease_key", type = "key_bind", val = 2, def = KEY_MINUS },
+            { id = "tester_increase_key", type = "key_bind", val = 2, def = KEY_EQUALS },
+
+            { id = "line8", type = "line" },
+            { id = "debug_log", type = "check", val = 1, def = false },
+        },
+    }
+end

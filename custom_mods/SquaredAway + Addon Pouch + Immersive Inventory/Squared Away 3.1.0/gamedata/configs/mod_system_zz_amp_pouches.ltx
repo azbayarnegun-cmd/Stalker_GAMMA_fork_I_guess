@@ -1,0 +1,38 @@
+; ============================================================
+;  ARMOR MAG POUCHES - pouches stop installing onto armour
+;
+;  The magazine mod's pouches install straight onto an outfit, by the
+;  same mag_pouches mechanism a chest rig uses. That made a found pouch
+;  most of the progression on its own and left the rig with nothing to
+;  be - so the route is closed here and the pouches go into the rig's
+;  own two pouch slots instead.
+;
+;  mag_pouches decides what is installable with exactly one test:
+;
+;      ini_sys:r_string_ex(sec, "use1_functor") == "mag_pouches.precond_install"
+;
+;  so pointing that key anywhere else closes BOTH routes at once - the
+;  right-click Install entry and the drag-onto-armour handler. It is
+;  aimed at a precondition of ours that is never met, rather than left
+;  empty, so the behaviour is something this mod states rather than
+;  something it hopes an empty string will do.
+;
+;  ! IS THE OVERRIDE MARKER. A second plain [af_magpouch_s] is a fatal
+;  error at startup - see l_zz_amp_pouches.ltx, which learned that the
+;  hard way.
+;
+;  The zz_ in the filename is load order: mod_system_*.ltx are read in
+;  name order and an override has to come after what it overrides.
+; ============================================================
+
+![af_magpouch_s]
+use1_functor                    = zzz_armor_mag_pouches.pouch_no_install
+use1_action_functor             = zzz_armor_mag_pouches.pouch_no_install
+
+![af_magpouch_m]
+use1_functor                    = zzz_armor_mag_pouches.pouch_no_install
+use1_action_functor             = zzz_armor_mag_pouches.pouch_no_install
+
+![af_magpouch_l]
+use1_functor                    = zzz_armor_mag_pouches.pouch_no_install
+use1_action_functor             = zzz_armor_mag_pouches.pouch_no_install

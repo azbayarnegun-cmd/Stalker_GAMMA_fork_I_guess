@@ -1,0 +1,61 @@
+-- Presentation-only snapshot override. Never changes Framework state.
+
+local tier_defs = {
+    { minimum = 86, id = "high", label = "High" },
+    { minimum = 70, id = "medium_high", label = "Medium-High" },
+    { minimum = 55, id = "medium", label = "Medium" },
+    { minimum = 40, id = "medium_low", label = "Medium-Low" },
+    { minimum = 16, id = "low", label = "Low" },
+    { minimum = 1, id = "breaking_point", label = "Breaking Point" },
+    { minimum = 0, id = "pass_out", label = "Pass Out" },
+}
+
+local function cfg(key, fallback)
+    if composure_feedback_test_mcm and composure_feedback_test_mcm.get_config then
+        local ok, value = pcall(composure_feedback_test_mcm.get_config, key)
+        if ok and value ~= nil then return value end
+    end
+    return fallback
+end
+
+local function clamp(value, low, high)
+    value = tonumber(value) or 0
+    if value < low then return low end
+    if value > high then return high end
+    return value
+end
+
+local function tier_for(value)
+    for _, definition in ipairs(tier_defs) do
+        if value >= definition.minimum then return definition end
+    end
+    return tier_defs[#tier_defs]
+end
+
+function is_enabled()
+    return cfg("enabled", false) == true
+end
+
+function get_value(actual)
+    if not is_enabled() then return tonumber(actual) or 0 end
+    return clamp(cfg("value", 30), 0, 100)
+end
+
+function show_banner()
+    return is_enabled() and cfg("show_banner", true) == true
+end
+
+function apply_snapshot(snapshot)
+    if type(snapshot) ~= "table" or not is_enabled() then return snapshot end
+    local result = {}
+    for key, value in pairs(snapshot) do result[key] = value end
+    result.actual_value = tonumber(snapshot.value) or 0
+    result.value = get_value(result.actual_value)
+    local definition = tier_for(result.value)
+    result.tier = definition.id
+    result.tier_info = { id = definition.id, label = definition.label, minimum = definition.minimum }
+    result.feedback_test = true
+    -- Keep live modifier/rate diagnostics visible while only the presentation
+    -- value and tier are overridden for testing.
+    return result
+end

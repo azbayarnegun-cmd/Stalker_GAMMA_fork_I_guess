@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<string_table>
+    <string id="ui_mcm_menu_composure_hud"><text>Composure Feedback - HUD</text></string>
+
+    <string id="ui_mcm_composure_hud_enabled"><text>Enable Composure HUD</text></string>
+    <string id="ui_mcm_composure_hud_enabled_desc"><text>Registers HUD v3.3 as the preferred passive Check display. It never captures input.</text></string>
+
+    <string id="ui_mcm_composure_hud_mode"><text>HUD mode</text></string>
+    <string id="ui_mcm_composure_hud_mode_desc"><text>Live Feedback shows mechanical detail. Minimal Immersion emphasizes state and contextual thoughts.</text></string>
+    <string id="ui_mcm_composure_hud_mode_live"><text>Detailed diagnostics</text></string>
+    <string id="ui_mcm_composure_hud_mode_minimal"><text>Minimalist Check</text></string>
+
+    <string id="ui_mcm_composure_hud_show_detailed_diagnostics"><text>Show detailed diagnostics</text></string>
+    <string id="ui_mcm_composure_hud_show_detailed_diagnostics_desc"><text>Shows or hides the GAIN, LOSS, TOTAL, modifier, cap, lock and Combat Stress diagnostic text when Check Composure is pressed. It fades with the bar.</text></string>
+
+    <string id="ui_mcm_composure_hud_show_bar_v125"><text>Show Composure bar</text></string>
+    <string id="ui_mcm_composure_hud_show_bar_v125_desc"><text>Shows the segmented Composure bar when Check Composure is pressed. This replaces the old separate Live and Minimal bar switches.</text></string>
+    <string id="ui_mcm_composure_hud_show_value_v125"><text>Show exact Composure value</text></string>
+    <string id="ui_mcm_composure_hud_show_value_v125_desc"><text>Shows the exact 0-100 value beside the status description.</text></string>
+    <string id="ui_mcm_composure_hud_show_direction_v125"><text>Show gain/loss arrows</text></string>
+    <string id="ui_mcm_composure_hud_show_direction_v125_desc"><text>Shows one to five left loss arrows or right gain arrows beside the segmented bar.</text></string>
+    <string id="ui_mcm_composure_hud_display_mode_v121"><text>HUD mode</text></string>
+    <string id="ui_mcm_composure_hud_display_mode_v121_desc"><text>Minimalist Check is the compact default. Detailed diagnostics adds the mechanical report below it.</text></string>
+    <string id="ui_mcm_composure_hud_display_mode_v122"><text>HUD mode</text></string>
+    <string id="ui_mcm_composure_hud_display_mode_v122_desc"><text>Minimalist Check is the first and default option. Detailed diagnostics adds the mechanical report below it.</text></string>
+
+    <string id="ui_mcm_composure_hud_live_persistent"><text>Retired: always visible</text></string>
+    <string id="ui_mcm_composure_hud_live_persistent_desc"><text>This legacy option is no longer exposed or read. The HUD is always check-triggered.</text></string>
+
+    <string id="ui_mcm_composure_hud_live_show_value"><text>Detailed: show exact value</text></string>
+    <string id="ui_mcm_composure_hud_live_show_value_desc"><text>Shows the current 0-100 composure value.</text></string>
+
+    <string id="ui_mcm_composure_hud_live_show_bar"><text>Detailed: show bar</text></string>
+    <string id="ui_mcm_composure_hud_live_show_bar_desc"><text>Shows the continuous color-coded composure bar.</text></string>
+
+    <string id="ui_mcm_composure_hud_live_show_rates"><text>Detailed: show rates</text></string>
+    <string id="ui_mcm_composure_hud_live_show_rates_desc"><text>Shows aggregate and per-cause composure rates per real minute.</text></string>
+
+    <string id="ui_mcm_composure_hud_live_show_modifiers"><text>Detailed: show active modifiers</text></string>
+    <string id="ui_mcm_composure_hud_live_show_modifiers_desc"><text>Shows active modifier sources in Live Feedback. Disable for a cleaner testing panel.</text></string>
+
+    <string id="ui_mcm_composure_hud_live_max_causes"><text>Detailed: maximum active causes</text></string>
+    <string id="ui_mcm_composure_hud_live_max_causes_desc"><text>Maximum number of strongest distinct modifiers shown in the compact panel, from one to eight.</text></string>
+    <string id="ui_mcm_composure_hud_live_show_combat"><text>Detailed: show Combat Stress test details</text></string>
+    <string id="ui_mcm_composure_hud_live_show_combat_desc"><text>Shows phase, encounter, hostiles, threat, sustained drain, deferred loss, encounter loss, start value, recovery lock, and forced phase while Combat is active or in Test Mode.</text></string>
+
+    <string id="ui_mcm_composure_hud_minimal_show_value"><text>Minimal: show exact value</text></string>
+    <string id="ui_mcm_composure_hud_minimal_show_value_desc"><text>Shows the exact value in Minimal Immersion mode. Disabled by default.</text></string>
+
+    <string id="ui_mcm_composure_hud_minimal_show_bar"><text>Minimal: show bar</text></string>
+    <string id="ui_mcm_composure_hud_minimal_show_bar_desc"><text>Shows a subdued color-coded bar beneath the state.</text></string>
+
+    <string id="ui_mcm_composure_hud_minimal_show_direction"><text>Minimal: show direction arrows</text></string>
+    <string id="ui_mcm_composure_hud_minimal_show_direction_desc"><text>Shows one to five left arrows for loss or right arrows for gain. The bar remains fixed in the centre.</text></string>
+
+    <string id="ui_mcm_composure_hud_show_top_text"><text>Show top status text</text></string>
+    <string id="ui_mcm_composure_hud_show_top_text_desc"><text>Shows or hides the text above the bar in both Minimalist Check and Detailed diagnostics modes.</text></string>
+    <string id="ui_mcm_composure_hud_show_instant_pulse"><text>Pulse bar on instant changes</text></string>
+    <string id="ui_mcm_composure_hud_show_instant_pulse_desc"><text>Briefly colors the bar green or red after an instant gain or loss without changing the ongoing trend arrows.</text></string>
+
+    <string id="ui_mcm_composure_hud_fade_in"><text>Fade-in duration</text></string>
+    <string id="ui_mcm_composure_hud_fade_in_desc"><text>Seconds for the Check display to fade smoothly to full opacity.</text></string>
+    <string id="ui_mcm_composure_hud_visible_duration"><text>Fully visible duration</text></string>
+    <string id="ui_mcm_composure_hud_visible_duration_desc"><text>Seconds the Check display remains fully visible before fading out.</text></string>
+    <string id="ui_mcm_composure_hud_fade_out"><text>Fade-out duration</text></string>
+    <string id="ui_mcm_composure_hud_fade_out_desc"><text>Seconds for the Check display to fade smoothly away.</text></string>
+
+    <string id="ui_mcm_composure_hud_refresh_ms"><text>Live refresh interval (milliseconds)</text></string>
+    <string id="ui_mcm_composure_hud_refresh_ms_desc"><text>How frequently the visible panel requests a fresh Framework snapshot.</text></string>
+
+    <string id="ui_mcm_composure_hud_trend_smoothing"><text>Trend smoothing</text></string>
+    <string id="ui_mcm_composure_hud_trend_smoothing_desc"><text>Seconds used to smooth the net ongoing rate and prevent arrow flicker.</text></string>
+    <string id="ui_mcm_composure_hud_trend_deadzone"><text>Stable-rate dead zone</text></string>
+    <string id="ui_mcm_composure_hud_trend_deadzone_desc"><text>Absolute Composure per minute treated as stable with no arrows.</text></string>
+    <string id="ui_mcm_composure_hud_direction_delay"><text>Direction-change delay</text></string>
+    <string id="ui_mcm_composure_hud_direction_delay_desc"><text>Seconds a new direction must persist before arrows switch sides.</text></string>
+    <string id="ui_mcm_composure_hud_threshold_1"><text>One-arrow maximum rate</text></string>
+    <string id="ui_mcm_composure_hud_threshold_1_desc"><text>Rates up to this absolute Composure per minute show one arrow.</text></string>
+    <string id="ui_mcm_composure_hud_threshold_2"><text>Two-arrow maximum rate</text></string>
+    <string id="ui_mcm_composure_hud_threshold_2_desc"><text>Rates above level one and up to this value show two arrows.</text></string>
+    <string id="ui_mcm_composure_hud_threshold_3"><text>Three-arrow maximum rate</text></string>
+    <string id="ui_mcm_composure_hud_threshold_3_desc"><text>Rates above level two and up to this value show three arrows.</text></string>
+    <string id="ui_mcm_composure_hud_threshold_4"><text>Four-arrow maximum rate</text></string>
+    <string id="ui_mcm_composure_hud_threshold_4_desc"><text>Rates above level three and up to this value show four arrows. Higher rates show five.</text></string>
+
+    <string id="ui_mcm_composure_hud_horizontal_offset"><text>Horizontal position offset</text></string>
+    <string id="ui_mcm_composure_hud_horizontal_offset_desc"><text>Moves the complete top-centre Check display left or right.</text></string>
+    <string id="ui_mcm_composure_hud_vertical_offset"><text>Vertical position offset</text></string>
+    <string id="ui_mcm_composure_hud_vertical_offset_desc"><text>Moves the complete Check display up or down.</text></string>
+    <string id="ui_mcm_composure_hud_maximum_opacity"><text>Maximum opacity</text></string>
+    <string id="ui_mcm_composure_hud_maximum_opacity_desc"><text>Maximum opacity reached after fade-in.</text></string>
+
+    <string id="ui_mcm_composure_hud_tester_enabled"><text>Enable Composure tester keys</text></string>
+    <string id="ui_mcm_composure_hud_tester_enabled_desc"><text>Development option. Allows configured keys to change Composure through Framework while bypassing gameplay multipliers and recovery locks. Disabled by default.</text></string>
+
+    <string id="ui_mcm_composure_hud_check_key"><text>Check Composure key</text></string>
+    <string id="ui_mcm_composure_hud_check_key_desc"><text>Shows the temporary Composure HUD. Default: F10. This replaces the retired Composure Main check binding.</text></string>
+
+    <string id="ui_mcm_composure_hud_tester_step"><text>Tester adjustment</text></string>
+    <string id="ui_mcm_composure_hud_tester_step_desc"><text>Composure points added or removed per tester key press. Default: 3.</text></string>
+
+    <string id="ui_mcm_composure_hud_tester_decrease_key"><text>Tester: decrease Composure</text></string>
+    <string id="ui_mcm_composure_hud_tester_decrease_key_desc"><text>Default key: minus. Applies the negative tester adjustment during normal gameplay.</text></string>
+
+    <string id="ui_mcm_composure_hud_tester_increase_key"><text>Tester: increase Composure</text></string>
+    <string id="ui_mcm_composure_hud_tester_increase_key_desc"><text>Default key: equals. Applies the positive tester adjustment during normal gameplay.</text></string>
+
+    <string id="ui_mcm_composure_hud_debug_log"><text>Debug logging</text></string>
+    <string id="ui_mcm_composure_hud_debug_log_desc"><text>Writes additional HUD registration and mode information to the X-Ray log. Display failures are always logged.</text></string>
+</string_table>

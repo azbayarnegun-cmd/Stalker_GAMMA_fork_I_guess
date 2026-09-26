@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="windows-1251"?>
+
+<!-- 
+	MCM
+-->
+<string_table>
+
+
+	<string id="ui_mcm_toxic_air_title">
+		<text>Toxic Air</text>
+	</string>
+	<string id="ui_mcm_menu_toxic_air">
+		<text>Toxic Air</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_mono_sin_exception">
+		<text>Pripyat/Red forest exception</text>
+	</string>
+	<string id="ui_mcm_toxic_air_mono_sin_exception_desc">
+		<text>Gives ability to breathe without tank/mask in Pripyat and Red forest (works only if player's faction is Monolith/Sin).</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_enable_hud">
+		<text>Enable HUD</text>
+	</string>
+	<string id="ui_mcm_toxic_air_enable_hud_desc">
+		<text>Display condition of equipped tank/filter.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_position_x">
+		<text>HUD Position X</text>
+	</string>
+	<string id="ui_mcm_toxic_air_position_y">
+		<text>HUD Position Y</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_toxic_damage_mult">
+		<text>Toxic Damage</text>
+	</string>
+	<string id="ui_mcm_toxic_air_toxic_damage_mult_desc">
+		<text>Multiplier of toxic damage that you receive when air protection is not high enough. \n 
+				\n Default: 1.0</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_flow_rate_mult">
+		<text>Flow Rate</text>
+	</string>
+	<string id="ui_mcm_toxic_air_flow_rate_mult_desc">
+		<text>Multiplier for oxygen tank's air flow rate. \n 
+				\n Default: 1.0</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_tank_sprint_mult">
+		<text>Sprint Mult (Tanks only)</text>
+	</string>
+	<string id="ui_mcm_toxic_air_tank_sprint_mult_desc">
+		<text>Multiplier for oxygen tank's air flow rate during sprint. \n 
+				\n Default: 2.0</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_trader_items">
+		<text>Items amount at traders</text>
+	</string>
+	<string id="ui_mcm_toxic_air_trader_items_desc">
+		<text>Multiplier for amount of items (filters/tanks) to appear at trader's inventory. \n 
+				\n Default: 2.0</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_filter_animation">
+		<text>Animations</text>
+	</string>
+	<string id="ui_mcm_toxic_air_filter_animation_desc">
+		<text>Disable/Enable filter changing animation and tank camera animation (for equipped items only).</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_sound_toggle">
+		<text>Sound Effects</text>
+	</string>
+	<string id="ui_mcm_toxic_air_sound_toggle_desc">
+		<text>Disable/Enable choking sound effects when in a toxic area without high enough air protection.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_metro_toggle">
+		<text>Metro-style Alarm Sound</text>
+	</string>
+	<string id="ui_mcm_toxic_air_metro_toggle_desc">
+		<text>Disable/Enable Metro-style watch alarm sound effects when filter reaches 20%, 15%, and 0%.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_metro_message_toggle">
+		<text>Filter Status Messages</text>
+	</string>
+	<string id="ui_mcm_toxic_air_metro_message_toggle_desc">
+		<text>Disable/Enable news popup messages when filter is low (20%, 15%, 10%, 0%).</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_metro_alert_20">
+		<text>Alert at 20%</text>
+	</string>
+	<string id="ui_mcm_toxic_air_metro_alert_20_desc">
+		<text>Enable warning when filter/tank reaches 20% condition.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_metro_alert_15">
+		<text>Alert at 15%</text>
+	</string>
+	<string id="ui_mcm_toxic_air_metro_alert_15_desc">
+		<text>Enable warning when filter/tank reaches 15% condition.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_metro_alert_10">
+		<text>Alert at 10%</text>
+	</string>
+	<string id="ui_mcm_toxic_air_metro_alert_10_desc">
+		<text>Enable warning when filter/tank reaches 10% condition.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_metro_alert_0">
+		<text>Alert at 0% (Empty)</text>
+	</string>
+	<string id="ui_mcm_toxic_air_metro_alert_0_desc">
+		<text>Enable warning when filter/tank is completely depleted.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_ppe_toggle">
+		<text>Screen Effects</text>
+	</string>
+	<string id="ui_mcm_toxic_air_ppe_toggle_desc">
+		<text>Disable/Enable screen effects when in a toxic area without high enough air protection.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_destroy_empty_filters">
+		<text>Destroy Empty Filters</text>
+	</string>
+	<string id="ui_mcm_toxic_air_destroy_empty_filters_desc">
+		<text>When enabled, filters below the threshold condition will be destroyed when removed from equipment instead of being returned to inventory.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_destroy_empty_filters_threshold">
+		<text>Destruction Threshold (%)</text>
+	</string>
+	<string id="ui_mcm_toxic_air_destroy_empty_filters_threshold_desc">
+		<text>Filters at or below this condition percentage will be destroyed/disassembled when removed. \n
+				\n Default: 5%</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_destroy_empty_filters_mode">
+		<text>Empty Filter Handling</text>
+	</string>
+	<string id="ui_mcm_toxic_air_destroy_empty_filters_mode_desc">
+		<text>What to do with filters below the threshold: Destroy (no parts) or Disassemble (get parts back).</text>
+	</string>
+
+	<string id="st_destroy_filter_mode_destroy">
+		<text>Destroy</text>
+	</string>
+	<string id="st_destroy_filter_mode_disassemble">
+		<text>Disassemble</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_destroy_empty_filters_mode_lst_destroy">
+		<text>Destroy</text>
+	</string>
+	<string id="ui_mcm_toxic_air_destroy_empty_filters_mode_lst_disassemble">
+		<text>Disassemble</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_filter_message_toggle">
+		<text>Show Filter Messages</text>
+	</string>
+	<string id="ui_mcm_toxic_air_filter_message_toggle_desc">
+		<text>Show messages when equipping or removing filters.</text>
+	</string>
+
+	<string id="st_filter_destroyed">
+		<text>%c[d_red]The empty filter crumbled to dust.</text>
+	</string>
+
+	<string id="st_filter_disassembled">
+		<text>%c[d_cyan]The empty filter was disassembled for parts.</text>
+	</string>
+
+	<string id="st_filter_removed">
+		<text>%c[d_red]Filter has been removed.</text>
+	</string>
+
+	<string id="st_filter_removed_tank_equipped">
+		<text>%c[d_cyan]Filter removed, oxygen tank equipped.</text>
+	</string>
+
+	<string id="st_no_equipment_for_filter">
+		<text>%c[d_red]No suitable headgear or outfit to attach a filter!</text>
+	</string>
+
+	<string id="st_no_filter_in_inventory">
+		<text>%c[d_red]No filters available in inventory!</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_title_keybind">
+		<text>Keybind Settings</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_filter_keybind">
+		<text>Toggle Filter Key</text>
+	</string>
+	<string id="ui_mcm_toxic_air_filter_keybind_desc">
+		<text>Press this key to quickly equip or remove a filter from your headgear/outfit.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_filter_keybind_modifier">
+		<text>Modifier Key</text>
+	</string>
+	<string id="ui_mcm_toxic_air_filter_keybind_modifier_desc">
+		<text>Optional modifier key (Shift, Ctrl, Alt) that must be held with the toggle key.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_filter_keybind_mode">
+		<text>Activation Mode</text>
+	</string>
+	<string id="ui_mcm_toxic_air_filter_keybind_mode_desc">
+		<text>How the key should be pressed: single press, double tap, or hold.</text>
+	</string>
+
+	<string id="ui_mcm_toxic_air_delete_items">
+		<text>DELETE ALL TANKS ON NEXT LOAD</text>
+	</string>
+	<string id="ui_mcm_toxic_air_delete_items_desc">
+		<text>To prevent save file corruption, this option will delete all new items added by this addon on next load. \n 
+				\n So, if you want to delete addon: \n
+				\n 1) Enable this option; \n
+				\n 2) Save, load, save again; \n
+				\n 3) Quit game and disable addon.</text>
+	</string>
+
+	<string id="st_toxic_air_destroy_empty_filters_mode_lst_destroy">
+		<text>Destroy</text>
+	</string>
+	<string id="st_toxic_air_destroy_empty_filters_mode_lst_disassemble">
+		<text>Disassemble</text>
+	</string>
+
+	<string id="toxic_air_destroy_empty_filters_mode_lst_destroy">
+		<text>Destroy</text>
+	</string>
+	<string id="toxic_air_destroy_empty_filters_mode_lst_disassemble">
+		<text>Disassemble</text>
+	</string>
+
+	<string id="toxic_air_destroy_empty_filters_mode_lst_st_destroy">
+		<text>Destroy</text>
+	</string>
+	<string id="toxic_air_destroy_empty_filters_mode_lst_st_disassemble">
+		<text>Disassemble</text>
+	</string>
+
+	<string id="st_filter_equip">
+		<text>Equip Filter</text>
+	</string>
+	<string id="st_filter_remove">
+		<text>Remove Filter</text>
+	</string>
+	<string id="st_equipped_filter">
+		<text>Equipped filter:</text>
+	</string>
+	<string id="st_compatible_locations">
+		<text>Protects up to:</text>
+	</string>
+	<string id="st_tier_southern_prefix">
+		<text>Southern locations</text>
+	</string>
+	<string id="st_tier_central_prefix">
+		<text>Central locations</text>
+	</string>
+	<string id="st_tier_southern">
+		<text>Southern locations (Garbage, Yantar)</text>
+	</string>
+	<string id="st_tier_central">
+		<text>Central locations (Dead City, Rostok, etc.)</text>
+	</string>
+	<string id="st_tier_northern">
+		<text>Northern locations (Radar, Red Forest, etc.)</text>
+	</string>
+	<string id="st_tank_equip">
+		<text>Equip Tank</text>
+	</string>
+	<string id="st_tank_remove">
+		<text>Remove Tank</text>
+	</string>
+	<string id="st_no_belt_space">
+		<text>%c[d_red]No space on belt for oxygen tank!</text>
+	</string>
+
+	<!-- Location names for filter compatibility display -->
+	<string id="st_loc_cordon">
+		<text>Cordon</text>
+	</string>
+	<string id="st_loc_great_swamp">
+		<text>Great Swamp</text>
+	</string>
+	<string id="st_loc_meadow">
+		<text>Meadow</text>
+	</string>
+	<string id="st_loc_darkscape">
+		<text>Darkscape</text>
+	</string>
+	<string id="st_loc_agroprom">
+		<text>Agroprom</text>
+	</string>
+	<string id="st_loc_bar">
+		<text>Bar</text>
+	</string>
+	<string id="st_loc_dark_valley">
+		<text>Dark Valley</text>
+	</string>
+	<string id="st_loc_garbage">
+		<text>Garbage</text>
+	</string>
+	<string id="st_loc_yantar">
+		<text>Yantar</text>
+	</string>
+	<string id="st_loc_truck_cemetery">
+		<text>Truck Cemetery</text>
+	</string>
+	<string id="st_loc_jupiter">
+		<text>Jupiter</text>
+	</string>
+	<string id="st_loc_zaton">
+		<text>Zaton</text>
+	</string>
+	<string id="st_loc_army_warehouses">
+		<text>Army Warehouses</text>
+	</string>
+	<string id="st_loc_dead_city">
+		<text>Dead City</text>
+	</string>
+	<string id="st_loc_rostok">
+		<text>Rostok</text>
+	</string>
+	<string id="st_loc_radar">
+		<text>Radar</text>
+	</string>
+	<string id="st_loc_red_forest">
+		<text>Red Forest</text>
+	</string>
+	<string id="st_loc_limansk">
+		<text>Limansk</text>
+	</string>
+	<string id="st_loc_pripyat">
+		<text>Pripyat</text>
+	</string>
+	<string id="st_loc_pripyat_outskirts">
+		<text>Pripyat Outskirts</text>
+	</string>
+	<string id="st_loc_hospital">
+		<text>Hospital</text>
+	</string>
+	<string id="st_loc_cnpp">
+		<text>CNPP</text>
+	</string>
+	<string id="st_loc_cnpp_2">
+		<text>CNPP-2</text>
+	</string>
+	<string id="st_loc_generators">
+		<text>Generators</text>
+	</string>
+	<string id="st_loc_underground_labs">
+		<text>Underground Labs</text>
+	</string>
+	<string id="st_loc_agroprom_underground">
+		<text>Agroprom Underground</text>
+	</string>
+	<string id="st_loc_lab_x18">
+		<text>Lab X-18</text>
+	</string>
+	<string id="st_loc_lab_x16">
+		<text>Lab X-16</text>
+	</string>
+	<string id="st_loc_jupiter_underground">
+		<text>Jupiter Underground</text>
+	</string>
+	<string id="st_loc_bunker">
+		<text>Bunker</text>
+	</string>
+	<string id="st_loc_lab_x8">
+		<text>Lab X-8</text>
+	</string>
+	<string id="st_loc_monolith_control">
+		<text>Monolith Control Center</text>
+	</string>
+	<string id="st_loc_sarcophagus">
+		<text>Sarcophagus</text>
+	</string>
+	<string id="st_loc_warlab">
+		<text>Warlab</text>
+	</string>
+	<string id="st_up_to">
+		<text>up to</text>
+	</string>
+
+
+</string_table>

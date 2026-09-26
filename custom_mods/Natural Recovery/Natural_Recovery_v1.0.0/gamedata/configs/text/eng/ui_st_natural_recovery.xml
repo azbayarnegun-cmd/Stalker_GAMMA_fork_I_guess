@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<string_table>
+    <string id="ui_mcm_menu_natural_recovery"><text>Natural Recovery</text></string>
+    <string id="ui_mcm_natural_recovery_enabled"><text>Enable Natural Recovery</text></string>
+    <string id="ui_mcm_natural_recovery_enabled_desc"><text>Master switch. Slowly restores overall health based on limb condition.</text></string>
+    <string id="ui_mcm_natural_recovery_rate_healthy"><text>Rate: limbs fully healed</text></string>
+    <string id="ui_mcm_natural_recovery_rate_healthy_desc"><text>Overall HP restored per in-game hour while every limb is at maximum. 0.10 = 10% per hour.</text></string>
+    <string id="ui_mcm_natural_recovery_rate_damaged"><text>Rate: limbs damaged</text></string>
+    <string id="ui_mcm_natural_recovery_rate_damaged_desc"><text>Overall HP restored per in-game hour while limbs are damaged but not badly hurt. 0.03 = 3% per hour.</text></string>
+    <string id="ui_mcm_natural_recovery_damaged_threshold"><text>Damaged limit (% of limb points)</text></string>
+    <string id="ui_mcm_natural_recovery_damaged_threshold_desc"><text>Below this share of total limb points (or with a broken limb, or head/torso below the core minimum) there is no natural recovery. Default 60.</text></string>
+    <string id="ui_mcm_natural_recovery_core_min"><text>Head and torso minimum</text></string>
+    <string id="ui_mcm_natural_recovery_core_min_desc"><text>Head and torso need at least this many points (of 11) for the damaged rate. Default 6.</text></string>
+    <string id="ui_mcm_natural_recovery_use_ceiling"><text>HP ceiling = limb condition</text></string>
+    <string id="ui_mcm_natural_recovery_use_ceiling_desc"><text>Natural recovery stops at your limb condition. Example: limbs at 75% means HP recovers up to 75%; meds are needed above that.</text></string>
+    <string id="ui_mcm_natural_recovery_heal_while_sleeping"><text>Recover while sleeping</text></string>
+    <string id="ui_mcm_natural_recovery_heal_while_sleeping_desc"><text>Each hour of sleep heals 1 limb point (GAMMA) and then applies the matching recovery rate.</text></string>
+    <string id="ui_mcm_natural_recovery_combat_delay"><text>Delay after being hit</text></string>
+    <string id="ui_mcm_natural_recovery_combat_delay_desc"><text>Real seconds after taking damage before recovery resumes. Default 60.</text></string>
+    <string id="ui_mcm_natural_recovery_block_bleeding"><text>Block while bleeding</text></string>
+    <string id="ui_mcm_natural_recovery_block_bleeding_desc"><text>No natural recovery while you have an open wound.</text></string>
+    <string id="ui_mcm_natural_recovery_satiety_min"><text>Minimum satiety</text></string>
+    <string id="ui_mcm_natural_recovery_satiety_min_desc"><text>No recovery while satiety is below this value. 0 disables the hunger check. Default 0.15.</text></string>
+    <string id="ui_mcm_natural_recovery_thirst_max"><text>Blocking thirst level</text></string>
+    <string id="ui_mcm_natural_recovery_thirst_max_desc"><text>No recovery at this thirst indicator level or worse (1 grey - 4 red). 5 disables the check. Default 3 (orange).</text></string>
+    <string id="ui_mcm_natural_recovery_radiation_max"><text>Maximum radiation</text></string>
+    <string id="ui_mcm_natural_recovery_radiation_max_desc"><text>No recovery while radiation is above this value. 1 disables the check. Default 0.10.</text></string>
+    <string id="ui_mcm_natural_recovery_debug_log"><text>Debug log</text></string>
+    <string id="ui_mcm_natural_recovery_debug_log_desc"><text>Write sleep recovery amounts to the game log.</text></string>
+</string_table>

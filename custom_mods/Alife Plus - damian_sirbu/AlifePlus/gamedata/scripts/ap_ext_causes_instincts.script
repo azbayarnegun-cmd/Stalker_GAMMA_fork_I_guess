@@ -1,0 +1,347 @@
+--- ap_ext_causes_instincts: Hull-scored mutant instinct generator. INSTINCTS table holds 5 drives;
+--- CAUSES table holds 7 specific causes (slumber splits 3 ways by shelter type). Picker emits
+--- one specific cause per call.
+
+local table_sort, pairs, math_random = table.sort, pairs, math.random
+local xobject, xsmart, xtime, xlevel, xcreature = xobject, xsmart, xtime, xlevel, xcreature
+local ap_core_debug, ap_core_limiter, ap_core_producer, ap_core_util = ap_core_debug, ap_core_limiter, ap_core_producer, ap_core_util
+local ap_ext_util, ap_ext_tracker = ap_ext_util, ap_ext_tracker
+
+local CAUSE = ap_core_const.CAUSE
+local CAUSE_TYPE = ap_core_const.CAUSE_TYPE
+local CAUSE_CATEGORY = ap_core_const.CAUSE_CATEGORY
+local CATEGORY = CAUSE_CATEGORY.INSTINCTS
+local CAP_KEY = "cause_max_instincts"
+local MAX_SCANS_PER_GENERATOR = ap_core_const.RADIANT_MAX_SCANS_PER_GENERATOR
+local RESULT = ap_core_const.RESULT
+local REASON = ap_core_const.REASON
+local RANGE_SCENT = ap_core_const.RANGE_SCENT
+local HOURS_TO_SECONDS = ap_core_const.HOURS_TO_SECONDS
+local PERSONALITY = ap_ext_const.PERSONALITY
+
+local LOG_INIT = ap_core_debug.bracket(CAUSE_CATEGORY.INSTINCTS)
+
+local cfg = ap_core_mcm.cfg
+local _alignment_mutant = ap_ext_const.alignment_mutant
+local _alignment_mutant_cowardly = ap_ext_const.alignment_mutant_cowardly
+local _alignment_mutant_feral = ap_ext_const.alignment_mutant_feral
+local _alignment_mutant_predator = ap_ext_const.alignment_mutant_predator
+local _alignment_mutant_aberrant = ap_ext_const.alignment_mutant_aberrant
+local _food_chain_tier = ap_ext_const.FOOD_CHAIN_TIER
+local _scatter_from = ap_ext_const.SCATTER_FROM
+
+-- alignment subsets for slumber answers (predator covered by both lair + surge)
+local _alignment_lair = xtable.merge(_alignment_mutant_feral, _alignment_mutant_predator)
+local _alignment_surge = xtable.merge(_alignment_mutant_aberrant, _alignment_mutant_predator)
+-- pack: feral + predator (cowardly + aberrant excluded)
+local _alignment_pack = xtable.merge(_alignment_mutant_feral, _alignment_mutant_predator)
+
+--- 5 drives. Per-drive Hull weight + threshold cfg key + period gating.
+--- Enable check is per-cause (cause_<cause_name>_enabled), gated by the shared ap_ext_util.try_cause; no drive-level enable.
+local INSTINCTS = {
+    { instinct = "scatter", field = "last_scatter_at", weight = 4.0,
+      threshold_key = "cause_scatter_threshold",
+      max_tier_key = "scatter" },
+    { instinct = "feed",    field = "last_feed_at",    weight = 3.0, active_period = true,
+      threshold_key = "cause_feed_threshold" },
+    { instinct = "slumber", field = "last_slumber_at", weight = 2.5, dormant_period = true,
+      threshold_key = "cause_slumber_threshold" },
+    { instinct = "roam",    field = "last_roam_at",    weight = 1.0, active_period = true,
+      threshold_key = "cause_roam_threshold" },
+    { instinct = "pack",    field = "last_pack_at",    weight = 0.8, active_period = true,
+      threshold_key = "cause_pack_threshold" },
+}
+
+--- 7 specific causes. Slumber splits 3 ways by shelter preference.
+--- Each cause carries: cause const, name, parent drive, alignment subset, personality, filter.
+local CAUSES
+
+-- In-place Fisher-Yates shuffle. Removes order bias so peer causes under the same drive
+-- (e.g. the three slumber variants) get equal first-pick on each tick.
+local function _shuffle_causes()
+    for i = #CAUSES, 2, -1 do
+        local j = math_random(i)
+        if j ~= i then CAUSES[i], CAUSES[j] = CAUSES[j], CAUSES[i] end
+    end
+end
+
+local _is_field_smart = ap_ext_util.is_field_smart
+
+local function _make_territory_filter(player_id)
+    return function(smart)
+        return xsmart.is_territory(smart) and _is_field_smart(smart) and xsmart.accepts_faction(smart, player_id)
+    end
+end
+
+local function _make_lair_filter(player_id)
+    return function(smart)
+        return xsmart.is_lair(smart) and _is_field_smart(smart) and xsmart.accepts_faction(smart, player_id)
+    end
+end
+
+local function _make_surge_filter(player_id)
+    return function(smart)
+        return xsmart.has_surge_shelter(smart) and _is_field_smart(smart) and xsmart.accepts_faction(smart, player_id)
+    end
+end
+
+local function _make_territory_or_lair_filter(player_id)
+    return function(smart)
+        return (xsmart.is_territory(smart) or xsmart.is_lair(smart)) and _is_field_smart(smart) and xsmart.accepts_faction(smart, player_id)
+    end
+end
+
+local function _pack_smart_has_kin(smart_id, community)
+    local squads = xsmart.get_smart_squads(smart_id)
+    if not squads then return false end
+    for squad_id in pairs(squads) do
+        local sq = xobject.se(squad_id)
+        if sq and sq.player_id == community then return true end
+    end
+    return false
+end
+
+local function _build_pack_filter(community, exclude_smart_id)
+    return function(smart)
+        if not _is_field_smart(smart) then return false end
+        if not xsmart.accepts_faction(smart, community) then return false end
+        if smart.id == exclude_smart_id then return false end
+        return _pack_smart_has_kin(smart.id, community)
+    end
+end
+
+local function _has_nearby_threat(pos, level_id, squad_id, threats)
+    return ap_core_util.has_squad(pos, {
+        factions = _alignment_mutant,
+        level_id = level_id,
+        max_distance = RANGE_SCENT,
+        exclude_squad_id = squad_id,
+        match = function(sq)
+            local sp = xcreature.get_mutant_species(sq.id)
+            return sp and threats[sp] or false
+        end,
+    })
+end
+
+local function _build_scatter_filter(threats, player_id)
+    return function(smart)
+        if not _is_field_smart(smart) then return false end
+        if not xsmart.accepts_faction(smart, player_id) then return false end
+        local squads = xsmart.get_smart_squads(smart.id)
+        if not squads then return true end
+        for sq_id in pairs(squads) do
+            local sp = xcreature.get_mutant_species(sq_id)
+            if sp and threats[sp] then return false end
+        end
+        return true
+    end
+end
+
+--- Resolve which filter to use for a scatter cause (pre-checked threats by tier).
+local function _scatter_smart(squad, level_id, species)
+    local tier = _food_chain_tier[species]
+    local threats = tier and _scatter_from[tier]
+    local smart
+    if threats and _has_nearby_threat(squad.position, level_id, squad.id, threats) then
+        local filter = _build_scatter_filter(threats, squad.player_id)
+        smart = ap_core_util.find_smart(squad.position, {
+            level_id = level_id, filter = filter,
+            max_distance = RANGE_SCENT, exclude_id = squad.smart_id,
+        })
+    end
+    return smart
+end
+
+-- Per-cause RULES + SCAN evaluator. Returns the publish payload (with .cause) on SUCCESS, or
+-- { code, reason } on rejection. The enable gate and the timing/logging live in the shared
+-- ap_ext_util.try_cause seam. budget: per-_on_smart table { remaining = N }; RULES rejections free,
+-- a SCAN reach consumes one slot.
+local function _eval_cause(squad, level_id, overdue, species, entry, budget)
+    if entry.alignment and not entry.alignment[species] then
+        return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT }
+    end
+    if not ap_ext_util.check_personality(entry.personality, species) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.LOW_PERSONALITY }
+    end
+    if budget.remaining <= 0 then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BUDGET_EXHAUSTED }
+    end
+    budget.remaining = budget.remaining - 1
+    local smart
+    if entry.scan == "scatter" then
+        smart = _scatter_smart(squad, level_id, species)
+    else
+        local filter = entry.make_filter(squad)
+        local opts = entry.find_opts and entry.find_opts(squad) or { level_id = level_id, filter = filter, max_distance = RANGE_SCENT }
+        opts.level_id = level_id
+        opts.filter = filter
+        smart = ap_core_util.find_smart(squad.position, opts)
+    end
+    if not smart then return { code = RESULT.FAILED_SCAN, reason = REASON.NO_SMART } end
+    if not ap_ext_util.is_tactically_eligible(squad, smart) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.LOW_TACTICS }
+    end
+    return {
+        cause = entry.cause,
+        dto_field = overdue.instinct.field,
+        drive = overdue.drive,
+        squad_id = squad.id,
+        community = squad.player_id,
+        species = species,
+        position = squad.position,
+        level_id = level_id,
+        dst_smart_id = smart.id,
+    }
+end
+
+-- Per-cause attempt for one CAUSES entry under an overdue drive. Filters to the entry's own drive and
+-- drops a period-mismatched drive, then hands the enable gate, timing, and outcome log to the shared
+-- ap_ext_util.try_cause seam. period_mismatch drives are walked only at DEBUG (see _find_overdue_drives);
+-- each emits a failed_rules:wrong_period line so dormant/active drops are not silent.
+-- opts: { species, overdue, entry, drive }
+local function _try_one_drive_cause(squad, level_id, opts, budget)
+    if opts.entry.drive ~= opts.drive then return nil end
+    if opts.overdue.period_mismatch then
+        if ap_core_debug.enabled() then ap_core_debug.debug("%s failed_rules:wrong_period", opts.entry.log_prefix) end
+        return nil
+    end
+    return ap_ext_util.try_cause(opts.entry.enabled_key, opts.entry.log_prefix, _eval_cause,
+        squad, level_id, opts.overdue, opts.species, opts.entry, budget)
+end
+
+--- Walk CAUSES for one overdue drive; first cause that publishes wins.
+local function _try_drive(squad, level_id, species, overdue_entry, budget)
+    local drive_name = overdue_entry.instinct.instinct
+    for j = 1, #CAUSES do
+        local result = _try_one_drive_cause(squad, level_id,
+            { species = species, overdue = overdue_entry, entry = CAUSES[j], drive = drive_name }, budget)
+        if result then return result end
+    end
+    return nil
+end
+
+local function _find_overdue_drives(dto, now, species)
+    local is_active = ap_ext_util.is_active_period(species)
+    local debug_on = ap_core_debug.enabled()
+    local out = {}
+    for i = 1, #INSTINCTS do
+        local inst = INSTINCTS[i]
+        local period_mismatch = (inst.active_period and not is_active)
+            or (inst.dormant_period and is_active)
+        if period_mismatch then
+            if not debug_on then goto continue end
+            out[#out + 1] = { instinct = inst, drive = 0, period_mismatch = true }
+            goto continue
+        end
+        if inst.max_tier_key == "scatter" then
+            local tier = _food_chain_tier[species]
+            if not tier or tier > 2 then goto continue end
+        end
+
+        local elapsed = now - (dto[inst.field] or 0)
+        local threshold = cfg[inst.threshold_key] * HOURS_TO_SECONDS
+        if elapsed <= threshold then goto continue end
+        local ratio = elapsed / threshold
+        local drive = inst.weight * ratio * ratio
+        out[#out + 1] = { instinct = inst, drive = drive }
+
+        ::continue::
+    end
+    table_sort(out, function(a, b) return a.drive > b.drive end)
+    return out
+end
+
+local function _init_dto(dto, now, species, squad_id)
+    local is_active = ap_ext_util.is_active_period(species)
+    for i = 1, #INSTINCTS do
+        local inst = INSTINCTS[i]
+        local in_period = (inst.active_period and is_active)
+            or (inst.dormant_period and not is_active)
+            or (not inst.active_period and not inst.dormant_period)
+        local threshold = cfg[inst.threshold_key] * HOURS_TO_SECONDS
+        dto[inst.field] = ap_ext_util.init_overdue_timestamp(now, threshold, in_period, squad_id)
+    end
+end
+
+local function _on_smart(squad)
+    if not squad then return { code = RESULT.FAILED_RULES, reason = REASON.NIL_ARGS } end
+    if not _alignment_mutant[squad.player_id] then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT, community = squad.player_id } end
+
+    local species = xcreature.get_mutant_species(squad.id)
+    if not species then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT, community = squad.player_id } end
+
+    if not level.present() then return { code = RESULT.FAILED_RULES, reason = REASON.NO_LEVEL_ID } end
+    local level_id = xlevel.get_level_id(squad)
+    if not level_id then return { code = RESULT.FAILED_RULES, reason = REASON.NO_LEVEL_ID } end
+    if not ap_core_limiter.check_cause_rate_limit(CATEGORY, cfg[CAP_KEY]) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BUDGET_EXHAUSTED }
+    end
+
+    local now = xtime.game_sec()
+    local dto = ap_ext_tracker.get_mutant_instincts(squad.id)
+    if not dto then
+        dto = ap_ext_tracker.init_mutant_instincts(squad.id, now)
+        _init_dto(dto, now, species, squad.id)
+    end
+
+    local overdue = _find_overdue_drives(dto, now, species)
+    if #overdue == 0 then return { code = RESULT.FAILED_RULES, reason = REASON.BELOW_THRESHOLD } end
+
+    _shuffle_causes()
+
+    local budget = { remaining = MAX_SCANS_PER_GENERATOR }
+    local result
+    for i = 1, #overdue do
+        if not result then result = _try_drive(squad, level_id, species, overdue[i], budget) end
+    end
+    if not result then return { code = RESULT.FAILED_RULES, reason = REASON.NO_BRANCH, community = squad.player_id } end
+
+    ap_core_limiter.increment_cause_counter(CATEGORY)
+    return result
+end
+
+function on_game_start()
+    CAUSES = {
+        { cause = CAUSE.SCATTER, name = "scatter", drive = "scatter",
+          scan = "scatter",
+          personality = { PERSONALITY.INV_AGGRESSION, PERSONALITY.SURVIVAL } },
+        { cause = CAUSE.FEED, name = "feed", drive = "feed",
+          make_filter = function(sq) return _make_territory_filter(sq.player_id) end,
+          personality = { PERSONALITY.SURVIVAL, PERSONALITY.PERCEPTION } },
+        { cause = CAUSE.SLUMBER_FIELD, name = "slumber_field", drive = "slumber",
+          alignment = _alignment_mutant_cowardly,
+          make_filter = function(sq) return _make_territory_filter(sq.player_id) end,
+          personality = { PERSONALITY.SURVIVAL } },
+        { cause = CAUSE.SLUMBER_LAIR, name = "slumber_lair", drive = "slumber",
+          alignment = _alignment_lair,
+          make_filter = function(sq) return _make_lair_filter(sq.player_id) end,
+          personality = { PERSONALITY.SURVIVAL } },
+        { cause = CAUSE.SLUMBER_SURGE, name = "slumber_surge", drive = "slumber",
+          alignment = _alignment_surge,
+          make_filter = function(sq) return _make_surge_filter(sq.player_id) end,
+          personality = { PERSONALITY.SURVIVAL } },
+        { cause = CAUSE.ROAM, name = "roam", drive = "roam",
+          alignment = xtable.merge(_alignment_mutant_cowardly, _alignment_mutant_feral, _alignment_mutant_predator),
+          make_filter = function(sq) return _make_territory_or_lair_filter(sq.player_id) end,
+          find_opts = function(sq) return { max_distance = RANGE_SCENT, exclude_id = sq.smart_id } end,
+          personality = { PERSONALITY.PERCEPTION, PERSONALITY.TERRITORY } },
+        { cause = CAUSE.PACK, name = "pack", drive = "pack",
+          alignment = _alignment_pack,
+          make_filter = function(sq) return _build_pack_filter(sq.player_id, sq.smart_id) end,
+          personality = { PERSONALITY.RELATION } },
+    }
+
+    for i = 1, #CAUSES do
+        CAUSES[i].log_prefix = ap_core_debug.bracket(CAUSES[i].cause)
+        CAUSES[i].enabled_key = "cause_" .. CAUSES[i].name .. "_enabled"
+    end
+
+    local radiant = ap_core_const.RADIANT_CALLBACKS
+    for i = 1, #radiant do
+        ap_core_producer.register({
+            callback = radiant[i], cause_type = CAUSE_TYPE.RADIANT,
+            category = CAUSE_CATEGORY.INSTINCTS, name = "instincts",
+        }, _on_smart)
+    end
+    ap_core_debug.info(LOG_INIT .. " Initialized")
+end

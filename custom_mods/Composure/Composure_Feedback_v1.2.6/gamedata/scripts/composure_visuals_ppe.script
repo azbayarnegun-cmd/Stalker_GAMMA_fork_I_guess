@@ -1,0 +1,113 @@
+-- Owns continuous blur/darkness and all event-only PPE effectors.
+
+local DARK_ID = 56101
+local BLUR_ID = 56102
+local ALCOHOL_ID = 56103
+local PSY_ID = 56104
+local BLACKOUT_ID = 56105
+
+local dark_active = false
+local blur_active = false
+local blur_file = nil
+local dark_factor = 0
+local blur_factor = 0
+local events = {}
+
+local function now_ms()
+    if time_global then return time_global() end
+    return 0
+end
+
+local function clamp(v, lo, hi)
+    if v < lo then return lo end
+    if v > hi then return hi end
+    return v
+end
+
+local function approach(value, target, amount)
+    if value < target then return math.min(value + amount, target) end
+    return math.max(value - amount, target)
+end
+
+local function remove(id)
+    if level and level.remove_pp_effector then pcall(level.remove_pp_effector, id) end
+end
+
+local function ensure(file, id, cyclic)
+    if not level or not level.add_pp_effector then return false end
+    local ok = pcall(level.add_pp_effector, file, id, cyclic)
+    return ok
+end
+
+local function factor(id, value)
+    if not level or not level.set_pp_effector_factor then return false end
+    return pcall(level.set_pp_effector_factor, id, clamp(value, 0, 1))
+end
+
+local function sync_dark(target, dt)
+    dark_factor = approach(dark_factor, target, 0.65 * dt)
+    if dark_factor > 0.001 then
+        if not dark_active then dark_active = ensure("black_infinite.ppe", DARK_ID, true) end
+        if dark_active and not factor(DARK_ID, dark_factor) then dark_active = false end
+    elseif dark_active then
+        remove(DARK_ID)
+        dark_active = false
+    end
+end
+
+local function sync_blur(target, file, dt)
+    blur_factor = approach(blur_factor, target, 0.90 * dt)
+    if blur_factor > 0.001 and file then
+        if (not blur_active) or blur_file ~= file then
+            remove(BLUR_ID)
+            blur_active = ensure(file, BLUR_ID, true)
+            blur_file = file
+        end
+        if blur_active and not factor(BLUR_ID, blur_factor) then blur_active = false end
+    elseif blur_active then
+        remove(BLUR_ID)
+        blur_active, blur_file = false, nil
+    end
+end
+
+local event_defs = {
+    alcohol = { file = "alcohol.ppe", id = ALCOHOL_ID },
+    psy = { file = "adb_psy_feedback.ppe", id = PSY_ID },
+    blackout = { file = "black.ppe", id = BLACKOUT_ID },
+}
+
+function trigger(kind, intensity, duration)
+    local def = event_defs[kind]
+    if not def then return false, "unknown PPE event" end
+    remove(def.id)
+    if not ensure(def.file, def.id, kind ~= "blackout") then return false, "PPE unavailable" end
+    local strength = clamp(tonumber(intensity) or 1, 0, 1)
+    factor(def.id, strength)
+    events[kind] = { id = def.id, expires_at = now_ms() + clamp(tonumber(duration) or 1, 0.1, 15) * 1000 }
+    return true
+end
+
+function sync(state)
+    local dt = clamp(state.dt or 0.1, 0, 0.5)
+    sync_dark(state.ppe.darkness_enabled and state.ppe.darkness or 0, dt)
+    sync_blur(state.ppe.blur_enabled and state.ppe.blur or 0, state.ppe.blur_file, dt)
+    local now = now_ms()
+    for kind, event in pairs(events) do
+        if now >= event.expires_at then
+            remove(event.id)
+            events[kind] = nil
+        end
+    end
+    return true
+end
+
+function cleanup()
+    remove(DARK_ID); remove(BLUR_ID); remove(ALCOHOL_ID); remove(PSY_ID); remove(BLACKOUT_ID)
+    dark_active, blur_active, blur_file = false, false, nil
+    dark_factor, blur_factor, events = 0, 0, {}
+    return true
+end
+
+function get_status()
+    return { darkness = dark_factor, blur = blur_factor, blur_file = blur_file, events = events }
+end

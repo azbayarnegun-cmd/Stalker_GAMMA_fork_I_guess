@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+    <string id="st_amp_panel_filter_magazine"><text>Magazines</text></string>
+    <string id="st_amp_panel_filter_grenade"><text>Grenades</text></string>
+    <string id="st_amp_panel_filter_medical"><text>Medical supplies</text></string>
+    <string id="st_amp_panel_filter_admin"><text>Documents and devices</text></string>
+    <string id="st_amp_panel_filter_ammo"><text>Ammunition</text></string>
+    <string id="st_amp_panel_filter_sustainment"><text>Food and drinks</text></string>
+    <string id="st_amp_panel_filter_dump"><text>Empty magazines</text></string>
+    <string id="st_amp_panel_filter_parts"><text>Repair parts</text></string>
+    <string id="st_amp_panel_filter_universal"><text>Universal</text></string>
+    <string id="st_amp_panel_filter_unknown"><text>Unknown filter</text></string>
+</string_table>

@@ -1,0 +1,28 @@
+-- Shared presentation-only live test value for Composure Feedback v1.0.2.
+
+local defaults = {
+    enabled = false,
+    value = 30,
+    show_banner = true,
+}
+
+function get_config(key)
+    if ui_mcm and ui_mcm.get then
+        local ok, value = pcall(ui_mcm.get, "composure_feedback_test/" .. key)
+        if ok and value ~= nil then return value end
+    end
+    return defaults[key]
+end
+
+function on_mcm_load()
+    return {
+        id = "composure_feedback_test",
+        sh = true,
+        gr = {
+            { id = "enabled", type = "check", val = 1, def = false },
+            { id = "value", type = "track", val = 2,
+              min = 0, max = 100, step = 1, def = 30 },
+            { id = "show_banner", type = "check", val = 1, def = true },
+        },
+    }
+end

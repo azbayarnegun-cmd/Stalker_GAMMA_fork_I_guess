@@ -1,0 +1,300 @@
+--- at_gear: the functional-inventory SOURCE. It walks what a stalker CARRIES and registers per-NPC
+--- effect contributions into at_effects_resolver; it writes no multi-source engine field itself. An
+--- artefact grants one combat edge chosen by its anomaly CLASS, scaled by the section's intrinsic `tier`
+--- (tier x 2%, ladder 4/6/8% over vanilla tier 2-4, 10% ceiling at tier 5). The class -> effect map is
+--- the design assignment (D6): gravi + chemical(interim) + plates -> DAMAGE_RESIST, thermal ->
+--- SHOT_DISPERSION, electro + the quest specials -> DAMAGE_DEALT, binoculars + NVG -> VISION_RANGE, and
+--- every artefact -> the carrier AURA (a presence, applied by the resolver). Detection is by exact vanilla
+--- section name, read from at_gear.ltx; a modded section not listed grants nothing.
+---
+--- The one single-source value at_gear owns and writes itself (never through the resolver, invariant I3)
+--- is PASSIVE_REGEN: the chemical line feeds the engine restore velocity via the n039
+--- set_health_restore_boost bind, applied at net_spawn. Until n039 is present on the exe, the write is
+--- inert and the chemical line folds into DAMAGE_RESIST instead (the D18 interim), decided by a one-time
+--- capability probe.
+---
+--- The scan is LAZY: the first provider read (or the resolver's net_spawn apply) walks the inventory once
+--- and caches the record; later reads are table lookups, and the toggles are applied live at the provider
+--- so a record never needs re-scanning on an option change. Tracing rides at_debug, a no-op below DEBUG.
+
+local math_max, math_min, tostring = math.max, math.min, tostring
+local IsStalker, AC_ID, type = IsStalker, AC_ID, type
+local RegisterScriptCallback, ini_file, ini_sys = RegisterScriptCallback, ini_file, ini_sys
+local level = level
+local xinventory, xcreature, xprofiler = xinventory, xcreature, xprofiler
+local at_debug, at_effects_resolver, xcombat = at_debug, at_effects_resolver, xcombat
+local EFFECT = at_effects_resolver.EFFECT
+
+local cfg = at_mcm.cfg
+
+local GEAR_LTX = "alifetactics\\at_gear.ltx"
+local GEAR_SECTION = "at_gear"
+
+-- Tunables, loaded from at_gear.ltx over these fallbacks (the repo-wide LTX-with-script-fallback rule).
+local _tier_step   = 0.02
+local _tier_cap    = 0.10
+local _binoc_range = 1.50
+local _nvg_range   = 1.50
+local _night_start = 22
+local _night_end   = 5
+local _regen_scale = 0.003
+
+-- section -> kind (gravi / thermal / chemical / electro / special / plate / binoc / nvg), built from the
+-- ltx class lists at load. The class -> effect mapping is the _collect switch below (D6).
+local _kind = {}
+-- The five artefact kinds that emit the carrier aura (plates and optics do not - tools, not matter).
+local _ARTY_KINDS = { gravi = true, thermal = true, chemical = true, electro = true, special = true }
+
+-- id -> resolved record, or false (a scanned non-carrier / ineligible sentinel). nil = never scanned.
+local _resolved = {}
+
+-- n039 capability: nil = unprobed, then a stable per-exe boolean. Present -> chemical feeds passive regen;
+-- absent -> chemical folds into DAMAGE_RESIST (the D18 interim).
+local _n039
+
+-- One luabind method-existence probe, cached (compatibility-standards: probe, never a version compare).
+local function _has_n039(npc)
+    if _n039 == nil then _n039 = type(npc.set_health_restore_boost) == "function" end
+    return _n039
+end
+
+local function _is_night()
+    if not level.present() then return false end
+    local hours = level.get_time_hours()
+    return hours >= _night_start or hours < _night_end
+end
+
+-- Clamped tier (>= 1) from the section's `tier` field (vanilla + GAMMA); default 1 for a section without
+-- one (plates, optics), which floors the effect at one tier step.
+local function _tier(sec)
+    local tier = ini_sys:r_float_ex(sec, "tier") or 1
+    if tier < 1 then return 1 end
+    return tier
+end
+
+-- Effect strength for a section: tier x step, capped. Raw strength (0.02..0.10), not yet a multiplier.
+local function _tier_strength(sec)
+    return math_min(_tier(sec) * _tier_step, _tier_cap)
+end
+
+-- kind -> how it contributes to the scan accumulator. Tiered kinds keep the strongest strength per
+-- effect group (a channel never stacks across items); optics set a presence flag. gravi feeds the resist
+-- pool and chemical the regen route (chemical is routed after the walk).
+local _CONTRIBUTE = {
+    gravi    = function(acc, sec) acc.resist = math_max(acc.resist, _tier_strength(sec)) end,
+    chemical = function(acc, sec) acc.chem   = math_max(acc.chem,   _tier_strength(sec)) end,
+    thermal  = function(acc, sec) acc.disp   = math_max(acc.disp,   _tier_strength(sec)) end,
+    electro  = function(acc, sec) acc.dealt  = math_max(acc.dealt,  _tier_strength(sec)) end,
+    special  = function(acc, sec) acc.dealt  = math_max(acc.dealt,  _tier_strength(sec)) end,
+    plate    = function(acc, sec) acc.plate  = math_max(acc.plate,  _tier_strength(sec)) end,
+    binoc    = function(acc) acc.binoc = true end,
+    nvg      = function(acc) acc.nvg = true end,
+}
+
+-- Accumulate one inventory item into the scan: classify by section, mark aura presence for an artefact,
+-- and route the contribution through the kind table.
+local function _collect(acc, sec)
+    local kind = _kind[sec]
+    if not kind then return end
+    if _ARTY_KINDS[kind] then acc.aura = true end
+    _CONTRIBUTE[kind](acc, sec)
+end
+
+local function _trace_resolve(id, record, tmr)
+    at_debug.dbg("[GEAR] resolve id=%d resist=%.3f plate=%.3f dealt=%.3f disp=%.3f regen=%.5f binoc=%s nvg=%s aura=%s combat=%s [%.3fms]",
+        id, record.resist, record.plate, record.dealt, record.disp, record.regen,
+        tostring(record.binoc), tostring(record.nvg), tostring(record.aura), tostring(record.combat), tmr:get_ms())
+end
+
+-- One inventory pass -> record. The chemical strength is routed after the walk, once the npc is in hand:
+-- to passive regen when n039 is present, else into the resist pool (interim). nil = offline/unresolvable.
+local function _resolve(id)
+    if not cfg.gear_enabled then return false end
+    local tmr = xprofiler.new_if(at_debug.on()):start()
+    local acc = { resist = 0, chem = 0, plate = 0, dealt = 0, disp = 0, binoc = false, nvg = false, aura = false }
+    local npc = xinventory.iterate_inventory(id, function(_owner, item)
+        _collect(acc, item:section())
+    end)
+    if not npc then tmr:stop() return nil end
+
+    local regen = 0
+    if _has_n039(npc) then
+        regen = acc.chem * _regen_scale
+    else
+        acc.resist = math_max(acc.resist, acc.chem)
+    end
+    local record = {
+        resist = acc.resist, plate = acc.plate, dealt = acc.dealt, disp = acc.disp, regen = regen,
+        binoc = acc.binoc, nvg = acc.nvg, aura = acc.aura,
+        combat = xcreature.community(npc) ~= "zombied",
+    }
+    _resolved[id] = record
+    tmr:stop()
+    if at_debug.on() then _trace_resolve(id, record, tmr) end
+    return record
+end
+
+-- Cached record for a carrier, lazy-resolving on first read. The stalker / non-actor gate is the cheap
+-- pre-filter so a monster or the actor never triggers an inventory walk. Returns nil for a non-carrier.
+local function _carrier_record(npc)
+    if not (npc and IsStalker(npc) and npc:id() ~= AC_ID) then return nil end
+    local id = npc:id()
+    local record = _resolved[id]
+    if record ~= nil then return record or nil end
+    return _resolve(id) or nil
+end
+
+-- =========================================================================
+-- Providers (fn(npc) -> value|nil), registered into at_effects_resolver
+-- =========================================================================
+
+local function _p_dealt(npc)
+    if not (cfg.gear_enabled and cfg.gear_artefacts_enabled) then return nil end
+    local record = _carrier_record(npc)
+    if not (record and record.combat and record.dealt > 0) then return nil end
+    return 1 + record.dealt
+end
+
+local function _p_resist(npc)
+    if not cfg.gear_enabled then return nil end
+    local record = _carrier_record(npc)
+    if not (record and record.combat) then return nil end
+    local strength = record.plate
+    if cfg.gear_artefacts_enabled and record.resist > strength then strength = record.resist end
+    if strength <= 0 then return nil end
+    return 1 - strength
+end
+
+local function _p_disp(npc)
+    if not (cfg.gear_enabled and cfg.gear_artefacts_enabled) then return nil end
+    local record = _carrier_record(npc)
+    if not (record and record.combat and record.disp > 0) then return nil end
+    return 1 - record.disp
+end
+
+-- Day/night read live so a binoc/nvg carrier's range tracks the clock without a polling tick (D20):
+-- binoculars by day, NVG by night, each behind its own toggle.
+local function _p_vision_range(npc)
+    if not cfg.gear_enabled then return nil end
+    local record = _carrier_record(npc)
+    if not (record and record.combat) then return nil end
+    if _is_night() then
+        if record.nvg and cfg.gear_nvg_enabled then return _nvg_range end
+    else
+        if record.binoc and cfg.gear_binoc_enabled then return _binoc_range end
+    end
+    return nil
+end
+
+-- Aura presence: any carried artefact, gated by its own toggle only - NOT zombie-gated (a zombie still
+-- physically carries the artefact, D23) and independent of the artefact-EFFECT toggle (a carrier glows
+-- whether or not its combat edge is on, D9).
+local function _p_aura(npc)
+    if not (cfg.gear_enabled and cfg.gear_aura_enabled) then return nil end
+    local record = _carrier_record(npc)
+    return (record and record.aura) or nil
+end
+
+-- =========================================================================
+-- Passive regen (single-source, at_gear-owned, n039): the net_spawn write
+-- =========================================================================
+
+-- Set the per-NPC restore boost at spawn. Inert until n039 exists (the wrapper no-ops below the bind);
+-- writes the neutral 0 for a non-carrier or a disabled toggle so a re-online never keeps a stale boost.
+-- The engine field is not serialized, so it is re-set on every net_spawn.
+local function _apply_regen(npc)
+    if not (npc and _has_n039(npc)) then return end
+    if not (cfg.gear_enabled and cfg.gear_artefacts_enabled) then
+        xcombat.set_health_restore_boost(npc, 0)
+        return
+    end
+    local record = _carrier_record(npc)
+    local boost = (record and record.combat and record.regen) or 0
+    xcombat.set_health_restore_boost(npc, boost)
+    if at_debug.on() and boost > 0 then
+        at_debug.dbg("[GEAR] regen id=%d boost=%.5f", npc:id(), boost)
+    end
+end
+
+-- =========================================================================
+-- Cache lifecycle
+-- =========================================================================
+
+-- Re-resolve one NPC and re-push the spawn-bound effects. The gear scan cache is at_gear's own; the
+-- VISION_RANGE bind and the aura are the resolver's, so invalidate here then hand the re-apply to it.
+local function _reresolve(npc)
+    local id = npc:id()
+    _resolved[id] = nil
+    at_effects_resolver.refresh(npc)
+    _apply_regen(npc)
+end
+
+--- Re-resolve one NPC's gear now, for a caller that granted items with no take event (a parented spawn,
+--- a scripted transfer). Drops the cached record and re-pushes the binds off a fresh scan.
+--- @param npc game_object stalker
+function refresh(npc)
+    if not (cfg.gear_enabled and npc and IsStalker(npc)) then return end
+    _reresolve(npc)
+end
+
+-- A take/drop/transfer of a relevant item: re-resolve if this id was already cached (an untouched id
+-- lazy-resolves fresh on its next read). Fires for pickups, drops, and NPC-to-NPC transfers.
+local function _on_inventory_change(npc, item)
+    if not (cfg.gear_enabled and npc and IsStalker(npc)) then return end
+    local sect = item and item:section()
+    if sect and not _kind[sect] then return end
+    if _resolved[npc:id()] == nil then return end
+    _reresolve(npc)
+end
+
+-- Fresh game object each online: apply the single-source passive regen (the resolver applies its own
+-- effects from its own net_spawn subscriber). Inert until n039.
+local function _on_net_spawn(npc, _se_obj)
+    if npc then _apply_regen(npc) end
+end
+
+local function _on_entity_unregister(se_obj)
+    if se_obj then _resolved[se_obj.id] = nil end
+end
+
+local function _load_config()
+    local ini = ini_file(GEAR_LTX)
+    if not (ini and ini:section_exist(GEAR_SECTION)) then return end
+    _tier_step   = ini:r_float_ex(GEAR_SECTION, "tier_step")   or _tier_step
+    _tier_cap    = ini:r_float_ex(GEAR_SECTION, "tier_cap")    or _tier_cap
+    _binoc_range = ini:r_float_ex(GEAR_SECTION, "binoc_range") or _binoc_range
+    _nvg_range   = ini:r_float_ex(GEAR_SECTION, "nvg_range")   or _nvg_range
+    _night_start = ini:r_float_ex(GEAR_SECTION, "night_start_h") or _night_start
+    _night_end   = ini:r_float_ex(GEAR_SECTION, "night_end_h")   or _night_end
+    _regen_scale = ini:r_float_ex(GEAR_SECTION, "regen_scale") or _regen_scale
+    local groups = { "gravi", "thermal", "chemical", "electro", "special", "plate", "binoc", "nvg" }
+    for i = 1, #groups do
+        local kind = groups[i]
+        local list = ini:r_string_ex(GEAR_SECTION, kind)
+        if list then
+            for sec in list:gmatch("[^%s,]+") do _kind[sec] = kind end
+        end
+    end
+end
+
+local function _on_first_update()
+    at_debug.info("Gear source initialized (enabled=%s artefacts=%s aura=%s binoc=%s nvg=%s regen_bind=%s)",
+        cfg.gear_enabled and "on" or "off", cfg.gear_artefacts_enabled and "on" or "off",
+        cfg.gear_aura_enabled and "on" or "off", cfg.gear_binoc_enabled and "on" or "off",
+        cfg.gear_nvg_enabled and "on" or "off", _n039 and "on" or "off/unprobed")
+end
+
+function on_game_start()
+    _resolved = {}
+    _load_config()
+    at_effects_resolver.register(EFFECT.DAMAGE_DEALT,    _p_dealt)
+    at_effects_resolver.register(EFFECT.DAMAGE_RESIST,   _p_resist)
+    at_effects_resolver.register(EFFECT.SHOT_DISPERSION, _p_disp)
+    at_effects_resolver.register(EFFECT.VISION_RANGE,    _p_vision_range)
+    at_effects_resolver.register(EFFECT.AURA,            _p_aura)
+    RegisterScriptCallback("npc_on_net_spawn",            _on_net_spawn)
+    RegisterScriptCallback("npc_on_item_take",            _on_inventory_change)
+    RegisterScriptCallback("npc_on_item_drop",            _on_inventory_change)
+    RegisterScriptCallback("server_entity_on_unregister", _on_entity_unregister)
+    RegisterScriptCallback("actor_on_first_update",       _on_first_update)
+end

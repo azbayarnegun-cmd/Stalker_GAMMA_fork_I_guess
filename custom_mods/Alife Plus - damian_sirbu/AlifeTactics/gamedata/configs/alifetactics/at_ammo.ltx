@@ -1,0 +1,36 @@
+; AlifeTactics ammo system tuning. Paired with gamedata/scripts/at_ammo.script.
+; All keys have script-side fallback defaults so a missing key won't crash.
+;
+; Each veteran-and-up NPC fires AP from the loose ammo it carries (stocked by
+; AlifePlus trade/loot). The budget is the inventory itself -- its AP boxes
+; (box_size 15 rifle / 16 pistol). At the end of each engagement there is a
+; chance to consume one whole AP box; when the NPC runs out it reverts to
+; vanilla magic FMJ. No death hook is needed: vanilla decide_items_to_keep
+; already releases every ammo box > 5 on death (death_manager.script:457), so
+; the 15-round AP boxes never drop as loot.
+;
+; Per-fight delete chance = ap_decay_base * (weapon rpm / rpm_ref) * rank_weight,
+; where rank_weight falls from 1.0 at min_ap_rank to rank_weight_floor at
+; rank_ceiling. Fast weapons burn AP quickly; high rank conserves it.
+
+[at_ammo]
+; NPC character_rank floor for AP. 12000 = veteran (professional caps at 11999
+; in creatures/game_relations.ltx [game_relations] rating). Below = vanilla FMJ.
+min_ap_rank       = 12000
+
+; Rank at which rank_weight reaches rank_weight_floor. 27000 = legend.
+rank_ceiling      = 27000
+
+; Base per-fight chance to consume one AP box (before rpm and rank weighting).
+ap_decay_base     = 0.5
+
+; Fire-rate pivot. A weapon at this rpm decays at the base rate; faster weapons
+; decay sooner, slower (snipers, bolt-actions) much later.
+rpm_ref           = 600
+
+; rank_weight at rank_ceiling. Lower = more permanent elite AP (0 = legends
+; never decay past the ceiling).
+rank_weight_floor = 0.1
+
+; No-enemy duration (ms) that ends an engagement and triggers the decay roll.
+peace_debounce_ms = 15000

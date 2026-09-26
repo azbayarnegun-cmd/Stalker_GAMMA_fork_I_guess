@@ -1,0 +1,75 @@
+--- ap_ext_cause_massacre: Tracks stalker death clusters near smarts, publishes cause:massacre at threshold
+
+local xsquad, xsmart, xtime, xlevel, xcreature, xttltable = xsquad, xsmart, xtime, xlevel, xcreature, xttltable
+local ap_core_debug, ap_core_limiter, ap_core_util, ap_core_producer = ap_core_debug, ap_core_limiter, ap_core_util, ap_core_producer
+
+local CAUSE = ap_core_const.CAUSE
+local CAUSE_TYPE = ap_core_const.CAUSE_TYPE
+local CAUSE_CATEGORY = ap_core_const.CAUSE_CATEGORY
+local CATEGORY = CAUSE_CATEGORY.REACTIONS
+local CAP_KEY = "cause_max_reactions"
+local CALLBACK = ap_core_const.CALLBACK
+local RESULT = ap_core_const.RESULT
+local REASON = ap_core_const.REASON
+local LOG = ap_core_debug.bracket(CAUSE.MASSACRE)
+
+local cfg = ap_core_mcm.cfg
+local get_config = ap_core_mcm.get_config
+local _deaths = nil
+local _alignment_human = ap_ext_const.alignment_human
+
+local function _on_squad_npc_death(squad, se_victim, se_killer)
+    if not cfg.cause_massacre_enabled then return { code = RESULT.FAILED_RULES, reason = REASON.DISABLED } end
+    if not se_victim then return { code = RESULT.FAILED_RULES, reason = REASON.NO_VICTIM } end
+    if not _alignment_human[squad.player_id] then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT } end
+    local killer_squad = se_killer and xsquad.get_squad_by_member(se_killer.id) or nil
+    if not killer_squad then return { code = RESULT.FAILED_RULES, reason = REASON.NO_KILLER } end
+    if not _alignment_human[killer_squad.player_id] then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT } end
+
+    local smart = xsquad.get_squad_smart(squad)
+    if not smart then return { code = RESULT.FAILED_RULES, reason = REASON.NO_SMART } end
+    if xsmart.is_base(smart) and smart.faction == squad.player_id then
+        return { code = RESULT.FAILED_RULES, reason = REASON.AT_BASE }
+    end
+
+    -- Accumulate every eligible death into the smart's cluster, then gate publication. The
+    -- cluster clears only when a massacre actually publishes, so an exhausted (shared) REACTIONS
+    -- budget or per-causer cap holds the deaths instead of dropping them uncounted, so the
+    -- cluster grows through the sustained combat that produces it.
+    local count = ap_core_util.accumulate_count(_deaths, smart.id)
+    if count < cfg.cause_massacre_threshold then return { code = RESULT.FAILED_RULES, reason = REASON.BELOW_THRESHOLD } end
+    if not ap_core_limiter.check_cause_rate_limit(CATEGORY, cfg[CAP_KEY]) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BUDGET_EXHAUSTED }
+    end
+    if not ap_core_limiter.check_causer_rate_limit(se_killer.id) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.CAUSER_EXHAUSTED }
+    end
+
+    _deaths:remove(smart.id)
+    ap_core_limiter.increment_cause_counter(CATEGORY)
+    ap_core_limiter.increment_causer_counter(se_killer.id)
+    return {
+        cause = CAUSE.MASSACRE,
+        smart = smart,
+        position = smart.position,
+        level_id = xlevel.get_level_id(smart),
+        faction = xcreature.community(se_victim),
+        victim_squad = squad,
+        killer_squad = killer_squad,
+        kill_count = count,
+    }
+end
+
+function on_game_start()
+    -- get_config, not cfg: cfg is repopulated by ap_core_mcm's own on_game_start, so reading it
+    -- here is order-dependent (code-standards "on_game_start = declare"); the getter reads through
+    -- to MCM storage in any phase.
+    _deaths = xttltable.create_ttl_table({ default_ttl = get_config("cause_massacre_decay_time"), clock = xtime.game_sec })
+
+    ap_core_producer.register({
+        callback = CALLBACK.SQUAD_ON_NPC_DEATH, cause_type = CAUSE_TYPE.REACTIVE,
+        category = CAUSE_CATEGORY.REACTIONS, name = CAUSE.MASSACRE,
+    }, _on_squad_npc_death)
+
+    ap_core_debug.info(LOG .. " Initialized")
+end

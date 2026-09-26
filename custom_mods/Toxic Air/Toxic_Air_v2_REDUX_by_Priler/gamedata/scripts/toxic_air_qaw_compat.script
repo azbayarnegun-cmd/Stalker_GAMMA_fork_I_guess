@@ -1,0 +1,263 @@
+--[[
+    Quick Action Wheel Compatibility
+    Adds filter support to Quick Action Wheel mod by HarukaSai
+
+    If Quick Action Wheel is installed, this script:
+    - Registers filters as a new item class that can be added to the wheel
+    - Right-click filter in inventory -> "Add to quick wheel"
+    - Click filter in wheel -> toggles filter on/off (same as keybind)
+    - Also adds right-click "Equip/Remove Filter" option
+    - etc
+]]
+
+-- Filter sections from toxic_air
+local filter_sections = {
+    ["af_mask_filter_homemade"] = true,
+    ["af_mask_filter_ms4"] = true,
+    ["af_mask_filter_1"] = true,
+    ["af_mask_filter_r18"] = true,
+    ["af_mask_filter_1sci"] = true,
+    ["af_mask_filter_dp1"] = true,
+    ["af_mask_filter_2"] = true,
+    ["af_mask_filter_2dolg"] = true,
+    ["af_mask_filter_mof6"] = true,
+    ["af_mask_filter_3"] = true,
+    ["af_mask_filter_3isg"] = true,
+    ["af_mask_filter_fp5"] = true,
+}
+
+-- Tank sections
+local tank_sections = {
+    ["af_oxygen_tank_1"] = true,
+    ["af_oxygen_tank_1soviet"] = true,
+    ["af_oxygen_tank_2"] = true,
+    ["af_oxygen_tank_3"] = true,
+    ["af_oxygen_tank_3military"] = true,
+}
+
+-- Check if section is a toxic air filter
+local function is_toxic_air_filter(sec)
+    if not sec then return false end
+    return filter_sections[sec] or string.find(sec, "af_mask_filter") ~= nil
+end
+
+-- Check if section is an oxygen tank
+local function is_oxygen_tank(sec)
+    if not sec then return false end
+    return tank_sections[sec] or string.find(sec, "af_oxygen_tank") ~= nil
+end
+
+-- Register filter wheel option class with QAW
+local function register_filter_wheel_class()
+    -- Check if QAW is installed
+    local qaw = haru_quick_action_wheel_mcm
+    if not qaw then
+        return false
+    end
+    
+    local TAB_MANAGER = qaw.TAB_MANAGER
+    if not TAB_MANAGER then
+        return false
+    end
+    
+    -- Get base class reference
+    local ItemWheelOption = qaw.ItemWheelOption
+    if not ItemWheelOption then
+        return false
+    end
+    
+    -- Create QFilterWheelOption class extending ItemWheelOption
+    class "QFilterWheelOption" (ItemWheelOption)
+    
+    function QFilterWheelOption:__init(xml, parent, section)
+        ItemWheelOption.__init(self, xml, parent, section)
+    end
+    
+    function QFilterWheelOption:OnClick()
+        local obj = ItemWheelOption.OnClick(self)
+        
+        if not obj then
+            return
+        end
+        
+        -- Close the wheel
+        local GUI = qaw.GUI
+        if GUI then
+            GUI:Close()
+        end
+        
+        -- Call toxic_air equip function for this specific filter
+        -- equip_specific_filter handles replacing existing filter if needed
+        if toxic_air and toxic_air.equip_specific_filter then
+            toxic_air.equip_specific_filter(obj)
+        end
+        
+        return obj
+    end
+    
+    -- Static method: check if item can be added to wheel
+    function QFilterWheelOption.CanAddToTab(obj, sec)
+        return is_toxic_air_filter(sec)
+    end
+    
+    -- Static method: get parameters for tab storage
+    function QFilterWheelOption.GetTabParams(obj, sec)
+        return {sec}
+    end
+    
+    -- Register our class with TabManager
+    TAB_MANAGER.classes.QFilterWheelOption = QFilterWheelOption
+    
+    return true
+end
+
+-- Register tank wheel option class with QAW
+local function register_tank_wheel_class()
+    -- Check if QAW is installed
+    local qaw = haru_quick_action_wheel_mcm
+    if not qaw then
+        return false
+    end
+    
+    local TAB_MANAGER = qaw.TAB_MANAGER
+    if not TAB_MANAGER then
+        return false
+    end
+    
+    -- Get base class reference
+    local ItemWheelOption = qaw.ItemWheelOption
+    if not ItemWheelOption then
+        return false
+    end
+    
+    -- Create QTankWheelOption class extending ItemWheelOption
+    class "QTankWheelOption" (ItemWheelOption)
+    
+    function QTankWheelOption:__init(xml, parent, section)
+        ItemWheelOption.__init(self, xml, parent, section)
+    end
+    
+    function QTankWheelOption:OnClick()
+        local obj = ItemWheelOption.OnClick(self)
+        
+        if not obj then
+            return
+        end
+        
+        -- Close the wheel
+        local GUI = qaw.GUI
+        if GUI then
+            GUI:Close()
+        end
+        
+        -- Call toxic_air tank equip function
+        if toxic_air and toxic_air.equip_specific_tank then
+            toxic_air.equip_specific_tank(obj)
+        end
+        
+        return obj
+    end
+    
+    -- Static method: check if item can be added to wheel
+    function QTankWheelOption.CanAddToTab(obj, sec)
+        return is_oxygen_tank(sec)
+    end
+    
+    -- Static method: get parameters for tab storage
+    function QTankWheelOption.GetTabParams(obj, sec)
+        return {sec}
+    end
+    
+    -- Register our class with TabManager
+    TAB_MANAGER.classes.QTankWheelOption = QTankWheelOption
+    
+    return true
+end
+
+-- Add right-click functor for filter toggle (works without QAW too)
+local function add_filter_functor()
+    if not custom_functor_autoinject then 
+        return 
+    end
+    
+    local function filter_cond(obj, bag, mode)
+        if not obj then return false end
+        return is_toxic_air_filter(obj:section())
+    end
+    
+    local function filter_name(obj, bag, mode)
+        -- Filter items in inventory always show "Equip Filter"
+        return "st_filter_equip"
+    end
+    
+    local function filter_action(obj, bag, mode)
+        if not obj or not toxic_air then return end
+        -- Always equip the selected filter (will replace existing if needed)
+        if toxic_air.equip_specific_filter then
+            toxic_air.equip_specific_filter(obj)
+        end
+    end
+    
+    custom_functor_autoinject.add_functor(
+        "toxic_air_filter_toggle",
+        filter_cond,
+        filter_name,
+        filter_cond,
+        filter_action
+    )
+end
+
+-- Add right-click functor for tank equip/unequip
+local function add_tank_functor()
+    if not custom_functor_autoinject then 
+        return 
+    end
+    
+    local function tank_cond(obj, bag, mode)
+        if not obj then return false end
+        return is_oxygen_tank(obj:section())
+    end
+    
+    local function tank_name(obj, bag, mode)
+        if toxic_air and toxic_air.has_active_tank and obj then
+            local active = toxic_air.has_active_tank()
+            if active and active:id() == obj:id() then
+                return "st_tank_remove"
+            end
+        end
+        return "st_tank_equip"
+    end
+    
+    local function tank_action(obj, bag, mode)
+        if obj and toxic_air and toxic_air.equip_specific_tank then
+            toxic_air.equip_specific_tank(obj)
+        end
+    end
+    
+    custom_functor_autoinject.add_functor(
+        "toxic_air_tank_toggle",
+        tank_cond,
+        tank_name,
+        tank_cond,
+        tank_action
+    )
+end
+
+function on_game_start()
+    -- Register after a delay to ensure QAW and other mods are initialized
+    CreateTimeEvent("toxic_air_qaw", "register", 1, function()
+        -- Add right-click functors (works with or without QAW)
+        add_filter_functor()
+        add_tank_functor()
+        
+        -- Only try to register wheel classes if QAW exists
+        if haru_quick_action_wheel_mcm then
+            register_filter_wheel_class()
+            register_tank_wheel_class()
+        end
+        
+        return true
+    end)
+end
+
+RegisterScriptCallback("on_game_start", on_game_start)

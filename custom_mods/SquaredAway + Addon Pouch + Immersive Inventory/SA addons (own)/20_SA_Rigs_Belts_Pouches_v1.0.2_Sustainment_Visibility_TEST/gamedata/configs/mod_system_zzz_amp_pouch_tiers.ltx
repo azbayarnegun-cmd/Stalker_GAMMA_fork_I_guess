@@ -1,0 +1,294 @@
+; ============================================================
+;  THE POUCH LADDER - ELEVEN POUCHES IN THREE COLOURS
+;
+;  They fit a chest rig's two pouch slots and grant REAL POCKETS: a
+;  magazine in a yellow one is in your loadout and feeds a reload.
+;
+;    GREEN  g1-g4   single squares. Food, drink, devices and bandages
+;                   are quick from them. Cheap capacity.
+;    YELLOW y1-y5   magazine pockets. Nothing is quick; reloads draw
+;                   from here.
+;    RED    r1-r2   green plus the whole pharmacy, medkits included.
+;                   The only pockets a medkit is fast from, and the
+;                   line STOPS AT TWO on purpose - it sells one thing
+;                   and you only need a little of it.
+;
+;  RED IS THE ONLY SOURCE OF A RED SQUARE. Rigs have none at all now,
+;  at any tier - so a medic's pouch is not a luxury on top of what the
+;  rig gave you, it IS what you have. Two pouch slots, so the ceiling
+;  is four fast medical squares and the floor is nought.
+;
+;  A FLOOR OF NOUGHT IS LIVABLE because a GREEN square is quick for
+;  BANDAGES, and every rig has three to six. Only medkits and the rest
+;  of the pharmacy need red.
+;
+;  SO RED CAME DOWN, from 12,000 a square to 4,000. It was priced as a
+;  prize when it was the thing you bought ON TOP of a rig's own two or
+;  three. As the only source, that price was a wall rather than a
+;  choice. Still three times green, and still the dearest square in
+;  the game per cell.
+;
+;  AND GREEN CAME DOWN TOO, to 1,200 a square, because rig recipes buy
+;  green squares by the handful now and a rig should not cost more to
+;  make than to buy.
+;
+;  ONE CELL EACH, AND A SHEET OF OUR OWN.
+;
+;  inv_grid_width is not only a footprint - it is also how much of the
+;  atlas is sampled - so a pouch cannot be one cell in the bag while
+;  wearing a picture drawn across two. These eleven have their own
+;  50x50 icons in ui\ui_sa_tiers_pouches, cut down from the Layered
+;  addon's art, washed with the colour of the pockets they grant, and
+;  numbered.
+;
+;  So a pouch takes ONE square in your bag instead of four, a colour
+;  is legible at a glance, and the tier is readable without hovering -
+;  which three separate attempts with inherited pictures could not do,
+;  because three parents cannot give eleven faces.
+;
+;  The parent still matters: mag_limit_small/medium/large come from
+;  it, and that is what a rig reads before it will accept a pouch at
+;  all. Only the picture is overridden.
+;
+;  THE OLD ARRANGEMENT, for reference:
+;
+;      yellow -> af_magpouch_s     the small pouch picture
+;      green  -> af_magpouch_m     the medium
+;      red    -> af_magpouch_l     for the fields, but it is DRAWN
+;                                   with the Layered addon's medical
+;                                   pouch - the one with the red cross
+;                                   on it, which says what the pouch
+;                                   is better than any magazine pouch
+;                                   picture could
+;
+;  The pairing is arbitrary and that is fine - what matters is that
+;  one colour is one picture. This one puts the magazine pouches on
+;  the picture that has magazines in it, which is the only one of the
+;  three that says anything about its contents.
+;
+;  So a colour is one look, every time, and eleven pouches read as
+;  three families rather than as eleven strangers. All three stock
+;  pictures are the same 2x2 footprint, so nothing changes size.
+;
+;  THE PARENT IS ALSO THE ELIGIBILITY. mag_limit_small/medium/large
+;  come with it, and those are what A.is_pouch_sec reads when a rig
+;  decides whether to accept the thing at all - a duplicate that did
+;  not inherit one of these three would be refused by the rig without
+;  a word.
+;
+;  IT IS A PLACEHOLDER AND IT LOOKS LIKE ONE. The small pouch picture
+;  has magazines standing in it, which is an odd face on a pouch that
+;  holds bread. Distinct art per pouch is an icon sheet - see the
+;  README.
+;
+;  WHAT EACH GRANTS is one line per section in
+;  items/settings/zzz_amp_pouch_grants.ltx - including its COLOUR,
+;  which is the only thing separating a green square from a red one.
+; ============================================================
+
+[amppouch_g1]:af_magpouch_m
+icons_texture                   = ui\ui_sa_tiers_pouches
+inv_grid_x                      = 0
+inv_grid_y                      = 0
+inv_grid_width                  = 1
+inv_grid_height                 = 1
+inv_name                        = st_amppouch_g1_name
+inv_name_short                  = st_amppouch_g1_name
+description                     = st_amppouch_g1_descr
+inv_weight                      = 0.10
+cost                            = 1200
+use1_functor                    = zzz_armor_mag_pouches.pouch_no_install
+use1_action_functor             = zzz_armor_mag_pouches.pouch_no_install
+
+[amppouch_g2]:af_magpouch_m
+icons_texture                   = ui\ui_sa_tiers_pouches
+inv_grid_x                      = 1
+inv_grid_y                      = 0
+inv_grid_width                  = 1
+inv_grid_height                 = 1
+inv_name                        = st_amppouch_g2_name
+inv_name_short                  = st_amppouch_g2_name
+description                     = st_amppouch_g2_descr
+inv_weight                      = 0.15
+cost                            = 2400
+use1_functor                    = zzz_armor_mag_pouches.pouch_no_install
+use1_action_functor             = zzz_armor_mag_pouches.pouch_no_install
+
+[amppouch_g3]:af_magpouch_m
+icons_texture                   = ui\ui_sa_tiers_pouches
+inv_grid_x                      = 2
+inv_grid_y                      = 0
+inv_grid_width                  = 1
+inv_grid_height                 = 1
+inv_name                        = st_amppouch_g3_name
+inv_name_short                  = st_amppouch_g3_name
+description                     = st_amppouch_g3_descr
+inv_weight                      = 0.20
+cost                            = 3600
+use1_functor                    = zzz_armor_mag_pouches.pouch_no_install
+use1_action_functor             = zzz_armor_mag_pouches.pouch_no_install
+
+[amppouch_g4]:af_magpouch_m
+icons_texture                   = ui\ui_sa_tiers_pouches
+inv_grid_x                      = 3
+inv_grid_y                      = 0
+inv_grid_width                  = 1
+inv_grid_height                 = 1
+inv_name                        = st_amppouch_g4_name
+inv_name_short                  = st_amppouch_g4_name
+description                     = st_amppouch_g4_descr
+inv_weight                      = 0.25
+cost                            = 4800
+use1_functor                    = zzz_armor_mag_pouches.pouch_no_install
+use1_action_functor             = zzz_armor_mag_pouches.pouch_no_install
+
+[amppouch_y1]:af_magpouch_s
+icons_texture                   = ui\ui_sa_tiers_pouches
+inv_grid_x                      = 4
+inv_grid_y                      = 0
+inv_grid_width                  = 1
+inv_grid_height                 = 1
+inv_name                        = st_amppouch_y1_name
+inv_name_short                  = st_amppouch_y1_name
+description                     = st_amppouch_y1_descr
+inv_weight                      = 0.20
+cost                            = 7500
+use1_functor                    = zzz_armor_mag_pouches.pouch_no_install
+use1_action_functor             = zzz_armor_mag_pouches.pouch_no_install
+
+[amppouch_y2]:af_magpouch_s
+icons_texture                   = ui\ui_sa_tiers_pouches
+inv_grid_x                      = 5
+inv_grid_y                      = 0
+inv_grid_width                  = 1
+inv_grid_height                 = 1
+inv_name                        = st_amppouch_y2_name
+inv_name_short                  = st_amppouch_y2_name
+description                     = st_amppouch_y2_descr
+inv_weight                      = 0.25
+cost                            = 10000
+use1_functor                    = zzz_armor_mag_pouches.pouch_no_install
+use1_action_functor             = zzz_armor_mag_pouches.pouch_no_install
+
+[amppouch_y3]:af_magpouch_s
+icons_texture                   = ui\ui_sa_tiers_pouches
+inv_grid_x                      = 6
+inv_grid_y                      = 0
+inv_grid_width                  = 1
+inv_grid_height                 = 1
+inv_name                        = st_amppouch_y3_name
+inv_name_short                  = st_amppouch_y3_name
+description                     = st_amppouch_y3_descr
+inv_weight                      = 0.30
+cost                            = 12500
+use1_functor                    = zzz_armor_mag_pouches.pouch_no_install
+use1_action_functor             = zzz_armor_mag_pouches.pouch_no_install
+
+[amppouch_y4]:af_magpouch_s
+icons_texture                   = ui\ui_sa_tiers_pouches
+inv_grid_x                      = 7
+inv_grid_y                      = 0
+inv_grid_width                  = 1
+inv_grid_height                 = 1
+inv_name                        = st_amppouch_y4_name
+inv_name_short                  = st_amppouch_y4_name
+description                     = st_amppouch_y4_descr
+inv_weight                      = 0.40
+cost                            = 17500
+use1_functor                    = zzz_armor_mag_pouches.pouch_no_install
+use1_action_functor             = zzz_armor_mag_pouches.pouch_no_install
+
+[amppouch_y5]:af_magpouch_s
+icons_texture                   = ui\ui_sa_tiers_pouches
+inv_grid_x                      = 8
+inv_grid_y                      = 0
+inv_grid_width                  = 1
+inv_grid_height                 = 1
+; THE DRUM POUCH gets the Layered addon's sustainment pouch picture -
+; the fat buckled one. It is the only pouch in the yellow line that is
+; a different SHAPE rather than a different count, and the only one a
+; drum fits, so it earns a face of its own.
+;
+; Parent unchanged: mag_limit_* comes from there and that is what a rig
+; checks before accepting a pouch. Only the picture is overridden, and
+; it is the same 2x2 footprint.
+inv_name                        = st_amppouch_y5_name
+inv_name_short                  = st_amppouch_y5_name
+description                     = st_amppouch_y5_descr
+inv_weight                      = 0.40
+cost                            = 17500
+use1_functor                    = zzz_armor_mag_pouches.pouch_no_install
+use1_action_functor             = zzz_armor_mag_pouches.pouch_no_install
+
+[amppouch_r1]:af_magpouch_l
+icons_texture                   = ui\ui_sa_tiers_pouches
+inv_grid_x                      = 9
+inv_grid_y                      = 0
+inv_grid_width                  = 1
+inv_grid_height                 = 1
+; THE RED CROSS, borrowed from the Layered addon's medical pouch. The
+; parent is still af_magpouch_l because that is where the mag_limit_*
+; fields come from and those are what a rig checks before it will
+; accept a pouch at all - only the picture is overridden.
+;
+; Same 2x2 footprint as the pouch it replaces, so nothing changes size.
+inv_name                        = st_amppouch_r1_name
+inv_name_short                  = st_amppouch_r1_name
+description                     = st_amppouch_r1_descr
+inv_weight                      = 0.10
+cost                            = 4000
+use1_functor                    = zzz_armor_mag_pouches.pouch_no_install
+use1_action_functor             = zzz_armor_mag_pouches.pouch_no_install
+
+[amppouch_r2]:af_magpouch_l
+icons_texture                   = ui\ui_sa_tiers_pouches
+inv_grid_x                      = 0
+inv_grid_y                      = 1
+inv_grid_width                  = 1
+inv_grid_height                 = 1
+; THE RED CROSS, borrowed from the Layered addon's medical pouch. The
+; parent is still af_magpouch_l because that is where the mag_limit_*
+; fields come from and those are what a rig checks before it will
+; accept a pouch at all - only the picture is overridden.
+;
+; Same 2x2 footprint as the pouch it replaces, so nothing changes size.
+inv_name                        = st_amppouch_r2_name
+inv_name_short                  = st_amppouch_r2_name
+description                     = st_amppouch_r2_descr
+inv_weight                      = 0.15
+cost                            = 8000
+use1_functor                    = zzz_armor_mag_pouches.pouch_no_install
+use1_action_functor             = zzz_armor_mag_pouches.pouch_no_install
+
+
+; ============================================================
+;  THE THREE STOCK POUCHES, RETIRED AS FAR AS THIS SET CAN RETIRE THEM
+;
+;  af_magpouch_s/m/l belong to the MAGAZINE MOD, not to Squared Away
+;  and not to us. They cannot be deleted:
+;
+;    - the eleven pouches above INHERIT them, and a child of a section
+;      that does not exist is a section that does not exist
+;    - mag_limit_small/medium/large live on them, and that is what a
+;      rig reads before it will accept any pouch at all
+;    - they are in saves, on corpses and in trader inventories
+;
+;  So they are hidden rather than removed. Already done elsewhere:
+;  tier 5 in the stash tables, which the stash mod never rolls; and
+;  the rig recipes no longer ask for them, so nothing needs them.
+;  Here they are sent to a spawner branch that says what they are.
+;
+;  WHAT THIS SET CANNOT REACH: traders, whose lines are in the
+;  magazine mod's own files, and corpses - those are the three pouch
+;  sliders per rank in Squared Away's MCM. Set those to 0 and they
+;  stop dropping.
+; ============================================================
+
+![af_magpouch_s]
+$spawn = "equipment\zz retired\magazine pouch small"
+
+![af_magpouch_m]
+$spawn = "equipment\zz retired\magazine pouch medium"
+
+![af_magpouch_l]
+$spawn = "equipment\zz retired\magazine pouch large"

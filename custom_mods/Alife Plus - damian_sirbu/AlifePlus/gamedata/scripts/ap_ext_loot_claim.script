@@ -1,0 +1,591 @@
+--- ap_ext_loot_claim: corpse loot ownership. Three flows share one owner ledger, each toggling
+--- independently in MCM with its own radius and TTL (no master switch -- recording is gated on any
+--- flow being enabled, _recording_enabled):
+---   Half A (loot_reserve_own)     -- reserve the actor's kills from NPC looters.
+---   Half B (loot_block_npc)       -- veto the actor opening a living NPC's claimed kill.
+---   Flow C (loot_block_npc_vs_npc)-- reserve an NPC squad's kill from OTHER NPC looters.
+--- NPC kills are owned by the killer's SQUAD (any living member within radius holds the claim); lone
+--- killers and the actor fall back to individual ownership. Half A and Flow C share one generic
+--- exclusion arbiter installed at xr_corpse_detection.near_actor (the per-corpse call in a looter's
+--- scan); Flow C's looker comes from a find_valid_target wrapper. Half B is a separate keypress/menu
+--- veto on the actor's own input.
+
+local type, tostring, rawget, RegisterScriptCallback = type, tostring, rawget, RegisterScriptCallback
+local string_format, math_random = string.format, math.random
+local xevent, xttltable, xcreature, xsquad, xprofiler = xevent, xttltable, xcreature, xsquad, xprofiler
+local xtime, xobject, xpda, xinventory, xcombat = xtime, xobject, xpda, xinventory, xcombat
+local INVALID_BONE_ID = xconst.INVALID_BONE_ID
+local level, game, game_relations = level, game, game_relations
+local CALLBACK = ap_core_const.CALLBACK
+local HOURS_TO_SECONDS = ap_core_const.HOURS_TO_SECONDS
+local cfg = ap_core_mcm.cfg
+
+local LOG = "[EXT.LOOT]"
+
+-- Owner ledger retention cap (game seconds). The ledger entry physically survives up to this long;
+-- each half then honours it only within its OWN configured TTL (compared at read against the stored
+-- death timestamp). Set to the largest TTL a half can be configured to, so a row is never swept
+-- while a half might still honour it. game_sec (not os.clock) so the window tracks in-game time and
+-- pauses with the game; the death timestamp persists across save/load, so a claim's age is continuous.
+local OWNER_TTL_MAX_SEC = 6 * HOURS_TO_SECONDS
+
+-- Tip re-warn throttle (WALL seconds, os.clock). The keypress veto (Half B) stops the loot menu from
+-- opening, so GUI_ON_HIDE no longer fires to reset a warned-set on menu close. A short per-corpse TTL
+-- gives once-per-approach warning while swallowing USE-key mashing. Wall clock, NOT xtime.game_sec
+-- (unlike _owner): this throttles a real-time keypress burst, and game time is compressed (several
+-- game-sec per real-sec), so a game-sec window would collapse to a fraction of a real second. The
+-- table is ephemeral (never exported in _on_save_state), so os.clock's VM-restart reset is harmless.
+local TIP_TTL_SEC = 5
+
+-- Claim warn tip: a random line from the st_ap_loot_claim_warn_NNN pool (matches the news template
+-- convention, ap_ext_news.script:_load_pool). _warn_n is the pool size, counted once at load.
+local WARN_PREFIX = "st_ap_loot_claim_warn"
+local MAX_WARN_VARIANTS = 16
+
+-- Seldom yield tips for Half A (an NPC leaves YOUR kill) and Flow C (you witness a pass-up). Both
+-- fire on the per-scan hot path, so they are gated by a low roll AND a shared minimum interval -- at
+-- most one yield tip, A or C, per interval. Both also require the speaking NPC to actually perceive the
+-- scene it talks about: it must SEE the body and the kill owner within CHATTER_RANGE (_can_voice). Flow
+-- C, which the player only overhears, additionally requires the actor within CHATTER_RANGE of the body.
+local RESERVE_YIELD_PREFIX = "st_ap_loot_reserve_yield"
+local NPCVNPC_YIELD_PREFIX = "st_ap_loot_npcvnpc_yield"
+local MAX_YIELD_VARIANTS = 16
+local YIELD_TIP_CHANCE = 0.15
+-- Wall seconds (os.clock), not game_sec: throttles a player-facing tip, so it holds steady across
+-- time compression and time-skip (game_sec jumps on sleep and would reset the gate). 10 real minutes.
+local YIELD_TIP_INTERVAL_SEC = 600
+-- Chatter range (metres). A loot line is voiced only when the speaking NPC is within this of BOTH the
+-- body and the party it addresses AND has line of sight to each (xcombat.sees_within). Short, because
+-- :see alone reaches combat spotting distance, too far for speech. Also the pass-up's player-overhear
+-- gate (the actor must be within this of the body to receive a line between two other NPCs).
+local CHATTER_RANGE = 30
+
+-- victim_id -> { killer = npc_id, squad = squad_id_or_nil, t = death_game_sec }
+local _owner = nil
+-- corpse id -> true, short-TTL throttle for the claim tip (replaces the menu-close reset)
+local _tip_ttl = nil
+-- actor id, captured at first update (avoids depending on AC_ID load-time global)
+local _ac_id = nil
+-- owner map stashed at load_state, imported at first_update. _owner:import calls the game clock
+-- (xtime.game_sec -> level.get_start_time), which AVs in the load_state phase (Level() not loaded
+-- yet); the first update tick is the earliest point Level() is guaranteed live. See xtime.game_sec.
+local _saved_owner = nil
+-- number of st_ap_loot_claim_warn_NNN variants present, counted at on_game_start
+local _warn_n = 0
+-- the NPC currently inside evaluator_corpse:find_valid_target, published by _publish_looker so the
+-- near_actor arbiter can answer "owned by a squad other than yours" (near_actor gets only the corpse)
+local _current_looker = nil
+-- guards the find_valid_target reassignment against the on_game_start re-run on each save load
+local _fvt_hooked = false
+-- yield-tip pool sizes (counted at on_game_start) + shared interval gate (earliest os.clock allowed)
+local _reserve_yield_n = 0
+local _npcvnpc_yield_n = 0
+local _yield_tip_next = 0
+
+--- Write an ownership row. killer == actor id flags an actor kill (Half A); squad set flags a squad
+--- kill (Half B reads any living member); squad nil with a non-actor killer is a lone-NPC kill.
+--- @cost O(1) | 1 game_sec (2 luabind) + 1 ttl set
+local function _record(victim_id, killer_id, squad_id)
+    _owner:set(victim_id, { killer = killer_id, squad = squad_id, t = xtime.game_sec() })
+end
+
+--- Any flow that reads the owner ledger enabled? Gates recording: with all three off there is nothing
+--- to read, so the kill-tracking writes are skipped. Replaces the old loot_enabled master.
+--- @cost O(1) | 3 cfg field reads
+local function _recording_enabled()
+    return cfg.loot_reserve_own_enabled or cfg.loot_block_npc_enabled or cfg.loot_block_npc_vs_npc_enabled
+end
+
+--- Corpse world position, via the spine bone (a ragdolled corpse's object :position() can lag the
+--- visible mesh; vanilla xr_corpse_detection.script:377 reads safe_bone_pos for the same reason).
+--- Not vanilla utils_obj.safe_bone_pos: that helper falls back to bone_position("") when the bone
+--- is missing (utils_obj.script:62-65), and the empty-string bone read errors on skeletons without
+--- bip01_spine (mutant corpses, part-loaded ragdolls). Resolve the bone id first and only read a
+--- bone that exists; anything else uses the plain object position.
+--- @cost O(1) | 2 luabind on the bone path (get_bone_id + bone_position), 1 on the fallback
+local function _corpse_pos(obj)
+    if obj.get_bone_id and obj:get_bone_id("bip01_spine") ~= INVALID_BONE_ID then
+        return obj:bone_position("bip01_spine")
+    end
+    return obj:position()
+end
+
+--- Is the claim still within the given half's TTL (game hours)? Compares against the stored death
+--- timestamp, so each half ages the same row independently.
+--- @cost O(1) | 1 game_sec (2 luabind) + arithmetic
+local function _fresh(v, ttl_hours)
+    return (xtime.game_sec() - v.t) < ttl_hours * HOURS_TO_SECONDS
+end
+
+--- True when target is within radius of pos (squared compare; avoids the distance_to sqrt).
+--- @cost O(1) | 1 luabind (distance_to_sqr: no sqrt) + 1 mul
+local function _within(pos, target, radius)
+    return pos:distance_to_sqr(target) < radius * radius
+end
+
+--- Is the actor close enough to the corpse to overhear an NPC passing it up (Flow C player-overhear
+--- gate)? The pass-up is between two other NPCs, so the player only gets it when near the scene.
+--- @cost O(1) | 1 distance when the actor exists
+local function _actor_witnessing(corpse_pos)
+    local actor = db.actor
+    if not actor then return false end
+    return _within(actor:position(), corpse_pos, CHATTER_RANGE)
+end
+
+--- Can this NPC voice a loot line about body to other -- is it within CHATTER_RANGE of BOTH and looking
+--- at each (xcombat.sees_within: short range + line of sight)? The one gate behind every loot line, so
+--- an NPC never speaks about a body or a party it cannot actually see. Distance is tested before vision
+--- inside each sees_within, so a far target bails cheap. Traces speaker, both distances, and the
+--- voice/silent verdict when ap_core_debug.enabled() -- noop (the plain result) when debug is off.
+--- @cost O(1) | up to 2 sees_within, each a squared-distance compare then a visual-memory read when in range
+local function _can_voice(speaker, body, other)
+    local ok = xcombat.sees_within(speaker, body, CHATTER_RANGE)
+        and xcombat.sees_within(speaker, other, CHATTER_RANGE)
+    if ap_core_debug.enabled() then
+        local sp = speaker:position()
+        ap_core_debug.debug("%s can_voice speaker=%s body=%s(%.1fm) other=%s(%.1fm) range=%s -> %s", LOG,
+            speaker:id(), body:id(), sp:distance_to(body:position()),
+            other:id(), sp:distance_to(other:position()), CHATTER_RANGE, ok and "voice" or "silent")
+    end
+    return ok
+end
+
+--- Actor character name for the #name# slot, or nil.
+local function _actor_name()
+    local actor = db.actor
+    return actor and actor:character_name() or nil
+end
+
+--- Resolve a pooled in-character line and fill the #name# slot (the news template token convention).
+--- A variant carrying #name# renders with the supplied name; with no name it falls back to variant
+--- 001, kept nameless by convention, so the token never renders raw. The function-form gsub
+--- neutralises any % in the name.
+--- @cost O(1) | 1 translate (+ 1 fallback translate / 1 gsub on a name line)
+local function _resolve_pooled(prefix, pool_n, name)
+    local idx = pool_n > 0 and math_random(pool_n) or 1
+    local text = game.translate_string(string_format("%s_%03d", prefix, idx))
+    if not text:find("#name#", 1, true) then return text end
+    if name and name ~= "" then
+        return (text:gsub("#name#", function() return name end))
+    end
+    return game.translate_string(string_format("%s_001", prefix))
+end
+
+--- Show a seldom yield tip attributed to npc (the pretender), drawn from the prefix's pool, with the
+--- #name# slot filled by name (the kill owner for npc-vs-npc, the actor for reserve-own). Bails on the
+--- cheap roll first (no clock read), then drops an enemy speaker (a hostile NPC never voices a courteous
+--- yield line at the actor), then the shared minimum interval, THEN the _can_voice sight gate -- the
+--- speaker must see the body and the owner within CHATTER_RANGE. Sight runs last (heaviest) and only
+--- past the free interval check, and the interval is consumed only when a line actually fires.
+--- @cost O(1) | roll only on the common bail; 1 relation past the roll; _can_voice only past the interval
+local function _yield_tip(npc, prefix, pool_n, name, body, owner)
+    if not npc or math_random() >= YIELD_TIP_CHANCE then return end
+    local actor = db.actor
+    if not actor or xcreature.is_enemy_to_actor(npc) then return end
+    local now = os.clock()
+    if now < _yield_tip_next then return end
+    if not _can_voice(npc, body, owner) then return end
+    _yield_tip_next = now + YIELD_TIP_INTERVAL_SEC
+    xpda.npc_tip(npc, _resolve_pooled(prefix, pool_n, name), { sound = "news" })
+end
+
+--- First living, online squad member within radius of the corpse, or nil.
+--- @cost O(m) members, short-circuits on the first member within radius
+local function _first_member_within(squad, corpse_pos, radius)
+    for member_id in xsquad.iter_member_ids(squad) do
+        local member = xobject.go(member_id)
+        if member and member:alive() and _within(member:position(), corpse_pos, radius) then
+            return member
+        end
+    end
+    return nil
+end
+
+--- The squad member that holds the claim against the actor (Half B), or nil. Companion squads and
+--- squads already at war with the actor cannot loot-lock a body away. Squad id is validated against
+--- recycling via xsquad.is_squad.
+--- @cost O(m) members | se + is_squad + companion + relation, then _first_member_within
+local function _squad_claimer(squad_id, corpse_pos, radius)
+    local squad = xobject.se(squad_id)
+    if not xsquad.is_squad(squad) then return nil end
+    if axr_companions.companion_squads[squad_id] then return nil end
+    if game_relations.get_squad_relation_to_actor_by_id(squad_id) == "enemy" then return nil end
+    return _first_member_within(squad, corpse_pos, radius)
+end
+
+--- The lone killer when alive, non-zombied, not an enemy of the actor, and within radius of the
+--- corpse, or nil. Relation is read here (block time), so a faction that turns hostile lapses live.
+--- @cost O(1) | go + alive + community + relation + 1 distance
+local function _lone_claimer(killer_id, corpse_pos, radius)
+    local owner = xobject.go(killer_id)
+    if not owner or not owner:alive() then return nil end
+    local comm = xcreature.community(owner)
+    if comm == "zombied" then return nil end
+    if comm and game_relations.is_factions_enemies(get_actor_true_community(), comm) then return nil end
+    if not _within(owner:position(), corpse_pos, radius) then return nil end
+    return owner
+end
+
+--- The living NPC that holds a defensible claim on an NPC-owned corpse, or nil. Squad owner delegates
+--- to _squad_claimer (any living member within radius); a squadless killer to _lone_claimer. The
+--- returned object is the claimer, used for the warn tip.
+--- @cost O(1) lone | O(m) members squad
+local function _npc_claimer(v, corpse_pos, radius)
+    if v.squad then return _squad_claimer(v.squad, corpse_pos, radius) end
+    return _lone_claimer(v.killer, corpse_pos, radius)
+end
+
+--- Companion looker carve-out for reserve-own: true when the player has opted companions out of the
+--- rule (loot_include_companions off) and the current looker is a companion, so a companion may
+--- field-dress / loot the actor's kills. Zero cost on the default path -- the toggle short-circuits
+--- before any squad resolution. _current_looker is the scanning NPC (published by _publish_looker);
+--- nil-guarded in case near_actor is ever called outside a scan. Traced, noop when debug disabled.
+--- @cost O(1) | 0 luabind when the toggle is on; get_object_squad (2 luabind) + is_companion (0) when off
+local function _companion_exempt(obj)
+    if cfg.loot_include_companions or not _current_looker then return false end
+    local looker_squad = get_object_squad(_current_looker)
+    if not looker_squad or not xsquad.is_companion(looker_squad) then return false end
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s reserve_own corpse=%s looker=%s -> exempt:companion",
+            LOG, obj:id(), _current_looker:id())
+    end
+    return true
+end
+
+--- Exclusion rule -- Half A (reserve own): the actor's own fresh kill while the actor is within the
+--- reserve radius of the corpse. Independent of which NPC is looking, except companions when
+--- loot_include_companions is off (see _companion_exempt). Scoped to reserve-own; Flow C is untouched.
+--- @cost O(1) | half/owner check first; game_sec + 1 distance only on an actor-owned corpse
+local function _excluded_reserve_own(v, obj)
+    if not cfg.loot_reserve_own_enabled then return false end
+    if not v or v.killer ~= _ac_id or not _fresh(v, cfg.loot_reserve_own_ttl) then return false end
+    if _companion_exempt(obj) then return false end
+    local actor = db.actor
+    if not actor then return true end
+    local corpse_pos = _corpse_pos(obj)
+    local actor_pos = actor:position()
+    local reserved = _within(actor_pos, corpse_pos, cfg.loot_reserve_own_radius)
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s reserve_own corpse=%s dist=%.1f radius=%s -> %s", LOG, obj:id(),
+            actor_pos:distance_to(corpse_pos), cfg.loot_reserve_own_radius,
+            reserved and "reserved" or "lapsed")
+    end
+    if reserved then _yield_tip(_current_looker, RESERVE_YIELD_PREFIX, _reserve_yield_n, _actor_name(), obj, actor) end
+    return reserved
+end
+
+--- Exclusion rule -- Flow C (squad claim): a fresh kill owned by a live squad/NPC other than the
+--- looker's, present within the npc-vs-npc radius of the corpse, and not yet claimed by any looter
+--- (corpse_already_selected nil -- only a NEW selection is blocked; a committed walker is never
+--- yanked). Companion/enemy owners never reach here: companion kills are not recorded, and actor
+--- relation is irrelevant NPC-vs-NPC.
+--- @cost O(1) | half/owner/claimed/fresh checks first; squad presence (O(m)) only past them
+local function _excluded_squad_claim(v, obj, looker)
+    if not cfg.loot_block_npc_vs_npc_enabled then return false end
+    if not v or v.killer == _ac_id or not looker then return false end
+    local corpse_id = obj:id()
+    local st = db.storage[corpse_id]
+    if st and st.corpse_already_selected ~= nil then return false end
+    if not _fresh(v, cfg.loot_block_npc_vs_npc_ttl) then return false end
+    local corpse_pos = _corpse_pos(obj)
+    local radius = cfg.loot_block_npc_vs_npc_radius
+    local blocked, owner_name, owner_obj
+    if v.squad then
+        local looker_squad = get_object_squad(looker)
+        if looker_squad and looker_squad.id == v.squad then return false end
+        local squad = xobject.se(v.squad)
+        owner_obj = xsquad.is_squad(squad) and _first_member_within(squad, corpse_pos, radius) or nil
+        blocked = owner_obj ~= nil
+        if blocked then owner_name = xsquad.get_commander_name(squad) end
+    else
+        if v.killer == looker:id() then return false end
+        local owner = xobject.go(v.killer)
+        if not owner or not owner:alive() then return false end
+        blocked = _within(owner:position(), corpse_pos, radius)
+        if blocked then owner_name, owner_obj = owner:character_name(), owner end
+    end
+    if blocked and _actor_witnessing(corpse_pos) then
+        _yield_tip(looker, NPCVNPC_YIELD_PREFIX, _npcvnpc_yield_n, owner_name, obj, owner_obj)
+    end
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s npc_vs_npc corpse=%s owner=%s looker=%s -> %s", LOG, corpse_id,
+            tostring(v.squad or v.killer), looker:id(), blocked and "blocked" or "free")
+    end
+    return blocked
+end
+
+--- Generic exclusion arbiter installed at xr_corpse_detection.near_actor (the per-corpse call in a
+--- looter's scan). Returns true to exclude the corpse from THIS NPC looter -- via Half A (reserve
+--- own) or Flow C (squad claim) -- otherwise the vanilla "near the actor" distance check. The looker
+--- comes from _current_looker, published by the find_valid_target wrapper (near_actor itself receives
+--- only the corpse).
+--- @cost O(1) | 1 ttl lookup + two rule checks that early-out before any luabind on the common path
+local function _npc_loot_excluded(orig, obj)
+    if not obj or not _ac_id then return orig(obj) end
+    local v = _owner:get(obj:id())
+    if _excluded_reserve_own(v, obj) then return true end
+    if _excluded_squad_claim(v, obj, _current_looker) then return true end
+    return orig(obj)
+end
+
+--- find_valid_target wrapper: publish the scanning NPC so the near_actor arbiter can answer "owned by
+--- a squad other than yours". Set at entry every call (self-correcting if a scan errors before the
+--- clear); near_actor is only read from inside a scan, so a stale value is never observed.
+--- @cost O(1) | 1 field read + 1 store around the original scan
+local function _publish_looker(orig, self)
+    _current_looker = self.object
+    local result = orig(self)
+    _current_looker = nil
+    return result
+end
+
+--- Record corpse ownership on death. Skips suicides, story corpses, and the actor's own companions
+--- (their body is always yours to recover). Actor kills store individual ownership (Half A). For NPC
+--- killers: skip non-stalker / companion / zombied killers (only a living stalker squad can hold and
+--- defend a claim), then store the killer's squad (or the killer alone when squadless), unless the
+--- squad is a companion squad. Recording is gated by the master only -- the ledger feeds both halves.
+--- @cost O(1) | story id + victim companion always; is_stalker/companion/community + squad lookup for NPC killers
+local function _on_death(victim, killer)
+    if not _recording_enabled() or not victim or not killer then return end
+    _ac_id = _ac_id or (db.actor and db.actor:id())
+    local victim_id, killer_id = victim:id(), killer:id()
+    if victim_id == killer_id then return end
+    if get_object_story_id(victim_id) then return end
+    if victim:has_info("npcx_is_companion") then return end
+    if killer_id == _ac_id then
+        _record(victim_id, _ac_id, nil)
+        return
+    end
+    if not xcreature.is_stalker(killer) then return end
+    if killer:has_info("npcx_is_companion") then return end
+    if xcreature.community(killer) == "zombied" then return end
+    local squad = get_object_squad(killer)
+    local squad_id = squad and squad.id or nil
+    if squad_id and axr_companions.companion_squads[squad_id] then return end
+    _record(victim_id, killer_id, squad_id)
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s death v=%s k=%s squad=%s", LOG, victim_id, killer_id, tostring(squad_id))
+    end
+end
+
+--- Record the actor's own kills. Vanilla fires npc_on_death_callback only for stalker / monster
+--- killers (xr_motivator.script:394), never the actor, so actor kills never reach _on_death. On
+--- death the binder calls hit_callback(victim, 1, .., actor, "from_death_callback"), which fires
+--- npc_on_hit_callback with who = actor; that death-hit is the only signal for an actor kill.
+--- @cost O(1) | bone_index string compare first; the owner write only on the actor's death-hit
+local function _on_hit(obj, _amount, _dir, who, bone_index)
+    if not _recording_enabled() or bone_index ~= "from_death_callback" then return end
+    if not obj or not who then return end
+    _ac_id = _ac_id or (db.actor and db.actor:id())
+    if who:id() ~= _ac_id then return end
+    local victim_id = obj:id()
+    if get_object_story_id(victim_id) then return end
+    _record(victim_id, _ac_id, nil)
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s death v=%s k=%s actor_kill=true (via hit)", LOG, victim_id, _ac_id)
+    end
+end
+
+--- The living NPC that holds a defensible claim on a corpse the actor is trying to open, or nil.
+--- Unowned corpses (no trace) and the actor's own kills return nil. Within Half B's TTL the decision
+--- delegates to _npc_claimer (squad presence or lone killer within radius of the corpse). Traces the
+--- claim decision for owned corpses -- claimed-by, or void reason (own_kill / stale / owner_absent) --
+--- when ap_core_debug.enabled(). The corpse object is required for the position, so call sites that
+--- hold only an id resolve it first.
+--- @cost O(1) | ttl lookup + freshness; _npc_claimer only when an NPC owner exists and is fresh
+local function _claim_owner(corpse)
+    if not corpse then return nil end
+    local id = corpse:id()
+    local v = id and _owner:get(id)
+    if not v then return nil end
+    local dbg = ap_core_debug.enabled()
+    local tmr = xprofiler.new_if(dbg):start()
+    local owner, why
+    if v.killer == _ac_id then
+        why = "own_kill"
+    elseif not _fresh(v, cfg.loot_block_npc_ttl) then
+        why = "stale"
+    else
+        owner = _npc_claimer(v, _corpse_pos(corpse), cfg.loot_block_npc_radius)
+        if not owner then why = "owner_absent" end
+    end
+    tmr:stop()
+    if dbg then
+        ap_core_debug.debug("%s claim corpse=%s -> %s [%.2fms]", LOG, id,
+            owner and ("claimed by " .. owner:id()) or ("void:" .. tostring(why)), tmr:get_ms())
+    end
+    return owner
+end
+
+--- Count the _001..N variants of a tip pool in the loaded string table, walking until a miss
+--- (translate returns the key / nil / empty), mirroring ap_ext_news.script:_load_pool.
+local function _count_pool(prefix, max)
+    for i = 1, max do
+        local id = string_format("%s_%03d", prefix, i)
+        local text = game.translate_string(id)
+        if text == id or text == nil or text == "" then return i - 1 end
+    end
+    return max
+end
+
+--- Tip the actor that the kill is claimed: a PDA tip headed by the claimer's name + portrait, carrying
+--- a random line from the warn pool. Throttled per corpse by _tip_ttl so a held/mashed USE key warns
+--- once per approach. Voiced only when the owner (the sole NPC here) can voice it -- sees the body it
+--- defends and sees you within CHATTER_RANGE. The veto still blocks the loot; a claimer that cannot see
+--- the scene just stays silent. Not throttled on a silent pass, so the warn fires the first approach it
+--- actually sees you.
+local function _warn_once(corpse, owner)
+    local corpse_id = corpse:id()
+    if _tip_ttl:get(corpse_id) then return end
+    local actor = db.actor
+    if not actor or not _can_voice(owner, corpse, actor) then return end
+    _tip_ttl:set(corpse_id, true)
+    xpda.npc_tip(owner, _resolve_pooled(WARN_PREFIX, _warn_n, _actor_name()), { sound = "beep_1" })
+end
+
+--- Half B primary: veto opening a living NPC's claimed kill. on_before_key_press fires before the
+--- engine runs the USE action; clearing ret_value makes level_input.on_key_press return true and the
+--- engine skips the open (level_input.script:18-19). level.get_target_obj is the same cached crosshair
+--- pick the engine selects the corpse from (Actor.cpp:2012), so it matches what USE would open. This
+--- is the only pre-open veto that holds under the modded loot UI, whose init_mode opens regardless of
+--- ret (ui_inventory.script:62). It also stops auto-loot mods driven through the standard menu path.
+--- @cost O(1) | bind compare first; target + claim lookup only on a USE press
+local function _on_before_key_press(_key, bind, _dis, flags)
+    if not cfg.loot_block_npc_enabled then return end
+    if bind ~= key_bindings.kUSE then return end
+    local obj = level.get_target_obj()
+    if not obj then return end
+    local owner = _claim_owner(obj)
+    if not owner then return end
+    flags.ret_value = false
+    _warn_once(obj, owner)
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s blocked open corpse=%s owner=%s", LOG, obj:id(), owner:id())
+    end
+end
+
+--- Half B backstop: deny an in-menu take from a claimed corpse, covering a loot menu opened by a path
+--- that bypasses the USE keystroke (the keypress veto above is the primary gate). xinventory.is_corpse_take
+--- funnels every take path (move, take-all, drag, double-click) through one check. Does not catch a
+--- direct transfer_item (auto-loot "remote") -- that emits raw trade net events with no script veto.
+--- @cost O(1) | mode/bag compare first; claim lookup only on a loot take
+local function _on_item_before_move(flags, npc_id, _obj, mode, bag)
+    if not cfg.loot_block_npc_enabled then return end
+    if not xinventory.is_corpse_take(mode, bag) then return end
+    local corpse = xobject.go(npc_id)
+    local owner = _claim_owner(corpse)
+    if not owner then return end
+    xinventory.deny_move(flags)
+    _warn_once(corpse, owner)
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s blocked take corpse=%s owner=%s", LOG, npc_id, owner:id())
+    end
+end
+
+--- Veto a claimed kill when Dot Marks opens or auto-loots the corpse through its own interaction
+--- action, which never fires the kUSE keystroke the keypress veto watches. Clearing flags.ret_value
+--- aborts the action; same decision as the keypress veto.
+--- @cost O(1) | master/half compare first; claim lookup only on a Dot Marks corpse interact
+local function _veto_dotmarks(id, flags)
+    if not cfg.loot_block_npc_enabled or not flags or not id then return end
+    local corpse = xobject.go(id)
+    local owner = _claim_owner(corpse)
+    if not owner then return end
+    flags.ret_value = false
+    _warn_once(corpse, owner)
+    if ap_core_debug.enabled() then
+        ap_core_debug.debug("%s blocked dotmarks corpse=%s owner=%s", LOG, id, owner:id())
+    end
+end
+
+--- dotmarks_on_manual_interact_release(id, mark, flags): primary single-press corpse open.
+local function _on_dotmarks_interact(id, _mark, flags)
+    _veto_dotmarks(id, flags)
+end
+
+--- dotmarks_on_before_secondary_action(id, mark, prompt, functor, flags): long-press take-all / autoloot.
+--- id is nil when ExecuteAction fires with no target arg; fall back to the prompt's own target, the
+--- same id the action runs on.
+local function _on_dotmarks_secondary(id, _mark, prompt, _functor, flags)
+    _veto_dotmarks(id or (prompt and prompt.args and prompt.args.id), flags)
+end
+
+local function _on_first_update()
+    _ac_id = db.actor and db.actor:id()
+    -- PHASE B: Level() is live at the first update tick, so the game-clock import is safe here.
+    if _saved_owner then
+        _owner:import(_saved_owner)
+        _saved_owner = nil
+    end
+end
+
+local function _on_save_state(m_data)
+    m_data.ap_ext_loot_claim = { owner = _owner:export() }
+end
+
+local function _on_load_state(m_data)
+    -- PHASE A: stash only. No _owner:import here -- it calls the game clock (level.get_start_time),
+    -- which AVs during the load_state phase (CTD). Deferred to _on_first_update (PHASE B).
+    local saved = m_data.ap_ext_loot_claim
+    if type(saved) ~= "table" then return end
+    if type(saved.owner) == "table" then _saved_owner = saved.owner end
+end
+
+function on_game_start()
+    _owner = xttltable.create_ttl_table({ default_ttl = OWNER_TTL_MAX_SEC, clock = xtime.game_sec })
+    _tip_ttl = xttltable.create_ttl_table({ default_ttl = TIP_TTL_SEC })
+    _warn_n = _count_pool(WARN_PREFIX, MAX_WARN_VARIANTS)
+    _reserve_yield_n = _count_pool(RESERVE_YIELD_PREFIX, MAX_YIELD_VARIANTS)
+    _npcvnpc_yield_n = _count_pool(NPCVNPC_YIELD_PREFIX, MAX_YIELD_VARIANTS)
+
+    -- on_game_start re-runs on every save load, each time in a fresh Lua VM: a load reinits the VM
+    -- and wipes all module locals, xevent hook state included (proof chain in ap_core_cache: a
+    -- M_CHANGE_LEVEL packet -> CScriptStorage::reinit). So is_hooked is false here and the hook
+    -- installs cleanly every load. is_hooked only separates an already-installed hook (a repeat call
+    -- within one VM) from a real hook failure; it is not a cross-load persistence check.
+    if xevent.is_hooked("xr_corpse_detection", "near_actor")
+        or xevent.hook("xr_corpse_detection", "near_actor", _npc_loot_excluded) then
+        ap_core_debug.info("%s hooked xr_corpse_detection.near_actor", LOG)
+    else
+        ap_core_debug.warn("%s FAILED to hook xr_corpse_detection.near_actor", LOG)
+    end
+
+    -- Flow C needs the scanning NPC's identity, which near_actor (corpse-only) lacks; the wrapper
+    -- publishes it. evaluator_corpse is NOT a _G global -- it is a member of the xr_corpse_detection
+    -- module table (a luabind class userdata), so xevent's rawget(_G, name) cannot reach it. Reassign
+    -- the method through the module member directly. In a fresh VM after a load, find_valid_target is
+    -- the vanilla method again and _fvt_hooked is reset, so the hook re-installs; the guard only
+    -- prevents a repeat hook within one VM.
+    local cd = rawget(_G, "xr_corpse_detection")
+    local cls = cd and cd.evaluator_corpse
+    if _fvt_hooked then
+        ap_core_debug.info("%s evaluator_corpse.find_valid_target already hooked", LOG)
+    elseif cls and type(cls.find_valid_target) == "function" then
+        local orig = cls.find_valid_target
+        cls.find_valid_target = function(self) return _publish_looker(orig, self) end
+        _fvt_hooked = true
+        ap_core_debug.info("%s hooked evaluator_corpse.find_valid_target (module member)", LOG)
+    else
+        ap_core_debug.warn("%s FAILED to reach evaluator_corpse.find_valid_target", LOG)
+    end
+
+    RegisterScriptCallback(CALLBACK.NPC_ON_DEATH_CALLBACK, _on_death)
+    RegisterScriptCallback(CALLBACK.MONSTER_ON_DEATH_CALLBACK, _on_death)
+    RegisterScriptCallback(CALLBACK.NPC_ON_HIT_CALLBACK, _on_hit)
+    RegisterScriptCallback(CALLBACK.ON_BEFORE_KEY_PRESS, _on_before_key_press)
+    RegisterScriptCallback(CALLBACK.ACTOR_MENU_ON_ITEM_BEFORE_MOVE, _on_item_before_move)
+    RegisterScriptCallback(CALLBACK.ACTOR_ON_FIRST_UPDATE, _on_first_update)
+    RegisterScriptCallback(CALLBACK.SAVE_STATE, _on_save_state)
+    RegisterScriptCallback(CALLBACK.LOAD_STATE, _on_load_state)
+
+    -- Dot Marks opens corpses through its own action, not the kUSE keystroke, so the keypress veto is
+    -- blind to it. Gate on dotmarks_callbacks: inert when Dot Marks is absent, and its load registers
+    -- both callback names before we subscribe.
+    if dotmarks_callbacks then
+        RegisterScriptCallback(CALLBACK.DOTMARKS_ON_MANUAL_INTERACT_RELEASE, _on_dotmarks_interact)
+        RegisterScriptCallback(CALLBACK.DOTMARKS_ON_BEFORE_SECONDARY_ACTION, _on_dotmarks_secondary)
+        ap_core_debug.info("%s hooked Dot Marks corpse callbacks", LOG)
+    end
+
+    ap_core_debug.info("%s Initialized", LOG)
+end

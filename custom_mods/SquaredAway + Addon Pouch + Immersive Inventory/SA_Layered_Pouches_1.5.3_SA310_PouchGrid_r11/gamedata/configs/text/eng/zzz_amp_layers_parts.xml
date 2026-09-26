@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+    <string id="st_amp_pouch_parts_name">
+        <text>Parts pouch</text>
+    </string>
+    <string id="st_amp_pouch_parts_descr">
+        <text>A large equipment pouch reserved for weapon and armour repair parts.</text>
+    </string>
+</string_table>

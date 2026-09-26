@@ -1,0 +1,113 @@
+--- ap_ext_consequences_basekill: BASEKILL responses
+--- basekill_support: friendly squads rush to reinforce the base under attack
+--- basekill_flee: squads near the attacked base flee to a distant same-faction base
+
+local xsmart, xtable = xsmart, xtable
+local ap_core_debug, ap_ext_common, ap_core_record, ap_core_consumer, ap_core_util, ap_ext_util = ap_core_debug, ap_ext_common, ap_core_record, ap_core_consumer, ap_core_util, ap_ext_util
+
+local RESULT = ap_core_const.RESULT
+local REASON = ap_core_const.REASON
+local CAUSE = ap_core_const.CAUSE
+local CONSEQUENCE = ap_core_const.CONSEQUENCE
+local ACTION = ap_core_const.ACTION
+local PRE_RELEASE_GULAG = ap_core_const.PRE_RELEASE_GULAG
+local PERSONALITY = ap_ext_const.PERSONALITY
+
+local LOG_INIT = ap_core_debug.bracket(CAUSE.BASEKILL)
+
+local cfg = ap_core_mcm.cfg
+
+local _alignment_support = xtable.subtract(ap_ext_const.alignment_human, { ["renegade"] = true })
+local _personality_support = { PERSONALITY.DISCIPLINE, PERSONALITY.RELATION }
+
+local _alignment_flee = xtable.subtract(ap_ext_const.alignment_human, ap_ext_const.alignment_principled)
+local _personality_flee = { PERSONALITY.INV_DISCIPLINE, PERSONALITY.INV_TERRITORY }
+
+local function _handler_support(event_data)
+    local smart = event_data.smart
+    local factions, position, level_id = event_data.factions, event_data.position, event_data.level_id
+    if not smart or not factions or not position then return { code = RESULT.FAILED_RULES, reason = REASON.NIL_ARGS } end
+    if not ap_ext_util.check_alignment(_alignment_support, event_data.faction) then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT, community = event_data.faction } end
+    if not ap_ext_util.check_personality(_personality_support, event_data.faction) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.LOW_PERSONALITY }
+    end
+
+    local squads = ap_core_util.find_squads(position, {
+        factions = factions,
+        min_distance = ap_core_const.RADIUS_CLOSE_MAX, max_distance = ap_core_const.RANGE_RADIO,
+        level_id = level_id,
+        max_count = cfg.consequence_basekill_support_max_squads,
+        exclude_at_smart_id = smart.id,
+        allow_preempt = true,
+    })
+    local moved, last_reason = ap_ext_common.move_squads(squads, smart, {
+        rush = cfg.consequence_basekill_support_rush,
+        pre_release_gulag = PRE_RELEASE_GULAG.BASEKILL_SUPPORT,
+        interruptable = false,
+    })
+    local code, reason = RESULT.SUCCESS, nil
+    if #squads == 0 then code, reason = RESULT.FAILED_SCAN, REASON.NO_SQUAD
+    elseif #moved == 0 then code, reason = RESULT.FAILED_ACTION, (last_reason or REASON.MOVE_FAILED) end
+    if code ~= RESULT.SUCCESS then return { code = code, reason = reason } end
+    for i = 1, #moved do
+        ap_core_record.add_record(moved[i], CAUSE.BASEKILL, CONSEQUENCE.BASEKILL_SUPPORT, {
+            action_key = ACTION.BASEKILL_SUPPORT,
+            other_squad = event_data.killer_squad,
+            smart = smart, level_id = level_id,
+        })
+    end
+    return { code = RESULT.SUCCESS }
+end
+
+local function _handler_flee(event_data)
+    local smart, factions = event_data.smart, event_data.factions
+    local level_id = event_data.level_id
+    if not smart or not factions then return { code = RESULT.FAILED_RULES, reason = REASON.NIL_ARGS } end
+    if not ap_ext_util.check_alignment(_alignment_flee, event_data.faction) then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT, community = event_data.faction } end
+    if not ap_ext_util.check_personality(_personality_flee, event_data.faction) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.LOW_PERSONALITY }
+    end
+
+    local destination = ap_core_util.find_smart(smart.position, { factions = event_data.faction, level_id = level_id, exclude_id = smart.id, filter = xsmart.is_base })
+    local moved, last_reason
+    local code, reason = RESULT.SUCCESS, nil
+    if not destination then
+        code, reason = RESULT.FAILED_SCAN, REASON.NO_SMART
+    else
+        local fleeing = ap_core_util.find_squads(smart.position, {
+            factions = factions,
+            min_distance = 0, max_distance = ap_core_const.RANGE_EYE,
+            level_id = level_id, max_count = cfg.consequence_basekill_flee_max_squads,
+            exclude_at_smart_id = destination.id,
+            allow_preempt = true,
+        })
+        moved, last_reason = ap_ext_common.move_squads(fleeing, destination, {
+            rush = cfg.consequence_basekill_flee_rush,
+            pre_release_gulag = PRE_RELEASE_GULAG.BASEKILL_FLEE,
+            interruptable = false,
+        })
+        if #fleeing == 0 then code, reason = RESULT.FAILED_SCAN, REASON.NO_SQUAD
+        elseif #moved == 0 then code, reason = RESULT.FAILED_ACTION, (last_reason or REASON.MOVE_FAILED) end
+    end
+    if code ~= RESULT.SUCCESS then return { code = code, reason = reason } end
+    for i = 1, #moved do
+        ap_core_record.add_record(moved[i], CAUSE.BASEKILL, CONSEQUENCE.BASEKILL_FLEE, {
+            action_key = ACTION.BASEKILL_FLEE,
+            other_squad = event_data.killer_squad,
+            smart = destination, level_id = level_id,
+        })
+    end
+    return { code = RESULT.SUCCESS }
+end
+
+function on_game_start()
+    ap_core_consumer.register(CONSEQUENCE.BASEKILL_SUPPORT, {
+        event = CAUSE.BASEKILL,
+        condition = function() return cfg.consequence_basekill_support_enabled end,
+    }, _handler_support)
+    ap_core_consumer.register(CONSEQUENCE.BASEKILL_FLEE, {
+        event = CAUSE.BASEKILL,
+        condition = function() return cfg.consequence_basekill_flee_enabled end,
+    }, _handler_flee)
+    ap_core_debug.info(LOG_INIT .. " Initialized: 2 consequences (support, flee)")
+end

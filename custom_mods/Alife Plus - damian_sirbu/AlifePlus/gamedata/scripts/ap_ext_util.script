@@ -1,0 +1,181 @@
+--- ap_ext_util: Ext-layer utilities (period gates, alignment gates, personality gates, tactics gate,
+--- the shared radiant sub-cause attempt)
+local math_random, xcreature = math.random, xcreature
+local ap_core_debug, xprofiler = ap_core_debug, xprofiler
+local cfg = ap_core_mcm.cfg
+
+local PERSONALITY = ap_ext_const.PERSONALITY
+local _alignment_mutant_night = ap_ext_const.alignment_mutant_night
+
+local TACTICS_WEIGHT_LAST_OF_FACTION = 0.20
+local TACTICS_WEIGHT_SMART_TARGETED  = 0.20
+
+--- Attempt one radiant sub-cause with uniform gating and tracing. Returns the publish payload when
+--- the cause fires (result carries .cause), else nil. Skips silently before any timer when the
+--- cause's MCM toggle is off, so a disabled cause never allocates a timer or emits a line; every
+--- dynamic outcome (alignment, personality, threshold, scan, tactics) logs one line the same way.
+--- The single per-sub-cause seam shared by every radiant generator (needs, instincts, area, stash).
+--- @param enabled_key string cfg key of the cause toggle (e.g. "cause_hunger_campfire_enabled")
+--- @param log_prefix string cached bracket label
+--- @param fn function evaluator returning a publish payload (with .cause) or { code, reason }
+--- @return table|nil publish payload when the cause fired, else nil
+function try_cause(enabled_key, log_prefix, fn, ...)
+    if not cfg[enabled_key] then return nil end
+    local dbg = ap_core_debug.enabled()
+    local tmr = xprofiler.new_if(dbg):start()
+    local result = fn(...)
+    tmr:stop()
+    if not result then return nil end
+    if dbg then
+        ap_core_debug.debug("%s %s%s [%.2fms]", log_prefix,
+            result.cause and "fired" or (result.code or "?"),
+            result.reason and ":" .. result.reason or "", tmr:get_ms())
+    end
+    if result.cause then return result end
+    return nil
+end
+
+-- inv_<trait> -> <trait> lookup; resolves the INV_ prefix without a per-call string.match.
+local _INV_TO_BASE = {
+    [PERSONALITY.INV_AGGRESSION] = PERSONALITY.AGGRESSION,
+    [PERSONALITY.INV_TERRITORY]  = PERSONALITY.TERRITORY,
+    [PERSONALITY.INV_DISCIPLINE] = PERSONALITY.DISCIPLINE,
+    [PERSONALITY.INV_GREED]      = PERSONALITY.GREED,
+}
+
+function is_night()
+    if not level.present() then return false end
+    local hours = level.get_time_hours()
+    return hours >= 20 or hours < 5
+end
+
+--- Nocturnal species (alignment_mutant_night) active at night, all others active during day
+function is_active_period(identity)
+    local night = is_night()
+    if _alignment_mutant_night[identity] then return night end
+    return not night
+end
+
+--- Compute a freshly-initialized timestamp for a per-squad cooldown DTO field so that
+--- the squad starts already overdue (or close to it) instead of waiting a full threshold
+--- to act on its first eval.
+---
+--- in_period needs land at 1.05x-1.50x threshold elapsed (just-overdue to clearly-overdue).
+--- Out-of-period needs land at 1.20x-2.00x threshold elapsed (overdue, will fire when period flips).
+--- Per-squad jitter (squad_id mod 32 minutes) prevents whole-cohort spike on the same need.
+---
+--- @param now number current game seconds
+--- @param threshold number threshold in game seconds
+--- @param in_period boolean true if the need's period matches current world period (or no period gate)
+--- @param squad_id number squad id used for jitter
+--- @return number last_*_at timestamp
+function init_overdue_timestamp(now, threshold, in_period, squad_id)
+    local factor = in_period
+        and (1.05 + math_random() * 0.45)
+        or  (1.20 + math_random() * 0.80)
+    local jitter = ((squad_id or 0) % 32) * 60
+    return now - (factor * threshold) - jitter
+end
+
+--- Check faction alignment (hard filter, deterministic)
+--- @param alignment table|nil Alignment hash set { ["faction"] = true, ... }
+--- @param community string Faction community string
+--- @return boolean true = faction is in alignment set (or no alignment defined)
+function check_alignment(alignment, community)
+    if not alignment then return true end
+    return alignment[community] == true
+end
+
+--- Check faction personality (probability layer, runs after alignment)
+--- Averages relevant traits for the faction, clamps to global PERSONALITY_FLOOR/CEILING, rolls.
+--- INV_ traits are resolved as (1 - base_value) before averaging.
+--- @param traits table Array of trait keys (e.g. { PERSONALITY.GREED, PERSONALITY.AGGRESSION })
+--- @param community string Faction community string
+--- @return boolean passed
+function check_personality(traits, community)
+    if not traits or not community then return true end
+    local faction_traits = PERSONALITY[community]
+    if not faction_traits then return true end
+    local sum, count = 0, 0
+    for i = 1, #traits do
+        local key = traits[i]
+        local base_key = _INV_TO_BASE[key]
+        if base_key then
+            sum = sum + (1.0 - (faction_traits[base_key] or 0.5))
+        else
+            sum = sum + (faction_traits[key] or 0.5)
+        end
+        count = count + 1
+    end
+    if count == 0 then return true end
+    local p_min = ap_ext_const.PERSONALITY_FLOOR
+    local p_max = ap_ext_const.PERSONALITY_CEILING
+    local chance = sum / count
+    if chance < p_min then chance = p_min end
+    if chance > p_max then chance = p_max end
+    return math_random() < chance
+end
+
+--- Keep candidates whose mutant species is in species_set and that pass the personality roll
+--- Shared by the mutant reactive consequences (scavenge, hunt, haunt); species resolved per squad
+--- @param candidates table Array of squad server objects
+--- @param species_set table Hash set { [species] = true }
+--- @param personality table Array of PERSONALITY trait keys
+--- @return table Array of eligible squads
+function filter_mutant_squads(candidates, species_set, personality)
+    local out = {}
+    for i = 1, #candidates do
+        local squad = candidates[i]
+        local species = xcreature.get_mutant_species(squad.id)
+        if species and species_set[species] and check_personality(personality, species) then
+            out[#out + 1] = squad
+        end
+    end
+    return out
+end
+
+--- Roll a tactical-soundness check against random; true when candidate passes
+--- Score starts at 1.0; subtracts WEIGHT_LAST_OF_FACTION when removing squad leaves its source
+--- unguarded by its faction; subtracts WEIGHT_SMART_TARGETED when another scripted squad already
+--- targets the destination. Radiant only; reactive consequences bypass.
+--- @safety SAFE - xsmart.has_squad_of_faction + ap_core_broker.is_smart_targeted (both nil-guarded)
+--- @cost typically <5 luabind total (xsmart short-circuits; is_smart_targeted is pure Lua)
+--- @param squad se_squad Candidate squad
+--- @param smart smart_terrain Destination smart resolved by find_smart
+--- @return boolean passed
+function is_tactically_eligible(squad, smart)
+    local last_of_faction = squad.smart_id ~= nil
+        and not xsmart.has_squad_of_faction(squad.smart_id, squad.player_id, squad.id)
+    local smart_targeted = ap_core_broker.is_smart_targeted(smart.id, squad.id)
+    local score = 1.0
+    if last_of_faction then score = score - TACTICS_WEIGHT_LAST_OF_FACTION end
+    if smart_targeted then score = score - TACTICS_WEIGHT_SMART_TARGETED end
+    return math_random() <= score
+end
+
+--- Field smart: not a base and not already hosting a hub trader -- an ordinary contested smart the
+--- takeovers (conquer / swarm / infest / territory) may claim. See xsmart.is_base /
+--- xsmart.has_stalker_jobs for the engine-side semantics.
+--- @param smart smart_terrain
+--- @return boolean
+function is_field_smart(smart)
+    return not xsmart.is_base(smart) and not xsmart.has_stalker_jobs(smart, xsmart.JOB_TYPE_TRADER)
+end
+
+--- Last-smart floor: true when a community stationed at the smart holds no other smart on
+--- that level, i.e. taking this one would erase its presence there. Target-side guard for
+--- consequences whose targets can be occupied (infest); conquer/swarm targets are empty by filter.
+--- @safety SAFE - false on nil smart or unresolved level_id
+--- @cost O(min(n,5)) stationed squads x xsmart.get_faction_smart_count (pure Lua on cache hit)
+--- @param smart smart_terrain Candidate target
+--- @return boolean
+function is_last_faction_smart(smart)
+    if not smart then return false end
+    local level_id = xlevel.get_level_id(smart)
+    if not level_id then return false end
+    for se in xsmart.iter_stationed_squads(smart.id) do
+        if xsmart.get_faction_smart_count(se.player_id, level_id) <= 1 then return true end
+    end
+    return false
+end
+

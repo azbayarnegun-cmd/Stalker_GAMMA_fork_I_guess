@@ -1,0 +1,48 @@
+--- ap_ext_consequences_alpha: Registers new alpha mutants and updates alpha level (alpha_promote)
+
+local xobject, xsquad, xtable = xobject, xsquad, xtable
+local ap_core_debug, ap_core_record, ap_core_consumer, ap_core_util, ap_ext_tracker, ap_ext_object_mutator =
+    ap_core_debug, ap_core_record, ap_core_consumer, ap_core_util, ap_ext_tracker, ap_ext_object_mutator
+
+local RESULT = ap_core_const.RESULT
+local REASON = ap_core_const.REASON
+local CAUSE = ap_core_const.CAUSE
+local CONSEQUENCE = ap_core_const.CONSEQUENCE
+local ACTION = ap_core_const.ACTION
+local LOG = ap_core_debug.bracket(CONSEQUENCE.ALPHA_PROMOTE)
+
+local cfg = ap_core_mcm.cfg
+
+local function _handler(event_data)
+    local killer_id = event_data.killer_id
+    if not killer_id then return { code = RESULT.FAILED_RULES, reason = REASON.NO_KILLER } end
+    local is_new = not ap_ext_tracker.is_alpha(killer_id)
+    if is_new and xtable.count(ap_ext_tracker.get_alphas()) >= cfg.consequence_alpha_promote_max_alphas then
+        return { code = RESULT.FAILED_RULES, reason = REASON.MAX_ALPHAS }
+    end
+
+    local level_id, level, kills = event_data.level_id, event_data.level, event_data.kills
+    local updated = ap_ext_tracker.update_alpha(killer_id, { kills = kills })
+    if updated then
+        ap_ext_object_mutator.set_alpha_effects(killer_id, level)
+        local killer_squad = xsquad.get_squad_by_member(killer_id)
+        if killer_squad then
+            local se = xobject.se(killer_id)
+            local smart = se and ap_core_util.find_smart(se.position, { level_id = level_id })
+            ap_core_record.add_record(killer_squad, CAUSE.ALPHA, CONSEQUENCE.ALPHA_PROMOTE, {
+                action_key = ACTION.ALPHA_PROMOTE,
+                smart = smart, level_id = level_id,
+            })
+        end
+    end
+    if not updated then return { code = RESULT.FAILED_ACTION, reason = REASON.REGISTER_FAILED } end
+    return { code = RESULT.SUCCESS }
+end
+
+function on_game_start()
+    ap_core_consumer.register(CONSEQUENCE.ALPHA_PROMOTE, {
+        event = CAUSE.ALPHA,
+        condition = function() return cfg.consequence_alpha_promote_enabled end,
+    }, _handler)
+    ap_core_debug.info(LOG .. " Initialized")
+end

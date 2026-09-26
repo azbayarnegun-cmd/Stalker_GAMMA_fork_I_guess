@@ -1,0 +1,1090 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+  <!-- ==================== MAIN MENU ==================== -->
+  <string id="ui_mcm_menu_at">
+    <text>AlifeTactics</text>
+  </string>
+  <!-- ==================== CATEGORY FOLDERS ==================== -->
+  <string id="ui_mcm_menu_combat">
+    <text>Combat</text>
+  </string>
+  <string id="ui_mcm_menu_effectiveness">
+    <text>Effectiveness</text>
+  </string>
+  <string id="ui_mcm_menu_perception">
+    <text>Perception</text>
+  </string>
+  <string id="ui_mcm_menu_mechanics">
+    <text>Mechanics</text>
+  </string>
+  <string id="ui_mcm_menu_effects">
+    <text>Effects</text>
+  </string>
+  <string id="ui_mcm_menu_mutants">
+    <text>Mutants</text>
+  </string>
+  <!-- ==================== PAGE NAMES ==================== -->
+  <string id="ui_mcm_menu_maneuvers">
+    <text>Maneuvers</text>
+  </string>
+  <string id="ui_mcm_menu_accuracy">
+    <text>Accuracy</text>
+  </string>
+  <string id="ui_mcm_menu_disclosure">
+    <text>Disclosure</text>
+  </string>
+  <string id="ui_mcm_menu_danger">
+    <text>Danger</text>
+  </string>
+  <string id="ui_mcm_menu_sound">
+    <text>Sound</text>
+  </string>
+  <string id="ui_mcm_menu_vision">
+    <text>Vision</text>
+  </string>
+  <string id="ui_mcm_menu_crossfire">
+    <text>Crossfire</text>
+  </string>
+  <string id="ui_mcm_menu_healing">
+    <text>Healing</text>
+  </string>
+  <string id="ui_mcm_menu_jam">
+    <text>Jamming</text>
+  </string>
+  <string id="ui_mcm_menu_ammo">
+    <text>Ammo</text>
+  </string>
+  <string id="ui_mcm_menu_gear">
+    <text>Gear</text>
+  </string>
+  <string id="ui_mcm_menu_development">
+    <text>Development</text>
+  </string>
+  <!-- ==================== PLANNED SUB-PAGES ==================== -->
+  <string id="ui_mcm_menu_behaviors">
+    <text>Behaviors</text>
+  </string>
+  <string id="ui_mcm_menu_commitment">
+    <text>Commitment</text>
+  </string>
+  <string id="ui_mcm_menu_conduct">
+    <text>Conduct</text>
+  </string>
+  <string id="ui_mcm_menu_reaction">
+    <text>Reaction</text>
+  </string>
+  <string id="ui_mcm_menu_range">
+    <text>Range</text>
+  </string>
+  <string id="ui_mcm_menu_resistance">
+    <text>Resistance</text>
+  </string>
+  <!-- ==================== PLANNED PAGE DESCRIPTIONS ==================== -->
+  <string id="ui_mcm_at_behaviors_desc">
+    <text>Planned: new combat actions the vanilla planner lacks, melee first. Nothing to configure yet.</text>
+  </string>
+  <string id="ui_mcm_at_commitment_desc">
+    <text>Vanilla stalkers re-plan their fight every moment. Any small change makes a stalker abandon what he was doing and choose again: a cover spot that scores a little better, sight dropping for an instant, a teammate crossing the firing line. That constant re-deciding is the twitchy strafing and cover-hopping you see in a firefight. Commitment stops it without taking the stalker over. While what he is doing still makes sense he keeps at it instead of trading it for a marginally better move, and he switches the instant it stops making sense, when he loses sight or the shot is blocked or the enemy is gone. He keeps up his fire and finishes what he started instead of second-guessing every frame. Requires a recent engine build. On older builds the toggle has no effect and vanilla behavior applies.</text>
+  </string>
+  <string id="ui_mcm_at_conduct_desc">
+    <text>Small combat habits applied to stalkers the vanilla engine drives - no takeover, just better choices at moments the engine already decides. Requires a recent engine build; on older builds the page has no effect and vanilla behavior applies.</text>
+  </string>
+  <string id="ui_mcm_at_conduct_conduct_posture">
+    <text>Cover posture</text>
+  </string>
+  <string id="ui_mcm_at_conduct_conduct_posture_desc">
+    <text>Experienced riflemen and snipers crouch to steady the shot when the line to the enemy is clear, and stand to fire over low cover that would block a crouched shot. Vanilla picks its combat posture blind, so stalkers crouch behind bumps and fire into them, or stand tall in the open where a crouch would steady the aim. The decision reads the game's own cover map toward the enemy. Short-weapon carriers and green ranks keep vanilla behavior.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_desc">
+    <text>Stalker rank decides how tightly a stalker's gun tracks a moving target and how fast it spots a target at range. Tracking speed changes gun handling on a moving target; it does not make the first shot come sooner. Target lead and a per-rank trigger curve are planned. Requires a recent engine build with the per-stalker aim and vision binds; on older builds the page has no effect and vanilla behavior applies.</text>
+  </string>
+  <string id="ui_mcm_at_range_desc">
+    <text>Planned: engagement distance. The game stops NPC fights at a hard range cap regardless of weapon, so a sniper never fires at the distances his rifle exists for, and a stalker sniped from beyond the cap can duck (the Danger hit response) but never answer. This page will let long-range NPCs answer and initiate at their weapon's real reach. Nothing to configure yet.</text>
+  </string>
+  <string id="ui_mcm_at_resistance_desc">
+    <text>Planned: NPC toughness from what they carry - armor and equipment, damage mitigators, and artefacts. Nothing to configure yet.</text>
+  </string>
+  <string id="ui_mcm_at_effects_desc">
+    <text>Planned: player-facing combat feedback, concussion first. Nothing to configure yet.</text>
+  </string>
+  <string id="ui_mcm_at_mutants_desc">
+    <text>Planned: mutant combat behavior. Nothing to configure yet.</text>
+  </string>
+  <!-- ==================== SHARED ==================== -->
+  <string id="ui_mcm_at_title">
+    <text>AlifeTactics</text>
+  </string>
+  <!-- ==================== DISCLOSURE PAGE ==================== -->
+  <string id="ui_mcm_at_disclosure_desc">
+    <text>Wound one member of a squad and the whole squad learns the shooter at once, including patrol members out of earshot and against a suppressed weapon. Vanilla shares only a shooter the squadmates heard. AlifeTactics enables the shooter in every member's memory and registers the squad into combat, then the engine's own propagation carries it. On a recent engine build the shooter also enters their seen memory, the class their target selection ranks first, so the squad actually turns on you instead of staying locked on a distant visible enemy. No relations are faked. The survivor gate below keeps a clean instant kill quiet, and the squad can still find the body.</text>
+  </string>
+  <string id="ui_mcm_at_disclosure_disclosure_enabled">
+    <text>Enable Disclosure</text>
+  </string>
+  <string id="ui_mcm_at_disclosure_disclosure_enabled_desc">
+    <text>When off, vanilla behavior runs unmodified: squadmates learn about a shooter only within earshot, and distant patrol members never do.</text>
+  </string>
+  <string id="ui_mcm_at_disclosure_disclosure_turn">
+    <text>Turn on the shooter</text>
+  </string>
+  <string id="ui_mcm_at_disclosure_disclosure_turn_desc">
+    <text>The disclosed shooter enters each member's seen memory, the class their target selection ranks first, so the squad actually turns on him instead of staying locked on a distant visible enemy. Off keeps the softer disclosure: they know the shooter and can engage, but a seen enemy still outranks him. Needs a recent engine build; inactive on older ones.</text>
+  </string>
+  <string id="ui_mcm_at_disclosure_hdr_survivor">
+    <text>Stealth</text>
+  </string>
+  <string id="ui_mcm_at_disclosure_disclosure_survivor_gate">
+    <text>Suppress disclosure on kill</text>
+  </string>
+  <string id="ui_mcm_at_disclosure_disclosure_survivor_gate_desc">
+    <text>When the hit kills the victim outright, the shooter is not disclosed. The dying man never gets to radio it in, so silenced shots and backstabs stay quiet. The squad can still find you the hard way: by sound, by sight, or by the body. A hit that only wounds discloses as usual.</text>
+  </string>
+  <string id="ui_mcm_at_hdr_retention">
+    <text>Retention</text>
+  </string>
+  <string id="ui_mcm_at_disclosure_disclosure_retention_min">
+    <text>Forget shooter after (game min)</text>
+  </string>
+  <string id="ui_mcm_at_disclosure_disclosure_retention_min_desc">
+    <text>Game minutes without new hits before a squad forgets a shooter. The next hit re-fires the full-squad alert. Game time, not real time.</text>
+  </string>
+  <!-- ==================== HEALING PAGE ==================== -->
+  <string id="ui_mcm_at_healing_desc">
+    <text>Wounded stalkers heal with the medkits and bandages they carry, and you can watch it: a hurt man limps, a healing man plays the gesture, out of combat only. Vanilla ships the healing item lists empty, so carried kits were never used and bleeders died with full pockets. AlifeTactics restores the lists at boot. Heal rate, the per-rank charge for empty pockets, and the animations tune below.</text>
+  </string>
+  <string id="ui_mcm_at_healing_healing_enabled">
+    <text>Enable Healing</text>
+  </string>
+  <string id="ui_mcm_at_healing_healing_enabled_desc">
+    <text>Master toggle for the runtime layer: heal rate scaling and the per-rank healing charge. When off, vanilla self-heal behavior runs unmodified. Restart required to toggle. The item-list restoration is boot-time and always active.</text>
+  </string>
+  <!-- Healing - Heal Rate -->
+  <string id="ui_mcm_at_hdr_heal_rate">
+    <text>Heal Rate</text>
+  </string>
+  <string id="ui_mcm_at_healing_heal_rate_multiplier">
+    <text>Heal rate multiplier</text>
+  </string>
+  <string id="ui_mcm_at_healing_heal_rate_multiplier_desc">
+    <text>Scales how much health each self-heal tick restores. At 2.0 a medkit heals twice as fast, at 0.5 half as fast. The number of ticks is fixed by the engine.</text>
+  </string>
+  <!-- Healing - Healing Charge -->
+  <string id="ui_mcm_at_hdr_healing_charge">
+    <text>Healing Charge</text>
+  </string>
+  <string id="ui_mcm_at_healing_charge_chance_novice">
+    <text>Novice charge chance (%)</text>
+  </string>
+  <string id="ui_mcm_at_healing_charge_chance_novice_desc">
+    <text>Chance that a novice-rank stalker gets one lifetime healing charge at first spawn. The charge fires once when he drops below the heal threshold with no medkit in inventory. Vanilla rolls a flat 50% for every rank.</text>
+  </string>
+  <string id="ui_mcm_at_healing_charge_chance_experienced">
+    <text>Experienced charge chance (%)</text>
+  </string>
+  <string id="ui_mcm_at_healing_charge_chance_experienced_desc">
+    <text>Chance for experienced-rank stalkers.</text>
+  </string>
+  <string id="ui_mcm_at_healing_charge_chance_veteran">
+    <text>Veteran charge chance (%)</text>
+  </string>
+  <string id="ui_mcm_at_healing_charge_chance_veteran_desc">
+    <text>Chance for veteran-rank stalkers.</text>
+  </string>
+  <string id="ui_mcm_at_healing_charge_chance_master">
+    <text>Master charge chance (%)</text>
+  </string>
+  <string id="ui_mcm_at_healing_charge_chance_master_desc">
+    <text>Chance for master-rank stalkers.</text>
+  </string>
+  <!-- Healing - Visual Layer -->
+  <string id="ui_mcm_at_hdr_visuals">
+    <text>Visual Layer</text>
+  </string>
+  <string id="ui_mcm_at_healing_limping_anim_enabled">
+    <text>Limping animation</text>
+  </string>
+  <string id="ui_mcm_at_healing_limping_anim_enabled_desc">
+    <text>Out-of-combat stalkers below the health threshold visibly limp: a hurt idle while standing, a hurt walk while moving, matched to the carried weapon. Fighting stalkers are excluded so combat posture is never disrupted.</text>
+  </string>
+  <string id="ui_mcm_at_healing_limping_health_threshold">
+    <text>Limp health threshold</text>
+  </string>
+  <string id="ui_mcm_at_healing_limping_health_threshold_desc">
+    <text>Health fraction below which an eligible stalker starts limping. Lower values delay the cue until he is more seriously hurt.</text>
+  </string>
+  <string id="ui_mcm_at_healing_healing_anim_enabled">
+    <text>Healing animation</text>
+  </string>
+  <string id="ui_mcm_at_healing_healing_anim_enabled_desc">
+    <text>Plays a medkit or bandage gesture when a stalker starts a heal cycle, out of combat only. The engine clears it when the gesture ends.</text>
+  </string>
+  <!-- ==================== ACCURACY PAGE ==================== -->
+  <string id="ui_mcm_at_accuracy_desc">
+    <text>Stalker accuracy scales with rank. A master shoots tighter than a novice, each tier tunable below. The engine has a per-rank dispersion curve, but Anomaly's rank values leave it flat, so every stalker fires with the same spread. AlifeTactics drives the curve through the engine's own dispersion callback. Weapon and barrel dispersion stay untouched. This scales the stalker's skill.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_disp_enabled">
+    <text>Enable Dispersion</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_disp_enabled_desc">
+    <text>How tight each rank's aim cone is. Low ranks spray wide, top ranks group tight. Off leaves the engine's flat cone.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_move_enabled">
+    <text>Enable Moving Fire</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_move_enabled_desc">
+    <text>How much each rank cancels the accuracy penalty for firing on the move. Top ranks stay accurate while moving. Off keeps the full penalty.</text>
+  </string>
+  <string id="ui_mcm_at_hdr_accuracy_curve">
+    <text>Rank Accuracy</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_novice">
+    <text>Novice dispersion</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_novice_desc">
+    <text>Shot cone scale for novice-rank stalkers. Lower is tighter and more lethal. 1.00 matches the vanilla cone.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_trainee">
+    <text>Trainee dispersion</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_trainee_desc">
+    <text>Shot cone scale for trainee-rank stalkers. Lower is tighter.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_experienced">
+    <text>Experienced dispersion</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_experienced_desc">
+    <text>Shot cone scale for experienced-rank stalkers. Lower is tighter.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_professional">
+    <text>Professional dispersion</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_professional_desc">
+    <text>Shot cone scale for professional-rank stalkers. Lower is tighter.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_veteran">
+    <text>Veteran dispersion</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_veteran_desc">
+    <text>Shot cone scale for veteran-rank stalkers. Lower is tighter.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_expert">
+    <text>Expert dispersion</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_expert_desc">
+    <text>Shot cone scale for expert-rank stalkers. Lower is tighter.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_master">
+    <text>Master dispersion</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_master_desc">
+    <text>Shot cone scale for master-rank stalkers. Lower is tighter.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_legend">
+    <text>Legend dispersion</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_disp_legend_desc">
+    <text>Shot cone scale for legend-rank stalkers, the highest rank. Lower is tighter.</text>
+  </string>
+  <string id="ui_mcm_at_hdr_accuracy_move">
+    <text>Moving Fire</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_novice">
+    <text>Novice moving fire</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_novice_desc">
+    <text>How much of the movement spread penalty a novice-rank stalker keeps while shooting on the move. 1.00 is the full vanilla penalty; lower is steadier fire on the move.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_trainee">
+    <text>Trainee moving fire</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_trainee_desc">
+    <text>How much of the movement spread penalty a trainee-rank stalker keeps while shooting on the move. Lower is steadier.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_experienced">
+    <text>Experienced moving fire</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_experienced_desc">
+    <text>How much of the movement spread penalty an experienced-rank stalker keeps while shooting on the move. Lower is steadier.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_professional">
+    <text>Professional moving fire</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_professional_desc">
+    <text>How much of the movement spread penalty a professional-rank stalker keeps while shooting on the move. Lower is steadier.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_veteran">
+    <text>Veteran moving fire</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_veteran_desc">
+    <text>How much of the movement spread penalty a veteran-rank stalker keeps while shooting on the move. Lower is steadier.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_expert">
+    <text>Expert moving fire</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_expert_desc">
+    <text>How much of the movement spread penalty an expert-rank stalker keeps while shooting on the move. Lower is steadier.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_master">
+    <text>Master moving fire</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_master_desc">
+    <text>How much of the movement spread penalty a master-rank stalker keeps while shooting on the move. Lower is steadier.</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_legend">
+    <text>Legend moving fire</text>
+  </string>
+  <string id="ui_mcm_at_accuracy_acc_move_legend_desc">
+    <text>How much of the movement spread penalty a legend-rank stalker keeps while shooting on the move, the highest rank. 0.50 makes his moving fire as steady as his standing fire.</text>
+  </string>
+  <!-- ==================== REACTION PAGE ==================== -->
+  <string id="ui_mcm_at_reaction_aim_enabled">
+    <text>Enable Tracking Speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_aim_enabled_desc">
+    <text>How fast a stalker's barrel moves while tracking, per rank. This is speed only; how tightly it holds a strafing target is Tracking Lock below, which this toggle also gates. Off leaves the engine's flat aim.</text>
+  </string>
+  <string id="ui_mcm_at_hdr_reaction_aim">
+    <text>Tracking Speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_novice">
+    <text>Novice tracking speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_novice_desc">
+    <text>How tightly a novice-rank barrel follows a moving target, radians per second. 0.24 matches the vanilla engine.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_trainee">
+    <text>Trainee tracking speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_trainee_desc">
+    <text>How tightly a trainee-rank barrel follows a moving target. Higher tracks closer.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_experienced">
+    <text>Experienced tracking speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_experienced_desc">
+    <text>How tightly an experienced-rank barrel follows a moving target. Higher tracks closer.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_professional">
+    <text>Professional tracking speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_professional_desc">
+    <text>How tightly a professional-rank barrel follows a moving target. Higher tracks closer.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_veteran">
+    <text>Veteran tracking speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_veteran_desc">
+    <text>How tightly a veteran-rank barrel follows a moving target. Higher tracks closer.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_expert">
+    <text>Expert tracking speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_expert_desc">
+    <text>How tightly an expert-rank barrel follows a moving target. Higher tracks closer.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_master">
+    <text>Master tracking speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_master_desc">
+    <text>How tightly a master-rank barrel follows a moving target. Higher tracks closer.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_legend">
+    <text>Legend tracking speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_aim_legend_desc">
+    <text>Tracking speed for legend rank, the highest. 1.50 is a decent step above vanilla, well below the game's 2.50 hardcore aim.</text>
+  </string>
+  <string id="ui_mcm_at_hdr_reaction_track">
+    <text>Tracking Lock</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_novice">
+    <text>Novice tracking lock</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_novice_desc">
+    <text>How tightly a novice-rank barrel holds a strafing target - the width of the lock band, radians. 0.196 matches vanilla, where a strafer can juke the aim.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_trainee">
+    <text>Trainee tracking lock</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_trainee_desc">
+    <text>How tightly a trainee-rank barrel holds a strafing target. Higher holds tighter and is harder to dodge.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_experienced">
+    <text>Experienced tracking lock</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_experienced_desc">
+    <text>How tightly an experienced-rank barrel holds a strafing target. Higher holds tighter and is harder to dodge.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_professional">
+    <text>Professional tracking lock</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_professional_desc">
+    <text>How tightly a professional-rank barrel holds a strafing target. Higher holds tighter and is harder to dodge.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_veteran">
+    <text>Veteran tracking lock</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_veteran_desc">
+    <text>How tightly a veteran-rank barrel holds a strafing target. Higher holds tighter and is harder to dodge.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_expert">
+    <text>Expert tracking lock</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_expert_desc">
+    <text>How tightly an expert-rank barrel holds a strafing target. Higher holds tighter and is harder to dodge.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_master">
+    <text>Master tracking lock</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_master_desc">
+    <text>How tightly a master-rank barrel holds a strafing target. Higher holds tighter and is harder to dodge.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_legend">
+    <text>Legend tracking lock</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_track_legend_desc">
+    <text>How tightly a legend-rank barrel holds a strafing target, the highest rank. 0.40 locks across the firing window, far below the game's 17 hardcore aimbot.</text>
+  </string>
+  <string id="ui_mcm_at_hdr_reaction_lead">
+    <text>Target Lead</text>
+  </string>
+  <string id="ui_mcm_at_reaction_lead_enabled">
+    <text>Enable Target Lead</text>
+  </string>
+  <string id="ui_mcm_at_reaction_lead_enabled_desc">
+    <text>How far ahead of a moving target a stalker aims, from the round's real flight time. Top ranks lead true and hit movers, low ranks over-lead. Off leaves the engine's fixed lead.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_novice">
+    <text>Novice target lead</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_novice_desc">
+    <text>Lead error for novice rank, multiplied onto the physically-correct lead. 2.00 over-leads a mover, 1.00 leads true.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_trainee">
+    <text>Trainee target lead</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_trainee_desc">
+    <text>Lead error for trainee rank. Above 1.00 over-leads a moving target, 1.00 leads true.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_experienced">
+    <text>Experienced target lead</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_experienced_desc">
+    <text>Lead error for experienced rank. Above 1.00 over-leads a moving target, 1.00 leads true.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_professional">
+    <text>Professional target lead</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_professional_desc">
+    <text>Lead error for professional rank. Above 1.00 over-leads a moving target, 1.00 leads true.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_veteran">
+    <text>Veteran target lead</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_veteran_desc">
+    <text>Lead error for veteran rank. Above 1.00 over-leads a moving target, 1.00 leads true.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_expert">
+    <text>Expert target lead</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_expert_desc">
+    <text>Lead error for expert rank. Above 1.00 over-leads a moving target, 1.00 leads true.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_master">
+    <text>Master target lead</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_master_desc">
+    <text>Lead error for master rank. Above 1.00 over-leads a moving target, 1.00 leads true.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_legend">
+    <text>Legend target lead</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_lead_legend_desc">
+    <text>Lead error for legend rank, the highest. 1.00 leads true and hits movers.</text>
+  </string>
+  <string id="ui_mcm_at_hdr_reaction_vision">
+    <text>Vision Speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_vision_enabled">
+    <text>Enable Vision Speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_vision_enabled_desc">
+    <text>How fast a stalker turns a glimpse into a confirmed threat, per rank - reaction, not eyesight. Higher ranks notice sooner; most ranks sit just under your setup's baseline, so an average squad notices a hair slower. Point-blank detection is unaffected. Off leaves the flat detection speed.</text>
+  </string>
+  <string id="ui_mcm_at_hdr_reaction_trigger">
+    <text>Burst Size</text>
+  </string>
+  <string id="ui_mcm_at_reaction_discipline_enabled">
+    <text>Enable Fire Discipline</text>
+  </string>
+  <string id="ui_mcm_at_reaction_discipline_enabled_desc">
+    <text>Scales each rank's burst length and cadence. High ranks fire crisper short bursts more often; low ranks stay vanilla. Defaults keep the burst-size scale at or above the interval scale, so hits per minute never drops below vanilla. Off = vanilla queues.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_novice">
+    <text>Novice burst size</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_novice_desc">
+    <text>Multiplier on the novice-rank burst length. 1.00 = vanilla; below 1 trims the burst toward its accurate opening rounds.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_trainee">
+    <text>Trainee burst size</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_trainee_desc">
+    <text>Multiplier on the trainee-rank burst length. 1.00 = vanilla; below 1 trims to the accurate opening rounds.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_experienced">
+    <text>Experienced burst size</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_experienced_desc">
+    <text>Multiplier on the experienced-rank burst length. 1.00 = vanilla; below 1 trims to the accurate opening rounds.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_professional">
+    <text>Professional burst size</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_professional_desc">
+    <text>Multiplier on the professional-rank burst length. 1.00 = vanilla; below 1 trims to the accurate opening rounds.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_veteran">
+    <text>Veteran burst size</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_veteran_desc">
+    <text>Multiplier on the veteran-rank burst length. 1.00 = vanilla; below 1 trims to the accurate opening rounds.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_expert">
+    <text>Expert burst size</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_expert_desc">
+    <text>Multiplier on the expert-rank burst length. 1.00 = vanilla; below 1 trims to the accurate opening rounds.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_master">
+    <text>Master burst size</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_master_desc">
+    <text>Multiplier on the master-rank burst length. 1.00 = vanilla; below 1 trims to the accurate opening rounds.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_legend">
+    <text>Legend burst size</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qsize_legend_desc">
+    <text>Multiplier on the legend-rank burst length, the highest rank. Below 1 = crisp short bursts. Keep at or above the interval multiplier so volume holds.</text>
+  </string>
+  <string id="ui_mcm_at_hdr_reaction_qinterval">
+    <text>Fire Cadence</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_novice">
+    <text>Novice fire cadence</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_novice_desc">
+    <text>Multiplier on the novice-rank pause between bursts. 1.00 = vanilla; below 1 fires more often.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_trainee">
+    <text>Trainee fire cadence</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_trainee_desc">
+    <text>Multiplier on the trainee-rank pause between bursts. 1.00 = vanilla; below 1 fires more often.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_experienced">
+    <text>Experienced fire cadence</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_experienced_desc">
+    <text>Multiplier on the experienced-rank pause between bursts. 1.00 = vanilla; below 1 fires more often.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_professional">
+    <text>Professional fire cadence</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_professional_desc">
+    <text>Multiplier on the professional-rank pause between bursts. 1.00 = vanilla; below 1 fires more often.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_veteran">
+    <text>Veteran fire cadence</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_veteran_desc">
+    <text>Multiplier on the veteran-rank pause between bursts. 1.00 = vanilla; below 1 fires more often.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_expert">
+    <text>Expert fire cadence</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_expert_desc">
+    <text>Multiplier on the expert-rank pause between bursts. 1.00 = vanilla; below 1 fires more often.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_master">
+    <text>Master fire cadence</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_master_desc">
+    <text>Multiplier on the master-rank pause between bursts. 1.00 = vanilla; below 1 fires more often.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_legend">
+    <text>Legend fire cadence</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_qinterval_legend_desc">
+    <text>Multiplier on the legend-rank pause between bursts, the highest rank. Below 1 = tighter cadence, more volume.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_novice">
+    <text>Novice vision speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_novice_desc">
+    <text>How fast a novice-rank stalker notices a threat. Higher notices sooner; below 1.00 is slower than your setup's baseline, 1.00 is unchanged. Point-blank detection is unaffected.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_trainee">
+    <text>Trainee vision speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_trainee_desc">
+    <text>Detection speed factor for trainee-rank stalkers. Higher notices targets faster at range.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_experienced">
+    <text>Experienced vision speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_experienced_desc">
+    <text>Detection speed factor for experienced-rank stalkers. Higher notices targets faster at range.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_professional">
+    <text>Professional vision speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_professional_desc">
+    <text>Detection speed factor for professional-rank stalkers. Higher notices targets faster at range.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_veteran">
+    <text>Veteran vision speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_veteran_desc">
+    <text>Detection speed factor for veteran-rank stalkers. Higher notices targets faster at range.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_expert">
+    <text>Expert vision speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_expert_desc">
+    <text>Detection speed factor for expert-rank stalkers. Higher notices targets faster at range.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_master">
+    <text>Master vision speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_master_desc">
+    <text>Detection speed factor for master-rank stalkers. Higher notices targets faster at range.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_legend">
+    <text>Legend vision speed</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vision_legend_desc">
+    <text>How fast a legend-rank stalker, the highest rank, notices a threat. Higher notices sooner; 1.00 is your setup's baseline. Point-blank detection is unaffected.</text>
+  </string>
+  <string id="ui_mcm_at_hdr_vision_range">
+    <text>Vision Range</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_novice">
+    <text>Novice vision range</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_novice_desc">
+    <text>How far out a novice-rank stalker begins to notice a threat. Above 1.00 sees farther at range, 1.00 is your setup's baseline. Needs a recent engine build with the per-stalker view-distance bind; inactive on older ones.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_trainee">
+    <text>Trainee vision range</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_trainee_desc">
+    <text>Detection distance factor for trainee-rank stalkers. Higher begins seeing targets from farther out.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_experienced">
+    <text>Experienced vision range</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_experienced_desc">
+    <text>Detection distance factor for experienced-rank stalkers. Higher begins seeing targets from farther out.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_professional">
+    <text>Professional vision range</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_professional_desc">
+    <text>Detection distance factor for professional-rank stalkers. Higher begins seeing targets from farther out.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_veteran">
+    <text>Veteran vision range</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_veteran_desc">
+    <text>Detection distance factor for veteran-rank stalkers. Higher begins seeing targets from farther out.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_expert">
+    <text>Expert vision range</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_expert_desc">
+    <text>Detection distance factor for expert-rank stalkers. Higher begins seeing targets from farther out.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_master">
+    <text>Master vision range</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_master_desc">
+    <text>Detection distance factor for master-rank stalkers. Higher begins seeing targets from farther out.</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_legend">
+    <text>Legend vision range</text>
+  </string>
+  <string id="ui_mcm_at_reaction_rct_vrange_legend_desc">
+    <text>How far out a legend-rank stalker, the highest rank, begins to notice a threat. Above 1.00 sees farther; 1.00 is your setup's baseline. Needs the view-distance engine bind.</text>
+  </string>
+  <!-- ==================== COMMITMENT PAGE ==================== -->
+  <string id="ui_mcm_at_commitment_commitment_cover_pin">
+    <text>Cover pinning</text>
+  </string>
+  <string id="ui_mcm_at_commitment_commitment_cover_pin_desc">
+    <text>A stalker firing with a clear shot keeps his cover instead of sliding to a slightly better spot. It stops the mid-fight strafe one step earlier than Commitment alone, at the cover re-pick that starts it. A compromised spot still releases, when the enemy is on top of it or the shot is blocked. Requires a recent engine build. It stays inactive on older ones.</text>
+  </string>
+  <string id="ui_mcm_at_commitment_commitment_enabled">
+    <text>Enable Commitment</text>
+  </string>
+  <string id="ui_mcm_at_commitment_commitment_enabled_desc">
+    <text>With Commitment on, a stalker keeps a good action instead of dropping it the moment the engine finds a slightly better move. Off is vanilla, where he re-decides every moment and produces the mid-fight cover shuffle.</text>
+  </string>
+  <string id="ui_mcm_at_hdr_commitment_hold">
+    <text>Commitment limit</text>
+  </string>
+  <string id="ui_mcm_at_commitment_commitment_hold_s">
+    <text>Max time committed</text>
+  </string>
+  <string id="ui_mcm_at_commitment_commitment_hold_s_desc">
+    <text>The longest a stalker may stay committed to one action before the engine is allowed to move him again. It is a ceiling only. As long as his reason to hold still stands he keeps committed, and this caps one continuous stretch so cover quality can matter again eventually. He breaks off on his own the instant that reason ends, when he loses sight or the shot is no longer clear. Higher values keep him committed longer.</text>
+  </string>
+  <!-- ==================== MANEUVERS PAGE ==================== -->
+  <string id="ui_mcm_at_combat_desc">
+    <text>A maneuver is a complete, authoritative takeover of one stalker to perform what the vanilla engine cannot, whether as a mechanic it lacks or a decision it never makes. The system reads combat events, NPC and player stats, and the world, then makes an intelligent decision in the combatant's favor, weighing squad and faction, squad and enemy state, range, angle, cover, and weapons. The design goes further than the single stalker: whole squads coordinating their movement and fire, each faction fighting in its own flavor and favoring the maneuvers that suit it. It overrides no combat scripts, so it works with other combat AI. Each maneuver below toggles on its own.</text>
+  </string>
+  <string id="ui_mcm_at_combat_combat_enabled">
+    <text>Enable combat takeover</text>
+  </string>
+  <string id="ui_mcm_at_combat_combat_enabled_desc">
+    <text>When off, AlifeTactics never touches combat and every fight runs on your existing AI. When on, it may briefly borrow a stalker for one maneuver.</text>
+  </string>
+  <string id="ui_mcm_at_combat_combat_ignore_companions">
+    <text>Ignore companions</text>
+  </string>
+  <string id="ui_mcm_at_combat_combat_ignore_companions_desc">
+    <text>When on, AlifeTactics never takes over your companions, so their follow and combat AI and your commands stay in control. Turn off to let it maneuver them too.</text>
+  </string>
+  <string id="ui_mcm_at_combat_hdr_maneuvers">
+    <text>Maneuvers</text>
+  </string>
+  <string id="ui_mcm_at_combat_maneuver_counterflank">
+    <text>Counterflank</text>
+  </string>
+  <string id="ui_mcm_at_combat_maneuver_counterflank_desc">
+    <text>A stalker shooting a distant target while a hostile player stands at contact range turns and engages the closer threat instead of presenting his back.</text>
+  </string>
+  <string id="ui_mcm_at_combat_maneuver_reload_cover">
+    <text>Reload Cover</text>
+  </string>
+  <string id="ui_mcm_at_combat_maneuver_reload_cover_desc">
+    <text>A stalker caught reloading in your line of fire runs to the nearest cover instead of standing in the open, and his weapon finishes reloading on the way. Reloading out of your sight or aim stays where it is. Needs a recent engine build.</text>
+  </string>
+  <string id="ui_mcm_at_combat_maneuver_kite">
+    <text>Kite</text>
+  </string>
+  <string id="ui_mcm_at_combat_maneuver_kite_desc">
+    <text>An enemy closed inside the stalker's minimum weapon range. He backs out to his own distance, still firing, down a lane he checked is clear.</text>
+  </string>
+  <string id="ui_mcm_at_combat_maneuver_retreat">
+    <text>Retreat</text>
+  </string>
+  <string id="ui_mcm_at_combat_maneuver_retreat_desc">
+    <text>Badly hurt with the shooter still in reach, a stalker pulls back to cover behind him, still firing. The cover always grows the distance to the shooter, and two men never claim the same spot.</text>
+  </string>
+  <string id="ui_mcm_at_combat_maneuver_flee">
+    <text>Flee</text>
+  </string>
+  <string id="ui_mcm_at_combat_maneuver_flee_desc">
+    <text>The last man of a broken squad routs to a distant friendly base, weapon slung. He waits for a lull in the shooting first. Cautious factions only, fanatics never break.</text>
+  </string>
+  <string id="ui_mcm_at_combat_maneuver_pickoff">
+    <text>Pickoff</text>
+  </string>
+  <string id="ui_mcm_at_combat_maneuver_pickoff_desc">
+    <text>A stalker who has his enemy outranged in a standoff stands his ground and picks him off with deliberate single shots. He only plants comfortably beyond his enemy's effective range, breaks off the moment the enemy closes back in, and never holds while taking fire or under your crosshair.</text>
+  </string>
+  <!-- ==================== CROSSFIRE PAGE ==================== -->
+  <string id="ui_mcm_at_crossfire_desc">
+    <text>Same-faction fighters no longer cut each other down in a crossfire. A hit between two NPCs of the same faction deals reduced damage, set by the slider below. It keys on their actual relation, so genuinely hostile factions still trade full damage. Your own shots are never touched.</text>
+  </string>
+  <string id="ui_mcm_at_crossfire_crossfire_enabled">
+    <text>Block same-faction friendly fire</text>
+  </string>
+  <string id="ui_mcm_at_crossfire_crossfire_enabled_desc">
+    <text>When off, vanilla friendly-fire damage applies in full.</text>
+  </string>
+  <string id="ui_mcm_at_crossfire_crossfire_factor">
+    <text>Same-faction damage multiplier</text>
+  </string>
+  <string id="ui_mcm_at_crossfire_crossfire_factor_desc">
+    <text>How much damage a same-faction hit deals. 0.00 means teammates take no damage from each other. 1.00 is full vanilla damage.</text>
+  </string>
+  <!-- ==================== PERCEPTION FOLDER (SOUND / VISION / DANGER) ==================== -->
+  <string id="ui_mcm_at_vision_desc">
+    <text>How a stalker's eyes scale with rank: how fast he turns a glimpse into a confirmed threat (speed), and how far out he begins to notice one (range). Both are reaction and experience, not raw eyesight, and sit in a tight band around your setup's baseline. Range needs a recent engine build with the per-stalker view-distance bind; on older builds only the speed curve applies.</text>
+  </string>
+  <string id="ui_mcm_at_perception_danger_desc">
+    <text>How stalkers react to being hit, plus the always-on fixes to the danger check and corpse investigation. The distant-hit response and the player-range tuning toggle below; the crash and misread fixes are locked on and listed. AlifeTactics installs as a runtime patch onto whichever danger script your modpack ships.</text>
+  </string>
+  <string id="ui_mcm_at_danger_sound_desc">
+    <text>How stalkers react to what they hear. Gunfire reactions use your setup's danger config distances; your own noise (movement, handling) uses short built-in radii. Runtime patch onto whichever danger script your modpack ships - works with other combat AI, replaces nothing. Compatible with stealth mods: stealth is about being SEEN (light, cover, stance), and the sound system never touches vision or detection - hearing only adds the short-range sense vanilla lacks, and crouched movement is silent, so a stealth approach plays exactly as your stealth setup intends.</text>
+  </string>
+  <string id="ui_mcm_at_danger_hdr_gunfire">
+    <text>Gunfire</text>
+  </string>
+  <string id="ui_mcm_at_danger_hdr_noise">
+    <text>Your noise</text>
+  </string>
+  <string id="ui_mcm_at_fixes_danger_danger_hit_bypass">
+    <text>Distant hits</text>
+  </string>
+  <string id="ui_mcm_at_fixes_danger_danger_hit_bypass_desc">
+    <text>Vanilla stalkers ignore distant shooters because a distance gate caps the response. With this on a direct hit always registers, so a sniped stalker at 200m turns and seeks cover instead of standing still.</text>
+  </string>
+  <string id="ui_mcm_at_fixes_danger_danger_attack_sound">
+    <text>Enemy gunfire</text>
+  </string>
+  <string id="ui_mcm_at_fixes_danger_danger_attack_sound_desc">
+    <text>Vanilla NPCs ignore gunfire they hear but cannot see. This makes a stalker react to an ENEMY's shots without line of sight: he turns to face the gun and takes a threat stance, and moves to cover once he can see the shooter. He is responding to the sound, not to sight of you. Gunfire from neutral or friendly stalkers, including yours, does not alarm them - that is the engine's relation rule, same as vanilla. Reaction distance follows your setup's danger config.</text>
+  </string>
+  <string id="ui_mcm_at_danger_danger_neutral_gunfire">
+    <text>Neutral gunfire alert</text>
+  </string>
+  <string id="ui_mcm_at_danger_danger_neutral_gunfire_desc">
+    <text>Neutral and friendly stalkers go on alert when you fire close to them - weapon-ready stance, facing your shots - instead of ignoring gunfire next to their heads. Alert is all it is: they do not turn hostile, do not reposition, and settle down when the shooting stops. Short reach, nowhere near combat detection ranges.</text>
+  </string>
+  <string id="ui_mcm_at_danger_danger_move_noise">
+    <text>Movement noise</text>
+  </string>
+  <string id="ui_mcm_at_danger_danger_move_noise_desc">
+    <text>Hostile stalkers hear you move. Each footstep carries a noise radius built from your stance, the surface, and the weather: a 5m walking base, x1.6 sprinting, a 10m jump landing, and crouched movement is fully silent, so sneaking stays a matter of light and cover. Surfaces: metal x1.25, wood x1.15, water x1.35, grass x0.7, dirt and sand x0.8, and rain cuts carry by up to 40 percent. Reaction follows the evidence: a heard walk turns him weapon-ready toward the sound, a sprint or a landing sends him walking over to check the spot. A sound is never treated as a confirmed enemy - he investigates at a walk, never charges, and does not magically know where you are. Only stalkers already hostile to you react, and only outside combat, so stealth stays a game of distance and stance instead of NPCs being deaf.</text>
+  </string>
+  <string id="ui_mcm_at_danger_danger_heard_actions">
+    <text>Handling noise</text>
+  </string>
+  <string id="ui_mcm_at_danger_danger_heard_actions_desc">
+    <text>Hostile stalkers react to hearing you rack a reload, click empty, or use an item nearby. Shorter reach than movement noise: a racked reload carries 8m, an empty click 6m, an item used 5m - and only for sounds their ears actually caught, so a setup that deafens NPC hearing quiets these too. A racked reload or an empty click sends him walking over to check the spot, an item used turns him weapon-ready toward the sound.</text>
+  </string>
+  <string id="ui_mcm_at_danger_danger_noise_mult">
+    <text>Noise carry distance</text>
+  </string>
+  <string id="ui_mcm_at_danger_danger_noise_mult_desc">
+    <text>Scales how far your movement and handling noise carries. Below 1 makes stealth more forgiving, above 1 makes stalkers sharper-eared.</text>
+  </string>
+  <string id="ui_mcm_at_fixes_danger_danger_actor_tables">
+    <text>Player ranges</text>
+  </string>
+  <string id="ui_mcm_at_fixes_danger_danger_actor_tables_desc">
+    <text>Danger caused by you reads the separate actor tables where your setup's danger config differentiates them (some combat AI mods do). Applies only when your installed danger script itself uses those tables - a config that ships the section unused, or with identical tables, keeps its own tuning.</text>
+  </string>
+  <string id="ui_mcm_at_danger_hdr_fixes">
+    <text>Always-on bug fixes (not toggleable)</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_config_isolation">
+    <text>Danger config isolation</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_config_isolation_desc">
+    <text>Three danger categories once read the wrong config rows through a name collision. Each now reads its own rows.</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_corpse_time">
+    <text>Mutant corpse time check</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_corpse_time_desc">
+    <text>A mutant corpse no longer crashes the danger time check.</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_npc_teardown">
+    <text>Torn-down NPC guard</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_npc_teardown_desc">
+    <text>A torn-down NPC reference no longer crashes the danger evaluator.</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_time_value">
+    <text>Danger time validation</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_time_value_desc">
+    <text>A bad danger time value no longer crashes the evaluator.</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_hit_memory">
+    <text>Hit memory integrity</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_hit_memory_desc">
+    <text>The hit callback no longer corrupts danger memory with a missing shooter on every hit.</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_anim_cleanup">
+    <text>Danger animation cleanup</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_anim_cleanup_desc">
+    <text>Danger transitions no longer leave a stale lower-body animation playing.</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_cover_scope">
+    <text>Cover reservation scope</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_cover_scope_desc">
+    <text>Leaving the danger state clears only its own cover reservation instead of wiping every stalker's.</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_corpse_despawn">
+    <text>Corpse despawn safety</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_corpse_despawn_desc">
+    <text>A corpse despawning mid-investigation no longer crashes the investigator.</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_investigator_select">
+    <text>Investigator selection</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_investigator_select_desc">
+    <text>Corpse investigation drives the squad member that found the corpse, not the wrong one.</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_investigate_target">
+    <text>Investigation targeting</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_investigate_target_desc">
+    <text>The investigator walks to the cover it found instead of a cleared spot.</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_config_cache">
+    <text>Danger config caching</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_config_cache_desc">
+    <text>The danger check parses its config strings once instead of re-parsing them on every evaluation.</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_id_reuse">
+    <text>Danger id reuse</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_id_reuse_desc">
+    <text>A dead stalker's scripted danger no longer lingers on its id, so a respawn reusing the id starts clean.</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_corpse_order">
+    <text>Corpse reaction ordering</text>
+  </string>
+  <string id="ui_mcm_at_danger_fix_corpse_order_desc">
+    <text>The corpse reaction no longer crashes when it fires before its investigation stage is set.</text>
+  </string>
+  <!-- ==================== JAMMING PAGE ==================== -->
+  <string id="ui_mcm_at_jam_desc">
+    <text>NPC weapons jam only for real, and reload only when the magazine is spent. On modded exes every NPC rolls a fake per-rank jam from ammo spent, so even a full-condition rifle chokes and reloads every few rounds, and Anomaly has no jam animation to show it. AlifeTactics turns that roll off for NPCs. Your own jams stay vanilla.</text>
+  </string>
+  <string id="ui_mcm_at_fixes_jam_jam_enabled">
+    <text>Suppress NPC jams</text>
+  </string>
+  <string id="ui_mcm_at_fixes_jam_jam_enabled_desc">
+    <text>On: NPC weapons never jam from the modded-exes roll. Off: the modded-exes default runs. Your own weapon jams are unaffected either way.</text>
+  </string>
+  <!-- ==================== AMMO PAGE ==================== -->
+  <string id="ui_mcm_at_ammo_desc">
+    <text>Stalkers fire the ammunition they actually carry. Veteran-rank and higher use the armor-piercing rounds from their own inventory, with real ballistics, and revert to standard rounds when the supply runs out. Each fight has a chance to consume one carried AP box, and faster weapons and lower ranks burn it sooner. The AP comes from the world through trade and looting, so what a stalker scavenged shapes how dangerous he is, and he drops none of it as loot. Rank threshold and drain rate tune in configs/alifetactics/at_ammo.ltx.</text>
+  </string>
+  <string id="ui_mcm_at_fixes_ammo_ammo_enabled">
+    <text>NPC armor-piercing ammo</text>
+  </string>
+  <string id="ui_mcm_at_fixes_ammo_ammo_enabled_desc">
+    <text>On: eligible stalkers load the AP they carry and spend it per fight. Off: every stalker fires vanilla standard rounds and no carried ammo is consumed.</text>
+  </string>
+  <!-- ==================== GEAR PAGE ==================== -->
+  <string id="ui_mcm_at_gear_desc">
+    <text>Items a stalker carries become live combat edges, read from each item's own game data, so any artefact from any mod works. Gravity, chemical, and armour-plate artefacts cut the damage he takes, thermal artefacts tighten his fire, and electric and quest artefacts raise the damage he deals. Any single artefact tops out at 10 percent and never stacks, the strongest source wins, so gear tilts a fight and never decides one. Binoculars extend his sight range by day and night-vision by night, on engine builds with the per-stalker view-distance bind. A stalker with the air warping around him is carrying a real artefact, and killing him is how you get it.</text>
+  </string>
+  <string id="ui_mcm_at_gear_gear_enabled">
+    <text>Carried items empower stalkers</text>
+  </string>
+  <string id="ui_mcm_at_gear_gear_enabled_desc">
+    <text>On: carried artefacts and equipment give their stalker the effects described above. Off: inventory items stay inert loot, exact vanilla.</text>
+  </string>
+  <string id="ui_mcm_at_gear_gear_artefacts_enabled">
+    <text>Artefact effects</text>
+  </string>
+  <string id="ui_mcm_at_gear_gear_artefacts_enabled_desc">
+    <text>On: carried artefacts and armor inserts give their stalker the combat effects described above. Off: artefacts stay inert; binoculars and night-vision keep their own toggles.</text>
+  </string>
+  <string id="ui_mcm_at_gear_gear_aura_enabled">
+    <text>Artefact distortion</text>
+  </string>
+  <string id="ui_mcm_at_gear_gear_aura_enabled_desc">
+    <text>On: a stalker carrying any artefact warps the air around his body, so a carrier is visible and huntable. Off: effects apply with no visual tell.</text>
+  </string>
+  <string id="ui_mcm_at_gear_gear_binoc_enabled">
+    <text>Binocular spotters</text>
+  </string>
+  <string id="ui_mcm_at_gear_gear_binoc_enabled_desc">
+    <text>On: a stalker carrying binoculars sees farther in daylight. Needs an engine build with the per-stalker view-distance bind; inactive on older exes. Off: binoculars stay inert.</text>
+  </string>
+  <string id="ui_mcm_at_gear_gear_nvg_enabled">
+    <text>Night-vision at night</text>
+  </string>
+  <string id="ui_mcm_at_gear_gear_nvg_enabled_desc">
+    <text>On: a stalker carrying a night-vision lamp sees farther during night hours. Needs an engine build with the per-stalker view-distance bind; inactive on older exes. Off: night-vision lamps stay inert.</text>
+  </string>
+  <!-- ==================== DEVELOPMENT PAGE ==================== -->
+  <string id="ui_mcm_at_development_desc">
+    <text>Debug and development tools. DEBUG log level traces every system with timings: maneuver decisions, danger evaluation, disclosure, healing ticks and consumed items, per-shot accuracy, ammo and reload events. Written to alifetactics.log. Tracing has a cost, leave at WARN for normal play.</text>
+  </string>
+  <!-- Development - Logging -->
+  <string id="ui_mcm_at_hdr_logging">
+    <text>Logging</text>
+  </string>
+  <string id="ui_mcm_at_development_log_level">
+    <text>Log level</text>
+  </string>
+  <string id="ui_mcm_at_development_log_level_desc">
+    <text>Log verbosity. ERROR: failures only. WARN: anomalies. INFO: module init and patch installs. DEBUG: full per-event tracing with durations.</text>
+  </string>
+  <string id="ui_mcm_at_development_log_flush">
+    <text>Flush log every line</text>
+  </string>
+  <string id="ui_mcm_at_development_log_flush_desc">
+    <text>Write each log line to disk at once instead of buffering. Turn on when diagnosing a crash so the final lines survive a hard freeze that never reaches the periodic flush. Slower; leave off for normal play.</text>
+  </string>
+  <string id="at_development_log_level_lst_error">
+    <text>Error</text>
+  </string>
+  <string id="at_development_log_level_lst_warn">
+    <text>Warn</text>
+  </string>
+  <string id="at_development_log_level_lst_info">
+    <text>Info</text>
+  </string>
+  <string id="at_development_log_level_lst_debug">
+    <text>Debug</text>
+  </string>
+  <!-- Development - Debug HUD -->
+  <string id="ui_mcm_at_hdr_hud">
+    <text>Debug HUD</text>
+  </string>
+  <string id="ui_mcm_at_development_hud_position">
+    <text>Position</text>
+  </string>
+  <string id="ui_mcm_at_development_hud_position_desc">
+    <text>Live overlay of nearby stalkers: rank and name, health, logic scheme, mental state, and the current target with distance. A green row with the maneuver name in green marks a stalker AlifeTactics is driving, for the maneuver's whole life. Refreshes twice per second and hides while the PDA is open. Pick a corner to show it.</text>
+  </string>
+  <string id="at_development_hud_position_lst_off">
+    <text>Off</text>
+  </string>
+  <string id="at_development_hud_position_lst_topleft">
+    <text>Top Left</text>
+  </string>
+  <string id="at_development_hud_position_lst_topright">
+    <text>Top Right</text>
+  </string>
+  <string id="at_development_hud_position_lst_centerleft">
+    <text>Center Left</text>
+  </string>
+  <string id="at_development_hud_position_lst_centerright">
+    <text>Center Right</text>
+  </string>
+  <string id="at_development_hud_position_lst_bottomleft">
+    <text>Bottom Left</text>
+  </string>
+  <string id="at_development_hud_position_lst_bottomright">
+    <text>Bottom Right</text>
+  </string>
+  <!-- Development - World trace -->
+  <string id="ui_mcm_at_development_world_trace_enabled">
+    <text>World behaviour debug</text>
+  </string>
+  <string id="ui_mcm_at_development_world_trace_enabled_desc">
+    <text>Debug recorder for the physical fight around you. Flags a body that slides (real distance covered with no walk or run animation, including the shove right after a hit) and records shot outcomes: per-rank hit rates split by shooter motion, damage dealt, near misses, and burst lengths per weapon kind, written as tables once a minute. Each line names the system driving that NPC (maneuver, Commitment, or vanilla). Everything goes to alifetactics_world.log. Off costs nothing.</text>
+  </string>
+  <!-- Development - Reset -->
+  <string id="ui_mcm_at_development_btn_reset_all">
+    <text>Reset to defaults</text>
+  </string>
+  <string id="ui_mcm_at_development_btn_reset_all_desc">
+    <text>Restore all AlifeTactics MCM settings to defaults. Use after upgrading from a version with a different MCM structure.</text>
+  </string>
+  <string id="ui_mcm_at_development_reset_warning">
+    <text>Warning: save or discard pending MCM changes first, otherwise they override the reset on the next Accept.</text>
+  </string>
+  <string id="st_at_reset_all_done">
+    <text>AlifeTactics: all settings restored to defaults.</text>
+  </string>
+</string_table>

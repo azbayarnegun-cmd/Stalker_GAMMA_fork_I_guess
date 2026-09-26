@@ -1,0 +1,137 @@
+local loadouts = new_game_loadout_injector_mcm
+
+loadouts.add_item({
+	section = "af_mask_filter_1",
+	points = 50,
+	amount = 3,
+	faction = {
+		"stalker",
+		"bandit",
+		"csky",
+		"army",
+		"renegade",
+	},
+	economy = {
+		"st_econ_1",
+		"st_econ_2",
+		"st_econ_3",
+	}
+})
+
+loadouts.add_item({
+	section = "af_mask_filter_2",
+	points = 50,
+	amount = 3,
+	faction = {
+		"freedom",
+	},
+	economy = {
+		"st_econ_1",
+		"st_econ_2",
+		"st_econ_3",
+	}
+})
+
+loadouts.add_item({
+	section = "af_mask_filter_ms4",
+	points = 50,
+	amount = 3,
+	faction = {
+		"killer",
+	},
+	economy = {
+		"st_econ_1",
+		"st_econ_2",
+		"st_econ_3",
+	}
+})
+
+loadouts.add_item({
+	section = "af_mask_filter_3",
+	points = 50,
+	amount = 3,
+	faction = {
+		"ecolog",
+		"monolith",
+		"greh",
+	},
+	economy = {
+		"st_econ_1",
+		"st_econ_2",
+		"st_econ_3",
+	}
+})
+
+loadouts.add_item({
+	section = "af_mask_filter_2dolg",
+	points = 50,
+	amount = 3,
+	faction = {
+		"dolg",
+	},
+	economy = {
+		"st_econ_1",
+		"st_econ_2",
+		"st_econ_3",
+	}
+})
+
+loadouts.add_item({
+	section = "af_mask_filter_3isg",
+	points = 25,
+	amount = 4,
+	faction = {
+		"isg",
+	},
+	economy = {
+		"st_econ_1",
+		"st_econ_2",
+		"st_econ_3",
+	}
+})
+
+loadouts.add_item({
+	section = "af_mask_filter_r18",
+	points = 75,
+	amount = 1,
+	faction = {
+		"killer",
+	},
+	economy = {
+		"st_econ_1",
+		"st_econ_2",
+		"st_econ_3",
+	}
+})
+
+loadouts.add_item({
+	section = "af_mask_filter_homemade",
+	points = 10,
+	amount = 1,
+	faction = {
+		"csky",
+		"stalker",
+		"renegade",
+	},
+	economy = {
+		"st_econ_1",
+		"st_econ_2",
+		"st_econ_3",
+	}
+})
+
+loadouts.add_item({
+	section = "af_oxygen_tank_3",
+	points = 0,
+	amount = 1,
+	faction = {
+		"ecolog",
+	},
+	add_to_inventory = true,
+	economy = {
+		"st_econ_1",
+		"st_econ_2",
+		"st_econ_3",
+	}
+})
+

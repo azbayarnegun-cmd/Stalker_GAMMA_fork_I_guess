@@ -1,0 +1,51 @@
+<w>
+	<!-- ============================================================
+	     ZONE GRID
+
+	     These nodes exist for one reason: TEXT.
+
+	     Every other rectangle this mod draws - the four lines round a
+	     section and the header bar under its name - is a plain static, and those are made from the CONTAINER'S own xml
+	     node, which is guaranteed to exist because the game built the
+	     container from it. A static made that way takes a texture, a
+	     size, a position and a colour, and that is all any of them need.
+
+	     A caption is the exception. Text carries a FONT and a COLOUR,
+	     and both of those live in the xml rather than in the script - so
+	     one node per section, because the captions are not one colour.
+
+	     TWO SECTIONS, ONE AT A TIME. The backpack's, and the pockets'
+	     for when no backpack is on. Only one of them is ever on screen.
+
+	     letterica16 is the font the inventory itself uses for nearly
+	     everything; "small" is not a font this game has, whatever it
+	     appears to do.
+
+	     The colours are the player's - "pockets milkysh pink ...
+	     backpack dark green" - lifted a little from the values the
+	     borders use, because a caption has to read on a dark bar
+	     and a border only has to be seen.
+
+	     The numbers are placeholders. The draw pass overwrites position
+	     and size every frame from the player's own cell size, so the
+	     inventory can be set to any scale and the header still lands on
+	     the section it belongs to. What matters is that each node
+	     EXISTS: InitTextWnd on a path this file does not declare is a
+	     hard failure in game, and the draw runs inside a pcall, so the
+	     symptom would be a header that silently never appears.
+	     ============================================================ -->
+	<grid>
+		<hdr x="0" y="0" width="100" height="16">
+			<text align="c" vert_align="c" font="letterica16"
+			      r="230" g="230" b="230" a="255"/>
+		</hdr>
+		<hdr_pouches x="0" y="0" width="100" height="16">
+			<text align="c" vert_align="c" font="letterica16"
+			      r="240" g="212" b="219" a="255"/>
+		</hdr_pouches>
+		<hdr_backpack x="0" y="0" width="100" height="16">
+			<text align="c" vert_align="c" font="letterica16"
+			      r="142" g="198" b="147" a="255"/>
+		</hdr_backpack>
+	</grid>
+</w>

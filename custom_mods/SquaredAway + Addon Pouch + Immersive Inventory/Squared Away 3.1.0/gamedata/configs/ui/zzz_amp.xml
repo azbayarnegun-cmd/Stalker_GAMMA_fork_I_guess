@@ -1,0 +1,846 @@
+<w>
+	<!-- ============================================================
+	     ARMOR MAG POUCHES
+
+	     The rig is a utils_ui.UICellContainer built in MANUAL mode, so
+	     the base class reads its cell nodes from OWNER.xml -
+	     ui_inventory.xml, which knows nothing about this mod. The script
+	     swaps the owner's xml for this file for the duration of the
+	     constructor and puts it straight back, exactly as
+	     UIInventory:InitControls already does to build its small-icon and
+	     vertical-equipment variants out of separate files.
+
+	     Every size and position here is a placeholder: the draw pass
+	     overwrites all of them each frame, reading the player's actual
+	     icon size off the equipment container so the rig matches whatever
+	     the inventory is set to. What matters is that each node EXISTS -
+	     InitStatic on a path this file does not declare is a hard failure,
+	     and the draw pass runs inside a pcall, so the symptom would be a
+	     panel that silently never appears.
+
+	     cell_1..cell_32 is the pool; MAX_SLOTS in the script must never
+	     exceed it.
+
+	     The bare <cell> node is not decoration. UICellItem:Add_Upgrade
+	     asks for "<path>:cell:upgrade" with "cell" HARDCODED, whatever the
+	     real cell index is.
+	     ============================================================ -->
+	<amp>
+		<bg x="0" y="0" width="10" height="10" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</bg>
+		<title x="0" y="0" width="10" height="14">
+			<text align="l" vert_align="c" font="letterica16"/>
+		</title>
+		<!-- The close box. A SEPARATE static rather than an "[x]" glued to
+		     the end of the title string: the title is left-aligned, so a
+		     glyph inside it sits wherever the caption happens to end, while
+		     the hit test is a fixed square in the top-right corner. Drawing
+		     a control in one place and clicking it in another is the bug
+		     this project keeps re-learning. -->
+		<!-- Overlays drawn ON TOP of a magazine icon: ammo type, round
+		     count, and a fill bar. Own statics rather than the base class's
+		     condition bar and stack counter, because those come from xml
+		     schemas (InitProgressBar's background/progress children) that
+		     have never been verified against a real utils.xml - and this
+		     mod has already lost three builds to unverifiable xml. A plain
+		     rect and a text window are things it can be certain about. -->
+		<ovl_txt x="0" y="0" width="41" height="11">
+			<text align="c" vert_align="c" font="letterica16"/>
+		</ovl_txt>
+		<ovl_bar x="0" y="0" width="41" height="3" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</ovl_bar>
+		<!-- THE CONDITION BAR, COPIED FROM THE ONE ON AN EQUIPMENT
+		     CELL. Not a rectangle that looks like it: a real
+		     CUIProgressBar with the game's own status-bar texture,
+		     built with InitProgressBar and driven with
+		     SetProgressPos, so the rig slot wears the same bar the
+		     outfit slot above it does.
+
+		     COPIED AND NOT REFERENCED, the same rule the count plate
+		     below was copied under: ui_inventory.xml belongs to
+		     whichever UI pack is installed, and reaching into
+		     another file's paths is how a mod breaks the day that
+		     file changes. x and y are dropped because this file
+		     places every rectangle itself. -->
+		<rigbar width="48" height="6" horz="1" min="0" max="1" pos="0" stretch="1">
+			<progress stretch="1">
+				<texture r="142" g="149" b="149">ui_inGame2_inventory_status_bar</texture>
+			</progress>
+		</rigbar>
+		<!-- ...AND THE PART DOT, which is Item UI Improvements' own
+		     cond_dot: a minimap point tinted by the part's
+		     condition. Same texture, same size, same colours, so the
+		     dots on a rig lying in your bag and the dots on the same
+		     rig in the slot are the same dots. -->
+		<rigdot width="3" height="4" stretch="1">
+			<texture r="255" g="255" b="255">ui_minimap_point</texture>
+		</rigdot>
+		<close x="0" y="0" width="14" height="14" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+			<text align="c" vert_align="c" font="letterica16"/>
+		</close>
+		<!-- The pin, immediately left of the close box. Its own node
+		     rather than a second amp:close: two controls that are drawn
+		     in different places, tinted differently and answer different
+		     clicks should not share one name, and a test that intercepts
+		     one of them by path must not silently catch the other. -->
+		<pin x="0" y="0" width="14" height="14" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+			<text align="c" vert_align="c" font="letterica16"/>
+		</pin>
+		<!-- The magazine in hand while it is being dragged from one pocket
+		     to another. Its own node rather than borrowing amp:cont:cell:pic:
+		     that one belongs to the cell container and is reached through
+		     the container's xml, while this is created directly on the
+		     equipment dialog so it can be drawn OUTSIDE the container -
+		     which is the whole point, since a drag has to cross the panel
+		     edge to reach the inventory grid. -->
+		<drag x="0" y="0" width="82" height="41" stretch="1"/>
+		<!-- An empty pocket. Pooled and moved by the draw pass; a rig that
+		     did not show its empty slots would read as a list. -->
+		<slot x="0" y="0" width="82" height="41" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</slot>
+		<!-- ============================================================
+		     THE FAINT LINES INSIDE A POCKET: which squares of the grid
+		     it is standing on.
+
+		       "thin borders and even thinner an bearly visible grid"
+
+		     THREE NODES FOR ONE PICTURE, one per place a pocket is
+		     drawn, because that is the rule this file already lives by:
+		     two controls drawn in different places, tinted differently
+		     and counted separately do not share a name. The first
+		     version of this borrowed amp:slot and every suite that
+		     counts pockets by path counted the lines as pockets.
+		     ============================================================ -->
+		<slotline x="0" y="0" width="41" height="1" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</slotline>
+		<winline x="0" y="0" width="41" height="1" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</winline>
+		<tipline x="0" y="0" width="41" height="1" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</tipline>
+		<!-- A POUCH SLOT: one of the two 1x1 slots a rig has for the
+		     magazine mod's own pouches.
+
+		     INSIDE <amp>, because the script asks for it as "amp:pouch"
+		     and that path is resolved from the root. Declared as a
+		     SIBLING of <amp> - which is where it was first written - no
+		     path the script uses reaches it, and InitStatic on a path
+		     this file does not declare is a hard failure. The test
+		     harness matched it by name and never saw the difference.
+
+		     Its own node rather than a second amp:slot: it is drawn in
+		     its own place, answers its own click and takes a different
+		     item, and two controls like that sharing one name is how a
+		     test that intercepts one silently catches the other. -->
+		<pouch x="0" y="0" width="41" height="41" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</pouch>
+		<!-- THE MED POCKET, in its own row under the pockets. Its own
+		     node for exactly the reason the one above gives: it is drawn
+		     in its own place, answers its own click and takes a
+		     different item. Sharing amp:slot made the harness count its
+		     border and its inside as two more magazine pockets, and
+		     every geometry assertion in the suite went with them. -->
+		<med x="0" y="0" width="82" height="82" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</med>
+		<!-- ============================================================
+		     THE STACK NUMBER, EXACTLY AS THE INVENTORY DRAWS ONE
+
+		     Copied from utils.xml's <cnt>, which UICellItem:Add_Counter
+		     builds onto the icon and writes with
+		     TextControl():SetText("x" .. n):
+
+		         <cnt x="-1" y="-1" width="18" height="10" stretch="1">
+		           <texture a="200">ui_item_count_back</texture>
+		           <text ... font="arial_14" color="ui_2" align="c"
+		                 vert_align="c"/>
+		         </cnt>
+
+		     COPIED AND NOT REFERENCED. utils.xml belongs to the game;
+		     reaching into another file's paths is how a mod breaks the
+		     day that file changes. x and y are dropped because this
+		     file positions every square itself.
+
+		     TWO NODES, one per layer, for the reason every node in this
+		     file has its own: anything reading the tree classifies a
+		     static by the path it was made with, and a panel counter
+		     and a window counter that shared one would be the same
+		     control to every test that looks.
+
+		     IT IS A STATIC. A <text> child reached through InitStatic
+		     gives a CUIStatic, which has no SetText - so these are
+		     written with A.wglyph, never A.wtext. The audit checks it.
+		     ============================================================ -->
+		<cnt width="18" height="10" stretch="1">
+			<texture a="200">ui_item_count_back</texture>
+			<text x="0" y="0" width="18" height="10" font="arial_14" color="ui_2" align="c" vert_align="c"/>
+		</cnt>
+		<!-- ...AND A THIRD, for the weight of what is in a box. Same
+		     plate as the two above and its own node for the same
+		     reason they are two: it is drawn somewhere else, on
+		     something else, and a test that intercepts one must not
+		     silently catch the others. -->
+		<boxwt width="18" height="10" stretch="1">
+			<texture a="200">ui_item_count_back</texture>
+			<text x="0" y="0" width="18" height="10" font="arial_14" color="ui_2" align="c" vert_align="c"/>
+		</boxwt>
+		<wincnt width="18" height="10" stretch="1">
+			<texture a="200">ui_item_count_back</texture>
+			<text x="0" y="0" width="18" height="10" font="arial_14" color="ui_2" align="c" vert_align="c"/>
+		</wincnt>
+		<!-- THE RIG SLOT, beside the panel. Its own node, not a second
+		     amp:pouch: it is a different size, answers a different click
+		     and holds a different item, and anything reading the tree -
+		     the test harness included - classifies these statics by the
+		     path they were created with. Sharing one made the harness
+		     count the rig slot as a third pouch slot, which is the same
+		     miscount that cost a build when the pouch slots first
+		     borrowed amp:slot. -->
+		<rig x="0" y="0" width="41" height="62" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</rig>
+		<!-- ============================================================
+		     THE RIG TOOLTIP: a picture of what is inside a rig that is
+		     not on your chest.
+
+		     Four nodes, pooled by the script: the card behind it, one
+		     box per pocket, one picture per filled pocket, and a label.
+		     They are created the first time a rig is hovered, which is
+		     after everything else this mod attaches - and draw order
+		     among siblings is attach order, so the card lands on top of
+		     the panel rather than under it.
+
+		     Plain rects and a plain picture, like every other static in
+		     this file: nothing here is an xml schema this project
+		     cannot verify.
+		     ============================================================ -->
+		<tipbg x="0" y="0" width="120" height="80" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</tipbg>
+		<!-- ============================================================
+		     THE OPEN-RIG WINDOW: a rig you are not wearing, laid open so
+		     its magazines can be taken out and put back without putting
+		     it on.
+
+		     Its own nodes, not the panel's. The panel's statics are
+		     pooled by the draw pass and moved every frame; two windows
+		     sharing one pool is how one of them ends up drawn inside the
+		     other. And a test that intercepts a control by path must not
+		     silently catch the other window's.
+		     ============================================================ -->
+		<!-- The window's edge: a plain rect drawn a couple of pixels
+		     bigger than the background and behind it, so what shows is
+		     a border. ONE PIXEL of one grey, on rigs and boxes alike -
+		     it used to be two pixels of the rig's tier colour, and what
+		     was asked for is "thin grey on both". -->
+		<winedge x="0" y="0" width="200" height="200" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</winedge>
+		<winbg x="0" y="0" width="200" height="200" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</winbg>
+		<winbox x="0" y="0" width="41" height="82" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</winbox>
+		<!-- A pocket's INTERIOR, drawn one pixel inside its winbox. The
+		     pair is what makes a pocket read as a pouch with a thin
+		     bright edge rather than a flat block of colour - the same
+		     shape the panel draws, so one rig looks like one rig
+		     wherever it is on screen.
+
+		     Its own node rather than a second winbox: the two are
+		     tinted differently, counted separately and asserted on
+		     separately, and anything reading this tree classifies a
+		     static by the path it was made with. -->
+		<winfill x="0" y="0" width="41" height="82" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</winfill>
+		<winico x="0" y="0" width="41" height="82" stretch="1"/>
+		<!-- THE MED POCKET INSIDE AN OPEN RIG WINDOW, and its icons.
+		     Their own nodes for the reason every node in this file has
+		     its own: anything reading the tree - the suite included -
+		     classifies a static by the path it was made with, and
+		     sharing amp:winbox made the med pocket's border count as a
+		     fourth magazine pocket in every geometry assertion. -->
+		<winmed x="0" y="0" width="82" height="82" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</winmed>
+		<winmedico x="0" y="0" width="41" height="41" stretch="1"/>
+		<!-- ============================================================
+		     THE INSIDE OF A BOX
+
+		     A box's grid is drawn as ONE PANEL with lines on it rather
+		     than as a rectangle per square:
+
+		       boxarea  the panel the squares stand on, and the block
+		                that shows where the thing in your hand would go
+		       boxline  the edge round it, the seam between one square
+		                and the next, and the edge of that block
+
+		     THEIR OWN NAMES, not winbox and winfill. Those two are a
+		     RIG's pockets and are counted, tinted and asserted on as
+		     pockets; a suite that counted squares would have counted
+		     these. It is the same rule the three *line nodes above were
+		     added under.
+		     ============================================================ -->
+		<boxarea x="0" y="0" width="200" height="200" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</boxarea>
+		<boxline x="0" y="0" width="200" height="1" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</boxline>
+		<!-- The hairline under a window's title, so the strip reads as a
+		     header without a bar being painted behind it. -->
+		<winrule x="0" y="0" width="200" height="1" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</winrule>
+		<!-- LETTERICA16, the font the category headers use and the one
+		     the middle column's two labels were moved to. This is a
+		     window title; it reads as another mod's furniture in
+		     `small`. Made with InitTextWnd, not InitStatic - a static
+		     does not answer SetText. -->
+		<wintxt x="0" y="0" width="200" height="18">
+			<text align="l" vert_align="c" font="letterica16"/>
+		</wintxt>
+		<!-- A tinted box with a glyph on it, so it stays a STATIC and
+		     the x goes on through TextControl(). -->
+		<!-- ONE SHEET'S NAME, along its edge, in letterica16 like
+		     everything else in this file.
+
+		     This node once said `small`, and argued for it: a fan sits
+		     on a fifteen pixel pitch, and a title font on that pitch
+		     is two rows of text in the room for one. Both halves were
+		     true and the conclusion was backwards - the pitch was
+		     fifteen BECAUSE the font was small. The font is the fixed
+		     thing; FAN_PITCH grew to eighteen to hold it. -->
+		<fantxt x="0" y="0" width="220" height="13">
+			<text align="l" vert_align="c" font="letterica16"/>
+		</fantxt>
+		<winclose x="0" y="0" width="16" height="16" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+			<text align="c" vert_align="c" font="letterica16"/>
+		</winclose>
+		<winghost x="0" y="0" width="82" height="41" stretch="1"/>
+		<tipbox x="0" y="0" width="41" height="82" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</tipbox>
+		<!-- The tooltip pocket's interior. See amp:winfill. -->
+		<tipfill x="0" y="0" width="41" height="82" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</tipfill>
+		<tipico x="0" y="0" width="41" height="82" stretch="1"/>
+		<tiptxt x="0" y="0" width="180" height="14">
+			<text align="l" vert_align="c" font="letterica16"/>
+		</tiptxt>
+		<!-- THE MED POCKET ON THE CARD: border and interior (one node,
+		     two tints - the same way amp:med serves the panel), its
+		     icons, and the same counter plate as everywhere else. -->
+		<tipmed x="0" y="0" width="41" height="82" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</tipmed>
+		<tipmedico x="0" y="0" width="41" height="82" stretch="1"/>
+		<!-- THE POUCH FIT SLOTS on the card: one node for border and
+		     interior (two tints), one for the fitted pouch's icon. -->
+		<tipslot x="0" y="0" width="41" height="82" stretch="1">
+			<texture>ui_inGame2_white_rect</texture>
+		</tipslot>
+		<tipslotico x="0" y="0" width="41" height="82" stretch="1"/>
+		<tipcnt width="18" height="10" stretch="1">
+			<texture a="200">ui_item_count_back</texture>
+			<text x="0" y="0" width="18" height="10" font="arial_14" color="ui_2" align="c" vert_align="c"/>
+		</tipcnt>
+
+		<!-- THE POCKETS' CONTAINER.
+
+		     scroll_profile="hidden" is why there is no scroll bar in it.
+		     A CUIScrollView draws its own bar - with arrows - whenever it
+		     thinks its content is taller than its view, and this one's
+		     content is placed by hand, so what it "thinks" bears no
+		     relation to what is on screen: the bar turned up across the
+		     fourth pocket on a small rig and vanished on a big one.
+		     always_show_scroll="0" does not stop it and neither does
+		     disabling scrolling, which only greys the bar out.
+
+		     The name is not invented: ui_inventory.xml uses exactly this
+		     profile on the upgrade scheme, in the file the game is
+		     loading right now, for the same reason.
+
+		     The sizes here are placeholders like every other in this
+		     file - the draw pass sets them - but they are roomy enough
+		     that nothing overflows before it gets there. -->
+		<cont x="0" y="0" width="400" height="400">
+			<st x="0" y="0" width="400" height="400"/>
+			<scroll x="0" y="0" width="400" height="400" right_ident="0" left_ident="0" top_indent="0" bottom_indent="0" vert_interval="0" always_show_scroll="0" scroll_profile="hidden"/>
+			<cell x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell>
+			<cell_1 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_1>
+			<cell_2 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_2>
+			<cell_3 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_3>
+			<cell_4 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_4>
+			<cell_5 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_5>
+			<cell_6 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_6>
+			<cell_7 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_7>
+			<cell_8 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_8>
+			<cell_9 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_9>
+			<cell_10 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_10>
+			<cell_11 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_11>
+			<cell_12 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_12>
+			<cell_13 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_13>
+			<cell_14 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_14>
+			<cell_15 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_15>
+			<cell_16 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_16>
+			<cell_17 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_17>
+			<cell_18 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_18>
+			<cell_19 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_19>
+			<cell_20 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_20>
+			<cell_21 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_21>
+			<cell_22 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_22>
+			<cell_23 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_23>
+			<cell_24 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_24>
+			<cell_25 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_25>
+			<cell_26 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_26>
+			<cell_27 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_27>
+			<cell_28 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_28>
+			<cell_29 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_29>
+			<cell_30 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_30>
+			<cell_31 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_31>
+			<cell_32 x="0" y="0" width="82" height="41">
+			<highlight x="0" y="0" width="82" height="41" stretch="1">
+				<texture>ui_inGame2_white_rect</texture>
+			</highlight>
+			<pic x="0" y="0" width="82" height="41" stretch="1"/>
+			<bar x="0" y="0" width="82" height="4" horz="1" min="0" max="1"/>
+			<cnt x="0" y="0" width="82" height="14">
+				<text align="r" vert_align="b" font="letterica16"/>
+			</cnt>
+			<ctxt x="0" y="0" width="82" height="14">
+				<text align="l" vert_align="t" font="letterica16"/>
+			</ctxt>
+			<upgrade x="0" y="0" width="10" height="10" stretch="1"/>
+			</cell_32>
+		</cont>
+	</amp>
+</w>

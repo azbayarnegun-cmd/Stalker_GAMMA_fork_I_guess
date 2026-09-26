@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+  <string id="ui_mcm_menu_AmpLayers">
+    <text>Layered Inventory</text>
+  </string>
+  <string id="ui_mcm_AmpLayers_layers_general">
+    <text>Layered inventory</text>
+  </string>
+  <string id="ui_mcm_AmpLayers_layers_general_layers_enable">
+    <text>Enable equipment layers</text>
+  </string>
+  <string id="ui_mcm_AmpLayers_layers_general_layers_autoloot">
+    <text>Route looted items into fitted pouches</text>
+  </string>
+  <string id="ui_mcm_AmpLayers_layers_general_layers_debug">
+    <text>Debug logging</text>
+  </string>
+  <string id="st_amp_layer_mount">
+    <text>Fit to equipment</text>
+  </string>
+  <string id="st_amp_layer_unmount">
+    <text>Remove from equipment</text>
+  </string>
+  <string id="st_amp_layer_equip_belt">
+    <text>Equip belt platform</text>
+  </string>
+  <string id="st_amp_layer_unequip_belt">
+    <text>Unequip belt platform</text>
+  </string>
+  <string id="st_amp_layer_open">
+    <text>Open fitted pouches</text>
+  </string>
+  <string id="st_amp_layer_strip_empty">
+    <text>Remove empty pouches</text>
+  </string>
+  <string id="st_amp_layer_no_slot">
+    <text>No compatible attachment slot is available</text>
+  </string>
+  <string id="st_amp_layer_not_empty">
+    <text>Empty the pouch before removing it</text>
+  </string>
+  <string id="st_amp_belt_name">
+    <text>Modular equipment belt</text>
+  </string>
+  <string id="st_amp_belt_descr">
+    <text>A load-bearing belt with two attachment points.</text>
+  </string>
+  <string id="st_amp_pouch_magazine_name">
+    <text>Magazine pouch</text>
+  </string>
+  <string id="st_amp_pouch_magazine_descr">
+    <text>A pouch for magazines.</text>
+  </string>
+  <string id="st_amp_pouch_grenade_name">
+    <text>Grenade pouch</text>
+  </string>
+  <string id="st_amp_pouch_grenade_descr">
+    <text>A pouch for grenades.</text>
+  </string>
+  <string id="st_amp_pouch_medical_name">
+    <text>Medical pouch</text>
+  </string>
+  <string id="st_amp_pouch_medical_descr">
+    <text>A pouch for medical supplies.</text>
+  </string>
+  <string id="st_amp_pouch_admin_name">
+    <text>Administrative pouch</text>
+  </string>
+  <string id="st_amp_pouch_admin_descr">
+    <text>A pouch for documents and PDAs.</text>
+  </string>
+  <string id="st_amp_pouch_universal_name">
+    <text>Universal pouch</text>
+  </string>
+  <string id="st_amp_pouch_universal_descr">
+    <text>A general-purpose pouch.</text>
+  </string>
+  <string id="st_amp_pouch_universal_s_name">
+    <text>Small universal pouch</text>
+  </string>
+  <string id="st_amp_pouch_universal_s_descr">
+    <text>A compact 2 by 2 general-purpose pouch.</text>
+  </string>
+  <string id="st_amp_pouch_universal_l_name">
+    <text>Large universal pouch</text>
+  </string>
+  <string id="st_amp_pouch_universal_l_descr">
+    <text>A 5 by 4 general-purpose pouch.</text>
+  </string>
+  <string id="st_amp_pouch_sustainment_name">
+    <text>Sustainment pouch</text>
+  </string>
+  <string id="st_amp_pouch_sustainment_descr">
+    <text>A backpack pouch for food and drinks.</text>
+  </string>
+  <string id="st_amp_pouch_dump_name">
+    <text>Dump pouch</text>
+  </string>
+  <string id="st_amp_pouch_dump_descr">
+    <text>A belt pouch for empty magazines.</text>
+  </string>
+</string_table>

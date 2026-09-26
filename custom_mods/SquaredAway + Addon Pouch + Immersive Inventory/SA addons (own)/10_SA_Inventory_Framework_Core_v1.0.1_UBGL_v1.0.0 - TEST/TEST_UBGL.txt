@@ -1,0 +1,18 @@
+UNDERBARREL YELLOW-POCKET TEST
+
+Disable the original 10_SA_Inventory_Framework_Core_v1.0.1 - STABLE and use
+this replacement in the same position. Do not enable any 62 reload override.
+Keep versions 20, 30, 40 and 50 exactly as in the Stable baseline.
+
+1. Put VOG-25 or M203/M209 ammunition only in general inventory.
+2. Switch a compatible rifle into underbarrel grenade mode and tap Reload.
+   Expected: reload is blocked.
+3. Move a matching round into a yellow rig pocket and tap Reload.
+   Expected: reload works.
+
+Expected load marker:
+  StableCore-1.0.1 + UBGLReload-1.0.0
+
+If a refused reload still starts, send the log containing both:
+  reload gate: REFUSED
+  reload gate: ...and it reloaded ANYWAY

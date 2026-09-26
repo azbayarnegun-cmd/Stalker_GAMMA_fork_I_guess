@@ -1,0 +1,9 @@
+<w>
+ 
+	<file name="ui\ui_toxic_air">
+		<texture id="ui_toxic_air_bg"			x="0" y="0" width="80" height="10" />
+		<texture id="ui_toxic_air_bar"			x="0" y="11" width="80" height="10" />
+		<texture id="ui_toxic_air_mask"		x="0" y="24" width="88" height="104" />
+	</file>
+
+</w>

@@ -1,0 +1,344 @@
+--- ap_ext_causes_area: AREA generator. Three radiant 1:1 causes — area_conquer (human empty smart),
+--- area_swarm (mutant empty smart), area_infest (mutant lair/surge). RULES and SCAN live here
+--- per radiant invariants 4 + 5 + 10. Mutants try INFEST and SWARM in randomized order so
+--- neither has a structural first-pick advantage. Humans only check CONQUER. Both mutant causes
+--- gate on ap_ext_smart_mutator.INFEST_SPECIES (bosses and trash mobs never take territory), and
+--- every target filter skips taken smarts via is_taken (takeovers end by decay, not by retake).
+
+local math_random, pairs = math.random, pairs
+local xobject, xsquad, xsmart, xtime, xlevel, xcreature, xtable = xobject, xsquad, xsmart, xtime, xlevel, xcreature, xtable
+local ap_core_debug, ap_core_limiter, ap_core_util, ap_core_producer = ap_core_debug, ap_core_limiter, ap_core_util, ap_core_producer
+local ap_core_cache, ap_ext_util, ap_ext_tracker = ap_core_cache, ap_ext_util, ap_ext_tracker
+
+local CAUSE = ap_core_const.CAUSE
+local CAUSE_TYPE = ap_core_const.CAUSE_TYPE
+local CAUSE_CATEGORY = ap_core_const.CAUSE_CATEGORY
+local CATEGORY = CAUSE_CATEGORY.OPPORTUNITIES
+local CAP_KEY = "cause_max_opportunities"
+local MAX_SCANS_PER_GENERATOR = ap_core_const.RADIANT_MAX_SCANS_PER_GENERATOR
+local RESULT = ap_core_const.RESULT
+local REASON = ap_core_const.REASON
+local RANGE_EYE = ap_core_const.RANGE_EYE
+local HOURS_TO_SECONDS = ap_core_const.HOURS_TO_SECONDS
+local PERSONALITY = ap_ext_const.PERSONALITY
+
+local LOG_INIT = ap_core_debug.bracket(CAUSE_CATEGORY.OPPORTUNITIES)
+local LOG_CONQUER = ap_core_debug.bracket(CAUSE.AREA_CONQUER)
+local LOG_SWARM   = ap_core_debug.bracket(CAUSE.AREA_SWARM)
+local LOG_INFEST  = ap_core_debug.bracket(CAUSE.AREA_INFEST)
+
+local EN_CONQUER = "cause_area_conquer_enabled"
+local EN_SWARM   = "cause_area_swarm_enabled"
+local EN_INFEST  = "cause_area_infest_enabled"
+
+local CONQUER_FIELD = "last_area_conquer_at"
+local SWARM_FIELD   = "last_area_swarm_at"
+local INFEST_FIELD  = "last_area_infest_at"
+
+local cfg = ap_core_mcm.cfg
+
+local _alignment_mutant = ap_ext_const.alignment_mutant
+local _alignment_conquer_human = xtable.subtract(ap_ext_const.alignment_human, { ["ecolog"] = true })
+local _alignment_mutant_feral    = ap_ext_const.alignment_mutant_feral
+local _alignment_mutant_predator = ap_ext_const.alignment_mutant_predator
+local _alignment_mutant_aberrant = ap_ext_const.alignment_mutant_aberrant
+local _alignment_conquer_mutant = xtable.merge(
+    _alignment_mutant_feral,
+    _alignment_mutant_predator,
+    _alignment_mutant_aberrant)
+
+local _personality_conquer = { PERSONALITY.TERRITORY, PERSONALITY.AGGRESSION }
+local _personality_infest  = { PERSONALITY.TERRITORY, PERSONALITY.SURVIVAL }
+
+local _is_field_smart = ap_ext_util.is_field_smart
+local _is_last_faction_smart = ap_ext_util.is_last_faction_smart
+
+-- Human-only. No accepts_faction; engine's has_jobs_for self-rejects mismatched stalker
+-- communities on arrival (release_no_jobs). xsmart.has_jobs_for cite: stalker job assignment
+-- requires smart.props[community] to be set; mismatch yields nil job, has_jobs_for false.
+-- is_taken skips smarts under a live mutation (other than this faction's own conquest, which
+-- refreshes) -- takeovers end by decay, never by another takeover.
+local function _build_conquer_filter(player_id)
+    local mutator = ap_ext_smart_mutator
+    return function(smart)
+        if not xsmart.is_smart_empty(smart.id) then return false end
+        if not _is_field_smart(smart) then return false end
+        if mutator.is_taken(smart.id, mutator.MUT_CONQUEST, player_id) then return false end
+        return not _is_last_faction_smart(smart)
+    end
+end
+
+-- Mutant variant of conquer. Needs upfront accepts_faction because mob_home stubs are
+-- oversupplied for mutants (gulag_general.script:1018-1022) so has_jobs_for rarely rejects.
+-- Without this gate, dispatched mutant dwells at a species-mismatched smart until pre_release_gulag.
+-- is_taken keys on the SPECIES (swarm identity), so a same-species re-swarm refreshes while any
+-- other live mutation blocks the smart.
+local function _make_swarm_filter(player_id, species)
+    local mutator = ap_ext_smart_mutator
+    return function(smart)
+        if not xsmart.is_smart_empty(smart.id) then return false end
+        if not _is_field_smart(smart) then return false end
+        if mutator.is_taken(smart.id, mutator.MUT_SWARM, species) then return false end
+        return xsmart.accepts_faction(smart, player_id) and not _is_last_faction_smart(smart)
+    end
+end
+
+local function _make_lair_filter(player_id)
+    return function(smart)
+        return xsmart.is_lair(smart) and _is_field_smart(smart) and xsmart.accepts_faction(smart, player_id)
+            and not _is_last_faction_smart(smart)
+    end
+end
+
+local function _make_surge_filter(player_id)
+    return function(smart)
+        return xsmart.has_surge_shelter(smart) and _is_field_smart(smart) and xsmart.accepts_faction(smart, player_id)
+            and not _is_last_faction_smart(smart)
+    end
+end
+
+local function _make_lair_or_surge_filter(player_id)
+    return function(smart)
+        return (xsmart.is_lair(smart) or xsmart.has_surge_shelter(smart)) and _is_field_smart(smart) and xsmart.accepts_faction(smart, player_id)
+            and not _is_last_faction_smart(smart)
+    end
+end
+
+local function _resolve_infest_filter(species, player_id)
+    if _alignment_mutant_feral[species]    then return _make_lair_filter(player_id) end
+    if _alignment_mutant_predator[species] then return _make_lair_or_surge_filter(player_id) end
+    if _alignment_mutant_aberrant[species] then return _make_surge_filter(player_id) end
+    return nil
+end
+
+-- =========================================================================
+-- Level census (the saturation gate, user rulings 2026-08-01)
+-- =========================================================================
+-- Per-level squad census by community, from the ap_core_cache per-level bucket: total squads,
+-- per-community counts, mutant total. Rebuilt lazily after CENSUS_TTL_SEC real seconds (os.clock
+-- rate-limit guard); presence changes at squad-travel speed, so 10-minute staleness is invisible
+-- to an expansion gate. nil before the bucket exists (early load) -- the share check PASSES on a
+-- nil census: no data must not block anyone.
+local CENSUS_TTL_SEC = 600
+local _census = {}
+
+-- @cost O(squads on level) | 1 luabind medium (alife_object) per squad, once per level per TTL
+local function _build_census(level_id)
+    local pool = ap_core_cache.squads_on_level(level_id)
+    if not pool then return nil end
+    local by_comm, total, mutant = {}, 0, 0
+    for squad_id in pairs(pool) do
+        local squad = xobject.se(squad_id)
+        local comm = squad and squad.player_id
+        if comm then
+            total = total + 1
+            by_comm[comm] = (by_comm[comm] or 0) + 1
+            if _alignment_mutant[comm] then mutant = mutant + 1 end
+        end
+    end
+    return { at = os.clock(), total = total, mutant = mutant, by_comm = by_comm }
+end
+
+local function _get_census(level_id)
+    local census = _census[level_id]
+    if census and os.clock() - census.at < CENSUS_TTL_SEC then return census end
+    census = _build_census(level_id)
+    _census[level_id] = census
+    return census
+end
+
+-- Inverse-share eligibility: pass chance = 1 - own share of the level's squad population. A
+-- zero-presence side always passes (intruders always have a door), the dominant side passes
+-- rarely but is never banned (user ruling: less, not never).
+local function _check_census_share(census, count)
+    if not census or census.total == 0 then return true end
+    local share = count / census.total
+    return math_random() >= share
+end
+
+local function _squad_has_alpha(squad)
+    for member_id in xsquad.iter_member_ids(squad) do
+        if ap_ext_tracker.is_alpha(member_id) then return true end
+    end
+    return false
+end
+
+local function _read_dto_field(squad_id, field, now)
+    local opp_dto = ap_ext_tracker.get_squad_opportunities(squad_id)
+    if not opp_dto then opp_dto = ap_ext_tracker.init_squad_opportunities(squad_id, now) end
+    return opp_dto[field] or 0
+end
+
+-- Per-cause RULES + SCAN. Returns publish payload (with .cause) on SUCCESS,
+-- or { code = FAILED_*, reason = REASON.* } on rejection. The shared ap_ext_util.try_cause gates and logs each call.
+local function _eligible_conquer(squad, now, level_id, budget)
+    if not _alignment_conquer_human[squad.player_id] then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT } end
+    if not ap_ext_util.is_active_period(squad.player_id) then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_PERIOD } end
+    local elapsed = now - _read_dto_field(squad.id, CONQUER_FIELD, now)
+    if elapsed <= cfg.cause_area_conquer_threshold * HOURS_TO_SECONDS then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BELOW_THRESHOLD }
+    end
+    if not ap_ext_util.check_personality(_personality_conquer, squad.player_id) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.LOW_PERSONALITY }
+    end
+    local census = _get_census(level_id)
+    if not _check_census_share(census, census and (census.by_comm[squad.player_id] or 0) or 0) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.DOMINANT_SHARE }
+    end
+    if ap_ext_smart_mutator.conquest_count(squad.player_id, level_id) >= cfg.cause_area_conquer_max_faction_smarts_per_level then
+        return { code = RESULT.FAILED_RULES, reason = REASON.MAX_FACTION_SMARTS }
+    end
+    if budget.remaining <= 0 then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BUDGET_EXHAUSTED }
+    end
+    budget.remaining = budget.remaining - 1
+    local smart = ap_core_util.find_smart(squad.position,
+        { level_id = level_id, filter = _build_conquer_filter(squad.player_id), max_distance = RANGE_EYE })
+    if not smart then return { code = RESULT.FAILED_SCAN, reason = REASON.NO_SMART } end
+    if not ap_ext_util.is_tactically_eligible(squad, smart) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.LOW_TACTICS }
+    end
+    return {
+        cause = CAUSE.AREA_CONQUER,
+        squad_id = squad.id,
+        community = squad.player_id,
+        identity = squad.player_id,
+        position = squad.position,
+        level_id = level_id,
+        dst_smart_id = smart.id,
+        dto_field = CONQUER_FIELD,
+    }
+end
+
+local function _eligible_swarm(squad, species, now, level_id, budget)
+    if not _alignment_conquer_mutant[species] then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT } end
+    if not ap_ext_smart_mutator.INFEST_SPECIES[species] then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT, species = species } end
+    if not ap_ext_util.is_active_period(species) then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_PERIOD } end
+    local elapsed = now - _read_dto_field(squad.id, SWARM_FIELD, now)
+    if elapsed <= cfg.cause_area_swarm_threshold * HOURS_TO_SECONDS then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BELOW_THRESHOLD }
+    end
+    if not ap_ext_util.check_personality(_personality_conquer, species) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.LOW_PERSONALITY }
+    end
+    local census = _get_census(level_id)
+    if not _check_census_share(census, census and census.mutant or 0) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.DOMINANT_SHARE }
+    end
+    if ap_ext_smart_mutator.swarm_count(level_id) >= cfg.cause_area_swarm_max_faction_smarts_per_level then
+        return { code = RESULT.FAILED_RULES, reason = REASON.MAX_FACTION_SMARTS }
+    end
+    if budget.remaining <= 0 then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BUDGET_EXHAUSTED }
+    end
+    budget.remaining = budget.remaining - 1
+    local smart = ap_core_util.find_smart(squad.position,
+        { level_id = level_id, filter = _make_swarm_filter(squad.player_id, species), max_distance = RANGE_EYE })
+    if not smart then return { code = RESULT.FAILED_SCAN, reason = REASON.NO_SMART } end
+    if not ap_ext_util.is_tactically_eligible(squad, smart) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.LOW_TACTICS }
+    end
+    return {
+        cause = CAUSE.AREA_SWARM,
+        squad_id = squad.id,
+        community = squad.player_id,
+        identity = species,
+        species = species,
+        position = squad.position,
+        level_id = level_id,
+        dst_smart_id = smart.id,
+        dto_field = SWARM_FIELD,
+    }
+end
+
+local function _eligible_infest(squad, species, now, level_id, budget)
+    if not _alignment_conquer_mutant[species] then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT } end
+    if not ap_ext_smart_mutator.INFEST_SPECIES[species] then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT, species = species } end
+    if not ap_ext_util.is_active_period(species) then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_PERIOD } end
+    local elapsed = now - _read_dto_field(squad.id, INFEST_FIELD, now)
+    if elapsed <= cfg.cause_area_infest_threshold * HOURS_TO_SECONDS then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BELOW_THRESHOLD }
+    end
+    if not ap_ext_util.check_personality(_personality_infest, species) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.LOW_PERSONALITY }
+    end
+    if not _squad_has_alpha(squad) then return { code = RESULT.FAILED_RULES, reason = REASON.NOT_ALPHA } end
+    local census = _get_census(level_id)
+    if not _check_census_share(census, census and census.mutant or 0) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.DOMINANT_SHARE }
+    end
+    if not ap_ext_smart_mutator.can_infest_on_level(level_id) then return { code = RESULT.FAILED_RULES, reason = REASON.MAX_INFEST_PER_LEVEL } end
+    local base_filter = _resolve_infest_filter(species, squad.player_id)
+    if not base_filter then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT } end
+    -- is_taken with no identity: ANY live mutation blocks (infest never refreshes, so its own
+    -- entries block too -- supersedes the old is_infested check).
+    local filter = function(smart)
+        if ap_ext_smart_mutator.is_taken(smart.id) then return false end
+        return base_filter(smart)
+    end
+    if budget.remaining <= 0 then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BUDGET_EXHAUSTED }
+    end
+    budget.remaining = budget.remaining - 1
+    local smart = ap_core_util.find_smart(squad.position,
+        { level_id = level_id, filter = filter, max_distance = RANGE_EYE })
+    if not smart then return { code = RESULT.FAILED_SCAN, reason = REASON.NO_SMART } end
+    if not ap_ext_util.is_tactically_eligible(squad, smart) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.LOW_TACTICS }
+    end
+    return {
+        cause = CAUSE.AREA_INFEST,
+        squad_id = squad.id,
+        community = squad.player_id,
+        identity = species,
+        species = species,
+        position = squad.position,
+        level_id = level_id,
+        dst_smart_id = smart.id,
+        dto_field = INFEST_FIELD,
+    }
+end
+
+local function _on_smart(squad)
+    if not squad then return { code = RESULT.FAILED_RULES, reason = REASON.NIL_ARGS } end
+    local level_id = xlevel.get_level_id(squad)
+    if not level_id then return { code = RESULT.FAILED_RULES, reason = REASON.NO_LEVEL_ID } end
+    if not ap_core_limiter.check_cause_rate_limit(CATEGORY, cfg[CAP_KEY]) then
+        return { code = RESULT.FAILED_RULES, reason = REASON.BUDGET_EXHAUSTED }
+    end
+    local now = xtime.game_sec()
+    local budget = { remaining = MAX_SCANS_PER_GENERATOR }
+
+    local result
+    if _alignment_mutant[squad.player_id] then
+        local species = xcreature.get_mutant_species(squad.id)
+        if not species then return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT, community = squad.player_id } end
+        if math_random(2) == 1 then
+            result = ap_ext_util.try_cause(EN_INFEST, LOG_INFEST, _eligible_infest, squad, species, now, level_id, budget)
+            if not result then result = ap_ext_util.try_cause(EN_SWARM, LOG_SWARM, _eligible_swarm, squad, species, now, level_id, budget) end
+        else
+            result = ap_ext_util.try_cause(EN_SWARM, LOG_SWARM, _eligible_swarm, squad, species, now, level_id, budget)
+            if not result then result = ap_ext_util.try_cause(EN_INFEST, LOG_INFEST, _eligible_infest, squad, species, now, level_id, budget) end
+        end
+    elseif _alignment_conquer_human[squad.player_id] then
+        result = ap_ext_util.try_cause(EN_CONQUER, LOG_CONQUER, _eligible_conquer, squad, now, level_id, budget)
+    else
+        return { code = RESULT.FAILED_RULES, reason = REASON.WRONG_ALIGNMENT, community = squad.player_id }
+    end
+
+    if not result then return { code = RESULT.FAILED_RULES, reason = REASON.NO_BRANCH, community = squad.player_id } end
+
+    ap_core_limiter.increment_cause_counter(CATEGORY)
+    return result
+end
+
+function on_game_start()
+    local radiant = ap_core_const.RADIANT_CALLBACKS
+    for i = 1, #radiant do
+        ap_core_producer.register({
+            callback = radiant[i], cause_type = CAUSE_TYPE.RADIANT,
+            category = CAUSE_CATEGORY.OPPORTUNITIES, name = "area",
+        }, _on_smart)
+    end
+    ap_core_debug.info(LOG_INIT .. " Initialized")
+end

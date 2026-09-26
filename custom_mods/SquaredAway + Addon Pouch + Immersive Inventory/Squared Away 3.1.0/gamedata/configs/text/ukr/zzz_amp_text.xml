@@ -1,0 +1,1132 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+
+	<string id="ui_mcm_menu_ArmorMagPouches">
+		<text>Armor Mag Pouches 1.79.1-grid</text>
+	</string>
+
+	<string id="ui_mcm_title_ArmorMagPouches">
+		<text>Armor Mag Pouches 1.79.1-grid</text>
+	</string>
+
+	<string id="ui_mcm_menu_amp_general">
+		<text>Armor Mag Pouches - build 3.1.0-test</text>
+	</string>
+
+	<string id="ui_mcm_menu_ArmorMagPouches_amp_general">
+		<text>General - build 1.79.1-grid</text>
+	</string>
+
+	<string id="ui_mcm_title_amp_general">
+		<text>General - build 1.79.1-grid</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_enable">
+		<text>Enable mag pouches</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_enable">
+		<text>Enable mag pouches</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_enable">
+		<text>Enable mag pouches</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_hide_grid">
+		<text>Hide pouched magazines from the inventory grid</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_hide_grid">
+		<text>Hide pouched magazines from the inventory grid</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_hide_grid">
+		<text>Hide pouched magazines from the inventory grid</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_rig_wear">
+		<text>Розвантаження зношуються від отриманої шкоди</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_rig_wear">
+		<text>Розвантаження зношуються від отриманої шкоди</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_rig_wear">
+		<text>Розвантаження зношуються від отриманої шкоди</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_rig_is_all">
+		<text>Rig is your whole loadout (backpacks and artefacts grant none)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_rig_is_all">
+		<text>Rig is your whole loadout (backpacks and artefacts grant none)</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_rig_is_all">
+		<text>Rig is your whole loadout (backpacks and artefacts grant none)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_debug">
+		<text>Write diagnostics to the game log</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_debug">
+		<text>Write diagnostics to the game log</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_debug">
+		<text>Write diagnostics to the game log</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_wear_loot">
+		<text>Rigs found in the world arrive damaged</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_wear_loot">
+		<text>Rigs found in the world arrive damaged</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_wear_loot">
+		<text>Rigs found in the world arrive damaged</text>
+	</string>
+
+							<string id="ui_mcm_ArmorMagPouches_amp_left">
+		<text>Open on the RIGHT of the equipment panel</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_left">
+		<text>Open on the RIGHT of the equipment panel</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_left">
+		<text>Open on the RIGHT of the equipment panel</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_dx">
+		<text>Nudge horizontally</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_dx">
+		<text>Nudge horizontally</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_dx">
+		<text>Nudge horizontally</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_dy">
+		<text>Nudge vertically</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_dy">
+		<text>Nudge vertically</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_dy">
+		<text>Nudge vertically</text>
+	</string>
+
+	<string id="st_amp_open">
+		<text>Mag pouches</text>
+	</string>
+
+	<string id="st_amp_close">
+		<text>Close mag pouches</text>
+	</string>
+
+	<string id="st_amp_strip">
+		<text>Р—РЅСЏС‚Рё СЂРѕР·РІР°РЅС‚Р°Р¶РµРЅРЅСЏ</text>
+	</string>
+
+	<string id="st_amp_openrig">
+		<text>Відкрити розвантаження</text>
+	</string>
+
+	<string id="st_amp_shutrig">
+		<text>Закрити розвантаження</text>
+	</string>
+
+	<string id="st_amp_openbox">
+		<text>Відкрити ящик</text>
+	</string>
+
+	<string id="st_amp_shutbox">
+		<text>Закрити ящик</text>
+	</string>
+
+	<string id="st_amp_wear">
+		<text>Р’РґСЏРіРЅСѓС‚Рё СЂРѕР·РІР°РЅС‚Р°Р¶РµРЅРЅСЏ</text>
+	</string>
+
+	<string id="st_amp_detach">
+		<text>Р’С–Рґ'С”РґРЅР°С‚Рё РїС–РґСЃСѓРјРѕРє</text>
+	</string>
+
+	<string id="st_amp_unrig">
+		<text>Take out of pouch</text>
+	</string>
+
+
+	<string id="st_amp_spawn_rig">
+		<text>Spawn test chest rig (debug)</text>
+	</string>
+
+	<string id="st_amp_spawn_box">
+		<text>Spawn test box (debug)</text>
+	</string>
+
+										<string id="ui_mcm_ArmorMagPouches_amp_anchor_bag">
+		<text>Rig slot and pockets in the bag column (grid build)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_anchor_bag">
+		<text>Rig slot and pockets in the bag column (grid build)</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_anchor_bag">
+		<text>Rig slot and pockets in the bag column (grid build)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_med">
+		<text>Medicine is governed by the rig</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_med">
+		<text>Medicine is governed by the rig</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_med">
+		<text>Medicine is governed by the rig</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_med_only">
+		<text>With the inventory shut, only medicine in the rig can be used</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_med_only">
+		<text>With the inventory shut, only medicine in the rig can be used</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_med_only">
+		<text>With the inventory shut, only medicine in the rig can be used</text>
+	</string>
+	<string id="ui_mcm_ArmorMagPouches_amp_sounds">
+		<text>Звуки інвентарю (підсумки, ящики, вікна)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_sounds">
+		<text>Звуки інвентарю (підсумки, ящики, вікна)</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_sounds">
+		<text>Звуки інвентарю (підсумки, ящики, вікна)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_sndvol">
+		<text>Гучність звуків інвентарю (0.1 - 3)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_sndvol">
+		<text>Гучність звуків інвентарю (0.1 - 3)</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_sndvol">
+		<text>Гучність звуків інвентарю (0.1 - 3)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_boxhover">
+		<text>Box window opens after hovering a dragged item on it (seconds, 0 = off)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_boxhover">
+		<text>Box window opens after hovering a dragged item on it (seconds, 0 = off)</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_boxhover">
+		<text>Box window opens after hovering a dragged item on it (seconds, 0 = off)</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_rot_key">
+		<text>Rotate the held item over a box</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_rot_key">
+		<text>Rotate the held item over a box</text>
+	</string>
+
+	<string id="ui_mcm_amp_general_amp_rot_key">
+		<text>Rotate the held item over a box</text>
+	</string>
+
+	<string id="ui_mcm_squared_away">
+		<text>Squared Away 3.1.0-test</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general">
+		<text>Armor Mag Pouches</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_enable">
+		<text>Enable mag pouches</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_hide_grid">
+		<text>Hide pouched magazines from the inventory grid</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_rig_wear">
+		<text>Розвантаження зношуються від отриманої шкоди</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_rig_is_all">
+		<text>Rig is your whole loadout (backpacks and artefacts grant none)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_debug">
+		<text>Write diagnostics to the game log</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_wear_loot">
+		<text>Rigs found in the world arrive damaged</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_left">
+		<text>Open on the RIGHT of the equipment panel</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_dx">
+		<text>Nudge horizontally</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_dy">
+		<text>Nudge vertically</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_anchor_bag">
+		<text>Rig slot and pockets in the bag column (grid build)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_med">
+		<text>Medicine is governed by the rig</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_med_only">
+		<text>With the inventory shut, only medicine in the rig can be used</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_sounds">
+		<text>Звуки інвентарю (підсумки, ящики, вікна)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_sndvol">
+		<text>Гучність звуків інвентарю (0.1 - 3)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_boxhover">
+		<text>Box window opens after hovering a dragged item on it (seconds, 0 = off)</text>
+	</string>
+
+	<string id="ui_mcm_menu_squared_away">
+		<text>Squared Away</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_rot_key">
+		<text>Rotate the held item over a box</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_layout">
+		<text>Inventory layout</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_layout_desc">
+		<text>Which order the three columns stand in. Anomaly Default is the game's own - the other party on the left, what you are wearing in the middle, your bag on the right. Tarkov-like puts the equipment against the left edge with your bag beside it. Everything else is the same either way; only the columns move.</text>
+	</string>
+
+	<string id="squared_away_amp_general_amp_layout_lst_amp_layout_default">
+		<text>Anomaly Default</text>
+	</string>
+
+	<string id="squared_away_amp_general_amp_layout_lst_amp_layout_tarkov">
+		<text>Tarkov-like</text>
+	</string>
+
+	<string id="ui_mcm_lst_amp_layout_default">
+		<text>Anomaly Default</text>
+	</string>
+
+	<string id="ui_mcm_lst_amp_layout_tarkov">
+		<text>Tarkov-like</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_loot_box">
+		<text>File loot into containers</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_loot_box_desc">
+		<text>Anything you pick up or loot goes into a container you are carrying that already holds one of the same thing - and a container can be dragged onto straight from a body's list. Only into a container that already has that kind in it: something already in there is you having said where it lives.</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_ammo_gate">
+		<text>Guns with no magazine reload out of the rig only</text>
+	</string>
+
+	<string id="ui_mcm_ArmorMagPouches_amp_general_amp_ammo_gate">
+		<text>Guns with no magazine reload out of the rig only</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_general_amp_ammo_gate">
+		<text>Guns with no magazine reload out of the rig only</text>
+	</string>
+
+	<!-- BEGIN GENERATED RIGS - art/mkstrings.py, do not hand-edit -->
+	<string id="st_amprig_bandolier_name">
+		<text>Patrontash</text>
+	</string>
+
+	<string id="st_amprig_bandolier_descr">
+		<text>Plain olive webbing in an X across the back, three open-top pouches and a small admin pocket. What a rookie is handed and what a rookie makes do with. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<string id="st_amprig_scout_name">
+		<text>Razvedka Sling</text>
+	</string>
+
+	<string id="st_amprig_scout_descr">
+		<text>A slim dark-camo harness - a grenade pouch, a couple of pockets, and room for nothing you were not already carrying. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<string id="st_amprig_barakholka_name">
+		<text>Barakholka Rig</text>
+	</string>
+
+	<string id="st_amprig_barakholka_descr">
+		<text>Flea-market patchwork: three mismatched pouches stitched onto a strap by somebody who was not paid much for it. Bandit kit, and it looks it. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<string id="st_amprig_harness_name">
+		<text>Cordon Rig</text>
+	</string>
+
+	<string id="st_amprig_harness_descr">
+		<text>Tan straps over a flat panel with the pouches sewn on square. Loner work, sold at the Cordon, and the first rig worth wearing. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<string id="st_amprig_vydra_name">
+		<text>Vydra Swamp Rig</text>
+	</string>
+
+	<string id="st_amprig_vydra_descr">
+		<text>Clear Sky canvas gone grey with swamp water, a canteen on the hip and every seam waxed. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<string id="st_amprig_warsaw_name">
+		<text>6Sh92 Surplus Rig</text>
+	</string>
+
+	<string id="st_amprig_warsaw_descr">
+		<text>Olive canvas with cross-stitched flaps and a zip pouch along the bottom. Old army issue, and still the honest choice. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<string id="st_amprig_nylon_name">
+		<text>Vepr Nylon Rig</text>
+	</string>
+
+	<string id="st_amprig_nylon_descr">
+		<text>Mercenary black nylon: four magazines standing up front, a flat admin pouch between two big flap-top pockets. Cut for NATO steel. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<string id="st_amprig_karkas_name">
+		<text>Karkas Field Harness</text>
+	</string>
+
+	<string id="st_amprig_karkas_descr">
+		<text>An ecologist's frame - deep sample pockets, a radio lead over the shoulder and not one thing on it that rattles. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<string id="st_amprig_bastion_name">
+		<text>Bastion Patrol Rig</text>
+	</string>
+
+	<string id="st_amprig_bastion_descr">
+		<text>Duty issue. Plain, square, organised, and every pouch on it closes properly. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<string id="st_amprig_smersh_name">
+		<text>Smersh-AK</text>
+	</string>
+
+	<string id="st_amprig_smersh_descr">
+		<text>Army recon kit: a belt and a chest panel that work together, with the pouches cut deep enough to swallow a long stick. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<string id="st_amprig_volya_name">
+		<text>Volya Raider Rig</text>
+	</string>
+
+	<string id="st_amprig_volya_descr">
+		<text>Freedom's own, in faded green - loud patches, quiet buckles, and shingles down the front. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<string id="st_amprig_chicom_name">
+		<text>Lifchik</text>
+	</string>
+
+	<string id="st_amprig_chicom_descr">
+		<text>A working rig: magazines standing proud, a sheathed knife, shears and a taped-up medical pouch. Half the Zone wears one. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<string id="st_amprig_leshy_name">
+		<text>Leshy</text>
+	</string>
+
+	<string id="st_amprig_leshy_descr">
+		<text>A radio and its aerial on one side, a row of shingles across the front, and bungee cord over all of it. A scout's rig, and silent with it. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<string id="st_amprig_tarzan_name">
+		<text>Tarzan-M22</text>
+	</string>
+
+	<string id="st_amprig_tarzan_descr">
+		<text>Army heavy: a broad chest panel hung with dump bags, made for carrying more than you should have to. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<string id="st_amprig_rubezh_name">
+		<text>Rubezh Carrier</text>
+	</string>
+
+	<string id="st_amprig_rubezh_descr">
+		<text>Mercenary black, cut long. The deepest shingles anyone sells, and nothing on it apologises for the weight. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<string id="st_amprig_carrier_name">
+		<text>Shturm Carrier</text>
+	</string>
+
+	<string id="st_amprig_carrier_descr">
+		<text>A carrier stripped back to its webbing - shell loops across the chest and a pouch on every panel. Assault kit, front to back. Right-click it into the rig slot at the top of the middle column. Anything that fits a slot goes in it - magazines, medicine, loose ammunition - and what is in the rig is what you can reach in a fight; the two slots beside it take expansion pouches.</text>
+	</string>
+
+	<!-- END GENERATED RIGS -->
+	<!-- BEGIN GENERATED BOXES - art/mkstrings.py, do not hand-edit -->
+	<string id="st_ampbox_meds_name">
+		<text>Field Medical Case</text>
+	</string>
+
+	<string id="st_ampbox_meds_descr">
+		<text>A frosted plastic case with dark red latches and a winged shield stencilled across the lid. Watertight, and it does not care what the weather is doing to the outside of it. 5 by 5 squares inside, and it carries 10 kg. It takes medical supplies, and nothing else. Identical things share a square, up to 99 of them. Right-click it to open it, then drag things in and out. It does not stack with another one - what is inside a box belongs to that box.</text>
+	</string>
+
+	<string id="st_ampbox_ammo_name">
+		<text>Ammo Storage Case</text>
+	</string>
+
+	<string id="st_ampbox_ammo_descr">
+		<text>Surplus olive drab steel with a webbing handle and a winged cartridge stencil on the side. Heavy empty. Heavier full. 4 by 2 squares inside, and it carries 10 kg. It takes ammunition, and nothing else. Identical things share a square, up to 99 of them. Right-click it to open it, then drag things in and out. It does not stack with another one - what is inside a box belongs to that box.</text>
+	</string>
+
+	<string id="st_ampbox_ammo_big_name">
+		<text>Big Ammo Storage Case</text>
+	</string>
+
+	<string id="st_ampbox_ammo_big_descr">
+		<text>The same steel in a crate you need both hands for - four latches, a stencilled round on the lid and a wall of it inside. 6 by 4 squares inside, and it carries 15 kg. It takes ammunition, and nothing else. Identical things share a square, up to 99 of them. Right-click it to open it, then drag things in and out. It does not stack with another one - what is inside a box belongs to that box.</text>
+	</string>
+
+	<string id="st_ampbox_food_name">
+		<text>Big Food Container</text>
+	</string>
+
+	<string id="st_ampbox_food_descr">
+		<text>A grey field cooler on a shoulder strap - black latches, knife and fork stencilled across the front, and enough insulation that what goes in cold comes out cold. 5 by 5 squares inside, and it carries 10 kg. It takes food, drink, cooked mutant meat and raw mutant meat, and nothing else. Identical things share a square, up to 99 of them. Right-click it to open it, then drag things in and out. It does not stack with another one - what is inside a box belongs to that box.</text>
+	</string>
+
+	<string id="st_ampbox_food_small_name">
+		<text>Small Food Container</text>
+	</string>
+
+	<string id="st_ampbox_food_small_descr">
+		<text>A little wheeled cooler with a blue lid, knife and fork on the side. A day out rather than a week. 4 by 2 squares inside, and it carries 10 kg. It takes food, drink, cooked mutant meat and raw mutant meat, and nothing else. Identical things share a square, up to 99 of them. Right-click it to open it, then drag things in and out. It does not stack with another one - what is inside a box belongs to that box.</text>
+	</string>
+
+	<string id="st_ampbox_armor_name">
+		<text>Armour Case</text>
+	</string>
+
+	<string id="st_ampbox_armor_descr">
+		<text>A black composite case on heavy latches, with a stencilled figure in a suit across the lid. Deep enough to lay a plate carrier flat and stiff enough that nothing in it gets bent. 4 by 6 squares inside, and no weight limit at all - if it fits, it goes. It takes armour, helmets and masks, and chest rigs, and nothing else. Nothing stacks in it - one thing to a square. Right-click it to open it, then drag things in and out. It does not stack with another one - what is inside a box belongs to that box.</text>
+	</string>
+
+	<string id="st_ampbox_mags_name">
+		<text>Magazine Box</text>
+	</string>
+
+	<string id="st_ampbox_mags_descr">
+		<text>An olive crate with three magazines held under the lid by webbing straps. Everything stands upright and nothing rattles. 4 by 3 squares inside, and it carries 15 kg. It takes magazines, and nothing else. Identical things share a square, up to 10 of them. Take a stack out and you get the fullest magazine in it; hold the split key instead and you get the emptiest. Right-click it to open it, then drag things in and out. It does not stack with another one - what is inside a box belongs to that box.</text>
+	</string>
+
+	<string id="st_ampbox_docs_name">
+		<text>Document Case</text>
+	</string>
+
+	<string id="st_ampbox_docs_descr">
+		<text>A worn leather shoulder case with a single latch, the flap gone soft at the fold. Papers stand on edge inside it, so you read the names down the spines instead of turning out a pocketful of identical folded sheets. 1 by 24 squares inside, and no weight limit at all - if it fits, it goes. It takes documents, and nothing else. Identical things share a square, up to 20 of them. Right-click it to open it, then drag things in and out. It does not stack with another one - what is inside a box belongs to that box.</text>
+	</string>
+
+	<string id="st_ampbox_parts_name">
+		<text>Parts Box</text>
+	</string>
+
+	<string id="st_ampbox_parts_descr">
+		<text>A flat olive hard case with a winged crate stencilled on it. Foam inside, and it does not care whether what goes in it came off a rifle or off a suit. 4 by 5 squares inside, and it carries 15 kg. It takes weapon and armour parts, and nothing else. Identical things share a square, as many of them as the weight allows. Take a stack out and you get the least worn part in it; hold the split key instead and you get the most worn. Right-click it to open it, then drag things in and out. It does not stack with another one - what is inside a box belongs to that box.</text>
+	</string>
+
+	<string id="st_ampbox_weapon_name">
+		<text>Weapon Case</text>
+	</string>
+
+	<string id="st_ampbox_weapon_descr">
+		<text>A hard olive case on twin latches, a rifle and wings stencilled across the lid. Foam cut to shape inside, so what goes in it comes out straight. Scopes, silencers and launchers are attachments and belong somewhere else. 6 by 3 squares inside, and no weight limit at all - if it fits, it goes. It takes weapons, and nothing else. Nothing stacks in it - one thing to a square. Right-click it to open it, then drag things in and out. It does not stack with another one - what is inside a box belongs to that box.</text>
+	</string>
+
+	<string id="st_ampbox_weapon_big_name">
+		<text>Big Weapon Case</text>
+	</string>
+
+	<string id="st_ampbox_weapon_big_descr">
+		<text>A long olive rifle case, black caps on all four corners and a row of latches down the front, with the winged crest stencilled twice across the lid. Built to be thrown off a truck with something expensive inside it. Scopes, silencers and launchers are attachments and belong somewhere else. 8 by 4 squares inside, and no weight limit at all - if it fits, it goes. It takes weapons, and nothing else. Nothing stacks in it - one thing to a square. Right-click it to open it, then drag things in and out. It does not stack with another one - what is inside a box belongs to that box.</text>
+	</string>
+
+	<!-- END GENERATED BOXES -->
+	<!-- BEGIN GENERATED POUCHES - art/mkstrings.py, do not hand-edit -->
+	<!-- END GENERATED POUCHES -->
+	<!-- BEGIN GENERATED DROP SLIDERS - art/mkstrings.py, do not hand-edit -->
+	<string id="ui_mcm_squared_away_amp_drops">
+		<text>Rig and pouch drops</text>
+	</string>
+
+	<string id="ui_mcm_menu_amp_drops">
+		<text>Rig and pouch drops - the chance a body of that rank is carrying one, in per cent</text>
+	</string>
+
+	<string id="ui_mcm_title_amp_drops">
+		<text>Rig and pouch drops</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_t1">
+		<text>Rookie: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_t1">
+		<text>Rookie: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_t2">
+		<text>Rookie: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_t2">
+		<text>Rookie: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_t3">
+		<text>Rookie: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_t3">
+		<text>Rookie: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_t4">
+		<text>Rookie: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_t4">
+		<text>Rookie: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_t5">
+		<text>Rookie: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_t5">
+		<text>Rookie: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_ps">
+		<text>Rookie: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_ps">
+		<text>Rookie: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_pm">
+		<text>Rookie: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_pm">
+		<text>Rookie: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_novice_pl">
+		<text>Rookie: large mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_novice_pl">
+		<text>Rookie: large mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_t1">
+		<text>Trainee: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_t1">
+		<text>Trainee: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_t2">
+		<text>Trainee: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_t2">
+		<text>Trainee: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_t3">
+		<text>Trainee: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_t3">
+		<text>Trainee: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_t4">
+		<text>Trainee: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_t4">
+		<text>Trainee: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_t5">
+		<text>Trainee: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_t5">
+		<text>Trainee: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_ps">
+		<text>Trainee: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_ps">
+		<text>Trainee: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_pm">
+		<text>Trainee: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_pm">
+		<text>Trainee: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_trainee_pl">
+		<text>Trainee: large mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_trainee_pl">
+		<text>Trainee: large mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_t1">
+		<text>Experienced: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_t1">
+		<text>Experienced: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_t2">
+		<text>Experienced: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_t2">
+		<text>Experienced: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_t3">
+		<text>Experienced: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_t3">
+		<text>Experienced: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_t4">
+		<text>Experienced: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_t4">
+		<text>Experienced: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_t5">
+		<text>Experienced: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_t5">
+		<text>Experienced: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_ps">
+		<text>Experienced: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_ps">
+		<text>Experienced: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_pm">
+		<text>Experienced: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_pm">
+		<text>Experienced: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_experienced_pl">
+		<text>Experienced: large mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_experienced_pl">
+		<text>Experienced: large mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_t1">
+		<text>Professional: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_t1">
+		<text>Professional: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_t2">
+		<text>Professional: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_t2">
+		<text>Professional: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_t3">
+		<text>Professional: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_t3">
+		<text>Professional: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_t4">
+		<text>Professional: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_t4">
+		<text>Professional: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_t5">
+		<text>Professional: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_t5">
+		<text>Professional: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_ps">
+		<text>Professional: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_ps">
+		<text>Professional: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_pm">
+		<text>Professional: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_pm">
+		<text>Professional: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_professional_pl">
+		<text>Professional: large mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_professional_pl">
+		<text>Professional: large mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_t1">
+		<text>Veteran: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_t1">
+		<text>Veteran: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_t2">
+		<text>Veteran: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_t2">
+		<text>Veteran: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_t3">
+		<text>Veteran: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_t3">
+		<text>Veteran: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_t4">
+		<text>Veteran: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_t4">
+		<text>Veteran: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_t5">
+		<text>Veteran: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_t5">
+		<text>Veteran: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_ps">
+		<text>Veteran: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_ps">
+		<text>Veteran: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_pm">
+		<text>Veteran: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_pm">
+		<text>Veteran: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_veteran_pl">
+		<text>Veteran: large mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_veteran_pl">
+		<text>Veteran: large mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_t1">
+		<text>Expert: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_t1">
+		<text>Expert: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_t2">
+		<text>Expert: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_t2">
+		<text>Expert: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_t3">
+		<text>Expert: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_t3">
+		<text>Expert: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_t4">
+		<text>Expert: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_t4">
+		<text>Expert: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_t5">
+		<text>Expert: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_t5">
+		<text>Expert: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_ps">
+		<text>Expert: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_ps">
+		<text>Expert: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_pm">
+		<text>Expert: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_pm">
+		<text>Expert: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_expert_pl">
+		<text>Expert: large mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_expert_pl">
+		<text>Expert: large mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_t1">
+		<text>Master: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_t1">
+		<text>Master: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_t2">
+		<text>Master: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_t2">
+		<text>Master: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_t3">
+		<text>Master: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_t3">
+		<text>Master: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_t4">
+		<text>Master: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_t4">
+		<text>Master: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_t5">
+		<text>Master: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_t5">
+		<text>Master: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_ps">
+		<text>Master: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_ps">
+		<text>Master: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_pm">
+		<text>Master: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_pm">
+		<text>Master: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_master_pl">
+		<text>Master: large mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_master_pl">
+		<text>Master: large mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_t1">
+		<text>Legend: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_t1">
+		<text>Legend: tier 1 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_t2">
+		<text>Legend: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_t2">
+		<text>Legend: tier 2 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_t3">
+		<text>Legend: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_t3">
+		<text>Legend: tier 3 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_t4">
+		<text>Legend: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_t4">
+		<text>Legend: tier 4 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_t5">
+		<text>Legend: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_t5">
+		<text>Legend: tier 5 rig (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_ps">
+		<text>Legend: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_ps">
+		<text>Legend: small mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_pm">
+		<text>Legend: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_pm">
+		<text>Legend: medium mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_squared_away_amp_drops_amp_drop_legend_pl">
+		<text>Legend: large mag pouch (%)</text>
+	</string>
+
+	<string id="ui_mcm_amp_drops_amp_drop_legend_pl">
+		<text>Legend: large mag pouch (%)</text>
+	</string>
+
+	<!-- END GENERATED DROP SLIDERS -->
+</string_table>

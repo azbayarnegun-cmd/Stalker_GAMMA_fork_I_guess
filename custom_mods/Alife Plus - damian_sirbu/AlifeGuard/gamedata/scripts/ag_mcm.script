@@ -1,0 +1,239 @@
+--- ag_mcm: MCM configuration for AlifeGuard population control
+
+-- ==================== DEFAULTS ====================
+
+defaults = {
+    -- Online Guard
+    enabled = true,
+    max = 80,
+    buffer = 10,
+    check_interval = 30,
+    check_tasks = true,
+    prioritize_distant = true,
+    squad_culling = true,
+    round_robin = true,
+    pda = true,
+    pda_sound = true,
+
+    -- Offline Guard (own settings, decoupled from the online guard)
+    density_enabled = true,
+    density_trigger = 120,
+    density_target = 80,
+    density_check_tasks = true,
+    density_interval = 1,
+
+    -- Smart Sanitizer
+    sanitize_smarts = true,
+    sanitize_interval = 300,
+
+    -- Inventory Guard
+    enabled_inventory = true,
+    npcs_per_frame = 1,
+    scan_cooldown_h = 12,
+    enabled_trader_purge = true,
+    trader_condition_min = 0.75,
+
+    -- Development
+    log_level = "WARN",
+}
+
+-- ==================== CONFIG ====================
+
+local RegisterScriptCallback = RegisterScriptCallback
+
+local _key_to_tab = {
+    density_enabled = "offline_guard",
+    density_trigger = "offline_guard",
+    density_target = "offline_guard",
+    density_check_tasks = "offline_guard",
+    density_interval = "offline_guard",
+    sanitize_smarts = "smart_sanitizer",
+    sanitize_interval = "smart_sanitizer",
+    enabled_inventory = "inventory_guard",
+    npcs_per_frame = "inventory_guard",
+    scan_cooldown_h = "inventory_guard",
+    enabled_trader_purge = "inventory_guard",
+    trader_condition_min = "inventory_guard",
+    log_level = "development",
+    btn_reset_all = "development",
+}
+
+local function path_builder(key)
+    local tab = _key_to_tab[key] or "online_guard"
+    return "ag/" .. tab .. "/" .. key
+end
+
+cfg, get_config, load_config = xmcm.create_config("ag", defaults, path_builder)
+
+-- ==================== BUTTON HANDLERS ====================
+
+-- functor_ui receives the UI_MCM instance as trailing arg (ui_mcm.script:1435).
+-- functor would receive nothing. MCM 1.7.2fix leaves the file-local GUI nil on fresh opens
+-- (only Open_to sets it, and Reset_last_opt skips Open_to when last_path is nil), so
+-- ui_mcm.get_gui() returns nil. functor_ui sidesteps that bug.
+-- MCM keeps file-local opt_temp (pending widget edits) at ui_mcm.script:175. Any widget
+-- the user touched before clicking the profile button is still there, and On_Accept at
+-- ui_mcm.script:2393 writes opt_temp AFTER our config writes, partially un-applying the
+-- profile. On_Discard flushes opt_temp and closes the dialog; same path the Cancel button
+-- takes.
+local function _apply_defaults(gui, msg)
+    local config = axr_main.config
+    for k, v in pairs(defaults) do
+        config:w_value("mcm", path_builder(k), v)
+    end
+    config:save()
+    load_config()
+    if gui then
+        if gui.owner and gui.owner.SetMsg then
+            gui.owner:SetMsg(msg, 5)
+        end
+        -- Close via On_Cancel, not On_Discard. On_Discard calls Reset_opt -> scroll_opt:Clear
+        -- at ui_mcm.script:949, which destroys the btn_reset_all button while its click
+        -- handler is still on the stack; C++ dispatcher returns into the freed control and
+        -- SEH-fires on some exe builds (e.g. modified vanilla 1.5.3). On_Cancel only calls
+        -- HideDialog + Unregister_UI -- scroll_opt children stay alive long enough for the
+        -- handler to unwind. Trade-off: opt_temp is not cleared (vanilla Cancel-without-prompt
+        -- parity). If the user touched widgets before clicking reset, those edits remain
+        -- pending and will be re-applied on the next On_Accept.
+        if gui.On_Cancel then
+            gui:On_Cancel()
+        end
+    end
+    if db.actor then
+        news_manager.send_tip(db.actor, msg, nil, nil, 5000)
+    end
+end
+
+function btn_reset_all(gui)
+    _apply_defaults(gui, game.translate_string("st_ag_reset_all_done"))
+end
+
+-- ==================== MCM DEFINITION ====================
+
+function on_mcm_load()
+    return {
+        id = "ag",
+        gr = {
+            -- ============ ONLINE GUARD TAB ============
+            {
+                id = "online_guard",
+                sh = true,
+                gr = {
+                    { id = "title", type = "slide", link = "ag_mcm_banner",
+                        text = "ui_mcm_ag_title", size = {512, 50}, spacing = 20 },
+                    { id = "desc", type = "desc", text = "ui_mcm_ag_online_guard_info" },
+
+                    -- Entity Limits
+                    { id = "div_online", type = "line" },
+                    { id = "hdr_online", type = "desc", text = "ui_mcm_ag_hdr_online", clr = {255, 200, 200, 200} },
+                    { id = "enabled", type = "check", val = 1, def = true },
+                    { id = "max", type = "track", val = 2, min = 10, max = 200, step = 5, def = 80 },
+                    { id = "buffer", type = "track", val = 2, min = 0, max = 50, step = 5, def = 10 },
+                    { id = "check_interval", type = "track", val = 2, min = 10, max = 120, step = 10, def = 30 },
+
+                    -- Protection rules
+                    { id = "div_protection", type = "line" },
+                    { id = "hdr_protection", type = "desc", text = "ui_mcm_ag_hdr_protection", clr = {255, 200, 200, 200} },
+                    { id = "check_tasks", type = "check", val = 1, def = true },
+                    { id = "prioritize_distant", type = "check", val = 1, def = true },
+                    { id = "squad_culling", type = "check", val = 1, def = true },
+                    { id = "round_robin", type = "check", val = 1, def = true },
+
+                    -- Notifications
+                    { id = "div_pda", type = "line" },
+                    { id = "hdr_notifications", type = "desc", text = "ui_mcm_ag_hdr_notifications", clr = {255, 200, 200, 200} },
+                    { id = "pda", type = "check", val = 1, def = true },
+                    { id = "pda_sound", type = "check", val = 1, def = true },
+
+                    -- Platform footer (self-contained builder in _ag_deps, not xlibs)
+                    { id = "div_footer", type = "line" },
+                    { id = "platform", type = "desc", text = "ui_mcm_xmcm_footer",
+                        ui_hook_functor = { _ag_deps.platform_functor() }, clr = {255, 212, 201, 168} },                },
+            },
+            -- ============ OFFLINE GUARD TAB ============
+            {
+                id = "offline_guard",
+                sh = true,
+                gr = {
+                    { id = "title", type = "slide", link = "ag_mcm_banner",
+                        text = "ui_mcm_ag_title", size = {512, 50}, spacing = 20 },
+                    { id = "desc", type = "desc", text = "ui_mcm_ag_offline_guard_info" },
+
+                    { id = "div_density", type = "line" },
+                    { id = "hdr_density", type = "desc", text = "ui_mcm_ag_hdr_density", clr = {255, 200, 200, 200} },
+                    { id = "density_enabled", type = "check", val = 1, def = true },
+                    { id = "density_trigger", type = "track", val = 2, min = 10, max = 300, step = 5, def = 120 },
+                    { id = "density_target", type = "track", val = 2, min = 0, max = 300, step = 5, def = 80 },
+                    { id = "density_check_tasks", type = "check", val = 1, def = true },
+                    { id = "density_interval", type = "track", val = 2, min = 1, max = 10, step = 1, def = 1 },
+                },
+            },
+            -- ============ SMART SANITIZER TAB ============
+            {
+                id = "smart_sanitizer",
+                sh = true,
+                gr = {
+                    { id = "title", type = "slide", link = "ag_mcm_banner",
+                        text = "ui_mcm_ag_title", size = {512, 50}, spacing = 20 },
+                    { id = "desc", type = "desc", text = "ui_mcm_ag_smart_sanitizer_info" },
+
+                    { id = "div_sanitize", type = "line" },
+                    { id = "hdr_sanitize", type = "desc", text = "ui_mcm_ag_hdr_sanitize", clr = {255, 200, 200, 200} },
+                    { id = "sanitize_smarts", type = "check", val = 1, def = true },
+                    { id = "sanitize_interval", type = "track", val = 2, min = 60, max = 1800, step = 60, def = 300 },
+                },
+            },
+            -- ============ INVENTORY GUARD TAB ============
+            {
+                id = "inventory_guard",
+                sh = true,
+                gr = {
+                    { id = "title", type = "slide", link = "ag_mcm_banner",
+                        text = "ui_mcm_ag_title", size = {512, 50}, spacing = 20 },
+                    { id = "desc", type = "desc", text = "ui_mcm_ag_inventory_guard_desc" },
+                    { id = "div_inventory", type = "line" },
+                    { id = "enabled_inventory", type = "check", val = 1, def = true },
+                    { id = "npcs_per_frame", type = "track", val = 2, min = 1, max = 10, step = 1, def = 1 },
+                    { id = "scan_cooldown_h", type = "track", val = 2, min = 1, max = 72, step = 1, def = 12 },
+                    { id = "div_trader", type = "line" },
+                    { id = "enabled_trader_purge", type = "check", val = 1, def = true },
+                    { id = "trader_condition_min", type = "track", val = 2, min = 0.05, max = 0.95, step = 0.05, def = 0.75 },
+                },
+            },
+            -- ============ DEVELOPMENT TAB ============
+            {
+                id = "development",
+                sh = true,
+                gr = {
+                    { id = "title", type = "slide", link = "ag_mcm_banner",
+                        text = "ui_mcm_ag_title", size = {512, 50}, spacing = 20 },
+                    { id = "desc", type = "desc", text = "ui_mcm_ag_development_desc" },
+
+                    -- Logging
+                    { id = "div_logging", type = "line" },
+                    { id = "hdr_logging", type = "desc", text = "ui_mcm_ag_hdr_logging", clr = {255, 200, 200, 200} },
+                    { id = "log_level", type = "list", val = 0, def = "WARN",
+                        content = {
+                            {"ERROR", "error"},
+                            {"WARN", "warn"},
+                            {"INFO", "info"},
+                            {"DEBUG", "debug"},
+                        },
+                    },
+
+                    -- Reset
+                    { id = "div_reset", type = "line" },
+                    { id = "warn_reset", type = "desc", text = "ui_mcm_ag_development_reset_warning", clr = {255, 240, 200, 80} },
+                    { id = "btn_reset_all", type = "button", functor_ui = { btn_reset_all } },
+
+                },
+            },
+        },
+    }
+end
+
+function on_game_start()
+    load_config()
+    RegisterScriptCallback("on_option_change", load_config)
+    RegisterScriptCallback("mcm_option_restore_default", load_config)
+end

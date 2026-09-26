@@ -1,0 +1,10 @@
+SquaredAway 3.1.0-test compatibility port
+
+Load after SquaredAway 3.1.0-test and the installed Quick Action Wheel files.
+This addon replaces the two SquaredAway scripts that require direct Layered integration:
+- gamedata/scripts/zzz_amp_grid.script
+- gamedata/scripts/zzz_armor_mag_pouches.script
+
+All other Layered Pouches 1.5.3 assets/configs/scripts are included.
+The tested QAW compatibility script is included so separate rig-use/QAW
+hotfixes are no longer required.
