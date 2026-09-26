@@ -356,8 +356,9 @@ end
 
 local function refresh_settings()
     S.enabled = option("layers_enable", true) and true or false
-    -- Installing this addon is the explicit opt-in to deterministic routing.
-    S.autoloot = true
+    -- Loot routing into fitted pouches is an MCM choice, off by default
+    -- (as in Layered Pouches r11). Turn it on in MCM to route pickups.
+    S.autoloot = option("layers_autoloot", false) and true or false
     S.debug = option("layers_debug", false) and true or false
 end
 

@@ -7829,17 +7829,6 @@ if base_Update then
 			-- a quieter bug than a blank panel and a worse one to live
 			-- with.
 			-- ============================================================
-			local rc = G.recheck and G.recheck[self.ID]
-			if rc then
-				if time_global() > rc.till then
-					G.recheck[self.ID] = nil
-				elseif not G.same_ids(self, rc.set, rc.n) then
-					G.recheck[self.ID] = nil
-					dbg("late arrival in %s: relayout", tostring(self.ID))
-					pcall(G.relayout, self)
-				end
-			end
-
 			if G.defer_wait and G.defer_wait[self.ID]
 			   and not self.deferred then
 				G.defer_wait[self.ID] = nil
@@ -8507,20 +8496,6 @@ function G.install_ui()
 						if watch and G.same_ids(cc, G.was[cc.ID],
 						                        G.nwas[cc.ID]) then
 							G.idle = G.idle + 1
-							-- LATE ARRIVALS. Inventory Antifreeze adds items over
-							-- the following frames, not inside this call, so a
-							-- stash -> bag move can look "unchanged" here and never
-							-- get laid out. Watch the list briefly and relayout if
-							-- it changes after all.
-							if cc.deferred then
-								G.defer_wait = G.defer_wait or {}
-								G.defer_wait[cc.ID] = true
-							end
-							G.recheck = G.recheck or {}
-							local snap = {}
-							local n_snap = G.id_set(cc, snap)
-							G.recheck[cc.ID] = { set = snap, n = n_snap,
-								till = time_global() + 2000 }
 						else
 							pcall(G.relayout, cc)
 						end
