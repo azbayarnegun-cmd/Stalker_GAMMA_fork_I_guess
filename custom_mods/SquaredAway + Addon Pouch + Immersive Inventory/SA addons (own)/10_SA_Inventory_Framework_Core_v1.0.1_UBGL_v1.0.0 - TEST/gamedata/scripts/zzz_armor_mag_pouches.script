@@ -3094,6 +3094,17 @@ function A.pk_pocket(id)
 	return nil
 end
 
+-- WHICH POCKET INDEX holds this id. The rig-drop bridges used to read
+-- A.by_id, a table that no longer exists (pockets keep P.byid now).
+function A.pk_index(id)
+	if type(id) ~= "number" then return nil end
+	for i = 1, #A.pk do
+		local P = A.pk[i]
+		if P and P.byid[id] then return i end
+	end
+	return nil
+end
+
 function A.pk_holds(id)
 	for i = 1, #A.pk do
 		local P = A.pk[i]
@@ -22173,7 +22184,7 @@ end
 function grid_item_put(obj, target)
 	if not (A.enabled and editing_allowed() and obj and target) then return false end
 	local ok_i, id = pcall(function() return target:id() end)
-	if not (ok_i and A.by_id[id]) then return false end
+	if not (ok_i and A.pk_index(id)) then return false end
 	return A.load_onto(obj, target) and true or false
 end
 
@@ -22265,7 +22276,7 @@ function grid_panel_put(obj, bag_scroll)
 		if not i and over_cc and type(A.cc.GetCell_Focused) == "function" then
 			local ok_f, _, focused_i, focused_obj = pcall(A.cc.GetCell_Focused, A.cc)
 			if ok_f and focused_obj then
-				i = A.by_id[focused_obj:id()] or focused_i
+				i = A.pk_index(focused_obj:id()) or focused_i
 			end
 		end
 
@@ -22315,7 +22326,7 @@ function grid_panel_put(obj, bag_scroll)
 	-- Hover focus is maintained by AMP's draw pass and names the magazine in
 	-- an occupied pocket. It is independent of the source container and is a
 	-- final precise fallback for ammo-on-magazine.
-	if not i and A.focus_id then i = A.by_id[A.focus_id] end
+	if not i and A.focus_id then i = A.pk_index(A.focus_id) end
 	if not i then
 		-- Dropping a magazine anywhere inside the visible panel may use AMP's
 		-- normal first-compatible-free-pocket behaviour, just like actor_bag.

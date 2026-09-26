@@ -48,7 +48,8 @@ No path conflicts for FIUT or Seamless Sort (they use DLTX `mod_*` / `zzz_*` fil
 - **"Immersive Inventory"** = addon `50_SA_Immersive_Inventory_Access` in `SA addons (own)/` (see below).
 - **Source links:** _(fill in)_
 - **MO2 order:** _(fill in)_
-- **My changes:** none
+- **My changes (2026-09-26):** fixed a crash in `zzz_armor_mag_pouches.script` in addons 62 (the copy that runs), 10 and Layered Pouches r11. Three rig-drop bridge functions read `A.by_id`, which no longer exists (pockets use `P.byid`), and logged `attempt to index field 'by_id' (a nil value)`, so drops onto rig magazines and pockets from the backpack/pouch views failed. Added `A.pk_index(id)` and used it in the three places. LuaJIT compile OK; not yet tested in-game.
+- **Open issue (2026-09-26):** items moved stash → backpack (magazines, meds, …) don't appear until the inventory is reopened. Suspected clash between the grid (addon 55 `zzz_amp_grid.script`) and GAMMA's `468- Inventory Antifreeze` deferred fill on the incremental-add path. Needs a log with MCM → Zone Grid → "Write what it decides to the log" enabled.
 
 ## SA addons (own) — `SA addons (own)/`
 
